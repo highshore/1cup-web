@@ -56,6 +56,22 @@ export interface MeetupParticipant {
   avatar?: string;
 }
 
+export interface MeetupLeaderboardEntry {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  value: number;
+  meta?: string;
+  joinedAt?: string;
+}
+
+export interface MeetupLeaderboards {
+  monthLabel: string;
+  totalParticipation: MeetupLeaderboardEntry[];
+  monthlyParticipation: MeetupLeaderboardEntry[];
+  newMembers: MeetupLeaderboardEntry[];
+}
+
 export interface Article {
   id: string;
   title: {

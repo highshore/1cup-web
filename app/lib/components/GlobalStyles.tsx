@@ -2,6 +2,7 @@
 
 import { createGlobalStyle } from "styled-components";
 import { colors } from "../constants/colors";
+import { appLayout } from "../constants/app_layout";
 import reset from "styled-reset";
 
 const GlobalStyles = createGlobalStyle`
@@ -13,7 +14,7 @@ const GlobalStyles = createGlobalStyle`
     -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
   }
   body {
-    background-color: ${colors.primaryBg};
+    background-color: ${colors.pageBg};
     color: ${colors.text.dark};
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     overflow-x: hidden; /* Prevent horizontal scrolling at the page level */
@@ -58,8 +59,14 @@ const GlobalStyles = createGlobalStyle`
   a:hover { color: ${colors.primaryDark}; text-decoration: underline; }
 
   /* Containers */
-  .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
-  @media (max-width: 768px) { .container { padding: 0 1rem; } }
+  .container {
+    max-width: ${appLayout.pageMaxWidth};
+    margin: 0 auto;
+    padding: 0 ${appLayout.pageGutterDesktop};
+  }
+  @media (max-width: 768px) {
+    .container { padding: 0 ${appLayout.pageGutterMobile}; }
+  }
   
   /* Additional mobile optimizations */
   @media (max-width: 768px) {

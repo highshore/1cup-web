@@ -24,6 +24,8 @@ import {
   FirestoreMeetupEvent,
   MeetupEvent,
   Article,
+  MeetupLeaderboardEntry,
+  MeetupLeaderboards,
 } from "../types/meetup_types";
 import {
   convertFirestoreToMeetupEvent,
@@ -35,6 +37,82 @@ import { geocodeLocation } from "./geocoding_service";
 const MEETUP_COLLECTION = "meetup";
 const ARTICLES_COLLECTION = "articles";
 const DEFAULT_EVENTS_PER_PAGE = 5; // Reduced to 5 for smaller incremental loading
+
+type UserLeaderboardProfile = {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  account_status?: string;
+  hasActiveSubscription?: boolean;
+  createdAt?: Date | null;
+  subscriptionStartDate?: Date | null;
+  subscriptionEndDate?: Date | null;
+};
+
+const resolveDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === "object") {
+    const maybeTimestamp = value as {
+      toDate?: () => Date;
+      seconds?: number;
+    };
+    if (typeof maybeTimestamp.toDate === "function") {
+      return maybeTimestamp.toDate();
+    }
+    if (typeof maybeTimestamp.seconds === "number") {
+      return new Date(maybeTimestamp.seconds * 1000);
+    }
+  }
+  return null;
+};
+
+const isExcludedLeaderboardUser = (
+  profile?: UserLeaderboardProfile
+): boolean => {
+  const status = profile?.account_status?.toLowerCase();
+  return status === "admin" || status === "leader";
+};
+
+const isPayingLeaderboardUser = (profile: UserLeaderboardProfile): boolean => {
+  return Boolean(
+    profile.hasActiveSubscription ||
+      profile.subscriptionStartDate ||
+      profile.subscriptionEndDate
+  );
+};
+
+const getPaidMemberSortDate = (
+  profile: UserLeaderboardProfile
+): Date | null =>
+  profile.subscriptionStartDate ||
+  profile.subscriptionEndDate ||
+  profile.createdAt ||
+  null;
+
+const createParticipationEntries = (
+  counts: Map<string, number>,
+  usersById: Map<string, UserLeaderboardProfile>,
+  limitCount: number
+): MeetupLeaderboardEntry[] => {
+  return Array.from(counts.entries())
+    .filter(([uid]) => !isExcludedLeaderboardUser(usersById.get(uid)))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limitCount)
+    .map(([uid, count]) => {
+      const user = usersById.get(uid);
+      return {
+        uid,
+        displayName: user?.displayName || `User ${uid.substring(0, 6)}`,
+        photoURL: user?.photoURL,
+        value: count,
+      };
+    });
+};
 
 // Fetch all meetup events with pagination
 export const fetchMeetupEvents = async (
@@ -87,6 +165,137 @@ export const fetchMeetupEvents = async (
       );
       return { events: sampleEvents.slice(0, limitCount), lastDoc: null };
     }
+    throw error;
+  }
+};
+
+export const fetchMeetupLeaderboards = async (
+  limitCount: number = 5
+): Promise<MeetupLeaderboards> => {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const monthLabel = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(now);
+
+  try {
+    const [meetupSnapshot, usersSnapshot] = await Promise.all([
+      getDocs(
+        query(collection(db, MEETUP_COLLECTION), orderBy("date_time", "desc"))
+      ),
+      getDocs(collection(db, "users")),
+    ]);
+
+    const usersById = new Map<string, UserLeaderboardProfile>();
+    usersSnapshot.forEach((userDoc) => {
+      const data = userDoc.data();
+      const photoURL = data.photoURL || data.avatar;
+      usersById.set(userDoc.id, {
+        uid: userDoc.id,
+        displayName:
+          data.displayName || data.name || `User ${userDoc.id.substring(0, 6)}`,
+        photoURL:
+          typeof photoURL === "string" && photoURL.trim() !== ""
+            ? photoURL
+            : undefined,
+        account_status: data.account_status,
+        hasActiveSubscription: data.hasActiveSubscription === true,
+        createdAt: resolveDate(data.createdAt),
+        subscriptionStartDate: resolveDate(data.subscriptionStartDate),
+        subscriptionEndDate: resolveDate(data.subscriptionEndDate),
+      });
+    });
+
+    const totalCounts = new Map<string, number>();
+    const monthlyCounts = new Map<string, number>();
+
+    meetupSnapshot.forEach((meetupDoc) => {
+      const data = meetupDoc.data() as Omit<FirestoreMeetupEvent, "id">;
+      const eventDate = resolveDate(data.date_time);
+      const isCurrentMonth =
+        !!eventDate && eventDate >= monthStart && eventDate < nextMonthStart;
+      const participants = Array.from(new Set(data.participants || []));
+
+      participants.forEach((uid) => {
+        if (!uid || isExcludedLeaderboardUser(usersById.get(uid))) return;
+        totalCounts.set(uid, (totalCounts.get(uid) || 0) + 1);
+        if (isCurrentMonth) {
+          monthlyCounts.set(uid, (monthlyCounts.get(uid) || 0) + 1);
+        }
+      });
+    });
+
+    const newMembers = Array.from(usersById.values())
+      .filter((user) => {
+        if (isExcludedLeaderboardUser(user)) return false;
+        return isPayingLeaderboardUser(user);
+      })
+      .sort(
+        (a, b) =>
+          (getPaidMemberSortDate(b)?.getTime() || 0) -
+          (getPaidMemberSortDate(a)?.getTime() || 0)
+      )
+      .slice(0, limitCount)
+      .map((user) => ({
+        uid: user.uid,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        value: 1,
+        joinedAt: getPaidMemberSortDate(user)?.toISOString(),
+      }));
+
+    return {
+      monthLabel,
+      totalParticipation: createParticipationEntries(
+        totalCounts,
+        usersById,
+        limitCount
+      ),
+      monthlyParticipation: createParticipationEntries(
+        monthlyCounts,
+        usersById,
+        limitCount
+      ),
+      newMembers,
+    };
+  } catch (error) {
+    console.error("Error fetching meetup leaderboards:", error);
+
+    if (process.env.NODE_ENV === "development") {
+      const totalCounts = new Map<string, number>();
+      const monthlyCounts = new Map<string, number>();
+
+      Object.values(sampleFirestoreEvents).forEach((event) => {
+        const eventDate = resolveDate(event.date_time);
+        const isCurrentMonth =
+          !!eventDate && eventDate >= monthStart && eventDate < nextMonthStart;
+
+        Array.from(new Set(event.participants || [])).forEach((uid) => {
+          totalCounts.set(uid, (totalCounts.get(uid) || 0) + 1);
+          if (isCurrentMonth) {
+            monthlyCounts.set(uid, (monthlyCounts.get(uid) || 0) + 1);
+          }
+        });
+      });
+
+      const usersById = new Map<string, UserLeaderboardProfile>();
+      return {
+        monthLabel,
+        totalParticipation: createParticipationEntries(
+          totalCounts,
+          usersById,
+          limitCount
+        ),
+        monthlyParticipation: createParticipationEntries(
+          monthlyCounts,
+          usersById,
+          limitCount
+        ),
+        newMembers: [],
+      };
+    }
+
     throw error;
   }
 };

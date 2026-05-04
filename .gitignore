@@ -39,6 +39,7 @@ functions/.env.one-cup-eng
 *.cache
 .webpack/
 .turbo/
+.firebase/
 
 # Editor directories and files
 .vscode/*
@@ -56,3 +57,4 @@ firebase_service_account.json
 *-firebase-adminsdk-*.json
 .vercel
 firebase-config.json
+.env*.local

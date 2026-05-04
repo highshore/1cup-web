@@ -1,12 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import {
+  Bars3Icon,
+  ChatBubbleLeftRightIcon,
+  NewspaperIcon,
+  TrophyIcon,
+  UserCircleIcon,
+  UserGroupIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { usePathname, useRouter } from "next/navigation";
 import styled, { css } from "styled-components";
-import { Bars3Icon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useI18n } from "../../lib/i18n/I18nProvider";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../../lib/contexts/auth_context";
 
+import { useAuth } from "../../lib/contexts/auth_context";
+import { appLayout } from "../../lib/constants/app_layout";
+import { useI18n } from "../../lib/i18n/I18nProvider";
 
 const Nav = styled.nav<{ $isScrolled: boolean }>`
   position: fixed;
@@ -14,304 +23,380 @@ const Nav = styled.nav<{ $isScrolled: boolean }>`
   left: 0;
   right: 0;
   z-index: 50;
-  transition: all 0.3s ease;
-  padding: 1.5rem 1rem 0;
-  font-family: inherit; /* Ensure font consistency */
+  background: ${({ $isScrolled }) =>
+    $isScrolled ? "rgba(255, 255, 255, 0.94)" : "rgba(255, 255, 255, 0.84)"};
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  backdrop-filter: blur(14px);
+`;
 
-  @media (min-width: 768px) {
-    padding: 1.5rem 0 0; /* Adjusted padding to center with max-width */
+const NavTrack = styled.div<{ $isScrolled: boolean }>`
+  --nav-control-height: 60px;
+  --nav-item-height: 38px;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  position: relative;
+  width: 100%;
+  max-width: calc(
+    ${appLayout.pageMaxWidth} - ${appLayout.pageGutterDesktop} -
+      ${appLayout.pageGutterDesktop}
+  );
+  min-height: var(--nav-control-height);
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 0;
+  transition: min-height 140ms ease;
+
+  @media (max-width: 820px) {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: ${appLayout.pageMaxWidth};
+    padding: 0 ${appLayout.pageGutterMobile};
   }
 `;
 
-const NavContainer = styled.div<{ $isScrolled: boolean }>`
-  max-width: 960px;
-  margin: 0 auto;
-  background-color: white;
-  border-radius: 9999px;
-  transition: all 0.3s ease;
-  display: flex;
-  justify-content: space-between;
+const BrandButton = styled.button`
+  display: inline-flex;
+  width: fit-content;
+  min-height: var(--nav-item-height);
   align-items: center;
-  padding: 0 1.5rem;
-  color: #1f2937;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  
-  ${(props) =>
-    props.$isScrolled
-      ? css`
-          box-shadow: 0 35px 70px -30px rgba(15, 23, 42, 0.65),
-            0 18px 45px -25px rgba(15, 23, 42, 0.55);
-          padding-top: 0.7rem;
-          padding-bottom: 0.7rem;
-        `
-      : css`
-          box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.5),
-            0 6px 18px rgba(15, 23, 42, 0.12);
-          padding-top: 0.85rem;
-          padding-bottom: 0.85rem;
-        `}
-`;
+  justify-content: center;
+  justify-self: start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0;
+  cursor: pointer;
 
-const LogoSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  &:hover {
+    opacity: 0.82;
+  }
+
+  @media (max-width: 420px) {
+    padding: 4px 0;
+  }
 `;
 
 const LogoImage = styled.img`
-  height: 1.5rem;
-  width: auto;
-  object-fit: contain;
+  display: block;
+  width: 90px;
+  height: auto;
+`;
 
-  @media (min-width: 768px) {
-    height: 1.5rem;
+const NavLinks = styled.div`
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: 3px;
+
+  @media (max-width: 820px) {
+    display: none;
   }
 `;
 
-const DesktopLinks = styled.div`
-  display: none;
-  
-  @media (min-width: 768px) {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: #4b5563;
-  }
-`;
-
-const NavLink = styled.a`
+const NavLinkButton = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  min-height: var(--nav-item-height);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: color 0.2s;
-  text-decoration: none;
-  color: inherit;
+  transition: background-color 140ms ease, color 140ms ease,
+    box-shadow 140ms ease;
 
-  &:hover {
-    color: black;
+  ${({ $active }) =>
+    $active
+      ? css`
+          background: #e2e8f0;
+          color: #0f172a;
+          box-shadow: none;
+        `
+      : css`
+          background: transparent;
+          color: #475569;
+
+          &:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+          }
+        `}
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 `;
 
-const DesktopCTA = styled.div`
-  display: none;
-  
-  @media (min-width: 768px) {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+const RightActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 6px;
+  min-width: 0;
+
+  @media (max-width: 820px) {
+    margin-left: auto;
   }
 `;
 
 const LanguageButton = styled.button`
-  display: flex;
+  display: inline-flex;
+  min-height: var(--nav-item-height);
   align-items: center;
-  gap: 0.5rem;
-  color: #4b5563;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  transition: all 0.2s;
-  background: none;
-  border: none;
-  cursor: pointer;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 6px 9px;
+  color: #475569;
   font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
 
   &:hover {
-    color: black;
-    background-color: #f3f4f6;
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  @media (max-width: 520px) {
+    padding: 6px 8px;
+
+    span {
+      display: none;
+    }
   }
 `;
 
 const LangIcon = styled.img`
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
 `;
 
 const JoinButton = styled.button`
-  background-color: black;
-  color: white;
-  padding: 0.6rem 1.25rem;
-  border-radius: 9999px;
-  font-weight: 600;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
+  display: inline-flex;
+  min-height: var(--nav-item-height);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.92);
+  border-radius: 999px;
+  background: #0f172a;
+  padding: 7px 15px;
+  color: #ffffff;
   font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.14);
+  cursor: pointer;
 
   &:hover {
-    background-color: #1f2937;
+    background: #020617;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
   }
-`;
 
-const MobileToggle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 
-  @media (min-width: 768px) {
+  @media (max-width: 820px) {
     display: none;
   }
-`;
-
-const MobileMenu = styled.div`
-  position: absolute;
-  top: 6rem;
-  left: 1rem;
-  right: 1rem;
-  background-color: white;
-  border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  z-index: 50;
-
-  @media (min-width: 768px) {
-    display: none;
-  }
-`;
-
-const MobileNavButton = styled.button`
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: #1f2937;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  width: 100%;
-  text-align: center;
-`;
-
-const Divider = styled.hr`
-  border-color: #f3f4f6;
-  border-top-width: 1px;
-  width: 100%;
-`;
-
-const MobileJoinButton = styled.button`
-  width: 100%;
-  background-color: black;
-  color: white;
-  padding: 0.75rem 0;
-  border-radius: 9999px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
 `;
 
 type AvatarVariant = "gdg" | "active" | "inactive" | "default";
 
 const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
   position: relative;
+  width: var(--nav-item-height);
+  height: var(--nav-item-height);
   border: ${({ $variant }) => {
     switch ($variant) {
       case "gdg":
-        return "none";
+        return "0";
       case "active":
         return "2px solid #22c55e";
       case "inactive":
-        return "2px solid #d1d5db";
+        return "2px solid #cbd5e1";
       default:
-        return "2px solid rgba(17, 24, 39, 0.15)";
+        return "2px solid rgba(15, 23, 42, 0.14)";
     }
   }};
+  border-radius: 50%;
   background: ${({ $variant }) =>
     $variant === "gdg"
       ? "conic-gradient(from 90deg, #4285f4, #db4437, #fbbc05, #34a853, #4285f4)"
-      : "white"};
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+      : "#ffffff"};
   padding: ${({ $variant }) => ($variant === "gdg" ? "2px" : "0")};
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
 
   &:hover {
-    transform: scale(1.05);
-  }
-
-  @media (max-width: 768px) {
-    width: 34px;
-    height: 34px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
   }
 `;
 
 const AvatarInner = styled.div`
+  display: flex;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  overflow: hidden;
-  background: white;
-  display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #ffffff;
 `;
 
 const AvatarImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: cover;
   border-radius: 50%;
+  object-fit: cover;
 `;
 
 const AvatarFallback = styled.span`
-  font-weight: 700;
-  color: #111827;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
 `;
 
 const AvatarStatusDot = styled.span`
   position: absolute;
-  width: 12px;
-  height: 12px;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #ffffff;
   border-radius: 50%;
   background: #22c55e;
-  border: 2px solid white;
-  bottom: -1px;
-  right: -1px;
 `;
 
-const HamburgerButton = styled.button`
-  background: none;
-  border: none;
-  padding: 0;
-  display: flex;
+const MobileMenuButton = styled.button`
+  display: none;
+  min-height: var(--nav-item-height);
+  min-width: var(--nav-item-height);
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: #111827;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #0f172a;
+  cursor: pointer;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  @media (max-width: 820px) {
+    display: inline-flex;
+  }
+`;
+
+const MobileMenu = styled.div`
+  display: none;
+
+  @media (max-width: 820px) {
+    display: grid;
+    position: absolute;
+    top: 100%;
+    left: ${appLayout.pageGutterMobile};
+    right: ${appLayout.pageGutterMobile};
+    gap: 2px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-top: 0;
+    border-radius: 0 0 14px 14px;
+    background: rgba(255, 255, 255, 0.98);
+    padding: 6px;
+  }
+`;
+
+const MobileNavButton = styled.button<{ $active?: boolean }>`
+  display: inline-flex;
+  min-height: 36px;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+
+  ${({ $active }) =>
+    $active
+      ? css`
+          background: #f1f5f9;
+          color: #0f172a;
+        `
+      : css`
+          background: transparent;
+          color: #475569;
+
+          &:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+          }
+        `}
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const MobileJoinButton = styled.button`
+  display: inline-flex;
+  min-height: 36px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.92);
+  border-radius: 999px;
+  background: #0f172a;
+  padding: 6px 12px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
   cursor: pointer;
 `;
 
-const MenuToggleButton = styled.button`
-  background: #111827;
-  border: none;
-  color: white;
-  width: 32px;
-  height: 32px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-`;
+const NAV_ITEMS = [
+  { path: "/shadow", labelKey: "shadowing", icon: ChatBubbleLeftRightIcon },
+  { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
+  { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
+  { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
+] as const;
 
 const NewNavbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { locale, setLocale, t } = useI18n();
   const router = useRouter();
+  const pathname = usePathname();
   const { currentUser, logout, hasActiveSubscription, isGdgMember } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const avatarSrc = currentUser?.photoURL || "/images/logos/1cup_logo_new.svg";
@@ -329,7 +414,9 @@ const NewNavbar: React.FC = () => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
+
     window.addEventListener("scroll", handleScroll);
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -360,46 +447,50 @@ const NewNavbar: React.FC = () => {
     }
   };
 
+  const isActivePath = (path: string) => {
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
+
   return (
     <Nav $isScrolled={isScrolled}>
-      <NavContainer $isScrolled={isScrolled}>
-        {/* Logo */}
-        <LogoSection onClick={() => router.push("/")} style={{ cursor: "pointer" }}>
+      <NavTrack $isScrolled={isScrolled}>
+        <BrandButton onClick={() => handleNavigate("/")} aria-label="Home">
           <LogoImage
             src="/images/logos/1cup_logo_new.svg"
-            alt="One Cup"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                // Check if fallback already exists to avoid duplicates
-                if (!parent.querySelector(".fallback-logo")) {
-                  const span = document.createElement("span");
-                  span.innerText = "☕ ONE CUP";
-                  span.className = "fallback-logo";
-                  span.style.fontSize = "1.25rem";
-                  span.style.fontWeight = "900";
-                  span.style.fontFamily = "sans-serif";
-                  parent.appendChild(span);
-                }
-              }
-            }}
+            alt="1 Cup English"
           />
-        </LogoSection>
+        </BrandButton>
 
-            {/* Desktop Links */}
-            <DesktopLinks>
-              <NavLink href="/shadow">{t.nav.shadowing}</NavLink>
-              <NavLink href="/meetup">{t.nav.meetup}</NavLink>
-              <NavLink href="/blog">{t.nav.blog}</NavLink>
-            </DesktopLinks>
+        <NavLinks>
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
 
-        {/* Desktop CTA */}
-        <DesktopCTA>
+            return (
+              <NavLinkButton
+                key={item.path}
+                onClick={() => handleNavigate(item.path)}
+                $active={isActivePath(item.path)}
+              >
+                <Icon />
+                {t.nav[item.labelKey]}
+              </NavLinkButton>
+            );
+          })}
+        </NavLinks>
+
+        <RightActions>
           <LanguageButton onClick={toggleLanguage}>
-            <LangIcon src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"} alt={locale} />
+            <LangIcon
+              src={
+                locale === "en"
+                  ? "/images/flags/i18n_en.jpg"
+                  : "/images/flags/i18n_ko.jpg"
+              }
+              alt={locale}
+            />
             <span>{locale === "en" ? "ENG" : "한국어"}</span>
           </LanguageButton>
+
           {isLoggedIn ? (
             <AvatarButton
               onClick={handleProfileNav}
@@ -408,7 +499,11 @@ const NewNavbar: React.FC = () => {
             >
               <AvatarInner>
                 {currentUser?.photoURL ? (
-                  <AvatarImage src={avatarSrc} alt="profile" referrerPolicy="no-referrer" />
+                  <AvatarImage
+                    src={avatarSrc}
+                    alt="profile"
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <AvatarFallback>{avatarInitial}</AvatarFallback>
                 )}
@@ -416,87 +511,58 @@ const NewNavbar: React.FC = () => {
               {avatarVariant === "active" && <AvatarStatusDot />}
             </AvatarButton>
           ) : (
-            <JoinButton onClick={handleJoin}>{t.nav.join}</JoinButton>
+            <JoinButton onClick={handleJoin}>
+              <UserCircleIcon />
+              {t.nav.join}
+            </JoinButton>
           )}
-        </DesktopCTA>
 
-        {/* Mobile Menu Toggle */}
-        <MobileToggle>
-          <LanguageButton onClick={toggleLanguage}>
-            <LangIcon src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"} alt={locale} />
-            <span>{locale === "en" ? "ENG" : "한국어"}</span>
-          </LanguageButton>
-          {isLoggedIn ? (
-            <>
-              <AvatarButton
-                onClick={handleProfileNav}
-                aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"}
-                $variant={avatarVariant}
-              >
-                <AvatarInner>
-                  {currentUser?.photoURL ? (
-                    <AvatarImage src={avatarSrc} alt="profile" referrerPolicy="no-referrer" />
-                  ) : (
-                    <AvatarFallback>{avatarInitial}</AvatarFallback>
-                  )}
-                </AvatarInner>
-                {avatarVariant === "active" && <AvatarStatusDot />}
-              </AvatarButton>
-              <MenuToggleButton
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
-              >
-                {isMobileMenuOpen ? (
-                  <XMarkIcon width={18} height={18} />
-                ) : (
-                  <ChevronDownIcon width={18} height={18} />
-                )}
-              </MenuToggleButton>
-            </>
-          ) : (
-            <HamburgerButton
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="메뉴 열기"
-            >
-              {isMobileMenuOpen ? (
-                <XMarkIcon width={24} height={24} />
-              ) : (
-                <Bars3Icon width={24} height={24} />
-              )}
-            </HamburgerButton>
-          )}
-        </MobileToggle>
-      </NavContainer>
+          <MobileMenuButton
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
+          >
+            {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
+          </MobileMenuButton>
+        </RightActions>
 
-          {/* Mobile Menu */}
-          {isMobileMenuOpen && (
-            <MobileMenu>
-              <MobileNavButton onClick={() => handleNavigate("/shadow")}>
-                {t.nav.shadowing}
-              </MobileNavButton>
-              <MobileNavButton onClick={() => handleNavigate("/meetup")}>
-                {t.nav.meetup}
-              </MobileNavButton>
-              <MobileNavButton onClick={() => handleNavigate("/blog")}>
-                {t.nav.blog}
-              </MobileNavButton>
-              <Divider />
-              {isLoggedIn ? (
-                <>
-                  <MobileNavButton onClick={handleProfileNav}>
-                    {locale === "en" ? "My Account" : "내 계정"}
-                  </MobileNavButton>
-                  <MobileJoinButton onClick={handleLogout}>
-                    {locale === "en" ? "Logout" : "로그아웃"}
-                  </MobileJoinButton>
-                </>
-              ) : (
-                <MobileJoinButton onClick={handleJoin}>
-                  {t.nav.join}
+        {isMobileMenuOpen && (
+          <MobileMenu>
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <MobileNavButton
+                  key={item.path}
+                  onClick={() => handleNavigate(item.path)}
+                  $active={isActivePath(item.path)}
+                >
+                  <Icon />
+                  {t.nav[item.labelKey]}
+                </MobileNavButton>
+              );
+            })}
+
+            {isLoggedIn ? (
+              <>
+                <MobileNavButton
+                  onClick={handleProfileNav}
+                  $active={isActivePath("/profile")}
+                >
+                  <UserCircleIcon />
+                  {locale === "en" ? "My Account" : "내 계정"}
+                </MobileNavButton>
+                <MobileJoinButton onClick={handleLogout}>
+                  {locale === "en" ? "Logout" : "로그아웃"}
                 </MobileJoinButton>
-              )}
-            </MobileMenu>
-          )}
+              </>
+            ) : (
+              <MobileJoinButton onClick={handleJoin}>
+                {t.nav.join}
+              </MobileJoinButton>
+            )}
+          </MobileMenu>
+        )}
+      </NavTrack>
     </Nav>
   );
 };

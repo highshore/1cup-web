@@ -12,6 +12,7 @@ const ko = {
     join: "참여하기",
     shadowing: "쉐도잉",
     meetup: "밋업",
+    leaderboard: "리더보드",
     blog: "블로그",
   },
   home: {
@@ -111,6 +112,36 @@ const ko = {
     reviews: "밋업 후기",
     readPost: "글 읽기",
     refresh: "새로고침",
+  },
+  meetup: {
+    blogPost: "블로그",
+    sections: {
+      upcoming: "현재 모집 중",
+      past: "이전 밋업",
+      noEvents: "등록된 밋업이 없습니다.",
+      errorLoading: "밋업을 불러오지 못했습니다",
+      loadMore: "더 보기",
+      loadingMore: "로딩 중...",
+    },
+    status: {
+      ended: "종료",
+      joinable: "참가 가능",
+      inProgress: "진행중",
+      full: "정원 마감",
+      closed: "모집 종료",
+    },
+    leaderboards: {
+      title: "리더보드",
+      subtitle: "참여 랭킹과 신규 유료 멤버를 확인해보세요.",
+      totalParticipation: "누적 참여",
+      monthlyParticipation: "{month} 참여",
+      newMembers: "신규 유료 멤버",
+      noParticipation: "아직 참여 기록이 없습니다",
+      noMonthlyParticipation: "이번 달 참여 기록이 없습니다",
+      noNewMembers: "아직 유료 멤버가 없습니다",
+      meetupCount: "{count}회",
+      meetupCountSingular: "1회",
+    },
   },
 };
 

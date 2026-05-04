@@ -4,6 +4,8 @@ export const colors = {
   primaryDark: "#1A0F0A",
   primaryPale: "#F5EBE6",
   primaryBg: "#FDF9F6",
+  pageBg: "whitesmoke",
+  landingBg: "#ffffff",
   accent: "#C8A27A",
   accentHover: "#B68C66",
   text: {
@@ -21,4 +23,3 @@ export const colors = {
 } as const;
 
 export type AppColors = typeof colors;
-

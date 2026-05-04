@@ -12,6 +12,7 @@ const en = {
     join: "Sign up",
     shadowing: "Shadowing",
     meetup: "Meetup",
+    leaderboard: "Leaderboard",
     blog: "Blog",
   },
   home: {
@@ -111,6 +112,36 @@ const en = {
     reviews: "Reviews",
     readPost: "Read post",
     refresh: "Refresh",
+  },
+  meetup: {
+    blogPost: "Blog Post",
+    sections: {
+      upcoming: "Open Meetups",
+      past: "Past Meetups",
+      noEvents: "No events found.",
+      errorLoading: "Error loading events",
+      loadMore: "Load more",
+      loadingMore: "Loading...",
+    },
+    status: {
+      ended: "Ended",
+      joinable: "Open",
+      inProgress: "In progress",
+      full: "Full",
+      closed: "Closed",
+    },
+    leaderboards: {
+      title: "Leaderboard",
+      subtitle: "See participation leaders and the newest paid members.",
+      totalParticipation: "Total Participation",
+      monthlyParticipation: "{month}'s Participation",
+      newMembers: "Newest Paid Members",
+      noParticipation: "No participation yet",
+      noMonthlyParticipation: "No participation this month",
+      noNewMembers: "No paid members yet",
+      meetupCount: "{count} meetups",
+      meetupCountSingular: "1 meetup",
+    },
   },
 };
 

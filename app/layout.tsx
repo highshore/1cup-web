@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import StyledComponentsRegistry from "./lib/styled-components/registry";
@@ -7,9 +8,15 @@ import GlobalStyles from "./lib/components/GlobalStyles";
 import ConditionalLayoutWrapper from "./lib/components/ConditionalLayoutWrapper";
 // removed duplicate React import
 
-export const metadata = {
+const siteUrl = "https://1cupenglish.com";
+const siteTitle = "영어 한잔 - 1 Cup English";
+const siteDescription = "통역사 출신이 개발한 비즈니스 영어 습관 형성 서비스";
+const socialImage = "/opengraph-image";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "영어 한잔 - 1 Cup English",
-  description: "통역사 출신이 개발한 비즈니스 영어 습관 형성 서비스",
+  description: siteDescription,
   icons: {
     icon: [
       {
@@ -30,6 +37,28 @@ export const metadata = {
         type: "image/jpeg",
       },
     ],
+  },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "영어 한잔",
+    locale: "ko_KR",
+    type: "website",
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: "영어 한잔 - 1 Cup English",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+    images: [socialImage],
   },
 };
 

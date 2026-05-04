@@ -7,7 +7,6 @@ import dynamic from "next/dynamic";
 import { MeetupEvent } from "../lib/features/meetup/types/meetup_types";
 import { fetchMeetupEvents } from "../lib/features/meetup/services/meetup_service";
 import {
-  formatEventDateTime,
   isEventLocked,
   formatEventTitleWithCountdown,
 } from "../lib/features/meetup/utils/meetup_helpers";
@@ -20,6 +19,8 @@ import {
 import { BlogPost } from "../lib/features/blog/types/blog_types";
 import { fetchBlogPosts } from "../lib/features/blog/services/blog_service";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
+import { appLayout } from "../lib/constants/app_layout";
+import { useI18n } from "../lib/i18n/I18nProvider";
 
 // Add subtle glow animation keyframes
 const subtleGlow = keyframes`
@@ -34,8 +35,8 @@ const subtleGlow = keyframes`
   }
 `;
 
-const NAVBAR_CONTENT_GAP_DESKTOP = "1.75rem";
-const NAVBAR_CONTENT_GAP_MOBILE = "1.25rem";
+const NAVBAR_CONTENT_GAP_DESKTOP = "0.75rem";
+const NAVBAR_CONTENT_GAP_MOBILE = "0.5rem";
 
 // Styled components - Day Mode Theme
 const MeetupContainer = styled.div`
@@ -52,9 +53,9 @@ const MeetupContainer = styled.div`
 
 const MeetupContent = styled.div`
   width: 100%;
-  max-width: 960px;
+  max-width: ${appLayout.pageMaxWidth};
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 ${appLayout.pageGutterDesktop};
 
   @media (max-width: 768px) {
     padding: 0;
@@ -144,7 +145,7 @@ const BlogPostsGrid = styled.div`
   display: flex;
   gap: 1rem;
   overflow-x: auto;
-  padding: 20px 0;
+  padding: 8px 0 12px;
   margin: 0;
 
   /* Smooth scrolling */
@@ -160,7 +161,7 @@ const BlogPostsGrid = styled.div`
 
   @media (max-width: 768px) {
     gap: 0.75rem;
-    padding: 16px 0;
+    padding: 6px 0 10px;
   }
 `;
 
@@ -251,10 +252,11 @@ const SectionTitle = styled.h2`
   color: #333;
   font-size: 1.4rem;
   font-weight: 800;
-  margin: 3rem 0 1rem 0;
+  margin: 1.5rem 0 0.75rem 0;
 
   @media (max-width: 768px) {
     font-size: 1.3rem;
+    margin: 1.25rem 0 0.625rem 0;
   }
 `;
 
@@ -262,7 +264,7 @@ const EventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
   background-color: white;
   border-radius: 20px;
   padding: 24px;
-  margin: 20px 0;
+  margin: 12px 0;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -287,7 +289,7 @@ const EventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
 
   @media (max-width: 768px) {
     padding: 16px;
-    margin: 12px 0;
+    margin: 10px 0;
     border-radius: 16px;
   }
 `;
@@ -509,6 +511,7 @@ const EmptyState = styled.div`
 
 const MeetupClient: React.FC = () => {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const [allEvents, setAllEvents] = useState<MeetupEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<MeetupEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MeetupEvent[]>([]);
@@ -661,6 +664,21 @@ const MeetupClient: React.FC = () => {
     router.push(`/blog/${blogPost.id}`);
   };
 
+  const formatMeetupDateTime = (meetup: MeetupEvent) => {
+    const date = new Date(`${meetup.date}T${meetup.time}`);
+    if (Number.isNaN(date.getTime())) return "";
+
+    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
+      year: "numeric",
+      month: locale === "ko" ? "long" : "short",
+      day: "numeric",
+      weekday: locale === "ko" ? "long" : "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: locale !== "ko",
+    }).format(date);
+  };
+
   const renderBlogPosts = () => {
     if (!blogPosts || blogPosts.length === 0) return null;
 
@@ -674,7 +692,7 @@ const MeetupClient: React.FC = () => {
           >
             <BlogPostCardContent>
               <BlogPostCardText $imageUrl={post.featuredImage}>
-                <BlogPostCardLabel>Blog Post</BlogPostCardLabel>
+                <BlogPostCardLabel>{t.meetup.blogPost}</BlogPostCardLabel>
                 <BlogPostCardTitle $imageUrl={post.featuredImage}>
                   {post.title}
                 </BlogPostCardTitle>
@@ -701,17 +719,17 @@ const MeetupClient: React.FC = () => {
       meetup.leaders.length + meetup.participants.length;
 
     const getStatusText = () => {
-      if (isPast) return "종료";
-      if (!isCurrentlyLocked) return "참가 가능";
+      if (isPast) return t.meetup.status.ended;
+      if (!isCurrentlyLocked) return t.meetup.status.joinable;
       switch (lockStatus.reason) {
         case "started":
-          return "진행중";
+          return t.meetup.status.inProgress;
         case "full":
-          return "정원 마감";
+          return t.meetup.status.full;
         case "lockdown":
-          return "모집 종료";
+          return t.meetup.status.closed;
         default:
-          return "모집 종료";
+          return t.meetup.status.closed;
       }
     };
 
@@ -758,7 +776,7 @@ const MeetupClient: React.FC = () => {
                 <CalendarIcon width="16px" height="16px" />
               </EventIcon>
               <EventText $isPast={isPast}>
-                {formatEventDateTime(meetup)}
+                {formatMeetupDateTime(meetup)}
               </EventText>
             </EventInfo>
             <EventBottom>
@@ -788,14 +806,18 @@ const MeetupClient: React.FC = () => {
 
         {loading && <GlobalLoadingScreen size="large" />}
 
-        {error && <EmptyState>Error loading events: {error}</EmptyState>}
+        {error && (
+          <EmptyState>
+            {t.meetup.sections.errorLoading}: {error}
+          </EmptyState>
+        )}
 
         {!loading && !error && (
           <>
             {/* Upcoming Events Section */}
             {upcomingEvents.length > 0 && (
               <>
-                <SectionTitle>현재 모집 중 🥳</SectionTitle>
+                <SectionTitle>{t.meetup.sections.upcoming}</SectionTitle>
                 {upcomingEvents.map((meetup, index) =>
                   renderEventCard(meetup, false, index === 0)
                 )}
@@ -805,7 +827,7 @@ const MeetupClient: React.FC = () => {
             {/* Past Events Section */}
             {pastEvents.length > 0 && (
               <>
-                <SectionTitle>이전 밋업</SectionTitle>
+                <SectionTitle>{t.meetup.sections.past}</SectionTitle>
                 {pastEvents.map((meetup) =>
                   renderEventCard(meetup, true, false)
                 )}
@@ -819,14 +841,16 @@ const MeetupClient: React.FC = () => {
                 onClick={loadMoreEvents}
                 disabled={loadingMore}
               >
-                {loadingMore ? "로딩 중..." : "더 보기"}
+                {loadingMore
+                  ? t.meetup.sections.loadingMore
+                  : t.meetup.sections.loadMore}
               </LoadMoreButton>
             )}
 
             {/* No Events Message */}
             {upcomingEvents.length === 0 &&
               pastEvents.length === 0 &&
-              !loading && <EmptyState>No events found.</EmptyState>}
+              !loading && <EmptyState>{t.meetup.sections.noEvents}</EmptyState>}
           </>
         )}
       </MeetupContent>

@@ -58,10 +58,10 @@ export async function generateMetadata() {
       url: "https://1cupenglish.com",
       images: [
         {
-          url: "/images/logos/1cup_logo.jpg",
+          url: "/opengraph-image",
           width: 1200,
           height: 630,
-          alt: "영어 한잔 로고",
+          alt: "영어 한잔 - 1 Cup English",
         },
       ],
     },
@@ -70,7 +70,7 @@ export async function generateMetadata() {
       title: "영어 한잔 | 오프라인 실전 영어",
       description:
         "매주 영어 모임으로 실전 회화 연습하고, 매일 영어 아티클로 어휘력을 늘려보세요.",
-      images: ["/images/logos/1cup_logo.jpg"],
+      images: ["/opengraph-image"],
     },
   };
 }

@@ -5,7 +5,6 @@ import styled, { createGlobalStyle, css, keyframes } from "styled-components";
 import { colors } from "../../../constants/colors";
 import React from "react";
 // GNB and Footer are now handled by the layout
-import { useGnb } from "../../../contexts/gnb_context";
 
 // Imports for Meetup Event Display
 import { useRouter } from "next/navigation";
@@ -1504,7 +1503,6 @@ export default function HomePageClient({
   initialTopics,
 }: HomePageClientProps) {
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const { setIsTransparent } = useGnb();
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const handleEventNavigation = useCallback(
@@ -1666,11 +1664,6 @@ export default function HomePageClient({
   }, [closestEvent]);
 
   const activeMember = memberProfiles[activeMemberIndex];
-
-  // Set initial transparency for homepage
-  useEffect(() => {
-    setIsTransparent(true);
-  }, [setIsTransparent]);
 
   useEffect(() => {
     setHomeStats(initialStats);
