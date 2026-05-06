@@ -50,8 +50,21 @@ import FaqSection from "./sections/FaqSection";
 import CtaSection from "./sections/CtaSection";
 import { useI18n } from "../lib/i18n/I18nProvider";
 
-// Local global style removed; fonts are injected via <head>
-const GlobalStyle = createGlobalStyle``;
+const GlobalStyle = createGlobalStyle<{ $machineMode: boolean }>`
+  ${({ $machineMode }) =>
+    $machineMode &&
+    css`
+      html,
+      body {
+        background: #000000 !important;
+      }
+
+      body nav,
+      body footer {
+        display: none !important;
+      }
+    `}
+`;
 
 // Use shared colors
 
@@ -735,11 +748,12 @@ const HeroCTAButton = styled(CTAButton)`
 `;
 
 // Define styled component for page wrapper
-const PageWrapper = styled.div`
+const PageWrapper = styled.div<{ $machineMode?: boolean }>`
   padding-top: 0; /* Always 0 for homepage */
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: ${({ $machineMode }) => ($machineMode ? "#000000" : "transparent")};
 `;
 
 // New styled components for marketing text
@@ -1064,14 +1078,329 @@ interface HomePageClientProps {
   initialTopics?: HomeTopicArticle[];
 }
 
+type RenderMode = "human" | "machine";
+
+const humanToggleGlow = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.2),
+      0 0 14px rgba(245, 158, 11, 0.48),
+      0 0 28px rgba(251, 191, 36, 0.22),
+      0 14px 32px rgba(0, 0, 0, 0.42);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.34),
+      0 0 22px rgba(245, 158, 11, 0.76),
+      0 0 42px rgba(251, 191, 36, 0.34),
+      0 14px 32px rgba(0, 0, 0, 0.42);
+  }
+`;
+
+const machineToggleGlow = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.2),
+      0 0 14px rgba(14, 165, 233, 0.5),
+      0 0 28px rgba(37, 99, 235, 0.28),
+      0 14px 32px rgba(0, 0, 0, 0.46);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.36),
+      0 0 24px rgba(14, 165, 233, 0.86),
+      0 0 48px rgba(37, 99, 235, 0.44),
+      0 14px 32px rgba(0, 0, 0, 0.46);
+  }
+`;
+
+const FloatingModeToggle = styled.div<{ $mode: RenderMode }>`
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  transform: translateX(-50%);
+  border: 2px solid
+    ${({ $mode }) => ($mode === "machine" ? "#0b6fff" : "#f59e0b")};
+  border-radius: 999px;
+  background: rgba(9, 9, 10, 0.94);
+  backdrop-filter: blur(16px);
+  padding: 3px;
+  white-space: nowrap;
+  animation: ${({ $mode }) =>
+      $mode === "machine" ? machineToggleGlow : humanToggleGlow}
+    2.3s ease-in-out infinite;
+  transition: border-color 360ms ease, background-color 360ms ease,
+    filter 360ms ease;
+
+  @media (max-width: 480px) {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding: 2px;
+  }
+`;
+
+const ModeToggleOptions = styled.div<{ $mode: RenderMode }>`
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(78px, 1fr));
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 999px;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    width: 50%;
+    border-radius: 999px;
+    background: #2b2b2d;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    content: "";
+    transform: translateX(
+      ${({ $mode }) => ($mode === "machine" ? "100%" : "0")}
+    );
+    transition: transform 420ms cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, minmax(64px, 1fr));
+  }
+`;
+
+const ModeToggleButton = styled.button<{ $active: boolean }>`
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: ${({ $active }) => ($active ? "#ffffff" : "#9ca3af")};
+  padding: 0.46rem 0.68rem;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 280ms ease, transform 280ms ease;
+
+  ${({ $active }) =>
+    $active &&
+    css`
+      transform: translateY(-1px);
+    `}
+
+  &:hover {
+    color: #ffffff;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.42rem 0.52rem;
+    font-size: 0.62rem;
+  }
+`;
+
+const MachineMarkdownView = styled.main`
+  min-height: 100vh;
+  background: #000000;
+  color: #d7d7d7;
+  padding: clamp(4rem, 7vw, 6.5rem) clamp(1.25rem, 12vw, 11rem)
+    clamp(7rem, 9vw, 8rem);
+  animation: ${keyframes`
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  `} 420ms ease both;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1.1rem 6.5rem;
+  }
+`;
+
+const MachineMarkdownBlock = styled.pre`
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #d7d7d7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: clamp(1rem, 1.55vw, 1.45rem);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+`;
+
+const sanitizeMarkdownText = (value: string | number | undefined | null) => {
+  return String(value ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+const formatStatValue = (value: number | undefined) => {
+  return typeof value === "number" ? value.toLocaleString() : "0";
+};
+
+const buildWebsiteMarkdown = ({
+  t,
+  locale,
+  stats,
+  events,
+  topics,
+}: {
+  t: ReturnType<typeof useI18n>["t"];
+  locale: string;
+  stats?: HomeStats;
+  events: MeetupEvent[];
+  topics: HomeTopicArticle[];
+}) => {
+  const lines: string[] = [
+    "# 1 Cup English",
+    "",
+    "## Hero",
+    sanitizeMarkdownText(t.home.hero.title),
+    "",
+    sanitizeMarkdownText(t.home.hero.subtitle),
+    "",
+    `**Primary CTA:** ${sanitizeMarkdownText(t.home.cta.button)}`,
+    "",
+    "## Stats",
+    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.meetups)}: ${formatStatValue(stats?.totalMeetups)}`,
+    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.members)}: ${formatStatValue(stats?.totalMembers)}`,
+    `- Articles: ${formatStatValue(stats?.totalArticles)}`,
+    "",
+    "## Positioning",
+    `### ${sanitizeMarkdownText(t.home.stats.header.title)}`,
+    "",
+    `### ${sanitizeMarkdownText(t.home.stats.insights.title)}`,
+    sanitizeMarkdownText(t.home.stats.insights.description),
+    "",
+    `### ${sanitizeMarkdownText(t.home.stats.leader.title)}`,
+    sanitizeMarkdownText(t.home.stats.leader.description),
+    "",
+    `### ${sanitizeMarkdownText(t.home.stats.topics.title)}`,
+    sanitizeMarkdownText(t.home.stats.topics.description),
+    "",
+    "## Upcoming Meetups",
+  ];
+
+  if (events.length > 0) {
+    events.slice(0, 6).forEach((event) => {
+      const title = sanitizeMarkdownText(event.title);
+      const dateLabel = sanitizeMarkdownText(`${event.date} ${event.time}`);
+      const location = sanitizeMarkdownText(event.location_name);
+      const participantCount = event.leaders.length + event.participants.length;
+      lines.push(
+        `- **${title}**`,
+        `  - Date: ${dateLabel}`,
+        `  - Location: ${location}`,
+        `  - Capacity: ${participantCount}/${event.max_participants}`,
+      );
+    });
+  } else {
+    lines.push(`- ${sanitizeMarkdownText(t.meetup.sections.noEvents)}`);
+  }
+
+  lines.push("", "## Discussion Topics");
+
+  if (topics.length > 0) {
+    topics.slice(0, 6).forEach((topic) => {
+      const title =
+        locale === "ko" ? topic.titleKorean || topic.titleEnglish : topic.titleEnglish || topic.titleKorean;
+      lines.push(
+        `- **${sanitizeMarkdownText(title)}**`,
+        `  - ${sanitizeMarkdownText(topic.excerpt)}`,
+      );
+      if (topic.keywords.length > 0) {
+        lines.push(`  - Keywords: ${topic.keywords.map(sanitizeMarkdownText).join(", ")}`);
+      }
+    });
+  } else {
+    lines.push("- Featured articles are loaded from the article library.");
+  }
+
+  lines.push(
+    "",
+    "## Membership",
+    `### ${sanitizeMarkdownText(t.home.pricingNew.sectionTitle)}`,
+    sanitizeMarkdownText(t.home.pricingNew.leftTitle),
+    "",
+    `- ${sanitizeMarkdownText(t.home.pricingNew.referralDiscount)}`,
+    `- ${sanitizeMarkdownText(t.home.pricingNew.caveats.line1)}`,
+    `- ${sanitizeMarkdownText(t.home.pricingNew.caveats.line2)}`,
+    `- ${sanitizeMarkdownText(t.home.pricingNew.caveats.line3)}`,
+    `- ${sanitizeMarkdownText(t.home.pricingNew.caveats.line4)}`,
+    "",
+    "## FAQ",
+  );
+
+  t.home.faq.items.forEach((item) => {
+    lines.push(`### ${sanitizeMarkdownText(item.q)}`, sanitizeMarkdownText(item.a), "");
+  });
+
+  lines.push(
+    "## Final CTA",
+    sanitizeMarkdownText(t.home.cta.title),
+    "",
+    sanitizeMarkdownText(t.home.cta.description),
+    "",
+    `**Action:** ${sanitizeMarkdownText(t.home.cta.button)}`,
+  );
+
+  return lines.join("\n");
+};
+
 export default function NewHomeClient({
   initialUpcomingEvents,
   initialStats,
   initialTopics,
 }: HomePageClientProps) {
+  const [renderMode, setRenderMode] = useState<RenderMode>("human");
+  const [displayMode, setDisplayMode] = useState<RenderMode>("human");
+  const modeTransitionTimeoutRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const { t, locale } = useI18n();
+
+  useEffect(() => {
+    return () => {
+      if (modeTransitionTimeoutRef.current !== null) {
+        window.clearTimeout(modeTransitionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const clearModeTransitionTimeout = useCallback(() => {
+    if (modeTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(modeTransitionTimeoutRef.current);
+      modeTransitionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleHumanMode = useCallback(() => {
+    clearModeTransitionTimeout();
+    setRenderMode("human");
+    setDisplayMode("human");
+  }, [clearModeTransitionTimeout]);
+
+  const handleMachineMode = useCallback(() => {
+    clearModeTransitionTimeout();
+    setRenderMode("machine");
+    modeTransitionTimeoutRef.current = window.setTimeout(() => {
+      setDisplayMode("machine");
+      modeTransitionTimeoutRef.current = null;
+    }, 420);
+  }, [clearModeTransitionTimeout]);
 
   const handleEventNavigation = useCallback(
     (eventId: string) => {
@@ -1339,67 +1668,103 @@ export default function NewHomeClient({
   }, [initialUpcomingEvents]);
   */
 
+  const markdownContent = useMemo(
+    () =>
+      buildWebsiteMarkdown({
+        t,
+        locale,
+        stats: homeStats,
+        events: upcomingEvents,
+        topics: initialTopics || [],
+      }),
+    [t, locale, homeStats, upcomingEvents, initialTopics],
+  );
+
   return (
-    <PageWrapper>
-      <GlobalStyle />
-      <HeroSection>
-        <video autoPlay loop muted playsInline ref={videoRef}>
-          <source src="/assets/homepage/alphabet.mp4" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-        <VideoOverlay />
-        
-        <HeroGrid>
-          <HeroLeft>
-            <HeroTitle>{t.home.hero.title}</HeroTitle>
-            <HeroSubtitle>{t.home.hero.subtitle}</HeroSubtitle>
-            <HeroCTAButton onClick={() => router.push("/meetup")}>
-              {t.home.cta.button}
-            </HeroCTAButton>
-          </HeroLeft>
+    <PageWrapper $machineMode={displayMode === "machine"}>
+      <GlobalStyle $machineMode={displayMode === "machine"} />
+      {displayMode === "machine" ? (
+        <MachineMarkdownView>
+          <MachineMarkdownBlock>{markdownContent}</MachineMarkdownBlock>
+        </MachineMarkdownView>
+      ) : (
+        <>
+          <HeroSection>
+            <video autoPlay loop muted playsInline ref={videoRef}>
+              <source src="/assets/homepage/alphabet.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            <VideoOverlay />
 
-          <HeroRight>
-            <StackContainer>
-              {stackLayers.map((layer, index) => (
-                <StackCardWrapper
-                  key={layer.instanceKey}
-                  $position={index}
-                  $isAnimating={
-                    isStackSwapping && index === 0 && upcomingEvents.length >= 2
-                  }
-                  $isInteractive={layer.type === "event" && index === 0}
-                >
-                  {layer.type === "event" ? (
-                    <HeroScrollCard
-                      meetup={layer.event}
-                      maxAvatars={maxAvatars}
-                      onNavigate={handleEventNavigation}
-                      userProfilesMap={userProfilesMap}
-                    />
-                  ) : (
-                    <PlaceholderCardShell />
-                  )}
-                </StackCardWrapper>
-              ))}
-            </StackContainer>
-          </HeroRight>
-        </HeroGrid>
-      </HeroSection>
+            <HeroGrid>
+              <HeroLeft>
+                <HeroTitle>{t.home.hero.title}</HeroTitle>
+                <HeroSubtitle>{t.home.hero.subtitle}</HeroSubtitle>
+                <HeroCTAButton onClick={() => router.push("/meetup")}>
+                  {t.home.cta.button}
+                </HeroCTAButton>
+              </HeroLeft>
 
-      <MainContent>
+              <HeroRight>
+                <StackContainer>
+                  {stackLayers.map((layer, index) => (
+                    <StackCardWrapper
+                      key={layer.instanceKey}
+                      $position={index}
+                      $isAnimating={
+                        isStackSwapping &&
+                        index === 0 &&
+                        upcomingEvents.length >= 2
+                      }
+                      $isInteractive={layer.type === "event" && index === 0}
+                    >
+                      {layer.type === "event" ? (
+                        <HeroScrollCard
+                          meetup={layer.event}
+                          maxAvatars={maxAvatars}
+                          onNavigate={handleEventNavigation}
+                          userProfilesMap={userProfilesMap}
+                        />
+                      ) : (
+                        <PlaceholderCardShell />
+                      )}
+                    </StackCardWrapper>
+                  ))}
+                </StackContainer>
+              </HeroRight>
+            </HeroGrid>
+          </HeroSection>
 
-        <StatsSection stats={homeStats} />
-
-        <TopicsShowcase topics={initialTopics || []} />
-
-        <MembershipSection />
-
-        {/* FAQ Section */}
-        <FaqSection />
-
-        {/* CTA Section */}
-        <CtaSection />
-      </MainContent>
+          <MainContent>
+            <StatsSection stats={homeStats} />
+            <TopicsShowcase topics={initialTopics || []} />
+            <MembershipSection />
+            <FaqSection />
+            <CtaSection />
+          </MainContent>
+        </>
+      )}
+      <FloatingModeToggle
+        aria-label={t.home.renderMode.ariaLabel}
+        $mode={renderMode}
+      >
+        <ModeToggleOptions $mode={renderMode}>
+          <ModeToggleButton
+            type="button"
+            $active={renderMode === "human"}
+            onClick={handleHumanMode}
+          >
+            {t.home.renderMode.human}
+          </ModeToggleButton>
+          <ModeToggleButton
+            type="button"
+            $active={renderMode === "machine"}
+            onClick={handleMachineMode}
+          >
+            {t.home.renderMode.machine}
+          </ModeToggleButton>
+        </ModeToggleOptions>
+      </FloatingModeToggle>
     </PageWrapper>
   );
 }

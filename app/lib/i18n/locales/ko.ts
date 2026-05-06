@@ -32,6 +32,12 @@ const ko = {
       spotsLeft: "자리 남음",
       almostFull: "마감 임박",
     },
+    renderMode: {
+      prefix: "나는",
+      human: "사람",
+      machine: "에이전트",
+      ariaLabel: "홈페이지 표시 모드",
+    },
     topicsShowcase: {
       title: "모임에서 어떤 토픽을 다루나요?",
       subtitle: "WSJ, FT, NYT, Techcrunch 등에서 운영진이 엄선한 기사만 다룹니다.",
@@ -131,16 +137,17 @@ const ko = {
       closed: "모집 종료",
     },
     leaderboards: {
-      title: "리더보드",
-      subtitle: "참여 랭킹과 신규 유료 멤버를 확인해보세요.",
       totalParticipation: "누적 참여",
       monthlyParticipation: "{month} 참여",
+      monthlyAverageParticipation: "월평균 참여",
       newMembers: "신규 유료 멤버",
       noParticipation: "아직 참여 기록이 없습니다",
       noMonthlyParticipation: "이번 달 참여 기록이 없습니다",
+      noMonthlyAverageParticipation: "아직 월평균 참여 기록이 없습니다",
       noNewMembers: "아직 유료 멤버가 없습니다",
       meetupCount: "{count}회",
       meetupCountSingular: "1회",
+      monthlyAverageCount: "월 {count}회",
     },
   },
 };

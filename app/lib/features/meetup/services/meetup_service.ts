@@ -114,6 +114,42 @@ const createParticipationEntries = (
     });
 };
 
+const getInclusiveMonthSpan = (startDate: Date, endDate: Date): number => {
+  const yearDiff = endDate.getFullYear() - startDate.getFullYear();
+  const monthDiff = endDate.getMonth() - startDate.getMonth();
+  return Math.max(1, yearDiff * 12 + monthDiff + 1);
+};
+
+const createParticipationRateEntries = (
+  counts: Map<string, number>,
+  firstParticipationDates: Map<string, Date>,
+  usersById: Map<string, UserLeaderboardProfile>,
+  limitCount: number,
+  now: Date
+): MeetupLeaderboardEntry[] => {
+  return Array.from(counts.entries())
+    .filter(([uid]) => !isExcludedLeaderboardUser(usersById.get(uid)))
+    .map(([uid, count]) => {
+      const firstJoinedAt = firstParticipationDates.get(uid) || now;
+      const activeMonths = getInclusiveMonthSpan(firstJoinedAt, now);
+      const user = usersById.get(uid);
+
+      return {
+        uid,
+        displayName: user?.displayName || `User ${uid.substring(0, 6)}`,
+        photoURL: user?.photoURL,
+        value: count / activeMonths,
+        meta: String(count),
+        joinedAt: firstJoinedAt.toISOString(),
+      };
+    })
+    .sort((a, b) => {
+      if (b.value !== a.value) return b.value - a.value;
+      return Number(b.meta || 0) - Number(a.meta || 0);
+    })
+    .slice(0, limitCount);
+};
+
 // Fetch all meetup events with pagination
 export const fetchMeetupEvents = async (
   lastDoc?: QueryDocumentSnapshot<DocumentData>,
@@ -209,6 +245,7 @@ export const fetchMeetupLeaderboards = async (
 
     const totalCounts = new Map<string, number>();
     const monthlyCounts = new Map<string, number>();
+    const firstParticipationDates = new Map<string, Date>();
 
     meetupSnapshot.forEach((meetupDoc) => {
       const data = meetupDoc.data() as Omit<FirestoreMeetupEvent, "id">;
@@ -220,6 +257,15 @@ export const fetchMeetupLeaderboards = async (
       participants.forEach((uid) => {
         if (!uid || isExcludedLeaderboardUser(usersById.get(uid))) return;
         totalCounts.set(uid, (totalCounts.get(uid) || 0) + 1);
+        if (eventDate) {
+          const currentFirstParticipation = firstParticipationDates.get(uid);
+          if (
+            !currentFirstParticipation ||
+            eventDate < currentFirstParticipation
+          ) {
+            firstParticipationDates.set(uid, eventDate);
+          }
+        }
         if (isCurrentMonth) {
           monthlyCounts.set(uid, (monthlyCounts.get(uid) || 0) + 1);
         }
@@ -257,6 +303,13 @@ export const fetchMeetupLeaderboards = async (
         usersById,
         limitCount
       ),
+      participationRate: createParticipationRateEntries(
+        totalCounts,
+        firstParticipationDates,
+        usersById,
+        limitCount,
+        now
+      ),
       newMembers,
     };
   } catch (error) {
@@ -265,6 +318,7 @@ export const fetchMeetupLeaderboards = async (
     if (process.env.NODE_ENV === "development") {
       const totalCounts = new Map<string, number>();
       const monthlyCounts = new Map<string, number>();
+      const firstParticipationDates = new Map<string, Date>();
 
       Object.values(sampleFirestoreEvents).forEach((event) => {
         const eventDate = resolveDate(event.date_time);
@@ -273,6 +327,15 @@ export const fetchMeetupLeaderboards = async (
 
         Array.from(new Set(event.participants || [])).forEach((uid) => {
           totalCounts.set(uid, (totalCounts.get(uid) || 0) + 1);
+          if (eventDate) {
+            const currentFirstParticipation = firstParticipationDates.get(uid);
+            if (
+              !currentFirstParticipation ||
+              eventDate < currentFirstParticipation
+            ) {
+              firstParticipationDates.set(uid, eventDate);
+            }
+          }
           if (isCurrentMonth) {
             monthlyCounts.set(uid, (monthlyCounts.get(uid) || 0) + 1);
           }
@@ -291,6 +354,13 @@ export const fetchMeetupLeaderboards = async (
           monthlyCounts,
           usersById,
           limitCount
+        ),
+        participationRate: createParticipationRateEntries(
+          totalCounts,
+          firstParticipationDates,
+          usersById,
+          limitCount,
+          now
         ),
         newMembers: [],
       };

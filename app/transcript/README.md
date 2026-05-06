@@ -1,87 +1,61 @@
 # Transcript Page
 
-This transcript page provides real-time speech-to-text transcription using the Speechmatics API.
+## English
+
+The transcript page provides real-time Speechmatics speech-to-text transcription.
 
 ## Features
 
-- Real-time audio transcription using Speechmatics
-- **Speaker Diarization** - Automatically identifies and separates different speakers
-- **Confidence Scoring** - Words with confidence < 70% are highlighted in red
-- Live microphone input processing with proper word spacing
-- Partial and final transcript display with speaker identification
-- Target sentence input (optional) for practice
-- Connection status indicators
-- Color-coded speaker visualization
-- Visual confidence indicators for transcription accuracy
-- Error handling and user feedback
+- Live microphone transcription.
+- Speaker diarization with speaker labels.
+- Confidence-based word highlighting.
+- Partial and final transcript display.
+- Optional target sentence input for practice.
+- Saved transcript detail view.
 
 ## Setup
 
-### 1. Environment Variables
-
-Add your Speechmatics API key to your environment variables:
+Set the Speechmatics API key in the environment:
 
 ```bash
 NEXT_PUBLIC_SPEECHMATICS_API_KEY=your_speechmatics_api_key_here
 ```
 
-### 2. Microphone Permissions
+The browser will request microphone permission when recording starts.
 
-The page will automatically request microphone permissions when loaded. Users need to grant microphone access for the transcription to work.
+## Technical Notes
 
-## Usage
+- Audio uses the Web Audio API and an AudioWorklet loaded from `/scripts/audio-processor.js`.
+- `RecordTranscriptClient.tsx` contains the main recording UI.
+- `TranscriptDetailClient.tsx` renders saved transcript details.
+- `hooks/useSpeechmatics.ts` manages Speechmatics websocket integration.
 
-1. Navigate to `/transcript`
-2. (Optional) Enter a target sentence you want to practice
-3. Click "Start Recording" to begin transcription
-4. Speak into your microphone
-5. View the live transcript with partial (gray, italic) and final (black, bold) text
-6. Click "Stop Recording" to end the session
+## 한국어
 
-## Technical Details
+transcript 페이지는 Speechmatics 기반 실시간 음성-텍스트 변환 기능을 제공합니다.
 
-### Audio Processing
+## 기능
 
-- Uses Web Audio API with AudioContext
-- Processes audio at 16kHz sample rate in PCM float32 little-endian format
-- Audio is processed through an AudioWorkletNode using `/scripts/audio-processor.js`
+- 마이크 기반 실시간 전사.
+- 화자 분리와 speaker label 표시.
+- confidence 기반 단어 강조.
+- partial/final transcript 표시.
+- 연습용 target sentence 입력.
+- 저장된 transcript 상세 보기.
 
-### Speechmatics Integration
+## 설정
 
-- Fetches JWT tokens from Speechmatics API for authentication
-- Establishes WebSocket connection for real-time transcription
-- Handles partial and final transcript events
-- Includes disfluency removal and enhanced operating point
-- **Speaker Diarization** with up to 5 speakers maximum
-- Color-coded speaker identification (S1, S2, S3, S4, S5, UU for unknown)
+환경 변수에 Speechmatics API key를 설정합니다.
 
-### Components
+```bash
+NEXT_PUBLIC_SPEECHMATICS_API_KEY=your_speechmatics_api_key_here
+```
 
-- `RecordTranscriptClient.tsx` - Main client component with UI and audio handling (Speechmatics-only)
-- `TranscriptDetailClient.tsx` - Detailed view component for saved transcripts (Speechmatics-only)
-- `hooks/useSpeechmatics.ts` - Custom React hook for Speechmatics integration
-- `page.tsx` - Next.js page wrapper
+녹음을 시작할 때 브라우저가 마이크 권한을 요청합니다.
 
-### Provider Selection
+## 기술 메모
 
-This feature is now Speechmatics-only. The provider dropdown has been removed.
-
-### API Configuration
-
-#### Speechmatics
-- Set `NEXT_PUBLIC_SPEECHMATICS_API_KEY` in your environment
-- Uses JWT token authentication via Speechmatics API
-
-#### AssemblyAI
-Removed.
-
-## Error Handling
-
-The page handles various error scenarios:
-- Missing API key
-- Microphone permission denied
-- WebSocket connection errors
-- Audio processing errors
-- Speechmatics API errors
-
-All errors are displayed to the user with helpful messages. 
+- 오디오는 Web Audio API와 `/scripts/audio-processor.js`의 AudioWorklet을 사용합니다.
+- `RecordTranscriptClient.tsx`는 메인 녹음 UI입니다.
+- `TranscriptDetailClient.tsx`는 저장된 transcript 상세 화면을 렌더링합니다.
+- `hooks/useSpeechmatics.ts`는 Speechmatics websocket 연동을 관리합니다.

@@ -69,6 +69,7 @@ export interface MeetupLeaderboards {
   monthLabel: string;
   totalParticipation: MeetupLeaderboardEntry[];
   monthlyParticipation: MeetupLeaderboardEntry[];
+  participationRate: MeetupLeaderboardEntry[];
   newMembers: MeetupLeaderboardEntry[];
 }
 

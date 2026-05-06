@@ -1,38 +1,29 @@
 # Article Components
 
-This directory contains modularized components for the article reading experience.
+## English
 
-## Components
+This directory contains modular components for the article reading experience.
 
-### 1. **TranslationWarning.tsx**
+Current component:
 
-- Warning message that appears after 3 Korean translation clicks
-- Features: Auto-hide after 5 seconds, animated slide in/out
-- Props: `isVisible`, `onClose`
+- `TranslationWarning.tsx`: warning shown after repeated Korean translation clicks. It auto-hides and uses animated entry/exit behavior.
 
-## Shared Constants
+Related constants:
 
-### **constants/colors.ts**
+- `constants/colors.ts`: local color palette for article components.
 
-- Centralized color palette used across all components
-- Ensures consistent styling and easy theme updates
+Keep article reading UI modular so `ArticleClient` remains focused on page state and orchestration.
 
-## Benefits of Modularization
+## 한국어
 
-1. **Maintainability**: Each component has a single responsibility
-2. **Reusability**: Components can be reused across different parts of the app
-3. **Testing**: Individual components can be tested in isolation
-4. **Code Organization**: Cleaner main ArticleClient component
-5. **Performance**: Better tree-shaking and code splitting opportunities
+이 폴더는 아티클 읽기 경험에 필요한 모듈형 컴포넌트를 담습니다.
 
-## Usage
+현재 컴포넌트:
 
-```tsx
-import TranslationWarning from "./components/TranslationWarning";
-import { colors } from "./constants/colors";
-```
+- `TranslationWarning.tsx`: 한국어 번역을 반복해서 클릭했을 때 표시되는 경고입니다. 자동으로 사라지고 진입/퇴장 애니메이션을 사용합니다.
 
-## New Features Added
+관련 상수:
 
-1. **Translation Warning System**: Shows warning after 3 Korean translation clicks with message "한국어에 너무 의존하면 영어 공부에 도움이 안됩니다"
-2. **Improved UX**: Smooth animations and responsive design across all components
+- `constants/colors.ts`: 아티클 컴포넌트용 로컬 색상 팔레트.
+
+`ArticleClient`가 페이지 상태와 흐름 조정에 집중할 수 있도록 아티클 읽기 UI는 작은 컴포넌트로 유지합니다.

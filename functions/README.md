@@ -1,69 +1,77 @@
-# One Cup English - Payment Service
+# Firebase Functions
 
-This is the payment processing service for One Cup English, handling Payple payment integration.
+## English
 
-## Payment Process Flow
+`functions/` contains Firebase Functions backend code. The current service area is Payple payment integration and related backend callbacks.
 
-1. **Frontend Payment Request**:
-   - User fills payment information in `/payment` page
-   - Payment form sends request to Payple API with auth token
-   - Payple processes the payment request
+## Payment Flow
 
-2. **Payment Result Handling**:
-   - Payple sends the payment result to our backend endpoint `/api/payment/result`
-   - The backend stores the payment information in Firestore
-   - User is redirected to the payment result page with payment data
+1. The frontend `/payment` page starts a Payple payment request.
+2. Payple calls backend function endpoints with authentication or payment result data.
+3. Functions validate and store payment-related information in Firestore.
+4. The frontend payment result page displays the final user-facing state.
 
-3. **Payment Result Display**:
-   - The `/payment-result` page displays payment status and details
-   - For auth-only transactions (CERT), additional approval can be requested
-   - On success, user billing information is stored for recurring payments
+## Common Endpoints
 
-## API Endpoints
+- `paymentService`: grouped payment service entrypoint.
+- Payment auth: provides Payple partner authentication.
+- Payment result: receives Payple result callbacks and records them.
+- Payment status/refund helpers: support operational payment checks.
 
-### POST /api/payment/result
-Handles the payment result callback from Payple.
-- Stores payment result in Firestore
-- Updates user billing information if successful
-- Redirects to frontend payment result page
+Check `functions/src` for the current exported function names before changing routes or deploy settings.
 
-### POST /api/payment/auth
-Handles Payple partner authentication.
-- Provides authentication tokens for payment processing
-- Used for both initial payment and refund operations
+## Environment
 
-### POST /api/payment/check-status
-Allows checking the status of a payment by order ID.
-- Returns payment status, amount, method, etc.
-
-## Environment Variables
-
-The following environment variables should be set:
-
-```
-# Production Payple credentials
-PAYPLE_CST_ID=your_production_partner_id
-PAYPLE_CUST_KEY=your_production_partner_key
-PAYPLE_REFUND_KEY=your_production_refund_key
-
-# Test Payple credentials
-PAYPLE_TEST_CST_ID=test
-PAYPLE_TEST_CUST_KEY=test_MzE0NDg1NDU4OTc1
-
-# Frontend URL for redirects
-REACT_APP_FRONTEND_URL=https://1cupenglish.com
-```
+Set Payple and Firebase credentials in Firebase/Vercel environments. Do not commit production credential values.
 
 ## Local Development
 
-1. Set up the Firebase emulator:
-   ```
-   npm run serve
-   ```
+```bash
+cd functions
+npm install
+npm run serve
+```
 
-2. The payment service will be available at:
-   ```
-   http://localhost:5001/one-cup-eng/us-central1/paymentService
-   ```
+Deploy functions only when backend code changes:
 
-3. Configure the frontend to use this local endpoint during development. 
+```bash
+npm run deploy:functions
+```
+
+## 한국어
+
+`functions/`는 Firebase Functions 백엔드 코드를 담습니다. 현재 주요 영역은 Payple 결제 연동과 관련 callback 처리입니다.
+
+## 결제 흐름
+
+1. 프론트엔드 `/payment` 페이지에서 Payple 결제 요청을 시작합니다.
+2. Payple이 인증 또는 결제 결과 데이터를 backend function endpoint로 전달합니다.
+3. Functions가 결제 관련 정보를 검증하고 Firestore에 저장합니다.
+4. 프론트엔드 결제 결과 페이지가 사용자에게 최종 상태를 보여줍니다.
+
+## 주요 엔드포인트
+
+- `paymentService`: 결제 서비스 그룹 entrypoint.
+- 결제 인증: Payple partner 인증 제공.
+- 결제 결과: Payple 결과 callback 수신과 기록.
+- 결제 상태/refund helper: 운영용 결제 확인을 지원합니다.
+
+라우트나 배포 설정을 바꾸기 전에 `functions/src`의 현재 export 이름을 확인하세요.
+
+## 환경 변수
+
+Payple과 Firebase 인증 정보는 Firebase/Vercel 환경에 설정합니다. 프로덕션 credential 값을 커밋하지 않습니다.
+
+## 로컬 개발
+
+```bash
+cd functions
+npm install
+npm run serve
+```
+
+백엔드 코드 변경 시에만 Functions를 배포합니다.
+
+```bash
+npm run deploy:functions
+```

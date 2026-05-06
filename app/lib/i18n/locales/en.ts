@@ -32,6 +32,12 @@ const en = {
       spotsLeft: "spots left",
       almostFull: "Almost full",
     },
+    renderMode: {
+      prefix: "I'm a",
+      human: "Human",
+      machine: "Machine",
+      ariaLabel: "Homepage render mode",
+    },
     topicsShowcase: {
       title: "What topics do we dive into each week?",
       subtitle: "We curate timely articles from WSJ, FT, NYT and more to spark fresh discussions.",
@@ -131,16 +137,17 @@ const en = {
       closed: "Closed",
     },
     leaderboards: {
-      title: "Leaderboard",
-      subtitle: "See participation leaders and the newest paid members.",
       totalParticipation: "Total Participation",
       monthlyParticipation: "{month}'s Participation",
+      monthlyAverageParticipation: "Meetups per Month",
       newMembers: "Newest Paid Members",
       noParticipation: "No participation yet",
       noMonthlyParticipation: "No participation this month",
+      noMonthlyAverageParticipation: "No participation rate yet",
       noNewMembers: "No paid members yet",
       meetupCount: "{count} meetups",
       meetupCountSingular: "1 meetup",
+      monthlyAverageCount: "{count}/month",
     },
   },
 };
