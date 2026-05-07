@@ -36,6 +36,7 @@ import { geocodeLocation } from "./geocoding_service";
 // Collection references
 const MEETUP_COLLECTION = "meetup";
 const ARTICLES_COLLECTION = "articles";
+const PAYMENT_ORDERS_COLLECTION = "payment_orders";
 const DEFAULT_EVENTS_PER_PAGE = 5; // Reduced to 5 for smaller incremental loading
 
 type UserLeaderboardProfile = {
@@ -45,8 +46,7 @@ type UserLeaderboardProfile = {
   account_status?: string;
   hasActiveSubscription?: boolean;
   createdAt?: Date | null;
-  subscriptionStartDate?: Date | null;
-  subscriptionEndDate?: Date | null;
+  firstSubscriptionDate?: Date | null;
 };
 
 const resolveDate = (value: unknown): Date | null => {
@@ -80,19 +80,53 @@ const isExcludedLeaderboardUser = (
 
 const isPayingLeaderboardUser = (profile: UserLeaderboardProfile): boolean => {
   return Boolean(
-    profile.hasActiveSubscription ||
-      profile.subscriptionStartDate ||
-      profile.subscriptionEndDate
+    profile.firstSubscriptionDate || (profile.hasActiveSubscription && profile.createdAt)
   );
 };
 
 const getPaidMemberSortDate = (
   profile: UserLeaderboardProfile
 ): Date | null =>
-  profile.subscriptionStartDate ||
-  profile.subscriptionEndDate ||
-  profile.createdAt ||
+  profile.firstSubscriptionDate ||
+  (profile.hasActiveSubscription ? profile.createdAt : null) ||
   null;
+
+const fetchFirstSubscriptionDates = async (): Promise<Map<string, Date>> => {
+  const datesByUserId = new Map<string, Date>();
+
+  try {
+    const paymentSnapshot = await getDocs(
+      query(
+        collection(db, PAYMENT_ORDERS_COLLECTION),
+        where("type", "==", "subscription_initial_payment")
+      )
+    );
+
+    paymentSnapshot.forEach((paymentDoc) => {
+      const data = paymentDoc.data();
+      const userId = typeof data.userId === "string" ? data.userId : "";
+      if (!userId) return;
+
+      const paymentDate =
+        resolveDate(data.completedAt) ||
+        resolveDate(data.createdAt) ||
+        resolveDate(data.orderDate);
+      if (!paymentDate) return;
+
+      const currentDate = datesByUserId.get(userId);
+      if (!currentDate || paymentDate < currentDate) {
+        datesByUserId.set(userId, paymentDate);
+      }
+    });
+  } catch (error) {
+    console.warn(
+      "Unable to fetch initial subscription payment dates for leaderboard; falling back to active subscriber registration dates.",
+      error
+    );
+  }
+
+  return datesByUserId;
+};
 
 const createParticipationEntries = (
   counts: Map<string, number>,
@@ -216,11 +250,16 @@ export const fetchMeetupLeaderboards = async (
   }).format(now);
 
   try {
-    const [meetupSnapshot, usersSnapshot] = await Promise.all([
+    const [
+      meetupSnapshot,
+      usersSnapshot,
+      firstSubscriptionDatesByUserId,
+    ] = await Promise.all([
       getDocs(
         query(collection(db, MEETUP_COLLECTION), orderBy("date_time", "desc"))
       ),
       getDocs(collection(db, "users")),
+      fetchFirstSubscriptionDates(),
     ]);
 
     const usersById = new Map<string, UserLeaderboardProfile>();
@@ -237,9 +276,10 @@ export const fetchMeetupLeaderboards = async (
             : undefined,
         account_status: data.account_status,
         hasActiveSubscription: data.hasActiveSubscription === true,
-        createdAt: resolveDate(data.createdAt),
-        subscriptionStartDate: resolveDate(data.subscriptionStartDate),
-        subscriptionEndDate: resolveDate(data.subscriptionEndDate),
+        createdAt: resolveDate(data.registeredAt) || resolveDate(data.createdAt),
+        firstSubscriptionDate:
+          firstSubscriptionDatesByUserId.get(userDoc.id) ||
+          resolveDate(data.firstSubscriptionDate),
       });
     });
 
