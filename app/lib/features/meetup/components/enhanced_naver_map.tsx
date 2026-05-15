@@ -284,7 +284,7 @@ const EnhancedNaverMapComponent: React.FC<EnhancedNaverMapProps> = ({
               box-shadow: 0 2px 8px rgba(0,0,0,0.3);
               cursor: pointer;
             ">
-              <span style="color: white; font-size: 16px;">📍</span>
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: white; display: block;"></span>
             </div>
           `,
           size: new window.naver.maps.Size(30, 30),
@@ -317,7 +317,7 @@ const EnhancedNaverMapComponent: React.FC<EnhancedNaverMapProps> = ({
   if (loadError) {
     return (
       <MapLoadingPlaceholder>
-        ❌ {loadError}
+        {loadError}
       </MapLoadingPlaceholder>
     );
   }
@@ -325,7 +325,7 @@ const EnhancedNaverMapComponent: React.FC<EnhancedNaverMapProps> = ({
   if (!isApiReady) {
     return (
       <MapLoadingPlaceholder>
-        🗺️ Loading Naver Maps API...
+        Loading Naver Maps API...
       </MapLoadingPlaceholder>
     );
   }
@@ -333,7 +333,7 @@ const EnhancedNaverMapComponent: React.FC<EnhancedNaverMapProps> = ({
   if (!resolvedCoordinates) {
     return (
       <MapLoadingPlaceholder>
-        📍 Resolving location...
+        Resolving location...
       </MapLoadingPlaceholder>
     );
   }
@@ -356,11 +356,11 @@ const EnhancedNaverMapComponent: React.FC<EnhancedNaverMapProps> = ({
           borderRadius: '12px',
           zIndex: 10
         }}>
-          🗺️ Initializing map...
+          Initializing map...
         </div>
       )}
     </MapContainer>
   );
 };
 
-export default EnhancedNaverMapComponent; 
+export default EnhancedNaverMapComponent;

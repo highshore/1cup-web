@@ -22,17 +22,20 @@ import {
   orderBy,
   getDocs,
 } from "firebase/firestore";
-import { useSpeechmatics } from "../hooks/useSpeechmatics";
+import { useSoniox } from "../hooks/useSoniox";
 import { colors } from "../../lib/constants/colors";
 import { UserAvatar } from "../../lib/features/meetup/components/user_avatar";
 import {
   fetchUserProfiles,
   UserProfile,
 } from "../../lib/features/meetup/services/user_service";
+import { useTranscriptCopilot } from "../hooks/useTranscriptCopilot";
+import CopilotTranscriptSnippet from "../components/CopilotTranscriptSnippet";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase/firebase";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -83,7 +86,7 @@ const KeywordTag = styled.span`
   font-weight: 500;
 `;
 
-// Removed ProviderSelector (Speechmatics-only)
+// Removed ProviderSelector (Soniox-only)
 
 const SpeakersContainer = styled.div`
   display: flex;
@@ -393,6 +396,76 @@ const EmptyState = styled.div`
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+`;
+
+const CopilotPanel = styled.section`
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 1rem;
+`;
+
+const CopilotHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+`;
+
+const CopilotTitle = styled.h3`
+  color: #1e3a8a;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const CopilotRefreshButton = styled.button`
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+`;
+
+const CopilotSummary = styled.p`
+  margin: 0 0 0.75rem 0;
+  color: #334155;
+  line-height: 1.5;
+`;
+
+const CopilotGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CopilotColumnTitle = styled.div`
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+`;
+
+const CopilotList = styled.ul`
+  margin: 0;
+  padding-left: 1rem;
+  color: #334155;
+  line-height: 1.55;
+  font-size: 0.875rem;
 `;
 
 const SavedDataIndicator = styled.div`
@@ -1470,10 +1543,18 @@ const TranscriptSection = styled.div`
 `;
 
 const TranscriptTitle = styled.h3`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.25rem;
   font-weight: 600;
   color: #1e293b;
   margin: 0 0 1rem 0;
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
 `;
 
 const TranscriptText = styled.div`
@@ -1527,7 +1608,7 @@ interface TranscriptData {
   createdBy: string;
   speakerMappings?: Record<string, string>; // speaker ID -> participant UID
   customKeywords?: string[]; // Custom keywords for this transcript
-  transcriptContent?: any[]; // Speechmatics results
+  transcriptContent?: any[]; // Soniox results
   hideUnidentifiedSpeakers?: boolean; // UI preference
   transcriptMetadata?: {
     totalWords: number;
@@ -1613,7 +1694,7 @@ export default function TranscriptDetailClient() {
   const router = useRouter();
   const transcriptId = params?.id as string;
 
-  // Speechmatics-only
+  // Soniox-only
 
   const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(
     null
@@ -1630,20 +1711,20 @@ export default function TranscriptDetailClient() {
   const isPausedRef = useRef<boolean>(false);
 
   const {
-    speechmaticsResults,
-    speechmaticsError,
-    isSpeechmaticsSocketOpen,
-    startSpeechmatics,
-    stopSpeechmatics,
-    sendSpeechmaticsAudio,
-    setSavedTranscript: setSavedSpeechmaticsTranscript,
-  } = useSpeechmatics(isPausedRef);
+    sonioxResults,
+    sonioxError,
+    isSonioxSocketOpen,
+    startSoniox,
+    stopSoniox,
+    sendSonioxAudio,
+    setSavedTranscript: setSavedSonioxTranscript,
+  } = useSoniox(isPausedRef);
 
-  // Unified transcript states (Speechmatics-only)
-  const activePartialSegment = speechmaticsResults.activePartialSegment;
-  const finalTranscript = speechmaticsResults.finalTranscript;
-  const transcriptionError = speechmaticsError;
-  const isSocketOpen = isSpeechmaticsSocketOpen;
+  // Unified transcript states (Soniox-only)
+  const activePartialSegment = sonioxResults.activePartialSegment;
+  const finalTranscript = sonioxResults.finalTranscript;
+  const transcriptionError = sonioxError;
+  const isSocketOpen = isSonioxSocketOpen;
 
   // Firestore transcript data (source of truth for saved transcript)
   const [savedTranscriptData, setSavedTranscriptData] = useState<any[]>([]);
@@ -1667,6 +1748,29 @@ export default function TranscriptDetailClient() {
   const keywordsLoadedRef = useRef<boolean>(false);
   const keywordsRef = useRef<string[]>([]);
   const [newKeyword, setNewKeyword] = useState<string>("");
+
+  const participantLabels = useMemo(
+    () =>
+      participants.map(
+        (participant) =>
+          participant.displayName ||
+          participant.phoneLast4 ||
+          participant.phoneNumber ||
+          participant.uid
+      ),
+    [participants]
+  );
+
+  const {
+    messages: copilotMessages,
+    isThinking: isCopilotThinking,
+  } = useTranscriptCopilot({
+    finalTranscript,
+    activePartialSegment,
+    isListening: isRecording && !isPaused,
+    participants: participantLabels,
+    articleTitle: articleData?.title?.english || articleData?.title?.korean,
+  });
 
   // Audio storage and playback state
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
@@ -1829,10 +1933,10 @@ export default function TranscriptDetailClient() {
   // Group transcript results into snippets for rendering (copied from original RecordTranscriptClient)
   const createTranscriptSnippets = useCallback((results: any[]) => {
     const validResults = results.filter(
-      (result) =>
-        result.alternatives &&
-        result.alternatives.length > 0 &&
-        result.alternatives[0].content
+      (result) => {
+        const content = result.alternatives?.[0]?.content;
+        return content && content.trim().toLowerCase() !== "<end>";
+      }
     );
     if (validResults.length === 0) return [];
 
@@ -1844,6 +1948,7 @@ export default function TranscriptDetailClient() {
         confidence?: number;
         isPartial?: boolean;
         type?: string;
+        preserveSpacing?: boolean;
       }>;
     }> = [];
 
@@ -1855,6 +1960,7 @@ export default function TranscriptDetailClient() {
         confidence?: number;
         isPartial?: boolean;
         type?: string;
+        preserveSpacing?: boolean;
       }>;
     } | null = null;
 
@@ -1874,6 +1980,7 @@ export default function TranscriptDetailClient() {
               content: word.content,
               confidence: word.confidence,
               type: result.type || "word",
+              preserveSpacing: result.preserveSpacing,
             },
           ],
         };
@@ -1882,6 +1989,7 @@ export default function TranscriptDetailClient() {
           content: word.content,
           confidence: word.confidence,
           type: result.type || "word",
+          preserveSpacing: result.preserveSpacing,
         });
       }
     });
@@ -2022,6 +2130,45 @@ export default function TranscriptDetailClient() {
     speakerMappings,
     participants,
   ]);
+
+  const conversationItems = useMemo(() => {
+    const sortedMessages = [...copilotMessages].sort(
+      (a, b) =>
+        a.transcriptItemCount - b.transcriptItemCount ||
+        a.createdAt - b.createdAt
+    );
+    const items: Array<
+      | { type: "transcript"; snippet: (typeof filteredDisplaySnippets)[number]; snippetIndex: number }
+      | { type: "copilot"; message: (typeof copilotMessages)[number] }
+      | { type: "copilot-thinking" }
+    > = [];
+    let cumulativeItems = 0;
+    let messageIndex = 0;
+
+    filteredDisplaySnippets.forEach((snippet, snippetIndex) => {
+      items.push({ type: "transcript", snippet, snippetIndex });
+      cumulativeItems += snippet.words.length;
+
+      while (
+        messageIndex < sortedMessages.length &&
+        sortedMessages[messageIndex].transcriptItemCount <= cumulativeItems
+      ) {
+        items.push({ type: "copilot", message: sortedMessages[messageIndex] });
+        messageIndex += 1;
+      }
+    });
+
+    while (messageIndex < sortedMessages.length) {
+      items.push({ type: "copilot", message: sortedMessages[messageIndex] });
+      messageIndex += 1;
+    }
+
+    if (isCopilotThinking) {
+      items.push({ type: "copilot-thinking" });
+    }
+
+    return items;
+  }, [copilotMessages, filteredDisplaySnippets, isCopilotThinking]);
 
   // Speaker color mapping
   const getSpeakerColor = (speaker: string) => {
@@ -2654,7 +2801,7 @@ Respond in JSON format:
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // Set up audio context for Speechmatics
+      // Set up audio context for Soniox
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
 
@@ -2678,7 +2825,7 @@ Respond in JSON format:
           // Only send audio when not paused
           if (!isPausedRef.current) {
             lastAudioSentAtRef.current = Date.now();
-            sendSpeechmaticsAudio(audioData);
+            sendSonioxAudio(audioData);
           }
         }
       };
@@ -2739,7 +2886,7 @@ Respond in JSON format:
       console.error("Error setting up audio processing:", error);
       return false;
     }
-  }, [sendSpeechmaticsAudio]);
+  }, [sendSonioxAudio]);
 
   const handleStartRecording = async () => {
     try {
@@ -2752,7 +2899,7 @@ Respond in JSON format:
         );
 
         // Clear the hook's saved transcript data
-        setSavedSpeechmaticsTranscript([]);
+        setSavedSonioxTranscript([]);
 
         // Clear pause periods and duration tracking
         pausePeriodsRef.current = [];
@@ -2848,8 +2995,8 @@ Respond in JSON format:
       );
       console.log("[Recording] Custom dictionary entries:", customDictionary);
 
-      // Start provider (Speechmatics)
-      let providerStarted = await startSpeechmatics(customDictionary);
+      // Start provider (Soniox)
+      let providerStarted = await startSoniox(customDictionary);
 
       if (!providerStarted) {
         setIsStarting(false);
@@ -2858,7 +3005,7 @@ Respond in JSON format:
 
       const audioSetup = await setupAudioProcessing();
       if (!audioSetup) {
-        await stopSpeechmatics(false);
+        await stopSoniox(false);
         setIsStarting(false);
         return;
       }
@@ -2870,12 +3017,12 @@ Respond in JSON format:
       lastAudioSentAtRef.current = Date.now();
       if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
       keepAliveIntervalRef.current = setInterval(() => {
-        if (!isSpeechmaticsSocketOpen) return;
+        if (!isSonioxSocketOpen) return;
         const now = Date.now();
         if (now - lastAudioSentAtRef.current > 1500) {
           const silent = new Float32Array(4096);
           try {
-            sendSpeechmaticsAudio(silent.buffer);
+            sendSonioxAudio(silent.buffer);
             lastAudioSentAtRef.current = now;
           } catch {}
         }
@@ -2958,8 +3105,8 @@ Respond in JSON format:
       mediaStreamRef.current = null;
     }
 
-    // Stop provider (Speechmatics)
-    await stopSpeechmatics(true);
+    // Stop provider (Soniox)
+    await stopSoniox(true);
     if (keepAliveIntervalRef.current) {
       clearInterval(keepAliveIntervalRef.current);
       keepAliveIntervalRef.current = null;
@@ -3314,7 +3461,7 @@ Respond in JSON format:
               "saved transcript items"
             );
             setSavedTranscriptData(data.transcriptContent);
-            setSavedSpeechmaticsTranscript(data.transcriptContent);
+            setSavedSonioxTranscript(data.transcriptContent);
           } else {
             setSavedTranscriptData([]);
           }
@@ -3764,7 +3911,7 @@ Respond in JSON format:
     }
   };
 
-  // Prepare custom dictionary for Speechmatics
+  // Prepare custom dictionary for Soniox
   const prepareCustomDictionary = useCallback(() => {
     const currentKeywords = keywordsRef.current;
     console.log(
@@ -3826,7 +3973,7 @@ Respond in JSON format:
   return (
     <Container>
       <Content>
-        {/* Provider Selection removed (Speechmatics-only) */}
+        {/* Provider Selection removed (Soniox-only) */}
 
         {transcriptionError && (
           <ErrorMessage>{transcriptionError}</ErrorMessage>
@@ -4079,7 +4226,21 @@ Respond in JSON format:
             </AppSpeechDetails>
 
             {/* Render transcript snippets */}
-            {filteredDisplaySnippets.map((snippet, index) => {
+            {conversationItems.map((item) => {
+              if (item.type === "copilot-thinking") {
+                return <CopilotTranscriptSnippet key="copilot-thinking" isThinking />;
+              }
+
+              if (item.type === "copilot") {
+                return (
+                  <CopilotTranscriptSnippet
+                    key={`copilot-${item.message.id}`}
+                    message={item.message}
+                  />
+                );
+              }
+
+              const { snippet, snippetIndex: index } = item;
               const speakerColor = getSpeakerColor(snippet.speaker);
               const speakerInfo = getSpeakerDisplayInfo(snippet.speaker);
               const hasAudio = !!recordedAudioUrl;
@@ -4159,7 +4320,7 @@ Respond in JSON format:
                           >
                             {word.content}
                             {/* Add space after word unless it's punctuation */}
-                            {!isPunctuationOrAttached(word) ? " " : ""}
+                            {!word.preserveSpacing && !isPunctuationOrAttached(word) ? " " : ""}
                           </WordSpan>
                         );
                       })}
@@ -4169,7 +4330,7 @@ Respond in JSON format:
               );
             })}
 
-            {filteredDisplaySnippets.length === 0 && (
+            {conversationItems.length === 0 && (
               <EmptyState>
                 {displaySnippets.length === 0
                   ? isRecording
@@ -4511,7 +4672,7 @@ Respond in JSON format:
 
             {/* Strengths */}
             <FeedbackSection>
-              <FeedbackTitle>✅ Strengths</FeedbackTitle>
+              <FeedbackTitle>Strengths</FeedbackTitle>
               <FeedbackList>
                 {selectedReport.analysis.strengths.map((strength, index) => (
                   <FeedbackItem key={index}>{strength}</FeedbackItem>
@@ -4521,7 +4682,7 @@ Respond in JSON format:
 
             {/* Areas for Improvement */}
             <FeedbackSection>
-              <FeedbackTitle>🎯 Areas for Improvement</FeedbackTitle>
+              <FeedbackTitle>Areas for Improvement</FeedbackTitle>
               <FeedbackList>
                 {selectedReport.analysis.areasForImprovement.map(
                   (area, index) => (
@@ -4533,7 +4694,7 @@ Respond in JSON format:
 
             {/* Specific Suggestions */}
             <FeedbackSection>
-              <FeedbackTitle>💡 Specific Suggestions</FeedbackTitle>
+              <FeedbackTitle>Specific Suggestions</FeedbackTitle>
               <FeedbackList>
                 {selectedReport.analysis.specificSuggestions.map(
                   (suggestion, index) => (
@@ -4576,7 +4737,10 @@ Respond in JSON format:
 
             {/* User's Transcript */}
             <TranscriptSection>
-              <TranscriptTitle>📝 Your Speaking Transcript</TranscriptTitle>
+              <TranscriptTitle>
+                <DocumentTextIcon />
+                Your Speaking Transcript
+              </TranscriptTitle>
               <TranscriptText>{selectedReport.userScript}</TranscriptText>
             </TranscriptSection>
 

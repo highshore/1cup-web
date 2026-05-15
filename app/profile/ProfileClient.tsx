@@ -11,12 +11,32 @@ import {
 } from "firebase/storage";
 import { updateProfile, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, updateDoc, collection, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
 import { httpsCallable } from "firebase/functions";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { saveFeedback } from "../lib/services/feedback_service";
+import { appLayout } from "../lib/constants/app_layout";
+import {
+  AcademicCapIcon,
+  ArrowTopRightOnSquareIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  CameraIcon,
+  ChevronRightIcon,
+  CheckBadgeIcon,
+  CreditCardIcon,
+  EyeIcon,
+  MapPinIcon,
+  PencilSquareIcon,
+  PhoneIcon,
+  ShareIcon,
+  SparklesIcon,
+  TrashIcon,
+  UserCircleIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 // Updated Wrapper to use full width and follow layout guidelines
 const Wrapper = styled.div`
@@ -24,9 +44,9 @@ const Wrapper = styled.div`
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 10px;
-  padding: 20px 0px;
-  max-width: 920px;
+  gap: 0;
+  padding: 0;
+  max-width: none;
   margin: 0 auto;
 `;
 
@@ -432,62 +452,6 @@ const WordsList = styled.div`
   margin-top: 15px;
 `;
 
-// Reports list styles
-const ReportsList = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-`;
-
-const ReportItem = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  background: #fff;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-  }
-`;
-
-const ReportTitle = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const ReportMain = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-`;
-
-const ReportSub = styled.div`
-  font-size: 12px;
-  color: #666;
-`;
-
-const ReportMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
-
-const ScoreBadge = styled.span`
-  background: #111827;
-  color: #fff;
-  border-radius: 9999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 700;
-`;
-
 const AlertCard = styled(Card).withConfig({
   shouldForwardProp: (prop) => prop !== "type",
 })<{ type: "error" | "success" }>`
@@ -565,6 +529,12 @@ interface UserData {
   gdg_member?: boolean;
   referralCode?: string;
   referralGeneratedAt?: Date;
+  bio?: string;
+  work?: string;
+  school?: string;
+  location?: string;
+  interests?: string;
+  profilePublic?: boolean;
 }
 
 const defaultUserImage = "/images/default_user.jpg"; // Using public folder
@@ -807,6 +777,1032 @@ const SurveyCancelButton = styled.button`
   }
 `;
 
+const ProfilePageShell = styled.div`
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 3rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem 1rem 2rem;
+  }
+`;
+
+const ProfileTopCard = styled.section`
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: clamp(1.2rem, 4vw, 2rem);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+  }
+`;
+
+const IdentityBlock = styled.div`
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+    text-align: center;
+  }
+`;
+
+const ModernAvatarWrap = styled.div`
+  position: relative;
+  flex: 0 0 auto;
+`;
+
+const ModernAvatarUpload = styled(AvatarUpload)`
+  width: 132px;
+  height: 132px;
+  border: 0;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+
+  @media (max-width: 560px) {
+    width: 118px;
+    height: 118px;
+  }
+`;
+
+const VerifiedBadge = styled.span`
+  position: absolute;
+  right: -2px;
+  bottom: 8px;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+
+  svg {
+    width: 21px;
+    height: 21px;
+  }
+`;
+
+const IdentityText = styled.div`
+  min-width: 0;
+`;
+
+const ProfileName = styled.h1`
+  margin: 0;
+  color: #111827;
+  font-size: clamp(2.1rem, 6vw, 3.5rem);
+  font-weight: 760;
+  line-height: 1.05;
+  letter-spacing: 0;
+`;
+
+const ProfileSubline = styled.p`
+  margin: 0.75rem 0 0;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.5;
+`;
+
+const BadgeRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+
+  @media (max-width: 560px) {
+    justify-content: center;
+  }
+`;
+
+const PillBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const HeroStatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+`;
+
+const HeroStat = styled.div`
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.9rem;
+`;
+
+const HeroStatValue = styled.div`
+  color: #111827;
+  font-size: clamp(1.7rem, 6vw, 2.45rem);
+  font-weight: 820;
+  line-height: 1;
+`;
+
+const HeroStatLabel = styled.div`
+  margin-top: 0.35rem;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 700;
+`;
+
+const TileGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const InsightTile = styled.section`
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1.1rem;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+`;
+
+const TileHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+`;
+
+const TileTitle = styled.h2`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 800;
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+`;
+
+const TextButton = styled.button`
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 0.42rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+`;
+
+const DetailList = styled.div`
+  display: grid;
+  gap: 0.72rem;
+`;
+
+const DetailItem = styled.div`
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  color: #1f2937;
+  font-size: 0.94rem;
+  line-height: 1.45;
+
+  svg {
+    width: 21px;
+    height: 21px;
+    color: #475569;
+  }
+`;
+
+const EditGrid = styled.div`
+  display: grid;
+  gap: 0.7rem;
+`;
+
+const EditInput = styled.input`
+  width: 100%;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #222222;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: #222222;
+  }
+`;
+
+const EditTextArea = styled.textarea`
+  width: 100%;
+  min-height: 84px;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #222222;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: #222222;
+  }
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+`;
+
+const PrimaryAction = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #222222;
+  color: #ffffff;
+  padding: 0.7rem 1.25rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #444444;
+  }
+
+  &:disabled {
+    background: #b0b0b0;
+    cursor: not-allowed;
+  }
+`;
+
+const SecondaryAction = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dddddd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #222222;
+  padding: 0.7rem 1.25rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f7f7f5;
+  }
+`;
+
+const MetricLine = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.72rem;
+  color: #475569;
+  font-size: 0.9rem;
+
+  strong {
+    color: #111827;
+    font-size: 1.15rem;
+  }
+`;
+
+const ProfileRouteShell = styled.main`
+  width: 100%;
+  max-width: ${appLayout.pageMaxWidth};
+  margin: 0 auto;
+  padding: 1.5rem ${appLayout.pageGutterDesktop} 3rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem ${appLayout.pageGutterMobile} 2.25rem;
+  }
+`;
+
+const ProfileHeader = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: clamp(1rem, 4vw, 1.5rem);
+`;
+
+const ProfileHeading = styled.h1`
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2.45rem, 8vw, 4.1rem);
+  font-weight: 760;
+  line-height: 0.98;
+  letter-spacing: 0;
+`;
+
+const IconCircleButton = styled.button`
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  svg {
+    width: 25px;
+    height: 25px;
+  }
+`;
+
+const ProfileStack = styled.div`
+  display: grid;
+  gap: 1rem;
+`;
+
+const ProfileHeroPanel = styled.section`
+  border: 1px solid #dddddd;
+  border-radius: 24px;
+  background: #ffffff;
+  padding: 2rem;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+    border-radius: 20px;
+  }
+`;
+
+const ProfileIdentity = styled.div`
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+`;
+
+const ProfileAvatarFrame = styled.div`
+  position: relative;
+  width: fit-content;
+`;
+
+const LargeAvatarUpload = styled(AvatarUpload)`
+  width: 112px;
+  height: 112px;
+  border: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  flex: 0 0 auto;
+`;
+
+const ProfileVerifiedBadge = styled.span`
+  position: absolute;
+  right: -2px;
+  bottom: 10px;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+`;
+
+const AvatarEditButton = styled.button`
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #222222;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #444444;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const AvatarDeleteButton = styled.button`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: rgba(34, 34, 34, 0.75);
+  color: #ffffff;
+  cursor: pointer;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+`;
+
+const ProfileNameBlock = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const ProfileDisplayName = styled.h2`
+  margin: 0;
+  color: #222222;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+`;
+
+const ProfileNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  @media (max-width: 560px) {
+    justify-content: center;
+  }
+`;
+
+const NameIconButton = styled.button`
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dddddd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #717171;
+  cursor: pointer;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: #222222;
+    color: #222222;
+  }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const ProfileMetaLine = styled.p`
+  margin: 0.35rem 0 0;
+  color: #717171;
+  font-size: 0.875rem;
+  line-height: 1.4;
+`;
+
+const ProfileBadgeStrip = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+
+  @media (max-width: 560px) {
+    justify-content: center;
+  }
+`;
+
+const ProfileChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #dddddd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #222222;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+
+  svg {
+    width: 15px;
+    height: 15px;
+    color: #717171;
+    flex: 0 0 auto;
+  }
+`;
+
+const GdgChip = styled(ProfileChip)`
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: inset 0 -2px 0 #fbbc04;
+
+  &::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    background: conic-gradient(
+      #4285f4 0 25%,
+      #34a853 0 50%,
+      #fbbc04 0 75%,
+      #ea4335 0 100%
+    );
+    box-shadow: inset 0 0 0 4px #ffffff;
+  }
+`;
+
+const SummaryActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+
+  @media (max-width: 560px) {
+    justify-content: center;
+  }
+`;
+
+const SummaryActionButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid #222222;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #222222;
+  padding: 0.6rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f7f7f5;
+  }
+
+  &:disabled {
+    border-color: #dddddd;
+    color: #717171;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const StatsStrip = styled.div`
+  display: flex;
+  border-top: 1px solid #eeeeec;
+  border-bottom: 1px solid #eeeeec;
+  margin: 1rem 0;
+
+  @media (max-width: 560px) {
+    justify-content: center;
+  }
+`;
+
+const StatCell = styled.div`
+  padding: 0.75rem 1.25rem;
+  min-width: 80px;
+
+  & + & {
+    border-left: 1px solid #dddddd;
+  }
+
+  &:first-child {
+    padding-left: 0;
+  }
+
+  @media (max-width: 560px) {
+    padding: 0.65rem 1rem;
+    text-align: center;
+
+    &:first-child {
+      padding-left: 1rem;
+    }
+  }
+`;
+
+const StatValue = styled.div`
+  color: #222222;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+`;
+
+const StatLabel = styled.div`
+  color: #717171;
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  white-space: nowrap;
+`;
+
+const BadgeList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.25rem;
+
+  @media (max-width: 560px) {
+    align-items: center;
+  }
+`;
+
+const BadgeItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+
+  svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    color: #717171;
+    margin-top: 1px;
+  }
+`;
+
+const BadgeItemText = styled.div``;
+
+const BadgeItemTitle = styled.div`
+  color: #222222;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+`;
+
+const BadgeItemSub = styled.div`
+  color: #717171;
+  font-size: 0.78rem;
+  margin-top: 0.1rem;
+`;
+
+const SubscriptionRail = styled.aside`
+  display: none;
+`;
+
+const HeroStatsRail = styled.div`
+  display: grid;
+  gap: 0;
+  border-left: 1px solid #e1e1df;
+  padding-left: clamp(1rem, 3vw, 1.5rem);
+
+  @media (max-width: 700px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-left: 0;
+    border-top: 1px solid #e1e1df;
+    padding-left: 0;
+    padding-top: 0.85rem;
+  }
+`;
+
+const HeroStatRow = styled.div`
+  padding: 0.78rem 0;
+  border-bottom: 1px solid #e1e1df;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  @media (max-width: 700px) {
+    padding: 0.4rem 0.25rem;
+    border-bottom: 0;
+    text-align: center;
+  }
+`;
+
+const HeroStatNumber = styled.div`
+  color: #202020;
+  font-size: clamp(1.55rem, 6vw, 2.25rem);
+  font-weight: 780;
+  line-height: 1;
+`;
+
+const HeroStatCaption = styled.div`
+  margin-top: 0.3rem;
+  color: #535353;
+  font-size: 0.88rem;
+  font-weight: 650;
+`;
+
+const ProfilePanel = styled.section`
+  border: 1px solid #dddddd;
+  border-radius: 24px;
+  background: #ffffff;
+  padding: 1.75rem 2rem;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+    border-radius: 20px;
+  }
+`;
+
+const ProfileSectionLabel = styled.h3`
+  margin: 0 0 0.6rem;
+  color: #717171;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;
+
+const ProfileBioText = styled.p`
+  margin: 0;
+  color: #222222;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.65;
+`;
+
+const ProfileSubsection = styled.div`
+  margin-top: 1.5rem;
+`;
+
+const ChipCloud = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const SoftChipBox = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-radius: 16px;
+  background: #f7f7f5;
+  padding: 0.85rem;
+`;
+
+const EditRowsPanel = styled.section`
+  border: 1px solid #dddddd;
+  border-radius: 24px;
+  background: #ffffff;
+  padding: 1.75rem 2rem;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+    border-radius: 20px;
+  }
+`;
+
+const EditSectionHeading = styled.h2`
+  margin: 0 0 0.25rem;
+  color: #222222;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+`;
+
+const EditSectionDescription = styled.p`
+  margin: 0 0 0.25rem;
+  color: #717171;
+  font-size: 0.875rem;
+  line-height: 1.5;
+`;
+
+const ProfileEditRow = styled.button`
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto 18px;
+  gap: 0.75rem;
+  align-items: center;
+  border: 0;
+  border-top: 1px solid #f0f0f0;
+  background: transparent;
+  padding: 0.9rem 0;
+  color: #222222;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: #717171;
+  }
+
+  span {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  strong {
+    min-width: 0;
+    color: #717171;
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 0.8fr) 16px;
+  }
+`;
+
+const FloatingEditButton = styled.button`
+  width: 100%;
+  border: 1px solid #222222;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #222222;
+  padding: 0.9rem 1.25rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f7f7f5;
+  }
+`;
+
+const ProfileFormPanel = styled.section`
+  border: 1px solid #dddddd;
+  border-radius: 24px;
+  background: #ffffff;
+  padding: 1.75rem 2rem;
+  display: grid;
+  gap: 0.75rem;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+    border-radius: 20px;
+  }
+`;
+
+const PublicPreviewDialog = styled(ConfirmationDialog)`
+  width: min(92vw, 500px);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+`;
+
+const PreviewHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const PreviewTitle = styled.h2`
+  margin: 0;
+  color: #222222;
+  font-size: 1rem;
+  font-weight: 700;
+`;
+
+const PreviewCloseButton = styled.button`
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f7f7f5;
+  color: #222222;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #eeeeec;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const PublicPreviewCard = styled.div`
+  border: 1px solid #dddddd;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 1.25rem;
+`;
+
+const PreviewIdentity = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+`;
+
+const PreviewAvatar = styled.img`
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #f7f7f5;
+  flex: 0 0 auto;
+`;
+
+const PreviewName = styled.h3`
+  margin: 0;
+  color: #222222;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+`;
+
+const PreviewMeta = styled.p`
+  margin: 0.35rem 0 0;
+  color: #717171;
+  font-size: 0.85rem;
+`;
+
+const PreviewBio = styled.p`
+  margin: 1rem 0 0;
+  color: #222222;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.6;
+`;
+
 export default function ProfileClient() {
   const user = auth.currentUser;
   const [avatar, setAvatar] = useState(user?.photoURL || "");
@@ -820,6 +1816,15 @@ export default function ProfileClient() {
   >([]);
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [showPublicPreview, setShowPublicPreview] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    bio: "",
+    work: "",
+    school: "",
+    location: "",
+    interests: "",
+  });
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCancellationOptions, setShowCancellationOptions] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
@@ -842,17 +1847,6 @@ export default function ProfileClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [referralGenerating, setReferralGenerating] = useState(false);
   const [kakaoReady, setKakaoReady] = useState(false);
-
-  // Speaking Reports state
-  const [userReports, setUserReports] = useState<
-    Array<{
-      id: string;
-      transcriptId: string;
-      metadata?: { createdAt?: Date; wordCount?: number; speakingDuration?: number; averageWordsPerMinute?: number; sessionNumber?: number; };
-      analysis?: { overallScore?: number };
-    }>
-  >([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -905,9 +1899,22 @@ export default function ProfileClient() {
             referralGeneratedAt: data.referralGeneratedAt?.toDate
               ? data.referralGeneratedAt.toDate()
               : undefined,
+            bio: data.bio || "",
+            work: data.work || "",
+            school: data.school || "",
+            location: data.location || "",
+            interests: data.interests || "",
+            profilePublic: data.profilePublic !== false,
           };
 
           setUserData(userDataObj);
+          setProfileForm({
+            bio: userDataObj.bio || "",
+            work: userDataObj.work || "",
+            school: userDataObj.school || "",
+            location: userDataObj.location || "",
+            interests: userDataObj.interests || "",
+          });
 
           // Set subscription data
           const subData: SubscriptionData = {
@@ -976,39 +1983,6 @@ export default function ProfileClient() {
 
     fetchUserData();
   }, [user, router]);
-
-  // Subscribe to user's speaking reports
-  useEffect(() => {
-    if (!user) return;
-    try {
-      const colRef = collection(db, `users/${user.uid}/speaking_reports`);
-      const unsub = onSnapshot(colRef, (snap) => {
-        const items: Array<any> = [];
-        snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
-        const normalized = items.map((r) => ({
-          id: r.id,
-          transcriptId: r.transcriptId,
-          metadata: {
-            ...r.metadata,
-            createdAt: r?.metadata?.createdAt?.toDate
-              ? r.metadata.createdAt.toDate()
-              : (r?.metadata?.createdAt || undefined),
-          },
-          analysis: r.analysis,
-        }));
-        normalized.sort((a, b) => {
-          const at = a.metadata?.createdAt ? a.metadata.createdAt.getTime() : 0;
-          const bt = b.metadata?.createdAt ? b.metadata.createdAt.getTime() : 0;
-          return bt - at;
-        });
-        setUserReports(normalized);
-        setReportsLoading(false);
-      });
-      return () => unsub();
-    } catch (e) {
-      setReportsLoading(false);
-    }
-  }, [user]);
 
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { files } = e.target;
@@ -1161,6 +2135,28 @@ export default function ProfileClient() {
     } catch (error) {
       console.error("Error updating display name:", error);
       setError("유저명 변경에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveProfileDetails = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        ...profileForm,
+        profilePublic: true,
+        updatedAt: new Date(),
+      });
+      setUserData((prev) => (prev ? { ...prev, ...profileForm, profilePublic: true } : prev));
+      setIsEditingDetails(false);
+      setSuccessMessage("프로필 정보가 업데이트되었습니다.");
+    } catch (error) {
+      console.error("Error updating profile details:", error);
+      setError("프로필 정보 저장에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -1454,21 +2450,435 @@ export default function ProfileClient() {
     return <GlobalLoadingScreen />;
   }
 
+  const profileInterests = (userData?.interests || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const daysWithOneCup = userData?.createdAt
+    ? Math.max(1, Math.ceil((Date.now() - userData.createdAt.getTime()) / 86400000))
+    : "-";
+  const profileBio =
+    userData?.bio || "영어 한잔에서 비즈니스 영어와 좋은 대화를 꾸준히 쌓고 있습니다.";
+  const membershipStatus =
+    subscriptionData.status === "active"
+      ? subscriptionData.billingCancelled
+        ? "결제 중단 예정"
+        : "이용 중"
+      : "비활성";
+
   return (
     <>
       {isLoading && <GlobalLoadingScreen size="small" />}
       <Wrapper>
-        {error && (
-          <AlertCard type="error">
-            <p>{error}</p>
-          </AlertCard>
-        )}
-        {successMessage && (
-          <AlertCard type="success">
-            <p>{successMessage}</p>
-          </AlertCard>
+        <ProfileRouteShell>
+          <ProfileStack>
+            {error && (
+              <AlertCard type="error">
+                <p>{error}</p>
+              </AlertCard>
+            )}
+            {successMessage && (
+              <AlertCard type="success">
+                <p>{successMessage}</p>
+              </AlertCard>
+            )}
+            <ProfileHeroPanel>
+              <ProfileIdentity>
+                <ProfileAvatarFrame>
+                  <LargeAvatarUpload as="div">
+                    <AvatarImg
+                      src={avatar || defaultUserImage}
+                      alt="Profile"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = defaultUserImage;
+                      }}
+                    />
+                  </LargeAvatarUpload>
+                  <AvatarEditButton
+                    type="button"
+                    aria-label="프로필 사진 변경"
+                    onClick={() => document.getElementById("avatar")?.click()}
+                  >
+                    <CameraIcon />
+                  </AvatarEditButton>
+                  {avatar && (
+                    <AvatarDeleteButton
+                      type="button"
+                      aria-label="프로필 사진 삭제"
+                      onClick={deleteAvatar}
+                    >
+                      <TrashIcon />
+                    </AvatarDeleteButton>
+                  )}
+                  <AvatarInput
+                    onChange={onAvatarChange}
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                  />
+                </ProfileAvatarFrame>
+
+                <ProfileNameBlock>
+                  {isEditingName ? (
+                    <EditGrid>
+                      <NameInput
+                        type="text"
+                        value={displayName}
+                        onChange={handleNameChange}
+                        placeholder="이름 입력"
+                        autoFocus
+                        onKeyDown={handleKeyPress}
+                      />
+                      <ActionRow>
+                        <PrimaryAction type="button" onClick={saveDisplayName}>
+                          저장
+                        </PrimaryAction>
+                        <SecondaryAction
+                          type="button"
+                          onClick={() => {
+                            setDisplayName(user?.displayName || "");
+                            setIsEditingName(false);
+                          }}
+                        >
+                          취소
+                        </SecondaryAction>
+                      </ActionRow>
+                    </EditGrid>
+                  ) : (
+                    <ProfileNameRow>
+                      <ProfileDisplayName>
+                        {user?.displayName || "이름 없는 멤버"}
+                      </ProfileDisplayName>
+                      <NameIconButton
+                        type="button"
+                        aria-label="이름 수정"
+                        onClick={() => setIsEditingName(true)}
+                      >
+                        <PencilSquareIcon />
+                      </NameIconButton>
+                    </ProfileNameRow>
+                  )}
+                  <ProfileMetaLine>
+                    {userData?.location || "서울"}에서 영어 루틴을 쌓는 멤버
+                  </ProfileMetaLine>
+
+                  <StatsStrip>
+                    <StatCell>
+                      <StatValue>{daysWithOneCup}일</StatValue>
+                      <StatLabel>함께한 기간</StatLabel>
+                    </StatCell>
+                    <StatCell>
+                      <StatValue>{membershipStatus}</StatValue>
+                      <StatLabel>멤버십 상태</StatLabel>
+                    </StatCell>
+                    <StatCell>
+                      <StatValue>
+                        {subscriptionData.startDate
+                          ? format(subscriptionData.startDate, "MM/dd", { locale: ko })
+                          : "-"}
+                      </StatValue>
+                      <StatLabel>최근 결제일</StatLabel>
+                    </StatCell>
+                  </StatsStrip>
+
+                  {(userData?.hasActiveSubscription || userData?.gdg_member || userData?.account_status) && (
+                    <BadgeList>
+                      {userData?.hasActiveSubscription && (
+                        <BadgeItem>
+                          <CheckBadgeIcon />
+                          <BadgeItemText>
+                            <BadgeItemTitle>Active Member</BadgeItemTitle>
+                            <BadgeItemSub>영어 한잔 구독 멤버십 이용 중</BadgeItemSub>
+                          </BadgeItemText>
+                        </BadgeItem>
+                      )}
+                      {userData?.gdg_member && (
+                        <BadgeItem>
+                          <SparklesIcon />
+                          <BadgeItemText>
+                            <BadgeItemTitle>GDG Member</BadgeItemTitle>
+                            <BadgeItemSub>Google Developer Groups 멤버</BadgeItemSub>
+                          </BadgeItemText>
+                        </BadgeItem>
+                      )}
+                      {userData?.account_status && (
+                        <BadgeItem>
+                          <UserCircleIcon />
+                          <BadgeItemText>
+                            <BadgeItemTitle>{userData.account_status}</BadgeItemTitle>
+                            <BadgeItemSub>영어 한잔 멤버 역할</BadgeItemSub>
+                          </BadgeItemText>
+                        </BadgeItem>
+                      )}
+                    </BadgeList>
+                  )}
+
+                  <SummaryActions>
+                    <SummaryActionButton
+                      type="button"
+                      onClick={() => setShowPublicPreview(true)}
+                    >
+                      <EyeIcon />
+                      공개 프로필 보기
+                    </SummaryActionButton>
+                    <SummaryActionButton
+                      type="button"
+                      onClick={userData?.referralCode ? handleShareReferral : handleGenerateReferral}
+                      disabled={referralGenerating}
+                    >
+                      <ShareIcon />
+                      {userData?.referralCode
+                        ? "추천 코드 공유"
+                        : referralGenerating
+                          ? "생성 중"
+                          : "추천 코드 생성"}
+                    </SummaryActionButton>
+                  </SummaryActions>
+                </ProfileNameBlock>
+              </ProfileIdentity>
+            </ProfileHeroPanel>
+
+            <ProfilePanel>
+              <ProfileSectionLabel>My bio</ProfileSectionLabel>
+              <ProfileBioText>{profileBio}</ProfileBioText>
+
+              <ProfileSubsection>
+                <ProfileSectionLabel>About me</ProfileSectionLabel>
+                <ChipCloud>
+                  <ProfileChip>
+                    <BriefcaseIcon /> {userData?.work || "직업/소속 추가"}
+                  </ProfileChip>
+                  <ProfileChip>
+                    <AcademicCapIcon /> {userData?.school || "학교/전공 추가"}
+                  </ProfileChip>
+                  <ProfileChip>
+                    <MapPinIcon /> {userData?.location || "지역 추가"}
+                  </ProfileChip>
+                  <ProfileChip>
+                    <PhoneIcon /> {user?.phoneNumber || "전화번호 없음"}
+                  </ProfileChip>
+                </ChipCloud>
+              </ProfileSubsection>
+
+              <ProfileSubsection>
+                <ProfileSectionLabel>I&apos;m looking for</ProfileSectionLabel>
+                <SoftChipBox>
+                  <ProfileChip>
+                    <BookOpenIcon /> 비즈니스 영어 루틴
+                  </ProfileChip>
+                  <ProfileChip>깊이 있는 토론</ProfileChip>
+                  <ProfileChip>좋은 사람들과의 네트워크</ProfileChip>
+                  <ProfileChip>스피킹 자신감</ProfileChip>
+                </SoftChipBox>
+              </ProfileSubsection>
+
+              <ProfileSubsection>
+                <ProfileSectionLabel>My interests</ProfileSectionLabel>
+                <ChipCloud>
+                  {(profileInterests.length
+                    ? profileInterests
+                    : ["Business news", "Speaking practice", "Networking"]
+                  ).map((interest) => (
+                    <ProfileChip key={interest}>
+                      <SparklesIcon /> {interest}
+                    </ProfileChip>
+                  ))}
+                </ChipCloud>
+              </ProfileSubsection>
+            </ProfilePanel>
+
+            {isEditingDetails && (
+              <ProfileFormPanel>
+                <EditSectionHeading>프로필 편집</EditSectionHeading>
+                <EditSectionDescription>
+                  공개 프로필에 보여줄 소개와 기본 정보를 정리해 주세요.
+                </EditSectionDescription>
+                <EditTextArea
+                  value={profileForm.bio}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
+                  }
+                  placeholder="짧은 자기소개"
+                />
+                <EditInput
+                  value={profileForm.work}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({ ...prev, work: e.target.value }))
+                  }
+                  placeholder="직업/소속"
+                />
+                <EditInput
+                  value={profileForm.school}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({ ...prev, school: e.target.value }))
+                  }
+                  placeholder="학교/전공"
+                />
+                <EditInput
+                  value={profileForm.location}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({ ...prev, location: e.target.value }))
+                  }
+                  placeholder="지역"
+                />
+                <EditInput
+                  value={profileForm.interests}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({ ...prev, interests: e.target.value }))
+                  }
+                  placeholder="관심사, 쉼표로 구분"
+                />
+                <ActionRow>
+                  <PrimaryAction type="button" onClick={saveProfileDetails}>
+                    저장
+                  </PrimaryAction>
+                  <SecondaryAction
+                    type="button"
+                    onClick={() => {
+                      setProfileForm({
+                        bio: userData?.bio || "",
+                        work: userData?.work || "",
+                        school: userData?.school || "",
+                        location: userData?.location || "",
+                        interests: userData?.interests || "",
+                      });
+                      setIsEditingDetails(false);
+                    }}
+                  >
+                    취소
+                  </SecondaryAction>
+                </ActionRow>
+              </ProfileFormPanel>
+            )}
+
+            <EditRowsPanel>
+              <EditSectionHeading>About you</EditSectionHeading>
+              <EditSectionDescription>
+                프로필, 멤버십, 학습 기록을 한 곳에서 관리합니다.
+              </EditSectionDescription>
+              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+                <BriefcaseIcon />
+                <span>Work</span>
+                <strong>{userData?.work || "Add"}</strong>
+                <ChevronRightIcon />
+              </ProfileEditRow>
+              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+                <AcademicCapIcon />
+                <span>Education</span>
+                <strong>{userData?.school || "Add"}</strong>
+                <ChevronRightIcon />
+              </ProfileEditRow>
+              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+                <MapPinIcon />
+                <span>Location</span>
+                <strong>{userData?.location || "Add"}</strong>
+                <ChevronRightIcon />
+              </ProfileEditRow>
+              <ProfileEditRow type="button" onClick={() => router.push("/payment")}>
+                <CreditCardIcon />
+                <span>Subscription</span>
+                <strong>{membershipStatus}</strong>
+                <ChevronRightIcon />
+              </ProfileEditRow>
+              <ProfileEditRow type="button" onClick={handleLogout}>
+                <UserCircleIcon />
+                <span>Account</span>
+                <strong>로그아웃</strong>
+                <ChevronRightIcon />
+              </ProfileEditRow>
+            </EditRowsPanel>
+
+            <FloatingEditButton
+              type="button"
+              onClick={() => setIsEditingDetails((value) => !value)}
+            >
+              {isEditingDetails ? "편집 닫기" : "Edit profile"}
+            </FloatingEditButton>
+          </ProfileStack>
+        </ProfileRouteShell>
+
+        {showPublicPreview && (
+          <ConfirmationOverlay onClick={() => setShowPublicPreview(false)}>
+            <PublicPreviewDialog onClick={(event) => event.stopPropagation()}>
+              <PreviewHeader>
+                <PreviewTitle>공개 프로필 미리보기</PreviewTitle>
+                <PreviewCloseButton
+                  type="button"
+                  aria-label="미리보기 닫기"
+                  onClick={() => setShowPublicPreview(false)}
+                >
+                  <XMarkIcon />
+                </PreviewCloseButton>
+              </PreviewHeader>
+              <PublicPreviewCard>
+                <PreviewIdentity>
+                  <PreviewAvatar
+                    src={avatar || defaultUserImage}
+                    alt="Public profile preview"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = defaultUserImage;
+                    }}
+                  />
+                  <div>
+                    <PreviewName>{user?.displayName || "이름 없는 멤버"}</PreviewName>
+                    <PreviewMeta>
+                      {userData?.location || "서울"}에서 활동 중
+                    </PreviewMeta>
+                    <ProfileBadgeStrip>
+                      {userData?.gdg_member && <GdgChip>GDG member</GdgChip>}
+                      {userData?.account_status && (
+                        <ProfileChip>
+                          <UserCircleIcon /> {userData.account_status}
+                        </ProfileChip>
+                      )}
+                    </ProfileBadgeStrip>
+                  </div>
+                </PreviewIdentity>
+                <PreviewBio>{profileBio}</PreviewBio>
+                <ProfileSubsection>
+                  <ProfileSectionLabel>About me</ProfileSectionLabel>
+                  <ChipCloud>
+                    {userData?.work && (
+                      <ProfileChip>
+                        <BriefcaseIcon /> {userData.work}
+                      </ProfileChip>
+                    )}
+                    {userData?.school && (
+                      <ProfileChip>
+                        <AcademicCapIcon /> {userData.school}
+                      </ProfileChip>
+                    )}
+                    {userData?.location && (
+                      <ProfileChip>
+                        <MapPinIcon /> {userData.location}
+                      </ProfileChip>
+                    )}
+                  </ChipCloud>
+                </ProfileSubsection>
+                <ProfileSubsection>
+                  <ProfileSectionLabel>My interests</ProfileSectionLabel>
+                  <ChipCloud>
+                    {(profileInterests.length
+                      ? profileInterests
+                      : ["Business news", "Speaking practice", "Networking"]
+                    ).map((interest) => (
+                      <ProfileChip key={interest}>
+                        <SparklesIcon /> {interest}
+                      </ProfileChip>
+                    ))}
+                  </ChipCloud>
+                </ProfileSubsection>
+              </PublicPreviewCard>
+            </PublicPreviewDialog>
+          </ConfirmationOverlay>
         )}
 
+        {false && <div style={{ display: "none" }}>
         <MainSectionsWrapper>
           {/* User Information Section */}
           <UserInfoSection>
@@ -1693,59 +3103,6 @@ export default function ProfileClient() {
           </SubscriptionInfo>
         </MainSectionsWrapper>
 
-        {/* Speaking Reports Section */}
-        <TransparentCard>
-          <SectionTitle>
-            스피킹 리포트
-            <div>
-              <button
-                onClick={() => router.push(`/report/user${user?.uid ? `?uid=${user.uid}` : ""}`)}
-                style={{
-                  background: "#111827",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 20,
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                내 리포트 보기
-              </button>
-            </div>
-          </SectionTitle>
-          <SectionContent>
-            {reportsLoading ? (
-              <div style={{ padding: "1rem", color: "#666" }}>불러오는 중...</div>
-            ) : userReports.length === 0 ? (
-              <div style={{ padding: "1rem", color: "#888", textAlign: "center" }}>
-                아직 생성된 리포트가 없습니다
-              </div>
-            ) : (
-              <ReportsList>
-                {userReports.map((r) => (
-                  <ReportItem key={r.id} onClick={() => router.push(`/transcript/${r.transcriptId}`)}>
-                    <ReportTitle>
-                      <ReportMain>
-                        세션 {r?.metadata?.sessionNumber || "-"} · 리포트
-                      </ReportMain>
-                      <ReportSub>
-                        {r?.metadata?.createdAt ? formatDate(r.metadata.createdAt) : "-"}
-                      </ReportSub>
-                    </ReportTitle>
-                    <ReportMeta>
-                      {typeof r?.analysis?.overallScore === "number" && (
-                        <ScoreBadge>{r.analysis.overallScore.toFixed(1)}/10</ScoreBadge>
-                      )}
-                    </ReportMeta>
-                  </ReportItem>
-                ))}
-              </ReportsList>
-            )}
-          </SectionContent>
-        </TransparentCard>
-
         {/* Referral Code Section */}
         <TransparentCard>
           <SectionTitle>추천 코드</SectionTitle>
@@ -1810,6 +3167,7 @@ export default function ProfileClient() {
         >
           <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
         </div>
+        </div>}
 
         {/* Cancellation Options Dialog */}
         {showCancellationOptions && (

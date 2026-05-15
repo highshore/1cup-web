@@ -196,7 +196,9 @@ const LanguageButton = styled.button<{ $isTransparent: boolean }>`
   }
 
   @media (max-width: 520px) {
-    padding: 6px 8px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
 
     span {
       display: none;
@@ -212,6 +214,11 @@ const LangIcon = styled.img<{ $isTransparent: boolean }>`
   border: 1px solid
     ${({ $isTransparent }) =>
       $isTransparent ? "rgba(255, 255, 255, 0.58)" : "#e2e8f0"};
+
+  @media (max-width: 520px) {
+    width: 22px;
+    height: 22px;
+  }
 `;
 
 const JoinButton = styled.button<{ $isTransparent: boolean }>`
@@ -468,7 +475,16 @@ const NewNavbar: React.FC = () => {
   };
 
   const handleJoin = () => {
-    handleNavigate("/auth");
+    const queryString =
+      typeof window !== "undefined" ? window.location.search.slice(1) : "";
+    const returnUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    const safeReturnUrl =
+      returnUrl.startsWith("/auth") || returnUrl.startsWith("/kakao_callback")
+        ? "/"
+        : returnUrl;
+
+    localStorage.setItem("returnUrl", safeReturnUrl);
+    handleNavigate(`/auth?redirect=${encodeURIComponent(safeReturnUrl)}`);
   };
 
   const handleProfileNav = () => {

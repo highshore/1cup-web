@@ -13,6 +13,7 @@ import {
 } from "../../lib/features/blog/services/blog_service";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { BlogEditor } from "../../lib/features/blog/components/blog_editor";
+import { DocumentTextIcon, RocketLaunchIcon } from "@heroicons/react/24/outline";
 
 // Using shared colors
 
@@ -128,8 +129,18 @@ const ImagePlaceholder = styled.div`
   font-size: 3rem;
   font-weight: 300;
 
+  svg {
+    width: 3rem;
+    height: 3rem;
+  }
+
   @media (max-width: 768px) {
     font-size: 2.5rem;
+
+    svg {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
   }
 `;
 
@@ -560,6 +571,11 @@ const CTAButton = styled.button`
     font-size: 0.9rem;
     gap: 0.375rem;
   }
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
 `;
 
 const AdminControls = styled.div`
@@ -784,7 +800,11 @@ export default function BlogDetailClient({
         $hasImage={!!post.featuredImage}
         $imageUrl={post.featuredImage}
       >
-        {!post.featuredImage && <ImagePlaceholder>📝</ImagePlaceholder>}
+        {!post.featuredImage && (
+          <ImagePlaceholder>
+            <DocumentTextIcon />
+          </ImagePlaceholder>
+        )}
         {isAdmin && (
           <StatusBadge $status={post.status}>{post.status}</StatusBadge>
         )}
@@ -829,11 +849,11 @@ export default function BlogDetailClient({
           <CTATitle>영어 소통 능력을 키우고 싶다면?</CTATitle>
           <CTADescription>
             통역사, 직장인, 대학생, 전문가 등 다양한 백그라운드를 가진 <br />
-            멤버들과 함께하는 영어 밋업에 참여해보세요. 🚀
+            멤버들과 함께하는 영어 밋업에 참여해보세요.
             <br />
           </CTADescription>
           <CTAButton onClick={handleMeetupClick}>
-            <span>🚀</span>
+            <RocketLaunchIcon />
             밋업 확인하기
           </CTAButton>
         </CTAContent>

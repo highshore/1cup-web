@@ -1309,19 +1309,22 @@ const CopiedEventBottom = styled.div`
   gap: 8px;
   min-height: 30px; /* Ensure consistent height */
   flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
 
   @media (max-width: 768px) {
     margin-top: 4px;
     gap: 6px;
   }
+`;
 
-  /* Allow avatar stack to shrink */
-  > div:first-child {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
+const CopiedAvatarStackSlot = styled.div`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
 `;
 
 const CopiedStatusBadge = styled.span<{ $statusColor: string }>`
@@ -1335,6 +1338,9 @@ const CopiedStatusBadge = styled.span<{ $statusColor: string }>`
   text-align: center;
   min-width: 80px;
   flex-shrink: 0; /* Prevent badge from shrinking */
+  max-width: 52%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap; /* Keep badge text on one line */
   transition: all 0.2s ease;
 
@@ -1342,6 +1348,7 @@ const CopiedStatusBadge = styled.span<{ $statusColor: string }>`
     font-size: 12px;
     padding: 6px 12px;
     min-width: 80px;
+    max-width: 56%;
   }
 `;
 // --- END: Copied/Adapted Meetup Card Styles ---
@@ -1472,12 +1479,14 @@ const HeroEventCard = React.memo(
               </CopiedEventText>
             </CopiedEventInfo>
             <CopiedEventBottom data-event-bottom>
-              <UserAvatarStack
-                uids={[...meetup.leaders, ...meetup.participants]}
-                maxAvatars={maxAvatars}
-                size={30}
-                isPast={isPast}
-              />
+              <CopiedAvatarStackSlot>
+                <UserAvatarStack
+                  uids={[...meetup.leaders, ...meetup.participants]}
+                  maxAvatars={maxAvatars}
+                  size={30}
+                  isPast={isPast}
+                />
+              </CopiedAvatarStackSlot>
               <CopiedStatusBadge data-status-badge $statusColor={statusColor}>
                 {getStatusText()} ({totalParticipants}/{meetup.max_participants})
               </CopiedStatusBadge>
@@ -1627,22 +1636,30 @@ export default function HomePageClient({
         setMaxAvatars(0);
         return;
       }
-      
-      let maxFit = 1; // At least 1 avatar
-      let currentWidth = avatarSize;
-      
-      for (let i = 1; i < totalParticipants; i++) {
-        currentWidth += avatarSpacing;
-        if (currentWidth + avatarSpacing <= availableWidth) { // Check if we can add one more (including +X indicator)
-          maxFit = i + 1;
+
+      if (availableWidth < avatarSize) {
+        setMaxAvatars(0);
+        return;
+      }
+
+      let maxFit = 0;
+      const maxVisibleAvatars = Math.min(totalParticipants, 10);
+
+      for (let visibleCount = 1; visibleCount <= maxVisibleAvatars; visibleCount++) {
+        const hasMoreIndicator = totalParticipants > visibleCount;
+        const stackWidth =
+          visibleCount * avatarSpacing +
+          avatarSize * 0.4 +
+          (hasMoreIndicator ? avatarSpacing : 0);
+
+        if (stackWidth <= availableWidth) {
+          maxFit = visibleCount;
         } else {
           break;
         }
       }
-      
-      // Ensure we show at least 2 avatars if there are participants, max 10
-      const finalMax = Math.max(2, Math.min(maxFit, 10));
-      setMaxAvatars(finalMax);
+
+      setMaxAvatars(maxFit);
     };
 
     // Initial calculation

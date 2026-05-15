@@ -107,10 +107,9 @@ const HeroSection = styled.section`
   }
 
   @media (max-width: 768px) {
-    min-height: auto;
-    padding: clamp(4rem, 18vw, 6rem) ${MOBILE_NAV_GUTTER}
-      clamp(3rem, 18vw, 4.5rem);
-    display: block; /* Stack on mobile */
+    min-height: 100svh;
+    padding: 0;
+    display: flex;
   }
 `;
 
@@ -439,12 +438,15 @@ const HeroGrid = styled.div`
   }
 
   @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
+    width: min(100%, 580px);
+    padding: 0 clamp(1.15rem, 4.4vw, 1.75rem);
     display: flex;
     flex-direction: column;
-    gap: clamp(2rem, 8vw, 3rem);
-    align-items: stretch;
+    gap: clamp(1.35rem, 4.8vw, 1.9rem);
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    min-height: 100svh;
   }
 `;
 
@@ -459,8 +461,8 @@ const HeroLeft = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: clamp(1.5rem, 6vw, 2.25rem);
-    padding: clamp(8rem, 16vw, 9rem) 0 clamp(2rem, 7vw, 3rem);
+    gap: clamp(0.95rem, 3.5vw, 1.25rem);
+    padding: clamp(4.3rem, 14vw, 5.8rem) 0 0;
   }
 `;
 
@@ -474,10 +476,13 @@ const HeroTitle = styled.h1`
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 
   @media (max-width: 768px) {
-    font-size: clamp(2.2rem, 8.5vw, 3rem);
-    line-height: 1.15;
+    font-size: clamp(2.08rem, 8.35vw, 2.65rem);
+    font-weight: 760;
+    line-height: 1.18;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
+    margin-bottom: 0;
+    white-space: normal;
   }
 `;
 
@@ -490,6 +495,44 @@ const HeroSubtitle = styled.p`
   max-width: 500px;
   white-space: pre-wrap;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+    font-size: clamp(1.02rem, 3.85vw, 1.13rem);
+    line-height: 1.56;
+    max-width: 380px;
+    white-space: normal;
+  }
+`;
+
+const DesktopHeroTitle = styled(HeroTitle)`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const MobileHeroTitle = styled(HeroTitle)`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    white-space: pre-wrap;
+  }
+`;
+
+const DesktopHeroSubtitle = styled(HeroSubtitle)`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const MobileHeroSubtitle = styled(HeroSubtitle)`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    white-space: pre-wrap;
+  }
 `;
 
 const HeroRight = styled.div`
@@ -501,9 +544,11 @@ const HeroRight = styled.div`
   padding: 0 clamp(${MOBILE_NAV_GUTTER}, 3vw, 1.5rem);
   
   @media (max-width: 768px) {
-    margin-top: clamp(2rem, 8vw, 3rem);
+    margin-top: 0;
     padding: 0;
     align-items: center;
+    flex-direction: column;
+    gap: 0;
   }
 `;
 
@@ -516,7 +561,8 @@ const StackContainer = styled.div`
   justify-items: stretch;
   
   @media (max-width: 768px) {
-    max-width: 320px;
+    max-width: 100%;
+    padding: 0 14px 18px 0;
   }
 `;
 
@@ -545,11 +591,12 @@ const StackCardWrapper = styled.div<{
         case 0:
           return "translate(0px, 0px)";
         case 1:
-          return "translate(0px, 18px)";
+          return "translate(7px, 9px)";
         default:
-          return "translate(0px, 36px)";
+          return "translate(14px, 18px)";
       }
     }};
+    opacity: ${({ $position }) => ($position === 0 ? 1 : $position === 1 ? 0.82 : 0.56)};
   }
 
   z-index: ${({ $position }) => 3 - $position};
@@ -582,6 +629,34 @@ const PlaceholderCardShell = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.95);
   background: rgba(255, 255, 255, 0.99);
   box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.05);
+`;
+
+const MobileEventPrompt = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: inline-flex;
+    width: min(100%, 470px);
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.55rem 0.9rem;
+    color: #0f172a;
+    font-size: clamp(0.75rem, 2.6vw, 0.86rem);
+    font-weight: 850;
+    line-height: 1.35;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+
+    svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+  }
 `;
 
 // ... [Existing FAQ and CTA Styles] ...
@@ -735,15 +810,39 @@ const CTAButton = styled.button`
 `;
 
 const HeroCTAButton = styled(CTAButton)`
-  padding: 1rem 2.8rem;
-  font-size: 1.15rem;
-  background: rgba(246, 59, 59, 0.7);
-  border-color: rgba(246, 59, 59, 0.7);
-  color: #ffffff;
+  min-height: 52px;
+  padding: 0.875rem 1.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 850;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+  backdrop-filter: none;
+
+  &::before {
+    display: none;
+  }
 
   &:hover {
-    background: rgba(246, 59, 59, 1);
-    border-color: rgba(246, 59, 59, 1);
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
   }
 `;
 
@@ -819,6 +918,21 @@ const ScrollCard = styled.div`
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
+
+  @media (max-width: 768px) {
+    min-height: clamp(126px, 30vw, 148px);
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    border-radius: 18px;
+    box-shadow: 0 18px 34px rgba(16, 185, 129, 0.18),
+      0 16px 40px rgba(0, 0, 0, 0.24);
+
+    &:hover {
+      transform: none;
+    }
+  }
 `;
 
 const ScrollCardImageArea = styled.div`
@@ -840,6 +954,25 @@ const ScrollCardImageArea = styled.div`
     height: 100%;
     object-fit: cover;
   }
+
+  @media (max-width: 768px) {
+    width: clamp(104px, 27vw, 132px);
+    aspect-ratio: 1 / 1;
+    align-self: center;
+    flex: 0 0 clamp(104px, 27vw, 132px);
+    margin-left: clamp(0.55rem, 2vw, 0.75rem);
+    border-radius: 14px;
+    background: #0f172a;
+
+    &::before {
+      display: none;
+      padding-top: 0;
+    }
+
+    img {
+      object-fit: cover;
+    }
+  }
 `;
 
 const ScrollCardBadge = styled.div`
@@ -860,6 +993,15 @@ const ScrollCardBadge = styled.div`
   span {
     box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
   }
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const ScrollCardContent = styled.div`
@@ -869,6 +1011,13 @@ const ScrollCardContent = styled.div`
   flex-direction: column;
   gap: 0.75rem;
   background: white;
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    padding: clamp(0.78rem, 2.9vw, 0.95rem);
+    gap: clamp(0.48rem, 1.8vw, 0.62rem);
+    justify-content: center;
+  }
 `;
 
 const ScrollCardTitle = styled.h3`
@@ -881,6 +1030,11 @@ const ScrollCardTitle = styled.h3`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    font-size: clamp(0.88rem, 3.25vw, 1rem);
+    line-height: 1.28;
+  }
 `;
 
 const ScrollCardMetaContainer = styled.div`
@@ -903,6 +1057,17 @@ const ScrollCardMetaRow = styled.div`
     color: #9ca3af;
     flex-shrink: 0;
   }
+
+  @media (max-width: 768px) {
+    gap: 0.34rem;
+    font-size: clamp(0.74rem, 2.7vw, 0.82rem);
+    line-height: 1.25;
+
+    svg {
+      width: 0.78rem;
+      height: 0.78rem;
+    }
+  }
 `;
 
 const ScrollCardFooter = styled.div`
@@ -913,6 +1078,24 @@ const ScrollCardFooter = styled.div`
   padding-top: 0.75rem;
   border-top: 1px solid #f3f4f6;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+
+  @media (max-width: 768px) {
+    margin-top: 0;
+    padding-top: 0.56rem;
+    gap: 0.45rem;
+  }
+`;
+
+const ScrollAvatarStackSlot = styled.div`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
 `;
 
 // Removed JoinCta and ParticipantCount since they are replaced by UrgencyButton
@@ -979,38 +1162,63 @@ const buildStackLayers = (
 };
 
 const UrgencyButton = styled.button<{ $isHigh?: boolean }>`
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  background: ${props => props.$isHigh ? '#ef4444' : '#10b981'};
-  color: white;
-  padding: 0.6rem 1rem;
-  border-radius: 12px;
-  border: none;
-  font-size: 0.85rem;
+  min-height: 38px;
+  background: ${(props) => (props.$isHigh ? "#fff1f2" : "#0f172a")};
+  color: ${(props) => (props.$isHigh ? "#9f1239" : "#ffffff")};
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid ${(props) => (props.$isHigh ? "#fecdd3" : "#0f172a")};
+  font-family: inherit;
+  font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: ${(props) =>
+    props.$isHigh
+      ? "0 7px 16px rgba(159, 18, 57, 0.1)"
+      : "0 7px 16px rgba(15, 23, 42, 0.14)"};
 
   &:hover {
-    filter: brightness(1.1);
+    background: ${(props) => (props.$isHigh ? "#ffe4e6" : "#020617")};
+    border-color: ${(props) => (props.$isHigh ? "#fda4af" : "#020617")};
     transform: translateY(-1px);
-    box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+    box-shadow: ${(props) =>
+      props.$isHigh
+        ? "0 10px 22px rgba(159, 18, 57, 0.14)"
+        : "0 10px 24px rgba(15, 23, 42, 0.2)"};
+  }
+
+  &:active {
+    transform: translateY(0);
   }
   
   span {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: white;
-    animation: pulse 1.5s infinite;
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+    background: ${(props) => (props.$isHigh ? "#e11d48" : "#22c55e")};
+    box-shadow: 0 0 0 3px
+      ${(props) =>
+        props.$isHigh ? "rgba(225, 29, 72, 0.13)" : "rgba(34, 197, 94, 0.16)"};
+  }
+
+  @media (max-width: 768px) {
+    min-height: 32px;
+    padding: 0.38rem 0.7rem;
+    font-size: clamp(0.68rem, 2.45vw, 0.76rem);
+    max-width: 62%;
   }
 `;
 
@@ -1033,7 +1241,7 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
           }}
         />
         <ScrollCardBadge>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+          <SparklesIcon />
           {t.home.meetupCard.join}
         </ScrollCardBadge>
       </ScrollCardImageArea>
@@ -1052,12 +1260,14 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
           </ScrollCardMetaContainer>
         </div>
         <ScrollCardFooter>
-           <UserAvatarStack
-              uids={[...meetup.leaders, ...meetup.participants]}
-              maxAvatars={maxAvatars}
-              size={32}
-              userProfilesMap={userProfilesMap}
-            />
+           <ScrollAvatarStackSlot>
+             <UserAvatarStack
+                uids={[...meetup.leaders, ...meetup.participants]}
+                maxAvatars={maxAvatars}
+                size={32}
+                userProfilesMap={userProfilesMap}
+              />
+           </ScrollAvatarStackSlot>
            <UrgencyButton $isHigh={isUrgent}>
              <span />
              {isUrgent
@@ -1495,6 +1705,19 @@ export default function NewHomeClient({
   // Derived state for localized content
 
   useEffect(() => {
+    const updateMaxAvatars = () => {
+      setMaxAvatars(window.innerWidth <= 768 ? 3 : 8);
+    };
+
+    updateMaxAvatars();
+    window.addEventListener("resize", updateMaxAvatars);
+
+    return () => {
+      window.removeEventListener("resize", updateMaxAvatars);
+    };
+  }, []);
+
+  useEffect(() => {
     setCardOffset(0);
   }, [upcomingEvents.length]);
 
@@ -1698,9 +1921,16 @@ export default function NewHomeClient({
 
             <HeroGrid>
               <HeroLeft>
-                <HeroTitle>{t.home.hero.title}</HeroTitle>
-                <HeroSubtitle>{t.home.hero.subtitle}</HeroSubtitle>
+                <DesktopHeroTitle>{t.home.hero.title}</DesktopHeroTitle>
+                <MobileHeroTitle>
+                  {t.home.hero.mobileTitle ?? t.home.hero.title}
+                </MobileHeroTitle>
+                <DesktopHeroSubtitle>{t.home.hero.subtitle}</DesktopHeroSubtitle>
+                <MobileHeroSubtitle>
+                  {t.home.hero.mobileSubtitle ?? t.home.hero.subtitle}
+                </MobileHeroSubtitle>
                 <HeroCTAButton onClick={() => router.push("/meetup")}>
+                  <CalendarIconOutline />
                   {t.home.cta.button}
                 </HeroCTAButton>
               </HeroLeft>

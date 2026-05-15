@@ -728,7 +728,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       result.link ||
       `https://map.naver.com/v5/search/${encodeURIComponent(result.title)}`;
 
-    console.log("📍 Selected location:", {
+    console.log("Selected location:", {
       title: result.title,
       address: result.address,
       coordinates,
@@ -760,7 +760,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     <LocationSearchModal $isOpen={isOpen} onClick={onClose}>
       <LocationSearchContent onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle>🔍 Location Search (Naver API)</DialogTitle>
+          <DialogTitle>Location Search (Naver API)</DialogTitle>
           <CloseButton onClick={onClose}>×</CloseButton>
         </DialogHeader>
 
@@ -1229,7 +1229,7 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
                 type="button"
                 onClick={() => setShowLocationSearch(true)}
               >
-                🔍 Search
+                Search
               </SearchButton>
             </LocationInputRow>
             <LocationRow style={{ marginTop: "0.5rem" }}>
@@ -1253,8 +1253,8 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
             <div
               style={{ fontSize: "12px", color: "#666", marginTop: "0.5rem" }}
             >
-              🔍 Use the search button to find locations with automatic
-              coordinates, or 💡 coordinates will be automatically resolved from
+              Use the search button to find locations with automatic
+              coordinates, or coordinates will be automatically resolved from
               the location name/address.
             </div>
           </FormGroup>
@@ -1419,7 +1419,7 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
                       marginTop: "0.5rem",
                     }}
                   >
-                    💡 Click articles to select them as discussion topics. Max 2
+                    Click articles to select them as discussion topics. Max 2
                     articles recommended.
                   </div>
                 </>

@@ -36,6 +36,7 @@ import {
   JoinIcon,
   CancelIcon,
 } from "../../lib/features/meetup/components/meetup_icons";
+import { appLayout } from "../../lib/constants/app_layout";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase/firebase";
 import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
@@ -57,7 +58,9 @@ import { DragOverlay } from "@dnd-kit/core";
 import {
   PencilSquareIcon,
   PlusCircleIcon,
+  CheckCircleIcon,
   DocumentDuplicateIcon,
+  PhotoIcon,
   UsersIcon,
   MegaphoneIcon,
   TrashIcon,
@@ -107,19 +110,20 @@ const gradientShine = keyframes`
   }
 `;
 
-const NAVBAR_CONTENT_GAP_DESKTOP = "1.75rem";
-const NAVBAR_CONTENT_GAP_MOBILE = "1.25rem";
+const NAVBAR_CONTENT_GAP_DESKTOP = "0.75rem";
+const NAVBAR_CONTENT_GAP_MOBILE = "0.5rem";
 
 // Styled components - Day Mode Theme
 const Container = styled.div`
+  width: 100%;
   min-height: 100vh;
   background-color: transparent;
   color: #333;
-  padding: ${NAVBAR_CONTENT_GAP_DESKTOP} 0 0;
+  padding: ${NAVBAR_CONTENT_GAP_DESKTOP} 0 clamp(2.5rem, 5vw, 3rem);
 
   @media (max-width: 768px) {
     overflow-x: hidden;
-    padding-top: ${NAVBAR_CONTENT_GAP_MOBILE};
+    padding: ${NAVBAR_CONTENT_GAP_MOBILE} 0 clamp(2rem, 6vw, 2.5rem);
   }
 `;
 
@@ -148,12 +152,13 @@ const LoadingAnimation = styled.div`
 `;
 
 const SliderWrapper = styled.div`
-  max-width: 960px;
+  width: 100%;
+  max-width: ${appLayout.pageMaxWidth};
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 ${appLayout.pageGutterDesktop};
 
   @media (max-width: 768px) {
-    padding: 0 1rem;
+    padding: 0;
   }
 `;
 
@@ -192,18 +197,29 @@ const SliderPlaceholder = styled.div`
   color: #ccc;
   font-size: 3rem;
 
+  svg {
+    width: 3rem;
+    height: 3rem;
+  }
+
   @media (max-width: 768px) {
     font-size: 2rem;
+
+    svg {
+      width: 2rem;
+      height: 2rem;
+    }
   }
 `;
 
 const Content = styled.div`
-  padding: 1.5rem 1.5rem 0 1.5rem;
-  max-width: 960px;
+  width: 100%;
+  padding: 1.5rem ${appLayout.pageGutterDesktop} 0;
+  max-width: ${appLayout.pageMaxWidth};
   margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 1rem 1rem 0 1rem;
+    padding: 1rem 0 0;
     max-width: 100%;
   }
 `;
@@ -576,7 +592,8 @@ const DiscussionPoint = styled.div`
 const ActionButtons = styled.div<{ $isFloating: boolean }>`
   display: flex;
   gap: 16px;
-  max-width: 960px;
+  width: 100%;
+  max-width: calc(${appLayout.pageMaxWidth} - (${appLayout.pageGutterDesktop} * 2));
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
   z-index: 1000;
 
@@ -585,10 +602,15 @@ const ActionButtons = styled.div<{ $isFloating: boolean }>`
       ? css`
           position: fixed;
           bottom: 30px;
-          left: 20px;
-          right: 20px;
-          margin: 0 auto;
+          left: 50%;
+          right: auto;
+          width: min(
+            calc(100% - (${appLayout.pageGutterDesktop} * 2)),
+            calc(${appLayout.pageMaxWidth} - (${appLayout.pageGutterDesktop} * 2))
+          );
+          margin: 0;
           padding-bottom: 0;
+          transform: translateX(-50%);
           z-index: 1050;
         `
       : css`
@@ -608,10 +630,12 @@ const ActionButtons = styled.div<{ $isFloating: boolean }>`
         ? css`
             position: fixed !important;
             bottom: 20px !important;
-            left: 16px !important;
-            right: 16px !important;
+            left: 0 !important;
+            right: auto !important;
+            width: 100% !important;
             margin: 0 !important;
             padding-bottom: 16px;
+            transform: none !important;
             z-index: 1050 !important;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(10px);
@@ -843,8 +867,19 @@ const SuccessTitle = styled.h3`
   justify-content: center;
   gap: 0.5rem;
 
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    flex-shrink: 0;
+  }
+
   @media (max-width: 768px) {
     font-size: 1.25rem;
+
+    svg {
+      width: 1.35rem;
+      height: 1.35rem;
+    }
   }
 `;
 
@@ -1081,9 +1116,16 @@ const ParticipantItemWrapper = styled.div`
 const DraggableParticipant: React.FC<{
   participant: UserWithDetails;
   onAvatarClick: (uid: string) => void;
+  onAvatarLongPress?: (uid: string) => void;
   isLeader?: boolean;
   sessionNumber: number;
-}> = ({ participant, onAvatarClick, isLeader = false, sessionNumber }) => {
+}> = ({
+  participant,
+  onAvatarClick,
+  onAvatarLongPress,
+  isLeader = false,
+  sessionNumber,
+}) => {
   const uniqueId = `${sessionNumber}-${participant.uid}`;
   const {
     attributes,
@@ -1138,6 +1180,11 @@ const DraggableParticipant: React.FC<{
         size={isLeader ? 32 : 24}
         isLeader={isLeader}
         onClick={() => onAvatarClick(participant.uid)}
+        onLongPress={
+          onAvatarLongPress
+            ? () => onAvatarLongPress(participant.uid)
+            : undefined
+        }
       />
       <UserName>{formatParticipantDisplay(participant)}</UserName>
       {isLeader && <LeaderBadge>리더</LeaderBadge>}
@@ -1306,7 +1353,7 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
               box-shadow: 0 2px 8px rgba(0,0,0,0.3);
               cursor: pointer;
             ">
-              <span style="color: white; font-size: 16px;">📍</span>
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: white; display: block;"></span>
             </div>
           `,
           size: new window.naver.maps.Size(30, 30),
@@ -1346,13 +1393,13 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
   ]);
 
   if (loadError) {
-    return <MapLoadingPlaceholder>❌ {loadError}</MapLoadingPlaceholder>;
+    return <MapLoadingPlaceholder>{loadError}</MapLoadingPlaceholder>;
   }
 
   if (!isApiReady) {
     return (
       <MapLoadingPlaceholder>
-        🗺️ Loading Naver Maps API...
+        Loading Naver Maps API...
       </MapLoadingPlaceholder>
     );
   }
@@ -1377,7 +1424,7 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
             zIndex: 10,
           }}
         >
-          🗺️ Initializing map...
+          Initializing map...
         </div>
       )}
     </MapContainer>
@@ -1456,6 +1503,16 @@ export function EventDetailClient() {
       event.leaders.includes(currentUser.uid)
     );
   }, [currentUser, event]);
+
+  const canViewParticipantProfiles = useMemo(() => {
+    if (!currentUser || !event) return false;
+    return (
+      accountStatus === "admin" ||
+      accountStatus === "leader" ||
+      event.participants.includes(currentUser.uid) ||
+      event.leaders.includes(currentUser.uid)
+    );
+  }, [accountStatus, currentUser, event]);
 
   // Function to save seating arrangement to Firestore
   const saveSeatingArrangement = async (assignments: SeatingAssignment[]) => {
@@ -2036,25 +2093,14 @@ export function EventDetailClient() {
     }));
   };
 
-  const getCategoryEmoji = (categoryName: string): string => {
-    switch (categoryName.toLowerCase()) {
-      case "discussion":
-        return "💬";
-      case "movie night":
-        return "🎬";
-      case "picnic":
-        return "🍉";
-      case "socializing":
-        return "👥";
-      default:
-        return "📅";
-    }
+  const handleAvatarClick = (uid: string) => {
+    if (!canViewParticipantProfiles) return;
+
+    router.push(`/profile/${uid}`);
   };
 
-  const handleAvatarClick = async (uid: string) => {
-    // Only allow admin actions if user is admin
+  const handleAvatarLongPress = async (uid: string) => {
     if (!isAdmin) return;
-
     if (!event) return;
 
     // Check if the clicked user is a leader or participant
@@ -2645,14 +2691,15 @@ export function EventDetailClient() {
               />
             ))
           ) : (
-            <SliderPlaceholder>🖼️</SliderPlaceholder>
+            <SliderPlaceholder>
+              <PhotoIcon />
+            </SliderPlaceholder>
           )}
         </PhotoSlider>
       </SliderWrapper>
 
       <Content>
         <CategoryTag $category={eventCategory}>
-          <span>{getCategoryEmoji(eventCategory)}</span>
           {eventCategory}
         </CategoryTag>
 
@@ -2743,7 +2790,16 @@ export function EventDetailClient() {
                 uid={participantUid}
                 size={40}
                 isLeader={false}
-                onClick={() => handleAvatarClick(participantUid)}
+                onClick={
+                  canViewParticipantProfiles
+                    ? () => handleAvatarClick(participantUid)
+                    : undefined
+                }
+                onLongPress={
+                  isAdmin
+                    ? () => handleAvatarLongPress(participantUid)
+                    : undefined
+                }
               />
             ))}
           {event.participants.length > 12 && (
@@ -2777,7 +2833,14 @@ export function EventDetailClient() {
               uid={leaderUid}
               size={40}
               isLeader={true}
-              onClick={() => handleAvatarClick(leaderUid)}
+              onClick={
+                canViewParticipantProfiles
+                  ? () => handleAvatarClick(leaderUid)
+                  : undefined
+              }
+              onLongPress={
+                isAdmin ? () => handleAvatarLongPress(leaderUid) : undefined
+              }
             />
           ))}
         </ParticipantsGrid>
@@ -2942,10 +3005,10 @@ export function EventDetailClient() {
                     onClick={refreshSeatingArrangement}
                     disabled={seatingLoading}
                   >
-                    {seatingLoading ? "⏳" : "🔄"} 다시 배치하기
+                    {seatingLoading ? "배치 중..." : "다시 배치하기"}
                   </SeatingButton>
                   <SeatingButton onClick={() => setShowSeatingTable(false)}>
-                    ❌ 닫기
+                    닫기
                   </SeatingButton>
                 </SeatingControls>
 
@@ -2978,6 +3041,11 @@ export function EventDetailClient() {
                                   <DraggableParticipant
                                     participant={assignment.leaderDetails}
                                     onAvatarClick={handleAvatarClick}
+                                    onAvatarLongPress={
+                                      isAdmin
+                                        ? handleAvatarLongPress
+                                        : undefined
+                                    }
                                     isLeader={true}
                                     sessionNumber={sessionNumber}
                                   />
@@ -2990,6 +3058,11 @@ export function EventDetailClient() {
                                         key={`${sessionNumber}-${participant.uid}`}
                                         participant={participant}
                                         onAvatarClick={handleAvatarClick}
+                                        onAvatarLongPress={
+                                          isAdmin
+                                            ? handleAvatarLongPress
+                                            : undefined
+                                        }
                                         sessionNumber={sessionNumber}
                                       />
                                     )
@@ -3023,6 +3096,7 @@ export function EventDetailClient() {
                   <DraggableParticipant
                     participant={activeParticipantData.participant}
                     onAvatarClick={() => {}} // No action on overlay
+                    onAvatarLongPress={undefined}
                     isLeader={activeParticipantData.isLeader}
                     sessionNumber={activeParticipantData.session}
                   />
@@ -3089,9 +3163,9 @@ export function EventDetailClient() {
 
       {showParticipationSuccessDialog && (
         <DialogOverlay onClick={() => setShowParticipationSuccessDialog(false)}>
-          <SuccessDialogBox onClick={(e) => e.stopPropagation()}>
-            <SuccessTitle>
-              <span>✔️</span> 모임 신청이 완료되었습니다!
+            <SuccessDialogBox onClick={(e) => e.stopPropagation()}>
+              <SuccessTitle>
+              <CheckCircleIcon /> 모임 신청이 완료되었습니다!
             </SuccessTitle>
             <SuccessContent>
               <p>밋업 참가 신청이 성공적으로 완료되었습니다.</p>
@@ -3113,7 +3187,7 @@ export function EventDetailClient() {
                   fontSize: "1.1em",
                 }}
               >
-                그럼 모임에서 뵙겠습니다! ☕️😊
+                그럼 모임에서 뵙겠습니다.
               </p>
             </SuccessContent>
             <SuccessDialogButton

@@ -391,6 +391,11 @@ const EmptyStateIcon = styled.div`
   font-size: 3rem;
   margin-bottom: 1rem;
   opacity: 0.5;
+
+  svg {
+    width: 3rem;
+    height: 3rem;
+  }
 `;
 
 const EmptyStateTitle = styled.h3`
@@ -754,7 +759,9 @@ export default function ReportClient() {
     if (languageSuggestions.length === 0) {
       return (
         <EmptyState>
-          <EmptyStateIcon>💡</EmptyStateIcon>
+          <EmptyStateIcon>
+            <FiBookOpen />
+          </EmptyStateIcon>
           <EmptyStateTitle>No Language Suggestions</EmptyStateTitle>
           <EmptyStateMessage>
             Complete speaking sessions to receive personalized vocabulary and
@@ -857,7 +864,9 @@ export default function ReportClient() {
           </>
         ) : (
           <EmptyState>
-            <EmptyStateIcon>💬</EmptyStateIcon>
+            <EmptyStateIcon>
+              <FiMessageSquare />
+            </EmptyStateIcon>
             <EmptyStateTitle>No Transcript Available</EmptyStateTitle>
             <EmptyStateMessage>
               Complete a speaking session to view your detailed conversation

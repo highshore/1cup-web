@@ -2,6 +2,11 @@ import React from "react";
 import styled from "styled-components";
 import { colors } from "../../../constants/colors";
 import { BlogPost } from "../types/blog_types";
+import {
+  DocumentTextIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 
 // Using shared colors
 
@@ -60,8 +65,18 @@ const ImagePlaceholder = styled.div`
   font-size: 2.5rem;
   font-weight: 300;
 
+  svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
   @media (max-width: 768px) {
     font-size: 2rem;
+
+    svg {
+      width: 2rem;
+      height: 2rem;
+    }
   }
 `;
 
@@ -241,6 +256,11 @@ const ActionButton = styled.button`
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px ${colors.shadow};
 
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
   &:hover {
     background: ${colors.primaryPale};
     border-color: ${colors.accent};
@@ -319,21 +339,25 @@ export const BlogPostCard: React.FC<BlogPostCardProps> = ({
         $hasImage={!!post.featuredImage}
         $imageUrl={post.featuredImage}
       >
-        {!post.featuredImage && <ImagePlaceholder>📝</ImagePlaceholder>}
+        {!post.featuredImage && (
+          <ImagePlaceholder>
+            <DocumentTextIcon />
+          </ImagePlaceholder>
+        )}
 
         {isAdmin && (
           <>
             <StatusBadge $status={post.status}>{post.status}</StatusBadge>
             <AdminActions>
               <ActionButton className="edit" onClick={handleEdit} title="Edit">
-                ✏️
+                <PencilSquareIcon />
               </ActionButton>
               <ActionButton
                 className="delete"
                 onClick={handleDelete}
                 title="Delete"
               >
-                🗑️
+                <TrashIcon />
               </ActionButton>
             </AdminActions>
           </>

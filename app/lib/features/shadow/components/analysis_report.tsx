@@ -7,6 +7,7 @@ import {
 } from "../types/shadow";
 import { colors } from "../styles/shadow_styles";
 import CompletionModal from "./completion_modal";
+import { LightBulbIcon, TrophyIcon } from "@heroicons/react/24/outline";
 
 interface AnalysisReportProps {
   sentences: SentenceForAssessment[];
@@ -443,9 +444,9 @@ const RecommendationTitle = styled.h3`
   position: relative;
   z-index: 2;
 
-  &::before {
-    content: "💡";
-    font-size: 1.8rem;
+  svg {
+    width: 1.8rem;
+    height: 1.8rem;
     animation: ${pulseAnimation} 2s ease-in-out infinite;
   }
 `;
@@ -503,6 +504,19 @@ const FinishButton = styled.button`
   box-shadow: ${colors.shadow.lg};
   position: relative;
   overflow: hidden;
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
 
   &::before {
     content: "";
@@ -817,7 +831,7 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
       {/* Words to Practice */}
       {wordIssues.length > 0 && (
         <Section>
-          <SectionTitle>🎯 집중 연습 단어</SectionTitle>
+          <SectionTitle>집중 연습 단어</SectionTitle>
           <p
             style={{
               color: colors.text.secondary,
@@ -842,7 +856,7 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
       {/* Improvement Areas */}
       {improvementAreas.length > 0 && (
         <Section>
-          <SectionTitle>💪 개선이 필요한 영역</SectionTitle>
+          <SectionTitle>개선이 필요한 영역</SectionTitle>
           {improvementAreas.map((area, index) => (
             <ImprovementCard key={index}>
               <ImprovementTitle>{area.title}</ImprovementTitle>
@@ -856,7 +870,10 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
 
       {/* Recommendations */}
       <RecommendationBox>
-        <RecommendationTitle>다음 단계 추천</RecommendationTitle>
+        <RecommendationTitle>
+          <LightBulbIcon />
+          다음 단계 추천
+        </RecommendationTitle>
         <RecommendationList>
           {overallScore >= 80 ? (
             <>
@@ -908,7 +925,10 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
       </RecommendationBox>
 
       <FinishButton onClick={() => setIsCompletionModalOpen(true)}>
-        <span>🎯 마무리하기</span>
+        <span>
+          <TrophyIcon />
+          마무리하기
+        </span>
       </FinishButton>
 
       {isCompletionModalOpen && (

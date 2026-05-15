@@ -21,6 +21,7 @@ import { fetchBlogPosts } from "../lib/features/blog/services/blog_service";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { appLayout } from "../lib/constants/app_layout";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import { PhotoIcon } from "@heroicons/react/24/outline";
 
 // Add subtle glow animation keyframes
 const subtleGlow = keyframes`
@@ -333,8 +334,18 @@ const EventImagePlaceholder = styled.div`
   color: #ccc;
   font-size: 2.5rem;
 
+  svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
   @media (max-width: 768px) {
     font-size: 1.5rem;
+
+    svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
   }
 `;
 
@@ -656,8 +667,8 @@ const MeetupClient: React.FC = () => {
     router.push(`/meetup/${meetupId}`);
   };
 
-  const handleAvatarClick = () => {
-    // Handle avatar click - could show user profile modal, etc.
+  const handleAvatarClick = (uid: string) => {
+    router.push(`/profile/${uid}`);
   };
 
   const handleBlogClick = (blogPost: BlogPost) => {
@@ -753,7 +764,9 @@ const MeetupClient: React.FC = () => {
             {meetup.image_urls && meetup.image_urls.length > 0 ? (
               <EventImage src={meetup.image_urls[0]} alt={meetup.title} />
             ) : (
-              <EventImagePlaceholder>🖼️</EventImagePlaceholder>
+              <EventImagePlaceholder>
+                <PhotoIcon />
+              </EventImagePlaceholder>
             )}
           </EventImageContainer>
           <EventDetails>

@@ -2,7 +2,9 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import { useSpeechmatics } from './hooks/useSpeechmatics';
+import { useSoniox } from './hooks/useSoniox';
+import { useTranscriptCopilot } from './hooks/useTranscriptCopilot';
+import CopilotTranscriptSnippet from './components/CopilotTranscriptSnippet';
 import { colors } from '../lib/constants/colors';
 
 const ConversationDetailContainer = styled.div`
@@ -174,7 +176,7 @@ const Controls = styled.div`
   gap: 1rem;
 `;
 
-// Removed ProviderSelector (Speechmatics-only)
+// Removed ProviderSelector (Soniox-only)
 
 const StatusAndLegendSection = styled.div`
   padding: 1rem 2rem;
@@ -300,6 +302,76 @@ const EmptyState = styled.div`
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+`;
+
+const CopilotPanel = styled.section`
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 1rem;
+`;
+
+const CopilotHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+`;
+
+const CopilotTitle = styled.h3`
+  color: #1e3a8a;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const CopilotRefreshButton = styled.button`
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+`;
+
+const CopilotSummary = styled.p`
+  margin: 0 0 0.75rem 0;
+  color: #334155;
+  line-height: 1.5;
+`;
+
+const CopilotGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CopilotColumnTitle = styled.div`
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+`;
+
+const CopilotList = styled.ul`
+  margin: 0;
+  padding-left: 1rem;
+  color: #334155;
+  line-height: 1.55;
+  font-size: 0.875rem;
 `;
 
 const RecordIcon = () => (
@@ -475,7 +547,7 @@ const SpeedButton = styled.button<{ $active: boolean }>`
 `;
 
 export default function RecordTranscriptClient() {
-  // Speechmatics-only
+  // Soniox-only
   
   // Audio recording state
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -502,21 +574,30 @@ export default function RecordTranscriptClient() {
   const lastAudioSentAtRef = useRef<number>(0);
   const keepAliveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
-  // Speechmatics hook
+  // Soniox hook
   const {
-    speechmaticsResults: { activePartialSegment: speechmaticsPartial, finalTranscript: speechmaticsFinal },
-    speechmaticsError,
-    isSpeechmaticsSocketOpen,
-    startSpeechmatics,
-    stopSpeechmatics,
-    sendSpeechmaticsAudio,
-  } = useSpeechmatics();
+    sonioxResults: { activePartialSegment: sonioxPartial, finalTranscript: sonioxFinal },
+    sonioxError,
+    isSonioxSocketOpen,
+    startSoniox,
+    stopSoniox,
+    sendSonioxAudio,
+  } = useSoniox();
 
-  // Unified state (Speechmatics)
-  const activePartialSegment = speechmaticsPartial;
-  const finalTranscript = speechmaticsFinal;
-  const transcriptionError = speechmaticsError;
-  const isSocketOpen = isSpeechmaticsSocketOpen;
+  // Unified state (Soniox)
+  const activePartialSegment = sonioxPartial;
+  const finalTranscript = sonioxFinal;
+  const transcriptionError = sonioxError;
+  const isSocketOpen = isSonioxSocketOpen;
+
+  const {
+    messages: copilotMessages,
+    isThinking: isCopilotThinking,
+  } = useTranscriptCopilot({
+    finalTranscript,
+    activePartialSegment,
+    isListening: isRecording,
+  });
 
   // Request microphone permission on component mount
   useEffect(() => {
@@ -531,7 +612,7 @@ export default function RecordTranscriptClient() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // Set up audio context for Speechmatics
+      // Set up audio context for Soniox
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
 
@@ -549,7 +630,7 @@ export default function RecordTranscriptClient() {
         const audioData = event.data;
         if (audioData && audioData.byteLength > 0) {
           lastAudioSentAtRef.current = Date.now();
-          sendSpeechmaticsAudio(audioData);
+          sendSonioxAudio(audioData);
         }
       };
 
@@ -610,7 +691,7 @@ export default function RecordTranscriptClient() {
       console.error('Error setting up audio processing:', error);
       return false;
     }
-  }, [sendSpeechmaticsAudio, isRecording]);
+  }, [sendSonioxAudio, isRecording]);
 
   // Audio player control functions
   const toggleAudioPlayback = useCallback(() => {
@@ -694,7 +775,7 @@ export default function RecordTranscriptClient() {
         mediaStreamRef.current = null;
       }
 
-      await stopSpeechmatics(true);
+      await stopSoniox(true);
       if (keepAliveIntervalRef.current) {
         clearInterval(keepAliveIntervalRef.current);
         keepAliveIntervalRef.current = null;
@@ -714,7 +795,7 @@ export default function RecordTranscriptClient() {
         setCurrentlyHighlightedSnippet(null);
         setIsAudioPlaying(false);
         
-        let providerStarted = await startSpeechmatics();
+        let providerStarted = await startSoniox();
         
         if (!providerStarted) {
           setIsStarting(false);
@@ -723,7 +804,7 @@ export default function RecordTranscriptClient() {
 
         const audioSetup = await setupAudioProcessing();
         if (!audioSetup) {
-          await stopSpeechmatics(false);
+          await stopSoniox(false);
           setIsStarting(false);
           return;
         }
@@ -737,13 +818,13 @@ export default function RecordTranscriptClient() {
           clearInterval(keepAliveIntervalRef.current);
         }
         keepAliveIntervalRef.current = setInterval(() => {
-          if (!isSpeechmaticsSocketOpen) return;
+          if (!isSonioxSocketOpen) return;
           const now = Date.now();
           if (now - lastAudioSentAtRef.current > 1500) {
             // Send ~256ms of silence
             const silent = new Float32Array(4096); // 4096 samples at 16kHz ≈ 256ms
             try {
-              sendSpeechmaticsAudio(silent.buffer);
+              sendSonioxAudio(silent.buffer);
               lastAudioSentAtRef.current = now;
             } catch (e) {
               // noop
@@ -755,7 +836,7 @@ export default function RecordTranscriptClient() {
         setIsStarting(false);
       }
     }
-  }, [isRecording, hasPermission, startSpeechmatics, setupAudioProcessing, stopSpeechmatics, isSpeechmaticsSocketOpen, sendSpeechmaticsAudio]);
+  }, [isRecording, hasPermission, startSoniox, setupAudioProcessing, stopSoniox, isSonioxSocketOpen, sendSonioxAudio]);
 
   // Resume AudioContext when tab becomes visible
   useEffect(() => {
@@ -785,19 +866,22 @@ export default function RecordTranscriptClient() {
 
   // Group transcript results into snippets for rendering
   const createTranscriptSnippets = useCallback((results: any[]) => {
-    const validResults = results.filter(result => result.alternatives && result.alternatives.length > 0 && result.alternatives[0].content);
+    const validResults = results.filter(result => {
+      const content = result.alternatives?.[0]?.content;
+      return content && content.trim().toLowerCase() !== "<end>";
+    });
     if (validResults.length === 0) return [];
     
     const snippets: Array<{ 
       speaker: string;
       startTime: number;
-      words: Array<{ content: string; confidence?: number; }>; 
+      words: Array<{ content: string; confidence?: number; type?: string; preserveSpacing?: boolean; }>;
     }> = [];
     
     let currentSnippet: { 
       speaker: string;
       startTime: number;
-      words: Array<{ content: string; confidence?: number; }>; 
+      words: Array<{ content: string; confidence?: number; type?: string; preserveSpacing?: boolean; }>;
     } | null = null;
     
     validResults.forEach(result => {
@@ -811,10 +895,20 @@ export default function RecordTranscriptClient() {
         currentSnippet = { 
           speaker, 
           startTime: result.start_time,
-          words: [{ content: word.content, confidence: word.confidence }]
+          words: [{
+            content: word.content,
+            confidence: word.confidence,
+            type: result.type || "word",
+            preserveSpacing: result.preserveSpacing,
+          }]
         };
       } else {
-        currentSnippet.words.push({ content: word.content, confidence: word.confidence });
+        currentSnippet.words.push({
+          content: word.content,
+          confidence: word.confidence,
+          type: result.type || "word",
+          preserveSpacing: result.preserveSpacing,
+        });
       }
     });
     
@@ -880,6 +974,45 @@ export default function RecordTranscriptClient() {
     return combined;
   }, [finalSnippets, partialSnippets]);
 
+  const conversationItems = useMemo(() => {
+    const sortedMessages = [...copilotMessages].sort(
+      (a, b) =>
+        a.transcriptItemCount - b.transcriptItemCount ||
+        a.createdAt - b.createdAt
+    );
+    const items: Array<
+      | { type: "transcript"; snippet: (typeof displaySnippets)[number]; snippetIndex: number }
+      | { type: "copilot"; message: (typeof copilotMessages)[number] }
+      | { type: "copilot-thinking" }
+    > = [];
+    let cumulativeItems = 0;
+    let messageIndex = 0;
+
+    displaySnippets.forEach((snippet, snippetIndex) => {
+      items.push({ type: "transcript", snippet, snippetIndex });
+      cumulativeItems += snippet.words.length;
+
+      while (
+        messageIndex < sortedMessages.length &&
+        sortedMessages[messageIndex].transcriptItemCount <= cumulativeItems
+      ) {
+        items.push({ type: "copilot", message: sortedMessages[messageIndex] });
+        messageIndex += 1;
+      }
+    });
+
+    while (messageIndex < sortedMessages.length) {
+      items.push({ type: "copilot", message: sortedMessages[messageIndex] });
+      messageIndex += 1;
+    }
+
+    if (isCopilotThinking) {
+      items.push({ type: "copilot-thinking" });
+    }
+
+    return items;
+  }, [copilotMessages, displaySnippets, isCopilotThinking]);
+
   // Handle audio time updates for transcript highlighting
   const handleAudioTimeUpdate = useCallback(() => {
     if (!audioPlayerRef.current) return;
@@ -934,7 +1067,7 @@ export default function RecordTranscriptClient() {
   }, [recordedAudioUrl, handleAudioTimeUpdate]);
 
   // Placeholder data for Keywords and Speakers sections
-  const keywords = ["Speechmatics", "Real-time", "Diarization", "API", "Transcription"];
+  const keywords = ["Soniox", "Real-time", "Diarization", "Language ID", "Transcription"];
   const speakers = [{ name: "Speaker 1", percentage: "60%" }, { name: "Speaker 2", percentage: "40%" }];
 
   return (
@@ -1018,7 +1151,21 @@ export default function RecordTranscriptClient() {
             </AppSpeechDetails>
 
             {/* Render combined transcript snippets */}
-            {displaySnippets.map((snippet, index) => {
+            {conversationItems.map((item) => {
+              if (item.type === "copilot-thinking") {
+                return <CopilotTranscriptSnippet key="copilot-thinking" isThinking />;
+              }
+
+              if (item.type === "copilot") {
+                return (
+                  <CopilotTranscriptSnippet
+                    key={`copilot-${item.message.id}`}
+                    message={item.message}
+                  />
+                );
+              }
+
+              const { snippet, snippetIndex: index } = item;
               const speakerColor = getSpeakerColor(snippet.speaker);
               const hasAudio = !!recordedAudioUrl;
               const isHighlighted = currentlyHighlightedSnippet === index;
@@ -1054,7 +1201,7 @@ export default function RecordTranscriptClient() {
                           $isPartial={(word as any).isPartial}
                         >
                           {word.content}
-                          {!isPunctuationOrAttached(word) ? ' ' : ''}
+                          {!word.preserveSpacing && !isPunctuationOrAttached(word) ? ' ' : ''}
                         </WordSpan>
                       ))}
                     </TranscriptBody>
@@ -1063,7 +1210,7 @@ export default function RecordTranscriptClient() {
               );
             })}
 
-            {displaySnippets.length === 0 && (
+            {conversationItems.length === 0 && (
               <EmptyState>
                 {isRecording ? 'Listening...' : 'Click "Start Recording" to begin.'}
               </EmptyState>

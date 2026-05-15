@@ -184,8 +184,11 @@ const CalloutBox = styled.div`
   }
 
   &::before {
-    content: "✨";
-    font-size: 1.2rem;
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: ${colors.accent};
     padding: 0.4rem;
     display: flex;
     align-items: center;
@@ -193,8 +196,9 @@ const CalloutBox = styled.div`
     background-color: transparent;
 
     @media (max-width: 768px) {
-      font-size: 1.1rem;
-      padding: 0.3rem;
+      width: 0.48rem;
+      height: 0.48rem;
+      padding: 0.28rem;
     }
   }
 `;
@@ -767,6 +771,11 @@ const SaveButton = styled.button`
     font-size: 0.8rem;
     padding: 0.3rem 0.7rem;
   }
+
+  svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
 `;
 
 const SavedIndicator = styled.div`
@@ -1039,9 +1048,10 @@ const TranslationToggleButton = styled.button`
   }
 
   &::before {
-    content: "🇰🇷";
+    content: "KO";
     margin-right: 3px;
-    font-size: 0.8rem;
+    font-size: 0.66rem;
+    font-weight: 700;
   }
 
   &.active {
@@ -1306,6 +1316,11 @@ const AdminButton = styled.button`
   @media (max-width: 768px) {
     font-size: 0.75rem;
     padding: 0.35rem 0.7rem;
+  }
+
+  svg {
+    width: 0.9rem;
+    height: 0.9rem;
   }
 `;
 
@@ -3066,7 +3081,10 @@ const Article = () => {
                 Discussion Topics
               </SectionTitle>
               {accountStatus === "admin" && !isEditingTopics && (
-                <AdminButton onClick={startEditingTopics}>✏️ 편집</AdminButton>
+                <AdminButton onClick={startEditingTopics}>
+                  <PencilSquareIcon />
+                  편집
+                </AdminButton>
               )}
             </div>
 
@@ -3074,13 +3092,21 @@ const Article = () => {
               <div>
                 <AdminControlsContainer>
                   <AdminButton onClick={saveTopics} disabled={isSavingTopics}>
-                    {isSavingTopics ? "저장 중..." : "💾 저장"}
+                    {isSavingTopics ? (
+                      "저장 중..."
+                    ) : (
+                      <>
+                        <CheckIcon />
+                        저장
+                      </>
+                    )}
                   </AdminButton>
                   <AdminButton
                     onClick={cancelEditingTopics}
                     disabled={isSavingTopics}
                   >
-                    ❌ 취소
+                    <XMarkIcon />
+                    취소
                   </AdminButton>
                 </AdminControlsContainer>
 
@@ -3406,7 +3432,14 @@ const Article = () => {
                         }}
                         disabled={isSaving}
                       >
-                        {isSaving ? "저장 중..." : "⭐️ 단어장에 추가"}
+                        {isSaving ? (
+                          "저장 중..."
+                        ) : (
+                          <>
+                            <PlusIcon />
+                            단어장에 추가
+                          </>
+                        )}
                       </SaveButton>
                     )
                   ) : null}

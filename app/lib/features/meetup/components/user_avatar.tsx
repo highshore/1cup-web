@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { fetchUserProfile, UserProfile } from "../services/user_service";
 // Use the public directory image path
@@ -10,6 +10,7 @@ interface UserAvatarProps {
   isLeader?: boolean;
   className?: string;
   onClick?: () => void;
+  onLongPress?: () => void;
   index?: number; // For stacking position
   isPast?: boolean; // For greyscale effect
   profile?: UserProfile | null; // Allow passing pre-fetched profile
@@ -52,6 +53,7 @@ const AvatarContainer = styled.div<{
   transition: transform 0.2s;
   filter: ${(props) => (props.$isPast ? "grayscale(50%)" : "none")};
   overflow: hidden;
+  touch-action: manipulation;
 
   &:hover {
     transform: ${(props) => (props.$isClickable ? "scale(1.1)" : "none")};
@@ -112,6 +114,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   isLeader = false,
   className,
   onClick,
+  onLongPress,
   index,
   isPast = false,
   profile,
@@ -119,6 +122,15 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const [userProfile, setUserProfile] = useState<UserProfile | null>(profile || null);
   const [loading, setLoading] = useState(!profile);
   const [imageError, setImageError] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPressRef = useRef(false);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   const getAvatarColor = (uid: string, isLeader: boolean): string => {
     const colors = isLeader
@@ -156,8 +168,50 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     else setLoading(false);
   }, [uid, profile]);
 
+  useEffect(() => {
+    return () => clearLongPressTimer();
+  }, []);
+
   const handleImageError = () => {
     setImageError(true);
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!onLongPress) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    didLongPressRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      onLongPress();
+    }, 550);
+  };
+
+  const handlePointerEnd = () => {
+    clearLongPressTimer();
+  };
+
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (didLongPressRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      didLongPressRef.current = false;
+      return;
+    }
+
+    if (!onClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClick();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    onClick();
   };
 
   const displayName =
@@ -170,6 +224,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     userProfile?.photoURL && userProfile.photoURL.trim() !== "";
   const imageSrc =
     hasValidPhotoURL && !imageError ? userProfile.photoURL : DEFAULT_AVATAR_URL;
+  const isInteractive = !!onClick || !!onLongPress;
 
   return (
     <AvatarContainer
@@ -177,10 +232,20 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       $bgColor={avatarColor}
       $index={index}
       $isPast={isPast}
-      $isClickable={!!onClick}
+      $isClickable={isInteractive}
       $isGdgMember={isGdgMember}
       className={className}
-      onClick={onClick}
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
+      onContextMenu={(e) => {
+        if (onLongPress) e.preventDefault();
+      }}
     >
       {loading ? (
         <LoadingSpinner $size={size} />
@@ -215,6 +280,7 @@ const AvatarStackContainer = styled.div<{ $size: number; $width: number }>`
   position: relative;
   height: ${(props) => props.$size}px;
   width: ${(props) => props.$width}px;
+  max-width: 100%;
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;

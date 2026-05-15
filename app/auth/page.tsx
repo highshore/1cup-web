@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, ReactNode, Suspense } from "react";
+import { useState, useEffect, useMemo, ReactNode, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "../lib/firebase/firebase";
-import styled from "styled-components";
-import { colors } from "../lib/constants/colors";
+import styled, { keyframes } from "styled-components";
+import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import {
   doc,
   getDoc,
@@ -13,7 +13,6 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import Footer from "../lib/components/footer";
 import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -25,71 +24,240 @@ const KAKAO_CLIENT_ID = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
 const KAKAO_REDIRECT_URI = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
 const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}&response_type=code`;
 
+const SIGN_IN_PHRASES = [
+  "Welcome",
+  "영어 한잔",
+  "Join us",
+] as const;
+
+const TYPING_SPEED_MS = 82;
+const ERASING_SPEED_MS = 40;
+const HOLD_MS = 1300;
+
+const caretBlink = keyframes`
+  0%, 49% {
+    opacity: 1;
+  }
+
+  50%, 100% {
+    opacity: 0;
+  }
+`;
+
+const sanitizeRedirectUrl = (value: string | null) => {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+
+  if (value.startsWith("/auth") || value.startsWith("/kakao_callback")) {
+    return "/";
+  }
+
+  return value;
+};
+
 declare global {
   interface Window {
     recaptchaVerifier: RecaptchaVerifier;
   }
 }
 
-// Using shared colors
-
 // Layout Components
 const PageWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
-  background-color: ${colors.primaryBg};
+  background: #ffffff;
+  color: #141414;
 `;
 
-const ContentContainer = styled.div`
-  width: 100%; /* Take full width within PageWrapper */
-  max-width: 550px; /* Max width from original AuthContainer */
-  margin: -135px 0 0 0;
-  padding: 50px 2rem; /* Adjusted vertical padding from 50px to 30px */
-  min-height: calc(
-    100vh
-  ); /* Adjusted for Header height (70px) + Footer height (60px) */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-`;
+const SplitLayout = styled.div`
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: 3fr 2fr;
 
-const Header = styled.header`
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  width: 100%;
-`;
-
-const Logo = styled.img`
-  height: 28px;
-  width: auto;
-  margin-left: 8px;
-`;
-
-// Utility Components
-const StyledLink = styled(Link)`
-  text-decoration: none;
-  color: ${colors.text.dark};
-  font-size: 14px;
-  margin: 4px 0px;
-  text-align: center;
-  &:hover {
-    text-decoration: underline;
+  @media (max-width: 1023px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 42dvh) minmax(0, 58dvh);
+    height: 100dvh;
+    overflow: hidden;
   }
 `;
 
-const FooterWrapper = styled.div`
-  width: 100%;
-  padding: 15px 0;
-  text-align: center;
-  font-size: 14px;
-  color: ${colors.text.medium};
-  background-color: ${colors.primaryBg};
-  margin-top: 50px;
+const MediaPane = styled.section`
+  position: relative;
+  min-height: 44vh;
+  overflow: hidden;
+  background: #000000;
+
+  @media (max-width: 1023px) {
+    min-height: 0;
+    height: 42dvh;
+  }
 `;
+
+const BackgroundVideo = styled.video`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 40% center;
+`;
+
+const VideoOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+`;
+
+const BrandBar = styled.div`
+  position: relative;
+  z-index: 1;
+  padding: 24px;
+
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 40px;
+  }
+`;
+
+const BrandLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+`;
+
+const Logo = styled.img`
+  display: block;
+  height: 36px;
+  width: auto;
+
+  @media (max-width: 480px) {
+    height: 30px;
+  }
+`;
+
+const FormPane = styled.section`
+  display: flex;
+  min-height: 56vh;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 48px 24px;
+  text-align: center;
+
+  @media (max-width: 1023px) {
+    min-height: 0;
+    height: 58dvh;
+    padding: 28px 24px max(28px, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    padding: 48px 40px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 48px 56px;
+  }
+
+  @media (min-width: 1024px) {
+    padding: 48px 64px;
+  }
+
+  @media (min-width: 1280px) {
+    padding: 48px 80px;
+  }
+`;
+
+const FormContent = styled.div`
+  display: flex;
+  width: 100%;
+  max-width: 420px;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const GreetingWrap = styled.div`
+  display: flex;
+  min-height: 88px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  @media (max-width: 480px) {
+    min-height: 78px;
+  }
+`;
+
+const GreetingText = styled.h1`
+  color: #111111;
+  font-size: clamp(1.8rem, 5.8vw, 2.4rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: 0;
+  margin: 0;
+`;
+
+const Caret = styled.span`
+  display: inline-block;
+  width: 1px;
+  height: 0.95em;
+  margin-left: 0.25rem;
+  transform: translateY(0.08em);
+  background: #111111;
+  animation: ${caretBlink} 1s step-end infinite;
+`;
+
+function SignInGreeting() {
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [characterCount, setCharacterCount] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const currentPhrase = useMemo(
+    () => SIGN_IN_PHRASES[phraseIndex],
+    [phraseIndex]
+  );
+
+  useEffect(() => {
+    const atPhraseEnd = characterCount === currentPhrase.length;
+    const atPhraseStart = characterCount === 0;
+
+    const timeout = window.setTimeout(
+      () => {
+        if (!isDeleting && atPhraseEnd) {
+          setIsDeleting(true);
+          return;
+        }
+
+        if (isDeleting && atPhraseStart) {
+          setIsDeleting(false);
+          setPhraseIndex((current) => (current + 1) % SIGN_IN_PHRASES.length);
+          return;
+        }
+
+        setCharacterCount((current) => current + (isDeleting ? -1 : 1));
+      },
+      !isDeleting && atPhraseEnd
+        ? HOLD_MS
+        : isDeleting
+        ? ERASING_SPEED_MS
+        : TYPING_SPEED_MS
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [characterCount, currentPhrase, isDeleting]);
+
+  return (
+    <GreetingWrap>
+      <GreetingText>
+        {currentPhrase.slice(0, characterCount)}
+        <Caret />
+      </GreetingText>
+    </GreetingWrap>
+  );
+}
 
 // Layout Component
 interface AuthLayoutProps {
@@ -99,27 +267,26 @@ interface AuthLayoutProps {
 function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <PageWrapper>
-      <Header>
-        {" "}
-        {/* Moved Header outside ContentContainer, directly under PageWrapper */}
-        <StyledLink
-          href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            textDecoration: "none",
-          }}
-        >
-          <Logo
-            src="/images/logos/1cup_logo_new.svg"
-            alt="1 Cup English Logo"
-          />
-        </StyledLink>
-      </Header>
-      <ContentContainer>{children}</ContentContainer>
-      <FooterWrapper>
-        <Footer />
-      </FooterWrapper>
+      <SplitLayout>
+        <MediaPane>
+          <BackgroundVideo autoPlay loop muted playsInline preload="auto">
+            <source src="/signin/bg_video.mp4" type="video/mp4" />
+          </BackgroundVideo>
+          <VideoOverlay />
+          <BrandBar>
+            <BrandLink href="/">
+              <Logo
+                src="/images/logos/1cup_logo_new_white.svg"
+                alt="1 Cup English"
+              />
+            </BrandLink>
+          </BrandBar>
+        </MediaPane>
+
+        <FormPane>
+          <FormContent>{children}</FormContent>
+        </FormPane>
+      </SplitLayout>
     </PageWrapper>
   );
 }
@@ -129,61 +296,64 @@ function AuthLayout({ children }: AuthLayoutProps) {
 // ... START: Original styled components from auth.tsx that are still in use ...
 const AuthPageHeading = styled.h1`
   /* Renamed from Header in original auth.tsx */
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1.8rem;
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  font-weight: 600;
+  margin: 0 0 0.75rem;
   width: 100%;
   text-align: center;
-  color: ${colors.text.dark};
+  color: #111827;
+  letter-spacing: 0;
+  line-height: 1.16;
 `;
 
 const Description = styled.p`
-  margin-bottom: 2rem;
+  margin: 0 0 2rem;
   text-align: center;
-  color: ${colors.text.light};
+  color: #6b7280;
   width: 100%;
-  font-size: 1.1rem;
-  line-height: 1.5;
+  font-size: 1rem;
+  line-height: 1.6;
 `;
 
 const FormContainer = styled.div`
   /* Specific to phone auth part */
-  margin-top: 2.5rem;
   width: 100%;
 `;
 
 const Input = styled.input`
   /* Specific to phone auth part */
   width: 100%;
-  padding: 1rem 1.2rem;
-  margin-bottom: 1.2rem;
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 50px;
-  font-size: 1.1rem;
+  min-height: 54px;
+  padding: 0.95rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  font-size: 1rem;
 
   &:focus {
     outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 2px rgba(200, 162, 122, 0.2);
+    border-color: #111827;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
   }
 `;
 
 const Button = styled.button`
   /* Specific to phone auth part */
   width: 100%;
-  padding: 1rem;
-  background-color: ${colors.primary};
+  min-height: 54px;
+  padding: 0.9rem 1rem;
+  background-color: #111827;
   color: white;
-  border: none;
-  border-radius: 50px;
+  border: 1px solid #111827;
+  border-radius: 18px;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-weight: 760;
+  font-size: 1rem;
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: ${colors.primaryLight};
-    transform: translateY(-2px);
+    background-color: #020617;
+    transform: translateY(-1px);
   }
 
   &:disabled {
@@ -215,8 +385,8 @@ const SuccessMessage = styled(Message)`
 `;
 
 const HelpText = styled.p`
-  font-size: 1rem;
-  color: ${colors.text.light};
+  font-size: 0.92rem;
+  color: #6b7280;
   margin-top: -0.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
@@ -237,38 +407,45 @@ const ChoiceButtonContainer = styled.div`
   gap: 1rem;
 `;
 
+const SignInChoices = styled(ChoiceButtonContainer)`
+  margin-top: clamp(1.1rem, 4.8vw, 1.75rem);
+`;
+
 const ChoiceButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 1rem 3rem;
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 12px; // Slightly more rounded
+  min-height: 56px;
+  padding: 0.9rem 1.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 1.05rem; // Slightly smaller than main button
-  transition: all 0.2s ease;
-  gap: 0.8rem; // Space between icon and text
+  font-weight: 760;
+  font-size: 1rem;
+  transition: filter 140ms ease, border-color 140ms ease,
+    box-shadow 140ms ease, transform 140ms ease;
+  gap: 0.75rem;
+  font-family: inherit;
 
   img,
   svg {
-    width: 24px; // Control icon size
-    height: 24px; // Control icon size
+    width: 22px;
+    height: 22px;
   }
 
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 `;
 
 const PhoneButton = styled(ChoiceButton)`
   background-color: white;
-  color: ${colors.text.dark};
+  color: #111827;
 
   &:hover {
-    border-color: ${colors.accent};
+    border-color: #111827;
   }
 `;
 
@@ -299,10 +476,8 @@ function AuthContent() {
 
   // Handle Kakao Login Click
   const handleKakaoLoginClick = () => {
-    // Get redirect URL from URL params
-    const redirectUrl = searchParams.get("redirect");
+    const redirectUrl = sanitizeRedirectUrl(searchParams.get("redirect"));
 
-    // Store the redirect URL in localStorage for after authentication
     if (redirectUrl) {
       localStorage.setItem("returnUrl", redirectUrl);
     }
@@ -399,8 +574,12 @@ function AuthContent() {
         }
 
         // Get return URL from URL params or localStorage, fallback to /profile
-        const redirectFromParams = searchParams.get("redirect");
-        const returnUrlFromStorage = localStorage.getItem("returnUrl");
+        const redirectFromParams = sanitizeRedirectUrl(
+          searchParams.get("redirect")
+        );
+        const returnUrlFromStorage = sanitizeRedirectUrl(
+          localStorage.getItem("returnUrl")
+        );
         const finalUrl =
           redirectFromParams || returnUrlFromStorage || "/profile";
 
@@ -597,38 +776,29 @@ function AuthContent() {
       {loading && <GlobalLoadingScreen />}
 
       <AuthLayout>
-        <AuthPageHeading>
-          {showPhoneAuth ? "휴대폰으로 로그인" : "Welcome! 🥳"}
-        </AuthPageHeading>
-        <Description>
-          {showPhoneAuth
-            ? "인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증은 Google의 보안 서비스를 통해 진행합니다."
-            : ""}
-        </Description>
+        {showPhoneAuth ? (
+          <>
+            <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
+            <Description>
+              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증은 Google의 보안
+              서비스를 통해 진행합니다.
+            </Description>
+          </>
+        ) : (
+          <SignInGreeting />
+        )}
 
         {!showPhoneAuth ? (
-          <ChoiceButtonContainer>
+          <SignInChoices>
             <PhoneButton onClick={handlePhoneAuthClick}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"
-                />
-              </svg>
+              <DevicePhoneMobileIcon />
               전화번호로 시작하기
             </PhoneButton>
             <KakaoButton onClick={handleKakaoLoginClick}>
               <img src="/images/kakao_btn.png" alt="Kakao Login" />
               카카오로 시작하기
             </KakaoButton>
-          </ChoiceButtonContainer>
+          </SignInChoices>
         ) : (
           <FormContainer>
             {!verificationId ? (

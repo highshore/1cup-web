@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { colors } from "../styles/shadow_styles";
+import { ChatBubbleLeftRightIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 
 interface CompletionModalProps {
   isOpen: boolean;
@@ -95,6 +96,19 @@ const OptionButton = styled.button<{ variant: "primary" | "secondary" }>`
   position: relative;
   overflow: hidden;
 
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
   ${(props) =>
     props.variant === "primary"
       ? `
@@ -184,11 +198,17 @@ const CompletionModal: React.FC<CompletionModalProps> = ({
 
         <OptionsContainer>
           <OptionButton variant="primary" onClick={onAIChat}>
-            <span>💬 오늘 학습한 내용에 대해 AI와 이야기하기</span>
+            <span>
+              <ChatBubbleLeftRightIcon />
+              오늘 학습한 내용에 대해 AI와 이야기하기
+            </span>
           </OptionButton>
 
           <OptionButton variant="secondary" onClick={onFinish}>
-            <span>✅ 그냥 끝내기</span>
+            <span>
+              <CheckCircleIcon />
+              그냥 끝내기
+            </span>
           </OptionButton>
         </OptionsContainer>
       </ModalContent>

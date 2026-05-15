@@ -31,6 +31,7 @@ import WordDefinitionModal from "../lib/features/shadow/components/word_definiti
 import SentenceAssessment from "../lib/features/shadow/components/sentence_assessment";
 import AnalysisReport from "../lib/features/shadow/components/analysis_report";
 import { convertToEmbedUrl } from "../lib/features/shadow/utils/shadow_utils";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 
 // Remaining styled components that are specific to this page
 const TranscriptContainer = styled.div`
@@ -2011,7 +2012,10 @@ const ShadowClient: React.FC = () => {
                   : colors.text.muted,
             }}
           >
-            <span>✏️ Write</span>
+            <span>
+              <PencilSquareIcon width={16} height={16} />
+              Write
+            </span>
           </Button>
           <Button
             onClick={() => handleInputModeChange(index, "speak")}

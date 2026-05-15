@@ -23,7 +23,7 @@ const MOBILE_NAV_GUTTER = "1rem";
 
 const MembershipSectionContainer = styled.section`
   padding: 5rem 0;
-  background: #0f172a;
+  background: #101418;
   position: relative;
   overflow: hidden;
   color: white;
@@ -115,42 +115,15 @@ const ChartGridOverlay = styled.div`
   pointer-events: none;
 `;
 
-const floatOrb = keyframes`
-  0% { transform: translate3d(0, 0, 0); opacity: 0.45; }
-  100% { transform: translate3d(20px, -15px, 0); opacity: 0.75; }
-`;
-
-const ChartOrb = styled.div`
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  background: radial-gradient(circle, rgba(255, 120, 150, 0.35), transparent 70%);
-  filter: blur(6px);
-  top: -40px;
-  right: -60px;
-  animation: ${floatOrb} 9s ease-in-out infinite alternate;
-  pointer-events: none;
-`;
-
-const spinCycle = keyframes`
-  0% { transform: perspective(1000px) rotateY(0deg) scale(1); }
-  10% { transform: perspective(1000px) rotateY(0deg) scale(1.02); }
-  20% { transform: perspective(1000px) rotateY(360deg) scale(1.05); }
-  35% { transform: perspective(1000px) rotateY(360deg) scale(1.02); }
-  100% { transform: perspective(1000px) rotateY(360deg) scale(1); }
-`;
-
 const ComparisonChart = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
-  transform: perspective(1000px) rotateY(-5deg);
-  transition: transform 0.5s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 42px -18px rgba(0, 0, 0, 0.55);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
   overflow: hidden;
-  animation: ${spinCycle} 5s ease-in-out infinite;
   width: 100%;
   max-width: none;
 
@@ -167,17 +140,12 @@ const ComparisonChart = styled.div`
   }
   
   &:hover {
-    transform: perspective(1000px) rotateY(0deg) scale(1.02);
     border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.62);
   }
   
   @media (max-width: 768px) {
-    transform: none;
     width: 100%;
-    &:hover {
-      transform: none;
-    }
   }
 `;
 
@@ -272,22 +240,29 @@ const CostValue = styled.span<{ $highlight?: boolean }>`
 `;
 
 const CtaButton = styled.button`
-  background: rgb(128, 0, 33);
-  color: white;
-  font-weight: 700;
-  padding: 1rem 2.5rem;
-  border-radius: 9999px;
-  transition: all 0.2s;
-  box-shadow: 0 10px 15px -3px rgba(128, 0, 33, 0.3);
+  min-height: 48px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 850;
+  padding: 0.85rem 1.55rem;
+  border-radius: 999px;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
   width: max-content;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.94);
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1rem;
 
   &:hover {
-    background: rgb(150, 0, 40);
-    transform: translateY(-2px);
-    box-shadow: 0 15px 20px -3px rgba(128, 0, 33, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.98);
+    transform: translateY(-1px);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   @media (max-width: 768px) {
@@ -399,7 +374,6 @@ export default function MembershipSection() {
           <RightCol>
             <ComparisonChart>
               <ChartGridOverlay />
-              <ChartOrb />
               <ChartHeader>
                 <span>{t.home.pricingNew.chart.header}</span>
                 <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>{t.home.pricingNew.chart.unit}</span>

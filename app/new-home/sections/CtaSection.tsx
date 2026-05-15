@@ -1,14 +1,9 @@
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 import { useRouter } from "next/navigation";
 import { RocketLaunchIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 
 const MOBILE_NAV_GUTTER = "1rem";
-
-const gradientShine = keyframes`
-  0% { background-position: -100% center; }
-  100% { background-position: 100% center; }
-`;
 
 const CTAWrapper = styled.div`
   width: 100%;
@@ -33,7 +28,7 @@ const CTAInner = styled.div`
 
 const CTASectionCard = styled.div`
   position: relative;
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 3rem;
   text-align: center;
   width: 100%;
@@ -98,42 +93,35 @@ const CTADescription = styled.p`
 `;
 
 const CTAButton = styled.button`
-  padding: 0.85rem 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
+  min-height: 48px;
+  padding: 0.78rem 1.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 850;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   position: relative;
   overflow: hidden;
-  color: white;
+  color: #0f172a;
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 15%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 85%
-    );
-    background-size: 200% 100%;
-    animation: ${gradientShine} 2.5s linear infinite;
-    pointer-events: none;
-  }
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   svg {
@@ -142,7 +130,8 @@ const CTAButton = styled.button`
   }
 
   @media (max-width: 768px) {
-    padding: 0.875rem 1.5rem;
+    width: min(100%, 260px);
+    padding: 0.875rem 1.35rem;
     font-size: 0.9rem;
     gap: 0.375rem;
   }

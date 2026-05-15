@@ -18,13 +18,15 @@ const en = {
   home: {
     hero: {
       title: "Business English Community\nHosted in Seoul",
+      mobileTitle: "Business English Community\nHosted in Seoul",
       subtitle: "Network with Professionals in Korea. Test your Communication Skills.",
+      mobileSubtitle: "Built by an interpreter\nfor serious speaking practice",
       eventPrompt: "Join the English meetup led by an interpreter right now!",
     },
     cta: {
       title: "Want to improve your English communication skills?",
       description: "Join the English meetup with members from diverse backgrounds\nincluding interpreters, office workers, university students, and experts.",
-      button: "Available Meetups 👉🏻",
+      button: "Available Meetups",
     },
     meetupCard: {
       join: "Join Now",

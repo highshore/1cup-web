@@ -1,6 +1,3 @@
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
-
 // User profile interface
 export interface UserProfile {
   uid: string;
@@ -15,7 +12,7 @@ export interface UserProfile {
 // Cache for user profiles to avoid repeated fetches
 const userCache = new Map<string, UserProfile>();
 
-// Fetch a single user profile by UID from Firestore
+// Fetch a single public-safe user profile by UID.
 export const fetchUserProfile = async (
   uid: string
 ): Promise<UserProfile | null> => {
@@ -25,49 +22,28 @@ export const fetchUserProfile = async (
   }
 
   try {
-    const userDocRef = doc(db, "users", uid);
-    const userDocSnap = await getDoc(userDocRef);
+    const response = await fetch(`/api/public-profile/${encodeURIComponent(uid)}`, {
+      cache: "no-store",
+    });
 
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data();
-
-      // Ensure photoURL is undefined if empty or whitespace
-      const photoURL = userData.photoURL || userData.avatar;
-      const cleanPhotoURL =
-        photoURL && photoURL.trim() !== "" ? photoURL : undefined;
-
+    if (response.ok) {
+      const userData = await response.json();
       const profile: UserProfile = {
         uid,
-        displayName:
-          userData.displayName ||
-          userData.name ||
-          `User ${uid.substring(0, 6)}`,
-        photoURL: cleanPhotoURL,
-        email: userData.email, // Only if you store and need it
-        account_status: userData.account_status,
-        hasActiveSubscription: userData.hasActiveSubscription === true,
-        gdg_member: userData.gdg_member === true,
+        displayName: userData.displayName || `User ${uid.substring(0, 6)}`,
+        photoURL: userData.photoURL || undefined,
+        account_status: userData.badges?.role || undefined,
+        hasActiveSubscription: userData.badges?.activeMember === true,
+        gdg_member: userData.badges?.gdgMember === true,
       };
       userCache.set(uid, profile);
       return profile;
-    } else {
-      // User document doesn't exist in Firestore, create a fallback
-      console.warn(
-        `User document not found in Firestore for UID: ${uid}. Using fallback.`
-      );
-      const fallbackProfile: UserProfile = {
-        uid,
-        displayName: `User ${uid.substring(0, 6)}`,
-        photoURL: undefined, // No photoURL if not in Firestore
-        account_status: undefined,
-        hasActiveSubscription: false,
-      };
-      userCache.set(uid, fallbackProfile);
-      return fallbackProfile;
     }
+
+    throw new Error(`Public profile fetch failed: ${response.status}`);
   } catch (error) {
     console.error(
-      `Error fetching user profile for ${uid} from Firestore:`,
+      `Error fetching public profile for ${uid}:`,
       error
     );
     // Return minimal profile on error
@@ -121,16 +97,8 @@ export const isUserAdmin = async (uid: string): Promise<boolean> => {
 // Check if a user has an active subscription
 export const hasActiveSubscription = async (uid: string): Promise<boolean> => {
   try {
-    const userDocRef = doc(db, "users", uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data();
-      return userData.hasActiveSubscription === true;
-    } else {
-      console.warn(`User document not found for UID: ${uid}`);
-      return false;
-    }
+    const profile = await fetchUserProfile(uid);
+    return profile?.hasActiveSubscription === true;
   } catch (error) {
     console.error(`Error checking subscription status for ${uid}:`, error);
     return false;

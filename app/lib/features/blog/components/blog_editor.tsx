@@ -6,6 +6,7 @@ import {
   uploadBlogImage,
   validateBlogImageFiles,
 } from "../services/blog_image_service";
+import { DocumentTextIcon, PhotoIcon } from "@heroicons/react/24/outline";
 
 // Using shared colors
 
@@ -403,6 +404,11 @@ const ContentImageButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.375rem;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
 
   &:hover {
     background: ${colors.accent};
@@ -821,14 +827,16 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
                 onClick={handleInsertHeader}
                 disabled={uploading}
               >
-                📝 헤더 삽입
+                <DocumentTextIcon />
+                헤더 삽입
               </ContentImageButton>
               <ContentImageButton
                 type="button"
                 onClick={handleContentImageButtonClick}
                 disabled={uploading}
               >
-                🖼️ 이미지 삽입
+                <PhotoIcon />
+                이미지 삽입
               </ContentImageButton>
               <HelpText style={{ margin: 0, fontSize: "0.75rem" }}>
                 헤더는 '# ' 형식으로, 이미지는 마크다운 형식으로 커서 위치에
