@@ -127,17 +127,10 @@ const COMMUNITY_LEADERS = [
 
 const DISCUSSION_SEATS = [
   { id: "lead", top: "18%", left: "50%", accent: "#F37021", delay: "0s", leader: true },
-  { id: "member-a", top: "38%", left: "78%", accent: "#CBD5E1", delay: "0.35s", leader: false },
-  { id: "member-b", top: "72%", left: "67%", accent: "#CBD5E1", delay: "0.7s", leader: false },
-  { id: "member-c", top: "72%", left: "33%", accent: "#CBD5E1", delay: "1.05s", leader: false },
-  { id: "member-d", top: "38%", left: "22%", accent: "#CBD5E1", delay: "1.4s", leader: false },
-] as const;
-
-const DISCUSSION_SIGNALS = [
-  { id: "signal-a", top: "31%", left: "61%", delay: "0.15s" },
-  { id: "signal-b", top: "53%", left: "70%", delay: "0.55s" },
-  { id: "signal-c", top: "65%", left: "50%", delay: "0.95s" },
-  { id: "signal-d", top: "53%", left: "30%", delay: "1.35s" },
+  { id: "member-a", top: "40%", left: "78%", accent: "#CBD5E1", delay: "0.35s", leader: false },
+  { id: "member-b", top: "74%", left: "66%", accent: "#CBD5E1", delay: "0.7s", leader: false },
+  { id: "member-c", top: "74%", left: "34%", accent: "#CBD5E1", delay: "1.05s", leader: false },
+  { id: "member-d", top: "40%", left: "22%", accent: "#CBD5E1", delay: "1.4s", leader: false },
 ] as const;
 
 const NETWORKING_IMAGES = [
@@ -385,14 +378,42 @@ const MemberLogoMark = styled.div<{ $scale: number }>`
   }
 `;
 
-const TopicVideoSection = styled.section`
-  width: 100%;
+const MethodFlowWrapper = styled.div`
+  position: relative;
+  overflow: hidden;
   background: #f3f3f1;
+
+  &::before {
+    position: absolute;
+    top: clamp(4.4rem, 7vw, 5.6rem);
+    bottom: clamp(4.5rem, 8vw, 6rem);
+    left: max(0.75rem, calc((100vw - 960px) / 2 - 8px));
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      rgba(243, 112, 33, 0.18),
+      rgba(15, 23, 42, 0.14),
+      rgba(15, 23, 42, 0.08)
+    );
+    content: "";
+  }
+
+  @media (max-width: 768px) {
+    &::before {
+      left: 0.65rem;
+    }
+  }
+`;
+
+const TopicVideoSection = styled.section`
+  position: relative;
+  width: 100%;
   color: #0f172a;
   padding: clamp(4rem, 7vw, 5.5rem) 0;
 `;
 
 const TopicVideoLayout = styled.div`
+  position: relative;
   max-width: 960px;
   margin: 0 auto;
   padding: 0 20px;
@@ -401,10 +422,28 @@ const TopicVideoLayout = styled.div`
   gap: clamp(2rem, 5vw, 3.5rem);
   align-items: center;
 
+  &::before {
+    position: absolute;
+    top: 0.15rem;
+    left: -8px;
+    z-index: 1;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 3px solid #f3f3f1;
+    border-radius: 999px;
+    background: #F37021;
+    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
+    content: "";
+  }
+
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
     padding: 0 ${MOBILE_NAV_GUTTER};
     text-align: center;
+
+    &::before {
+      left: 0.25rem;
+    }
   }
 `;
 
@@ -422,6 +461,10 @@ const TopicVideoSectionTitle = styled.p`
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.08em;
+
+  @media (max-width: 768px) {
+    padding-left: 1rem;
+  }
 `;
 
 const TopicVideoTitle = styled.h2`
@@ -512,10 +555,10 @@ const leaderSeatPulse = keyframes`
 
 const leaderTablePulse = keyframes`
   0%, 100% {
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
   }
   50% {
-    box-shadow: 0 30px 74px rgba(243, 112, 33, 0.18);
+    box-shadow: 0 22px 52px rgba(243, 112, 33, 0.14);
   }
 `;
 
@@ -531,20 +574,39 @@ const leaderChatPulse = keyframes`
 `;
 
 const LeaderMethodSection = styled.section`
+  position: relative;
   width: 100%;
-  background: #f3f3f1;
   color: #0f172a;
   padding: 0 0 clamp(4.5rem, 8vw, 6rem);
   overflow: hidden;
 `;
 
 const LeaderMethodLayout = styled.div`
+  position: relative;
   max-width: 960px;
   margin: 0 auto;
   padding: 0 20px;
 
+  &::before {
+    position: absolute;
+    top: 0.15rem;
+    left: -8px;
+    z-index: 1;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 3px solid #f3f3f1;
+    border-radius: 999px;
+    background: #F37021;
+    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
+    content: "";
+  }
+
   @media (max-width: 768px) {
     padding: 0 ${MOBILE_NAV_GUTTER};
+
+    &::before {
+      left: 0.25rem;
+    }
   }
 `;
 
@@ -596,29 +658,23 @@ const LeaderMethodContent = styled.div`
 
 const LeaderDiagramPanel = styled.div`
   position: relative;
-  min-height: 430px;
+  min-height: 390px;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 10px;
-  background:
-    radial-gradient(circle at 50% 46%, rgba(243, 112, 33, 0.08), transparent 32%),
-    linear-gradient(145deg, #ffffff, rgba(255, 255, 255, 0.7));
+  background: #ffffff;
   box-shadow: 0 18px 54px rgba(15, 23, 42, 0.06);
 
-  &::before,
-  &::after {
+  &::before {
     position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(68%, 270px);
+    aspect-ratio: 1;
     border: 1px solid rgba(15, 23, 42, 0.06);
     border-radius: 999px;
+    transform: translate(-50%, -50%);
     content: "";
-  }
-
-  &::before {
-    inset: 3rem;
-  }
-
-  &::after {
-    inset: 6.25rem;
   }
 
   @media (max-width: 860px) {
@@ -631,20 +687,18 @@ const LeaderDiagramTable = styled.div`
   top: 50%;
   left: 50%;
   z-index: 1;
-  width: min(45%, 178px);
-  aspect-ratio: 1.28 / 1;
+  width: min(39%, 150px);
+  aspect-ratio: 1.22 / 1;
   border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 38px;
-  background:
-    linear-gradient(145deg, #111827, #283241),
-    radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 58%);
+  border-radius: 30px;
+  background: #111827;
   transform: translate(-50%, -50%) rotate(-8deg);
   animation: ${leaderTablePulse} 3.8s ease-in-out infinite;
 
   &::before {
     position: absolute;
-    inset: 18%;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    inset: 22%;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: inherit;
     content: "";
   }
@@ -661,15 +715,15 @@ const LeaderDiagramSeat = styled.div<{
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
   z-index: ${({ $leader }) => ($leader ? 4 : 2)};
-  width: ${({ $leader }) => ($leader ? "clamp(3.8rem, 8.6vw, 5rem)" : "clamp(3rem, 7vw, 3.85rem)")};
-  height: ${({ $leader }) => ($leader ? "clamp(3.8rem, 8.6vw, 5rem)" : "clamp(3rem, 7vw, 3.85rem)")};
+  width: ${({ $leader }) => ($leader ? "clamp(3.5rem, 8vw, 4.5rem)" : "clamp(2.45rem, 6vw, 3.15rem)")};
+  height: ${({ $leader }) => ($leader ? "clamp(3.5rem, 8vw, 4.5rem)" : "clamp(2.45rem, 6vw, 3.15rem)")};
   border: ${({ $leader }) =>
-    $leader ? "8px solid rgba(255, 255, 255, 0.92)" : "7px solid rgba(255, 255, 255, 0.7)"};
+    $leader ? "8px solid rgba(255, 255, 255, 0.94)" : "6px solid rgba(255, 255, 255, 0.72)"};
   border-radius: 999px;
   background:
     radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.72), transparent 22%),
     ${({ $accent }) => $accent};
-  opacity: ${({ $leader }) => ($leader ? 1 : 0.68)};
+  opacity: ${({ $leader }) => ($leader ? 1 : 0.52)};
   box-shadow: ${({ $leader }) =>
     $leader
       ? "0 0 0 16px rgba(243, 112, 33, 0.12), 0 18px 42px rgba(243, 112, 33, 0.22)"
@@ -688,25 +742,6 @@ const LeaderDiagramSeat = styled.div<{
     background: rgba(15, 23, 42, 0.18);
     content: "";
   }
-`;
-
-const LeaderDiagramSignal = styled.div<{
-  $top: string;
-  $left: string;
-  $delay: string;
-}>`
-  position: absolute;
-  top: ${({ $top }) => $top};
-  left: ${({ $left }) => $left};
-  z-index: 0;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: #F37021;
-  opacity: 0.42;
-  transform: translate(-50%, -50%);
-  animation: ${leaderSeatPulse} 3.2s ease-in-out infinite;
-  animation-delay: ${({ $delay }) => $delay};
 `;
 
 const LeaderChatBubble = styled.div<{
@@ -959,20 +994,39 @@ const LeaderStatItem = styled.li`
 `;
 
 const NetworkingMethodSection = styled.section`
+  position: relative;
   width: 100%;
-  background: #f3f3f1;
   color: #0f172a;
   padding: 0 0 clamp(4.5rem, 8vw, 6rem);
   overflow: hidden;
 `;
 
 const NetworkingMethodLayout = styled.div`
+  position: relative;
   max-width: 960px;
   margin: 0 auto;
   padding: 0 20px;
 
+  &::before {
+    position: absolute;
+    top: 0.15rem;
+    left: -8px;
+    z-index: 1;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 3px solid #f3f3f1;
+    border-radius: 999px;
+    background: #F37021;
+    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
+    content: "";
+  }
+
   @media (max-width: 768px) {
     padding: 0 ${MOBILE_NAV_GUTTER};
+
+    &::before {
+      left: 0.25rem;
+    }
   }
 `;
 
@@ -987,6 +1041,10 @@ const NetworkingMethodSectionTitle = styled.p`
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.08em;
+
+  @media (max-width: 768px) {
+    padding-left: 1rem;
+  }
 `;
 
 const NetworkingMethodTitle = styled.h2`
@@ -1013,17 +1071,19 @@ const NetworkingMethodDescription = styled.p`
 
 const NetworkingGallery = styled.div`
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
-  gap: clamp(0.85rem, 2vw, 1.1rem);
+  grid-template-columns: minmax(0, 1.08fr) minmax(190px, 0.78fr);
+  gap: clamp(0.72rem, 1.6vw, 0.9rem);
   align-items: stretch;
+  max-width: 800px;
 
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
+    max-width: 100%;
   }
 `;
 
 const NetworkingImageCard = styled.figure<{ $featured?: boolean }>`
-  min-height: ${({ $featured }) => ($featured ? "430px" : "207px")};
+  min-height: ${({ $featured }) => ($featured ? "330px" : "158px")};
   margin: 0;
   overflow: hidden;
   border-radius: 10px;
@@ -1039,13 +1099,13 @@ const NetworkingImageCard = styled.figure<{ $featured?: boolean }>`
   }
 
   @media (max-width: 760px) {
-    min-height: ${({ $featured }) => ($featured ? "330px" : "210px")};
+    min-height: ${({ $featured }) => ($featured ? "250px" : "170px")};
   }
 `;
 
 const NetworkingSideGallery = styled.div`
   display: grid;
-  gap: clamp(0.85rem, 2vw, 1.1rem);
+  gap: clamp(0.72rem, 1.6vw, 0.9rem);
 `;
 
 
@@ -2986,228 +3046,222 @@ export default function NewHomeClient({
                 </MemberLogoViewport>
               </MemberBackgroundLayout>
             </MemberBackgroundSection>
-            <TopicVideoSection>
-              <TopicVideoLayout>
-                <TopicVideoCopy>
-                  <TopicVideoSectionTitle>
-                    {t.home.topicVideo.sectionTitle}
-                  </TopicVideoSectionTitle>
-                  <TopicVideoTitle>{t.home.topicVideo.title}</TopicVideoTitle>
-                  <TopicVideoDescription>
-                    {t.home.topicVideo.description}
-                  </TopicVideoDescription>
-                  <TopicVideoCaveat>{t.home.topicVideo.caveat}</TopicVideoCaveat>
-                </TopicVideoCopy>
-                <TopicVideoFrameGroup>
-                  <TopicVideoFrame>
-                    <iframe
-                      src="https://www.youtube-nocookie.com/embed/yKtw4of-j0E?start=2143&end=2203&rel=0&modestbranding=1"
-                      title={t.home.topicVideo.videoTitle}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
-                  </TopicVideoFrame>
-                  <TopicVideoCaption>
-                    <span>{t.home.topicVideo.videoTitle}</span>
-                  </TopicVideoCaption>
-                </TopicVideoFrameGroup>
-              </TopicVideoLayout>
-            </TopicVideoSection>
-            <LeaderMethodSection>
-              <LeaderMethodLayout>
-                <LeaderMethodHeader>
-                  <div>
-                    <LeaderMethodSectionTitle>
-                      {t.home.leaderMethod.sectionTitle}
-                    </LeaderMethodSectionTitle>
-                    <LeaderMethodTitle>{t.home.leaderMethod.title}</LeaderMethodTitle>
-                  </div>
-                </LeaderMethodHeader>
-
-                <LeaderMethodContent>
-                  <LeaderDiagramPanel aria-hidden="true">
-                    <LeaderDiagramTable />
-                    {DISCUSSION_SEATS.map((seat) => (
-                      <LeaderDiagramSeat
-                        key={seat.id}
-                        $top={seat.top}
-                        $left={seat.left}
-                        $accent={seat.accent}
-                        $delay={seat.delay}
-                        $leader={seat.leader}
+            <MethodFlowWrapper>
+              <TopicVideoSection>
+                <TopicVideoLayout>
+                  <TopicVideoCopy>
+                    <TopicVideoSectionTitle>
+                      {t.home.topicVideo.sectionTitle}
+                    </TopicVideoSectionTitle>
+                    <TopicVideoTitle>{t.home.topicVideo.title}</TopicVideoTitle>
+                    <TopicVideoDescription>
+                      {t.home.topicVideo.description}
+                    </TopicVideoDescription>
+                    <TopicVideoCaveat>{t.home.topicVideo.caveat}</TopicVideoCaveat>
+                  </TopicVideoCopy>
+                  <TopicVideoFrameGroup>
+                    <TopicVideoFrame>
+                      <iframe
+                        src="https://www.youtube-nocookie.com/embed/yKtw4of-j0E?start=2143&end=2203&rel=0&modestbranding=1"
+                        title={t.home.topicVideo.videoTitle}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
                       />
-                    ))}
-                    {DISCUSSION_SIGNALS.map((signal) => (
-                      <LeaderDiagramSignal
-                        key={signal.id}
-                        $top={signal.top}
-                        $left={signal.left}
-                        $delay={signal.delay}
-                      />
-                    ))}
-                    <LeaderChatBubble
-                      $top="25%"
-                      $left="61%"
-                      $leader
-                      $delay="0s"
-                    >
-                      <span />
-                      <span />
-                      <span />
-                    </LeaderChatBubble>
-                    <LeaderChatBubble
-                      $top="58%"
-                      $left="24%"
-                      $leader={false}
-                      $delay="1.6s"
-                    >
-                      <span />
-                      <span />
-                      <span />
-                    </LeaderChatBubble>
-                    <LeaderChatBubble
-                      $top="70%"
-                      $left="72%"
-                      $leader={false}
-                      $delay="3.2s"
-                    >
-                      <span />
-                      <span />
-                      <span />
-                    </LeaderChatBubble>
-                  </LeaderDiagramPanel>
+                    </TopicVideoFrame>
+                    <TopicVideoCaption>
+                      <span>{t.home.topicVideo.videoTitle}</span>
+                    </TopicVideoCaption>
+                  </TopicVideoFrameGroup>
+                </TopicVideoLayout>
+              </TopicVideoSection>
+              <LeaderMethodSection>
+                <LeaderMethodLayout>
+                  <LeaderMethodHeader>
+                    <div>
+                      <LeaderMethodSectionTitle>
+                        {t.home.leaderMethod.sectionTitle}
+                      </LeaderMethodSectionTitle>
+                      <LeaderMethodTitle>{t.home.leaderMethod.title}</LeaderMethodTitle>
+                    </div>
+                  </LeaderMethodHeader>
 
-                  <LeaderAccordionColumn>
-                    <LeaderLocationTabs aria-label="리더 지역 선택">
-                      {LEADER_LOCATIONS.map((location) => (
-                        <LeaderLocationButton
-                          key={location.id}
-                          type="button"
-                          $active={selectedLeaderLocation === location.id}
-                          onClick={() => handleLeaderLocationChange(location.id)}
-                        >
-                          {location.label}
-                        </LeaderLocationButton>
+                  <LeaderMethodContent>
+                    <LeaderDiagramPanel aria-hidden="true">
+                      <LeaderDiagramTable />
+                      {DISCUSSION_SEATS.map((seat) => (
+                        <LeaderDiagramSeat
+                          key={seat.id}
+                          $top={seat.top}
+                          $left={seat.left}
+                          $accent={seat.accent}
+                          $delay={seat.delay}
+                          $leader={seat.leader}
+                        />
                       ))}
-                    </LeaderLocationTabs>
+                      <LeaderChatBubble
+                        $top="25%"
+                        $left="61%"
+                        $leader
+                        $delay="0s"
+                      >
+                        <span />
+                        <span />
+                        <span />
+                      </LeaderChatBubble>
+                      <LeaderChatBubble
+                        $top="58%"
+                        $left="24%"
+                        $leader={false}
+                        $delay="1.6s"
+                      >
+                        <span />
+                        <span />
+                        <span />
+                      </LeaderChatBubble>
+                      <LeaderChatBubble
+                        $top="70%"
+                        $left="72%"
+                        $leader={false}
+                        $delay="3.2s"
+                      >
+                        <span />
+                        <span />
+                        <span />
+                      </LeaderChatBubble>
+                    </LeaderDiagramPanel>
 
-                    {visibleLeaders.length > 0 ? (
-                      <LeaderAccordionList aria-label="커뮤니티 리더 프로필">
-                        {visibleLeaders.map((leader) => {
-                          const isActive = activeLeader?.id === leader.id;
+                    <LeaderAccordionColumn>
+                      <LeaderLocationTabs aria-label="리더 지역 선택">
+                        {LEADER_LOCATIONS.map((location) => (
+                          <LeaderLocationButton
+                            key={location.id}
+                            type="button"
+                            $active={selectedLeaderLocation === location.id}
+                            onClick={() => handleLeaderLocationChange(location.id)}
+                          >
+                            {location.label}
+                          </LeaderLocationButton>
+                        ))}
+                      </LeaderLocationTabs>
 
-                          return (
-                            <LeaderAccordionItem
-                              key={leader.id}
-                              $active={isActive}
-                              $accent={leader.accent}
-                            >
-                              <LeaderAccordionButton
-                                type="button"
-                                aria-expanded={isActive}
-                                onClick={() =>
-                                  setActiveLeaderId(isActive ? "" : leader.id)
-                                }
-                              >
-                                <LeaderAccordionSummary>
-                                  <LeaderAccordionInitial $accent={leader.accent}>
-                                    {leader.imageSrc ? (
-                                      <img src={leader.imageSrc} alt={leader.name} loading="lazy" />
-                                    ) : (
-                                      leader.initials
-                                    )}
-                                  </LeaderAccordionInitial>
-                                  <span>
-                                    <LeaderAccordionName>{leader.name}</LeaderAccordionName>
-                                    <LeaderAccordionRole>
-                                      {leader.highlights[0]}
-                                    </LeaderAccordionRole>
-                                  </span>
-                                  <LeaderAccordionIcon
-                                    $active={isActive}
-                                    aria-hidden="true"
-                                  />
-                                </LeaderAccordionSummary>
-                              </LeaderAccordionButton>
-                              <LeaderAccordionPanel
+                      {visibleLeaders.length > 0 ? (
+                        <LeaderAccordionList aria-label="커뮤니티 리더 프로필">
+                          {visibleLeaders.map((leader) => {
+                            const isActive = activeLeader?.id === leader.id;
+
+                            return (
+                              <LeaderAccordionItem
+                                key={leader.id}
                                 $active={isActive}
-                                aria-hidden={!isActive}
+                                $accent={leader.accent}
                               >
-                                <LeaderAccordionPanelInner>
-                                  <LeaderAccordionContent>
-                                    <LeaderStatList>
-                                      {leader.highlights.slice(1).map((highlight, itemIndex) => (
-                                        <LeaderStatItem key={highlight}>
-                                          <strong>
-                                            {String(itemIndex + 1).padStart(2, "0")}
-                                          </strong>
-                                          <span>{highlight}</span>
-                                        </LeaderStatItem>
-                                      ))}
-                                    </LeaderStatList>
-                                    <LeaderLinkedInButton
-                                      href={leader.linkedinUrl || undefined}
-                                      target={leader.linkedinUrl ? "_blank" : undefined}
-                                      rel={leader.linkedinUrl ? "noreferrer" : undefined}
-                                      $disabled={!leader.linkedinUrl}
-                                      aria-disabled={!leader.linkedinUrl}
-                                    >
-                                      {leader.linkedinUrl
-                                        ? "LinkedIn"
-                                        : t.home.leaderMethod.linkedInUnavailable}
-                                      <ArrowTopRightOnSquareIcon aria-hidden="true" />
-                                    </LeaderLinkedInButton>
-                                  </LeaderAccordionContent>
-                                </LeaderAccordionPanelInner>
-                              </LeaderAccordionPanel>
-                            </LeaderAccordionItem>
-                          );
-                        })}
-                      </LeaderAccordionList>
-                    ) : (
-                      <LeaderEmptyState>
-                        <div>
-                          <strong>{t.home.leaderMethod.emptyTitle}</strong>
-                          <br />
-                          {t.home.leaderMethod.emptyDescription}
-                        </div>
-                      </LeaderEmptyState>
-                    )}
-                  </LeaderAccordionColumn>
-                </LeaderMethodContent>
-              </LeaderMethodLayout>
-            </LeaderMethodSection>
-            <NetworkingMethodSection>
-              <NetworkingMethodLayout>
-                <NetworkingMethodHeader>
-                  <NetworkingMethodSectionTitle>
-                    {t.home.networkingMethod.sectionTitle}
-                  </NetworkingMethodSectionTitle>
-                  <NetworkingMethodTitle>
-                    {t.home.networkingMethod.title}
-                  </NetworkingMethodTitle>
-                  <NetworkingMethodDescription>
-                    {t.home.networkingMethod.description}
-                  </NetworkingMethodDescription>
-                </NetworkingMethodHeader>
-                <NetworkingGallery>
-                  <NetworkingImageCard $featured>
-                    <img
-                      src={NETWORKING_IMAGES[0].src}
-                      alt={NETWORKING_IMAGES[0].alt}
-                      loading="lazy"
-                    />
-                  </NetworkingImageCard>
-                  <NetworkingSideGallery>
-                    {NETWORKING_IMAGES.slice(1).map((image) => (
-                      <NetworkingImageCard key={image.id}>
-                        <img src={image.src} alt={image.alt} loading="lazy" />
-                      </NetworkingImageCard>
-                    ))}
-                  </NetworkingSideGallery>
-                </NetworkingGallery>
-              </NetworkingMethodLayout>
-            </NetworkingMethodSection>
+                                <LeaderAccordionButton
+                                  type="button"
+                                  aria-expanded={isActive}
+                                  onClick={() =>
+                                    setActiveLeaderId(isActive ? "" : leader.id)
+                                  }
+                                >
+                                  <LeaderAccordionSummary>
+                                    <LeaderAccordionInitial $accent={leader.accent}>
+                                      {leader.imageSrc ? (
+                                        <img src={leader.imageSrc} alt={leader.name} loading="lazy" />
+                                      ) : (
+                                        leader.initials
+                                      )}
+                                    </LeaderAccordionInitial>
+                                    <span>
+                                      <LeaderAccordionName>{leader.name}</LeaderAccordionName>
+                                      <LeaderAccordionRole>
+                                        {leader.highlights[0]}
+                                      </LeaderAccordionRole>
+                                    </span>
+                                    <LeaderAccordionIcon
+                                      $active={isActive}
+                                      aria-hidden="true"
+                                    />
+                                  </LeaderAccordionSummary>
+                                </LeaderAccordionButton>
+                                <LeaderAccordionPanel
+                                  $active={isActive}
+                                  aria-hidden={!isActive}
+                                >
+                                  <LeaderAccordionPanelInner>
+                                    <LeaderAccordionContent>
+                                      <LeaderStatList>
+                                        {leader.highlights.slice(1).map((highlight, itemIndex) => (
+                                          <LeaderStatItem key={highlight}>
+                                            <strong>
+                                              {String(itemIndex + 1).padStart(2, "0")}
+                                            </strong>
+                                            <span>{highlight}</span>
+                                          </LeaderStatItem>
+                                        ))}
+                                      </LeaderStatList>
+                                      <LeaderLinkedInButton
+                                        href={leader.linkedinUrl || undefined}
+                                        target={leader.linkedinUrl ? "_blank" : undefined}
+                                        rel={leader.linkedinUrl ? "noreferrer" : undefined}
+                                        $disabled={!leader.linkedinUrl}
+                                        aria-disabled={!leader.linkedinUrl}
+                                      >
+                                        {leader.linkedinUrl
+                                          ? "LinkedIn"
+                                          : t.home.leaderMethod.linkedInUnavailable}
+                                        <ArrowTopRightOnSquareIcon aria-hidden="true" />
+                                      </LeaderLinkedInButton>
+                                    </LeaderAccordionContent>
+                                  </LeaderAccordionPanelInner>
+                                </LeaderAccordionPanel>
+                              </LeaderAccordionItem>
+                            );
+                          })}
+                        </LeaderAccordionList>
+                      ) : (
+                        <LeaderEmptyState>
+                          <div>
+                            <strong>{t.home.leaderMethod.emptyTitle}</strong>
+                            <br />
+                            {t.home.leaderMethod.emptyDescription}
+                          </div>
+                        </LeaderEmptyState>
+                      )}
+                    </LeaderAccordionColumn>
+                  </LeaderMethodContent>
+                </LeaderMethodLayout>
+              </LeaderMethodSection>
+              <NetworkingMethodSection>
+                <NetworkingMethodLayout>
+                  <NetworkingMethodHeader>
+                    <NetworkingMethodSectionTitle>
+                      {t.home.networkingMethod.sectionTitle}
+                    </NetworkingMethodSectionTitle>
+                    <NetworkingMethodTitle>
+                      {t.home.networkingMethod.title}
+                    </NetworkingMethodTitle>
+                    <NetworkingMethodDescription>
+                      {t.home.networkingMethod.description}
+                    </NetworkingMethodDescription>
+                  </NetworkingMethodHeader>
+                  <NetworkingGallery>
+                    <NetworkingImageCard $featured>
+                      <img
+                        src={NETWORKING_IMAGES[0].src}
+                        alt={NETWORKING_IMAGES[0].alt}
+                        loading="lazy"
+                      />
+                    </NetworkingImageCard>
+                    <NetworkingSideGallery>
+                      {NETWORKING_IMAGES.slice(1).map((image) => (
+                        <NetworkingImageCard key={image.id}>
+                          <img src={image.src} alt={image.alt} loading="lazy" />
+                        </NetworkingImageCard>
+                      ))}
+                    </NetworkingSideGallery>
+                  </NetworkingGallery>
+                </NetworkingMethodLayout>
+              </NetworkingMethodSection>
+            </MethodFlowWrapper>
             <StatsSection stats={homeStats} />
             <TopicsShowcase topics={initialTopics || []} />
             <MembershipSection />
