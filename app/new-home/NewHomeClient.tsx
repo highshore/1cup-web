@@ -96,6 +96,7 @@ const COMMUNITY_LEADERS = [
     role: "안암 커뮤니티 매니저",
     initials: "K",
     accent: "#F37021",
+    imageSrc: "/assets/homepage/member1.webp",
     linkedinUrl: "",
     highlights: [
       "(현) Fortune 500 기업 AI 엔지니어",
@@ -112,6 +113,7 @@ const COMMUNITY_LEADERS = [
     role: "안암 커뮤니티 매니저",
     initials: "J",
     accent: "#800021",
+    imageSrc: "",
     linkedinUrl: "",
     highlights: [
       "(현) Fortune 500 기업 PM",
@@ -124,11 +126,11 @@ const COMMUNITY_LEADERS = [
 ] as const;
 
 const DISCUSSION_SEATS = [
-  { id: "lead", top: "18%", left: "50%", accent: "#F37021", delay: "0s" },
-  { id: "member-a", top: "38%", left: "78%", accent: "#101418", delay: "0.35s" },
-  { id: "member-b", top: "72%", left: "67%", accent: "#800021", delay: "0.7s" },
-  { id: "member-c", top: "72%", left: "33%", accent: "#334155", delay: "1.05s" },
-  { id: "member-d", top: "38%", left: "22%", accent: "#64748b", delay: "1.4s" },
+  { id: "lead", top: "18%", left: "50%", accent: "#F37021", delay: "0s", leader: true },
+  { id: "member-a", top: "38%", left: "78%", accent: "#CBD5E1", delay: "0.35s", leader: false },
+  { id: "member-b", top: "72%", left: "67%", accent: "#CBD5E1", delay: "0.7s", leader: false },
+  { id: "member-c", top: "72%", left: "33%", accent: "#CBD5E1", delay: "1.05s", leader: false },
+  { id: "member-d", top: "38%", left: "22%", accent: "#CBD5E1", delay: "1.4s", leader: false },
 ] as const;
 
 const DISCUSSION_SIGNALS = [
@@ -136,6 +138,12 @@ const DISCUSSION_SIGNALS = [
   { id: "signal-b", top: "53%", left: "70%", delay: "0.55s" },
   { id: "signal-c", top: "65%", left: "50%", delay: "0.95s" },
   { id: "signal-d", top: "53%", left: "30%", delay: "1.35s" },
+] as const;
+
+const NETWORKING_IMAGES = [
+  { id: "member", src: "/assets/homepage/gallery1.webp", alt: "밋업 멤버 토론" },
+  { id: "gallery-two", src: "/assets/homepage/gallery2.webp", alt: "밋업 후 네트워킹" },
+  { id: "gallery-three", src: "/assets/homepage/gallery3.webp", alt: "영어 한잔 커뮤니티 활동" },
 ] as const;
 
 // Common section styles
@@ -511,6 +519,17 @@ const leaderTablePulse = keyframes`
   }
 `;
 
+const leaderChatPulse = keyframes`
+  0%, 42%, 100% {
+    opacity: 0.28;
+    transform: translateY(0) scale(0.96);
+  }
+  12%, 30% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+`;
+
 const LeaderMethodSection = styled.section`
   width: 100%;
   background: #f3f3f1;
@@ -530,10 +549,13 @@ const LeaderMethodLayout = styled.div`
 `;
 
 const LeaderMethodHeader = styled.div`
+  display: grid;
+  justify-items: end;
   margin-bottom: clamp(2rem, 5vw, 3rem);
+  text-align: right;
 
   @media (max-width: 820px) {
-    text-align: center;
+    justify-items: end;
   }
 `;
 
@@ -576,12 +598,12 @@ const LeaderDiagramPanel = styled.div`
   position: relative;
   min-height: 430px;
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(243, 112, 33, 0.12), transparent 34%),
+    radial-gradient(circle at 50% 46%, rgba(243, 112, 33, 0.08), transparent 32%),
     linear-gradient(145deg, #ffffff, rgba(255, 255, 255, 0.7));
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 54px rgba(15, 23, 42, 0.06);
 
   &::before,
   &::after {
@@ -609,12 +631,12 @@ const LeaderDiagramTable = styled.div`
   top: 50%;
   left: 50%;
   z-index: 1;
-  width: min(46%, 180px);
+  width: min(45%, 178px);
   aspect-ratio: 1.28 / 1;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 38px;
   background:
-    linear-gradient(145deg, #101418, #263141),
+    linear-gradient(145deg, #111827, #283241),
     radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 58%);
   transform: translate(-50%, -50%) rotate(-8deg);
   animation: ${leaderTablePulse} 3.8s ease-in-out infinite;
@@ -633,19 +655,25 @@ const LeaderDiagramSeat = styled.div<{
   $left: string;
   $accent: string;
   $delay: string;
+  $leader: boolean;
 }>`
   position: absolute;
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
-  z-index: 2;
-  width: clamp(3.3rem, 8vw, 4.5rem);
-  height: clamp(3.3rem, 8vw, 4.5rem);
-  border: 8px solid rgba(255, 255, 255, 0.8);
+  z-index: ${({ $leader }) => ($leader ? 4 : 2)};
+  width: ${({ $leader }) => ($leader ? "clamp(3.8rem, 8.6vw, 5rem)" : "clamp(3rem, 7vw, 3.85rem)")};
+  height: ${({ $leader }) => ($leader ? "clamp(3.8rem, 8.6vw, 5rem)" : "clamp(3rem, 7vw, 3.85rem)")};
+  border: ${({ $leader }) =>
+    $leader ? "8px solid rgba(255, 255, 255, 0.92)" : "7px solid rgba(255, 255, 255, 0.7)"};
   border-radius: 999px;
   background:
     radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.72), transparent 22%),
     ${({ $accent }) => $accent};
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  opacity: ${({ $leader }) => ($leader ? 1 : 0.68)};
+  box-shadow: ${({ $leader }) =>
+    $leader
+      ? "0 0 0 16px rgba(243, 112, 33, 0.12), 0 18px 42px rgba(243, 112, 33, 0.22)"
+      : "0 14px 30px rgba(15, 23, 42, 0.08)"};
   transform: translate(-50%, -50%);
   animation: ${leaderSeatPulse} 3s ease-in-out infinite;
   animation-delay: ${({ $delay }) => $delay};
@@ -679,6 +707,36 @@ const LeaderDiagramSignal = styled.div<{
   transform: translate(-50%, -50%);
   animation: ${leaderSeatPulse} 3.2s ease-in-out infinite;
   animation-delay: ${({ $delay }) => $delay};
+`;
+
+const LeaderChatBubble = styled.div<{
+  $top: string;
+  $left: string;
+  $leader: boolean;
+  $delay: string;
+}>`
+  position: absolute;
+  top: ${({ $top }) => $top};
+  left: ${({ $left }) => $left};
+  z-index: 5;
+  display: flex;
+  gap: 0.22rem;
+  align-items: center;
+  border: 1px solid ${({ $leader }) =>
+    $leader ? "rgba(243, 112, 33, 0.22)" : "rgba(15, 23, 42, 0.08)"};
+  border-radius: 999px;
+  background: ${({ $leader }) => ($leader ? "#fff7ed" : "#ffffff")};
+  padding: 0.5rem 0.62rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  animation: ${leaderChatPulse} 4.8s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => $delay};
+
+  span {
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: 999px;
+    background: ${({ $leader }) => ($leader ? "#F37021" : "#94a3b8")};
+  }
 `;
 
 const LeaderAccordionColumn = styled.div`
@@ -763,15 +821,22 @@ const LeaderAccordionSummary = styled.span`
 
 const LeaderAccordionInitial = styled.span<{ $accent: string }>`
   display: grid;
-  width: 3.15rem;
-  height: 3.15rem;
+  width: 3.35rem;
+  height: 3.35rem;
   place-items: center;
+  overflow: hidden;
   border-radius: 18px;
   background: linear-gradient(145deg, ${({ $accent }) => $accent}, #101418);
   color: #ffffff;
   font-size: 1.35rem;
   font-weight: 950;
   line-height: 1;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const LeaderAccordionName = styled.strong`
@@ -891,6 +956,96 @@ const LeaderStatItem = styled.li`
     font-weight: 950;
     letter-spacing: 0.05em;
   }
+`;
+
+const NetworkingMethodSection = styled.section`
+  width: 100%;
+  background: #f3f3f1;
+  color: #0f172a;
+  padding: 0 0 clamp(4.5rem, 8vw, 6rem);
+  overflow: hidden;
+`;
+
+const NetworkingMethodLayout = styled.div`
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  @media (max-width: 768px) {
+    padding: 0 ${MOBILE_NAV_GUTTER};
+  }
+`;
+
+const NetworkingMethodHeader = styled.div`
+  max-width: 44rem;
+  margin: 0 0 clamp(1.5rem, 4vw, 2.4rem);
+`;
+
+const NetworkingMethodSectionTitle = styled.p`
+  margin: 0 0 0.85rem;
+  color: #F37021;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+`;
+
+const NetworkingMethodTitle = styled.h2`
+  margin: 0;
+  color: #0f172a;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: 0;
+  white-space: pre-line;
+  word-break: keep-all;
+`;
+
+const NetworkingMethodDescription = styled.p`
+  max-width: 32rem;
+  margin: 1rem 0 0;
+  color: #64748b;
+  font-size: 0.98rem;
+  font-weight: 620;
+  line-height: 1.65;
+  word-break: keep-all;
+`;
+
+const NetworkingGallery = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
+  gap: clamp(0.85rem, 2vw, 1.1rem);
+  align-items: stretch;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const NetworkingImageCard = styled.figure<{ $featured?: boolean }>`
+  min-height: ${({ $featured }) => ($featured ? "430px" : "207px")};
+  margin: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 52px rgba(15, 23, 42, 0.08);
+
+  img {
+    width: 100%;
+    height: 100%;
+    min-height: inherit;
+    display: block;
+    object-fit: cover;
+  }
+
+  @media (max-width: 760px) {
+    min-height: ${({ $featured }) => ($featured ? "330px" : "210px")};
+  }
+`;
+
+const NetworkingSideGallery = styled.div`
+  display: grid;
+  gap: clamp(0.85rem, 2vw, 1.1rem);
 `;
 
 
@@ -2280,6 +2435,13 @@ const buildWebsiteMarkdown = ({
       ...leader.highlights.map((highlight) => `- ${sanitizeMarkdownText(highlight)}`),
       "",
     ]).flat(),
+    "## Networking",
+    sanitizeMarkdownText(t.home.networkingMethod.sectionTitle),
+    "",
+    sanitizeMarkdownText(t.home.networkingMethod.title),
+    "",
+    sanitizeMarkdownText(t.home.networkingMethod.description),
+    "",
     "## Stats",
     `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.meetups)}: ${formatStatValue(stats?.totalMeetups)}`,
     `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.members)}: ${formatStatValue(stats?.totalMembers)}`,
@@ -2872,6 +3034,7 @@ export default function NewHomeClient({
                         $left={seat.left}
                         $accent={seat.accent}
                         $delay={seat.delay}
+                        $leader={seat.leader}
                       />
                     ))}
                     {DISCUSSION_SIGNALS.map((signal) => (
@@ -2882,6 +3045,36 @@ export default function NewHomeClient({
                         $delay={signal.delay}
                       />
                     ))}
+                    <LeaderChatBubble
+                      $top="25%"
+                      $left="61%"
+                      $leader
+                      $delay="0s"
+                    >
+                      <span />
+                      <span />
+                      <span />
+                    </LeaderChatBubble>
+                    <LeaderChatBubble
+                      $top="58%"
+                      $left="24%"
+                      $leader={false}
+                      $delay="1.6s"
+                    >
+                      <span />
+                      <span />
+                      <span />
+                    </LeaderChatBubble>
+                    <LeaderChatBubble
+                      $top="70%"
+                      $left="72%"
+                      $leader={false}
+                      $delay="3.2s"
+                    >
+                      <span />
+                      <span />
+                      <span />
+                    </LeaderChatBubble>
                   </LeaderDiagramPanel>
 
                   <LeaderAccordionColumn>
@@ -2918,7 +3111,11 @@ export default function NewHomeClient({
                               >
                                 <LeaderAccordionSummary>
                                   <LeaderAccordionInitial $accent={leader.accent}>
-                                    {leader.initials}
+                                    {leader.imageSrc ? (
+                                      <img src={leader.imageSrc} alt={leader.name} loading="lazy" />
+                                    ) : (
+                                      leader.initials
+                                    )}
                                   </LeaderAccordionInitial>
                                   <span>
                                     <LeaderAccordionName>{leader.name}</LeaderAccordionName>
@@ -2980,6 +3177,37 @@ export default function NewHomeClient({
                 </LeaderMethodContent>
               </LeaderMethodLayout>
             </LeaderMethodSection>
+            <NetworkingMethodSection>
+              <NetworkingMethodLayout>
+                <NetworkingMethodHeader>
+                  <NetworkingMethodSectionTitle>
+                    {t.home.networkingMethod.sectionTitle}
+                  </NetworkingMethodSectionTitle>
+                  <NetworkingMethodTitle>
+                    {t.home.networkingMethod.title}
+                  </NetworkingMethodTitle>
+                  <NetworkingMethodDescription>
+                    {t.home.networkingMethod.description}
+                  </NetworkingMethodDescription>
+                </NetworkingMethodHeader>
+                <NetworkingGallery>
+                  <NetworkingImageCard $featured>
+                    <img
+                      src={NETWORKING_IMAGES[0].src}
+                      alt={NETWORKING_IMAGES[0].alt}
+                      loading="lazy"
+                    />
+                  </NetworkingImageCard>
+                  <NetworkingSideGallery>
+                    {NETWORKING_IMAGES.slice(1).map((image) => (
+                      <NetworkingImageCard key={image.id}>
+                        <img src={image.src} alt={image.alt} loading="lazy" />
+                      </NetworkingImageCard>
+                    ))}
+                  </NetworkingSideGallery>
+                </NetworkingGallery>
+              </NetworkingMethodLayout>
+            </NetworkingMethodSection>
             <StatsSection stats={homeStats} />
             <TopicsShowcase topics={initialTopics || []} />
             <MembershipSection />

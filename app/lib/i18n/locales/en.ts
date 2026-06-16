@@ -38,10 +38,10 @@ const en = {
     },
     topicVideo: {
       sectionTitle: "모임 진행 방식 #1",
-      title: "월가와 실리콘밸리의\nHot 토픽을 선정합니다",
+      title: "월가와 실리콘밸리의\n핫토픽을 선정합니다",
       description: "Wall Street Journal, Financial Times 등에서 글로벌 리더들이 정독하는 최고급 영문 기사들을 기반으로 토론합니다",
       caveat: "영어 한잔은 신문사의 지식재산권을 준수하여 멤버 토론 목적 외의 기사를 공개하지 않습니다.",
-      videoTitle: "Why WSJ? JP Morgan Jamie Dimon's Morning Routine",
+      videoTitle: "매일 오전 NYT, WSJ, FT를 읽는 JP 모건 회장 제이미 다이먼",
     },
     leaderMethod: {
       sectionTitle: "모임 진행 방식 #2",
@@ -49,6 +49,11 @@ const en = {
       emptyTitle: "여의도 리더 라인업 준비 중",
       emptyDescription: "여의도 모임 리더 프로필은 확정되는 대로 업데이트됩니다.",
       linkedInUnavailable: "LinkedIn 준비 중",
+    },
+    networkingMethod: {
+      sectionTitle: "모임 진행 방식 #3",
+      title: "정식 밋업 외에도\n다양한 활동으로 네트워킹을 합니다",
+      description: "검증된 멤버들과 토론 이후에도 자연스럽게 연결되는 커뮤니티를 만듭니다.",
     },
     cta: {
       title: "Want to improve your English communication skills?",
