@@ -38,10 +38,10 @@ const en = {
     },
     topicVideo: {
       sectionTitle: "모임 진행 방식 #1",
-      title: "월가와 실리콘밸리의\n핫토픽을 골라\n토론합니다",
-      description: "토픽은 주로 Wall Street Journal, Financial Times 등에서 글로벌 리더들이 매일 정독하는 최고급 영문 기사들을 가져옵니다",
-      caveat: "저작권 이슈로 멤버 토론 목적 외에는 기사를 공개하지 않습니다.",
-      videoTitle: "JP모건 Jamie Dimon의 모닝 루틴",
+      title: "월가와 실리콘밸리의\nHot 토픽을 선정합니다",
+      description: "Wall Street Journal, Financial Times 등에서 글로벌 리더들이 정독하는 최고급 영문 기사들을 기반으로 토론합니다",
+      caveat: "영어 한잔은 신문사의 지식재산권을 준수하여 멤버 토론 목적 외의 기사를 공개하지 않습니다.",
+      videoTitle: "Why WSJ? JP Morgan Jamie Dimon's Morning Routine",
     },
     leaderMethod: {
       sectionTitle: "모임 진행 방식 #2",

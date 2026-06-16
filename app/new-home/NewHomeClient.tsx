@@ -123,6 +123,21 @@ const COMMUNITY_LEADERS = [
   },
 ] as const;
 
+const DISCUSSION_SEATS = [
+  { id: "lead", top: "18%", left: "50%", accent: "#F37021", delay: "0s" },
+  { id: "member-a", top: "38%", left: "78%", accent: "#101418", delay: "0.35s" },
+  { id: "member-b", top: "72%", left: "67%", accent: "#800021", delay: "0.7s" },
+  { id: "member-c", top: "72%", left: "33%", accent: "#334155", delay: "1.05s" },
+  { id: "member-d", top: "38%", left: "22%", accent: "#64748b", delay: "1.4s" },
+] as const;
+
+const DISCUSSION_SIGNALS = [
+  { id: "signal-a", top: "31%", left: "61%", delay: "0.15s" },
+  { id: "signal-b", top: "53%", left: "70%", delay: "0.55s" },
+  { id: "signal-c", top: "65%", left: "50%", delay: "0.95s" },
+  { id: "signal-d", top: "53%", left: "30%", delay: "1.35s" },
+] as const;
+
 // Common section styles
 const SectionBase = css`
   min-height: 450px;
@@ -424,10 +439,10 @@ const TopicVideoDescription = styled.p`
 `;
 
 const TopicVideoCaveat = styled.p`
-  margin: 0.7rem 0 0;
-  color: #94a3b8;
-  font-size: 0.82rem;
-  font-weight: 620;
+  margin: 0.75rem 0 0;
+  color: rgba(100, 116, 139, 0.66);
+  font-size: 0.76rem;
+  font-weight: 520;
   line-height: 1.55;
   word-break: keep-all;
 `;
@@ -462,11 +477,12 @@ const TopicVideoCaption = styled.div`
   margin-top: 0.9rem;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 1rem;
   color: #334155;
   font-size: 0.84rem;
   font-weight: 760;
+  text-align: right;
 
   @media (max-width: 768px) {
     justify-content: center;
@@ -474,6 +490,24 @@ const TopicVideoCaption = styled.div`
     flex-direction: column;
     gap: 0.35rem;
     text-align: center;
+  }
+`;
+
+const leaderSeatPulse = keyframes`
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -54%) scale(1.04);
+  }
+`;
+
+const leaderTablePulse = keyframes`
+  0%, 100% {
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+  }
+  50% {
+    box-shadow: 0 30px 74px rgba(243, 112, 33, 0.18);
   }
 `;
 
@@ -496,14 +530,9 @@ const LeaderMethodLayout = styled.div`
 `;
 
 const LeaderMethodHeader = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1.5rem;
-  align-items: end;
   margin-bottom: clamp(2rem, 5vw, 3rem);
 
   @media (max-width: 820px) {
-    grid-template-columns: 1fr;
     text-align: center;
   }
 `;
@@ -530,6 +559,132 @@ const LeaderMethodTitle = styled.h2`
   @media (max-width: 820px) {
     max-width: 100%;
   }
+`;
+
+const LeaderMethodContent = styled.div`
+  display: grid;
+  grid-template-columns: minmax(280px, 0.86fr) minmax(0, 1.14fr);
+  gap: clamp(1.25rem, 4vw, 2rem);
+  align-items: stretch;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const LeaderDiagramPanel = styled.div`
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(243, 112, 33, 0.12), transparent 34%),
+    linear-gradient(145deg, #ffffff, rgba(255, 255, 255, 0.7));
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+
+  &::before,
+  &::after {
+    position: absolute;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 999px;
+    content: "";
+  }
+
+  &::before {
+    inset: 3rem;
+  }
+
+  &::after {
+    inset: 6.25rem;
+  }
+
+  @media (max-width: 860px) {
+    min-height: 320px;
+  }
+`;
+
+const LeaderDiagramTable = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: min(46%, 180px);
+  aspect-ratio: 1.28 / 1;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, #101418, #263141),
+    radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 58%);
+  transform: translate(-50%, -50%) rotate(-8deg);
+  animation: ${leaderTablePulse} 3.8s ease-in-out infinite;
+
+  &::before {
+    position: absolute;
+    inset: 18%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: inherit;
+    content: "";
+  }
+`;
+
+const LeaderDiagramSeat = styled.div<{
+  $top: string;
+  $left: string;
+  $accent: string;
+  $delay: string;
+}>`
+  position: absolute;
+  top: ${({ $top }) => $top};
+  left: ${({ $left }) => $left};
+  z-index: 2;
+  width: clamp(3.3rem, 8vw, 4.5rem);
+  height: clamp(3.3rem, 8vw, 4.5rem);
+  border: 8px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.72), transparent 22%),
+    ${({ $accent }) => $accent};
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  transform: translate(-50%, -50%);
+  animation: ${leaderSeatPulse} 3s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => $delay};
+
+  &::after {
+    position: absolute;
+    right: 0.52rem;
+    bottom: 0.38rem;
+    left: 0.52rem;
+    height: 30%;
+    border-radius: 999px 999px 0 0;
+    background: rgba(15, 23, 42, 0.18);
+    content: "";
+  }
+`;
+
+const LeaderDiagramSignal = styled.div<{
+  $top: string;
+  $left: string;
+  $delay: string;
+}>`
+  position: absolute;
+  top: ${({ $top }) => $top};
+  left: ${({ $left }) => $left};
+  z-index: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #F37021;
+  opacity: 0.42;
+  transform: translate(-50%, -50%);
+  animation: ${leaderSeatPulse} 3.2s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => $delay};
+`;
+
+const LeaderAccordionColumn = styled.div`
+  display: grid;
+  align-content: start;
+  gap: 1rem;
 `;
 
 const LeaderLocationTabs = styled.div`
@@ -566,8 +721,115 @@ const LeaderLocationButton = styled.button<{ $active: boolean }>`
   }
 `;
 
+const LeaderAccordionList = styled.div`
+  display: grid;
+  gap: 0.8rem;
+`;
+
+const LeaderAccordionItem = styled.article<{ $active: boolean; $accent: string }>`
+  overflow: hidden;
+  border: 1px solid ${({ $active, $accent }) =>
+    $active ? $accent : "rgba(15, 23, 42, 0.08)"};
+  border-radius: 22px;
+  background: ${({ $active }) =>
+    $active ? "#ffffff" : "rgba(255, 255, 255, 0.62)"};
+  box-shadow: ${({ $active }) =>
+    $active ? "0 20px 52px rgba(15, 23, 42, 0.1)" : "none"};
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+`;
+
+const LeaderAccordionButton = styled.button`
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 1.05rem 1.1rem;
+  color: #0f172a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid #F37021;
+    outline-offset: -4px;
+  }
+`;
+
+const LeaderAccordionSummary = styled.span`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+`;
+
+const LeaderAccordionInitial = styled.span<{ $accent: string }>`
+  display: grid;
+  width: 3.15rem;
+  height: 3.15rem;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(145deg, ${({ $accent }) => $accent}, #101418);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 950;
+  line-height: 1;
+`;
+
+const LeaderAccordionName = styled.strong`
+  display: block;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 920;
+  line-height: 1.18;
+`;
+
+const LeaderAccordionRole = styled.span`
+  display: block;
+  margin-top: 0.2rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.35;
+  word-break: keep-all;
+`;
+
+const LeaderAccordionIcon = styled.span<{ $active: boolean }>`
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  color: #475569;
+  font-size: 1.3rem;
+  font-weight: 500;
+
+  &::before {
+    content: "${({ $active }) => ($active ? "−" : "+")}";
+  }
+`;
+
+const LeaderAccordionPanel = styled.div<{ $active: boolean }>`
+  display: grid;
+  grid-template-rows: ${({ $active }) => ($active ? "1fr" : "0fr")};
+  opacity: ${({ $active }) => ($active ? 1 : 0)};
+  transition: grid-template-rows 240ms ease, opacity 180ms ease;
+`;
+
+const LeaderAccordionPanelInner = styled.div`
+  min-height: 0;
+  overflow: hidden;
+`;
+
+const LeaderAccordionContent = styled.div`
+  padding: 0 1.1rem 1.2rem 5.1rem;
+
+  @media (max-width: 520px) {
+    padding-left: 1.1rem;
+  }
+`;
+
 const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
-  margin-top: 1.5rem;
+  margin-top: 1rem;
   display: inline-flex;
   min-height: 42px;
   align-items: center;
@@ -604,121 +866,6 @@ const LeaderEmptyState = styled.div`
   line-height: 1.55;
 `;
 
-const LeaderCardSlider = styled.div`
-  display: flex;
-  gap: clamp(1rem, 3vw, 1.4rem);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-padding: 20px;
-  scroll-snap-type: x mandatory;
-  padding: 0.2rem 0 1rem;
-  scrollbar-width: thin;
-
-  @media (max-width: 768px) {
-    margin: 0 calc(${MOBILE_NAV_GUTTER} * -1);
-    padding: 0.2rem ${MOBILE_NAV_GUTTER} 1rem;
-  }
-`;
-
-const LeaderFifaCard = styled.article<{ $accent: string; $active: boolean }>`
-  position: relative;
-  flex: 0 0 min(300px, 72vw);
-  min-height: 438px;
-  scroll-snap-align: start;
-  overflow: hidden;
-  border: 1px solid ${({ $active, $accent }) =>
-    $active ? $accent : "rgba(15, 23, 42, 0.1)"};
-  border-radius: 28px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.84)),
-    radial-gradient(circle at 18% 8%, ${({ $accent }) => `${$accent}33`}, transparent 32%);
-  padding: 1.25rem;
-  box-shadow: ${({ $active }) =>
-    $active
-      ? "0 26px 70px rgba(15, 23, 42, 0.16)"
-      : "0 16px 44px rgba(15, 23, 42, 0.08)"};
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-
-  &:hover,
-  &:focus-visible {
-    border-color: ${({ $accent }) => $accent};
-    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.16);
-    outline: none;
-    transform: translateY(-3px);
-  }
-
-  @media (min-width: 940px) {
-    flex-basis: calc((100% - 1.4rem) / 2);
-  }
-`;
-
-const LeaderCardTopline = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-`;
-
-const LeaderRating = styled.div<{ $accent: string }>`
-  color: ${({ $accent }) => $accent};
-  font-size: 2.55rem;
-  font-weight: 950;
-  line-height: 0.9;
-
-  span {
-    display: block;
-    margin-top: 0.35rem;
-    color: #64748b;
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-  }
-`;
-
-const LeaderCardBadge = styled.div`
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  padding: 0.38rem 0.65rem;
-  color: #334155;
-  font-size: 0.72rem;
-  font-weight: 850;
-`;
-
-const LeaderCardPortrait = styled.div<{ $accent: string }>`
-  display: grid;
-  width: 7rem;
-  height: 7rem;
-  margin: 1.35rem auto 1.15rem;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.54);
-  border-radius: 34px;
-  background:
-    linear-gradient(145deg, ${({ $accent }) => $accent}, #101418);
-  color: #ffffff;
-  font-size: 4.1rem;
-  font-weight: 950;
-  line-height: 1;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
-`;
-
-const LeaderFifaName = styled.h3`
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(2rem, 4vw, 2.8rem);
-  font-weight: 950;
-  line-height: 0.95;
-  text-align: center;
-`;
-
-const LeaderFifaRole = styled.p`
-  margin: 0.55rem 0 1.15rem;
-  color: #64748b;
-  font-size: 0.86rem;
-  font-weight: 780;
-  text-align: center;
-`;
-
 const LeaderStatList = styled.ul`
   margin: 0;
   padding: 0;
@@ -744,12 +891,6 @@ const LeaderStatItem = styled.li`
     font-weight: 950;
     letter-spacing: 0.05em;
   }
-`;
-
-const LeaderCardActionRow = styled.div`
-  margin-top: 1.1rem;
-  display: flex;
-  justify-content: center;
 `;
 
 
@@ -2251,18 +2392,14 @@ export default function NewHomeClient({
   );
 
   const activeLeader =
-    visibleLeaders.find((leader) => leader.id === activeLeaderId) ??
-    visibleLeaders[0] ??
-    null;
+    visibleLeaders.find((leader) => leader.id === activeLeaderId) ?? null;
 
   const handleLeaderLocationChange = useCallback((location: LeaderLocation) => {
     setSelectedLeaderLocation(location);
     const firstLeader = COMMUNITY_LEADERS.find(
       (leader) => leader.location === location,
     );
-    if (firstLeader) {
-      setActiveLeaderId(firstLeader.id);
-    }
+    setActiveLeaderId(firstLeader?.id ?? "");
   }, []);
 
   useEffect(() => {
@@ -2723,75 +2860,124 @@ export default function NewHomeClient({
                     </LeaderMethodSectionTitle>
                     <LeaderMethodTitle>{t.home.leaderMethod.title}</LeaderMethodTitle>
                   </div>
-                  <LeaderLocationTabs aria-label="리더 지역 선택">
-                    {LEADER_LOCATIONS.map((location) => (
-                      <LeaderLocationButton
-                        key={location.id}
-                        type="button"
-                        $active={selectedLeaderLocation === location.id}
-                        onClick={() => handleLeaderLocationChange(location.id)}
-                      >
-                        {location.label}
-                      </LeaderLocationButton>
-                    ))}
-                  </LeaderLocationTabs>
                 </LeaderMethodHeader>
 
-                {activeLeader ? (
-                  <LeaderCardSlider aria-label="커뮤니티 리더 프로필">
-                    {visibleLeaders.map((leader, index) => (
-                      <LeaderFifaCard
-                        key={leader.id}
-                        $active={activeLeader.id === leader.id}
-                        $accent={leader.accent}
-                        onMouseEnter={() => setActiveLeaderId(leader.id)}
-                      >
-                        <LeaderCardTopline>
-                          <LeaderRating $accent={leader.accent}>
-                            {index === 0 ? "98" : "96"}
-                            <span>LEAD</span>
-                          </LeaderRating>
-                          <LeaderCardBadge>{leader.role}</LeaderCardBadge>
-                        </LeaderCardTopline>
-                        <LeaderCardPortrait $accent={leader.accent}>
-                          {leader.initials}
-                        </LeaderCardPortrait>
-                        <LeaderFifaName>{leader.name}</LeaderFifaName>
-                        <LeaderFifaRole>{leader.highlights[0]}</LeaderFifaRole>
-                        <LeaderStatList>
-                          {leader.highlights.slice(1).map((highlight, itemIndex) => (
-                            <LeaderStatItem key={highlight}>
-                              <strong>{String(itemIndex + 1).padStart(2, "0")}</strong>
-                              <span>{highlight}</span>
-                            </LeaderStatItem>
-                          ))}
-                        </LeaderStatList>
-                        <LeaderCardActionRow>
-                          <LeaderLinkedInButton
-                            href={leader.linkedinUrl || undefined}
-                            target={leader.linkedinUrl ? "_blank" : undefined}
-                            rel={leader.linkedinUrl ? "noreferrer" : undefined}
-                            $disabled={!leader.linkedinUrl}
-                            aria-disabled={!leader.linkedinUrl}
-                          >
-                            {leader.linkedinUrl
-                              ? "LinkedIn"
-                              : t.home.leaderMethod.linkedInUnavailable}
-                            <ArrowTopRightOnSquareIcon aria-hidden="true" />
-                          </LeaderLinkedInButton>
-                        </LeaderCardActionRow>
-                      </LeaderFifaCard>
+                <LeaderMethodContent>
+                  <LeaderDiagramPanel aria-hidden="true">
+                    <LeaderDiagramTable />
+                    {DISCUSSION_SEATS.map((seat) => (
+                      <LeaderDiagramSeat
+                        key={seat.id}
+                        $top={seat.top}
+                        $left={seat.left}
+                        $accent={seat.accent}
+                        $delay={seat.delay}
+                      />
                     ))}
-                  </LeaderCardSlider>
-                ) : (
-                  <LeaderEmptyState>
-                    <div>
-                      <strong>{t.home.leaderMethod.emptyTitle}</strong>
-                      <br />
-                      {t.home.leaderMethod.emptyDescription}
-                    </div>
-                  </LeaderEmptyState>
-                )}
+                    {DISCUSSION_SIGNALS.map((signal) => (
+                      <LeaderDiagramSignal
+                        key={signal.id}
+                        $top={signal.top}
+                        $left={signal.left}
+                        $delay={signal.delay}
+                      />
+                    ))}
+                  </LeaderDiagramPanel>
+
+                  <LeaderAccordionColumn>
+                    <LeaderLocationTabs aria-label="리더 지역 선택">
+                      {LEADER_LOCATIONS.map((location) => (
+                        <LeaderLocationButton
+                          key={location.id}
+                          type="button"
+                          $active={selectedLeaderLocation === location.id}
+                          onClick={() => handleLeaderLocationChange(location.id)}
+                        >
+                          {location.label}
+                        </LeaderLocationButton>
+                      ))}
+                    </LeaderLocationTabs>
+
+                    {visibleLeaders.length > 0 ? (
+                      <LeaderAccordionList aria-label="커뮤니티 리더 프로필">
+                        {visibleLeaders.map((leader) => {
+                          const isActive = activeLeader?.id === leader.id;
+
+                          return (
+                            <LeaderAccordionItem
+                              key={leader.id}
+                              $active={isActive}
+                              $accent={leader.accent}
+                            >
+                              <LeaderAccordionButton
+                                type="button"
+                                aria-expanded={isActive}
+                                onClick={() =>
+                                  setActiveLeaderId(isActive ? "" : leader.id)
+                                }
+                              >
+                                <LeaderAccordionSummary>
+                                  <LeaderAccordionInitial $accent={leader.accent}>
+                                    {leader.initials}
+                                  </LeaderAccordionInitial>
+                                  <span>
+                                    <LeaderAccordionName>{leader.name}</LeaderAccordionName>
+                                    <LeaderAccordionRole>
+                                      {leader.highlights[0]}
+                                    </LeaderAccordionRole>
+                                  </span>
+                                  <LeaderAccordionIcon
+                                    $active={isActive}
+                                    aria-hidden="true"
+                                  />
+                                </LeaderAccordionSummary>
+                              </LeaderAccordionButton>
+                              <LeaderAccordionPanel
+                                $active={isActive}
+                                aria-hidden={!isActive}
+                              >
+                                <LeaderAccordionPanelInner>
+                                  <LeaderAccordionContent>
+                                    <LeaderStatList>
+                                      {leader.highlights.slice(1).map((highlight, itemIndex) => (
+                                        <LeaderStatItem key={highlight}>
+                                          <strong>
+                                            {String(itemIndex + 1).padStart(2, "0")}
+                                          </strong>
+                                          <span>{highlight}</span>
+                                        </LeaderStatItem>
+                                      ))}
+                                    </LeaderStatList>
+                                    <LeaderLinkedInButton
+                                      href={leader.linkedinUrl || undefined}
+                                      target={leader.linkedinUrl ? "_blank" : undefined}
+                                      rel={leader.linkedinUrl ? "noreferrer" : undefined}
+                                      $disabled={!leader.linkedinUrl}
+                                      aria-disabled={!leader.linkedinUrl}
+                                    >
+                                      {leader.linkedinUrl
+                                        ? "LinkedIn"
+                                        : t.home.leaderMethod.linkedInUnavailable}
+                                      <ArrowTopRightOnSquareIcon aria-hidden="true" />
+                                    </LeaderLinkedInButton>
+                                  </LeaderAccordionContent>
+                                </LeaderAccordionPanelInner>
+                              </LeaderAccordionPanel>
+                            </LeaderAccordionItem>
+                          );
+                        })}
+                      </LeaderAccordionList>
+                    ) : (
+                      <LeaderEmptyState>
+                        <div>
+                          <strong>{t.home.leaderMethod.emptyTitle}</strong>
+                          <br />
+                          {t.home.leaderMethod.emptyDescription}
+                        </div>
+                      </LeaderEmptyState>
+                    )}
+                  </LeaderAccordionColumn>
+                </LeaderMethodContent>
               </LeaderMethodLayout>
             </LeaderMethodSection>
             <StatsSection stats={homeStats} />
