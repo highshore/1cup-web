@@ -566,66 +566,6 @@ const LeaderLocationButton = styled.button<{ $active: boolean }>`
   }
 `;
 
-const LeaderMethodGrid = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(280px, 0.98fr);
-  gap: clamp(1rem, 4vw, 2rem);
-  align-items: stretch;
-
-  @media (max-width: 860px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const LeaderSpotlight = styled.div`
-  position: relative;
-  min-height: 390px;
-  overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 24px;
-  background: #ffffff;
-  padding: clamp(1.4rem, 4vw, 2rem);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
-
-  @media (max-width: 860px) {
-    min-height: auto;
-  }
-`;
-
-const LeaderMonogram = styled.div<{ $accent: string }>`
-  display: grid;
-  width: 6.25rem;
-  height: 6.25rem;
-  place-items: center;
-  border-radius: 28px;
-  background: ${({ $accent }) => $accent};
-  color: #ffffff;
-  font-size: 3.2rem;
-  font-weight: 950;
-  line-height: 1;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
-`;
-
-const LeaderNameRow = styled.div`
-  margin-top: clamp(2.2rem, 7vw, 4rem);
-`;
-
-const LeaderName = styled.h3`
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(2.4rem, 7vw, 4.9rem);
-  font-weight: 950;
-  line-height: 0.95;
-  letter-spacing: 0;
-`;
-
-const LeaderRole = styled.p`
-  margin: 0.8rem 0 0;
-  color: #64748b;
-  font-size: 0.98rem;
-  font-weight: 760;
-`;
-
 const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
   margin-top: 1.5rem;
   display: inline-flex;
@@ -650,99 +590,6 @@ const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
   }
 `;
 
-const LeaderHighlights = styled.ul`
-  margin: 2rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.7rem;
-  list-style: none;
-
-  li {
-    position: relative;
-    padding-left: 1.1rem;
-    color: #334155;
-    font-size: 0.94rem;
-    font-weight: 640;
-    line-height: 1.5;
-    word-break: keep-all;
-  }
-
-  li::before {
-    position: absolute;
-    top: 0.68em;
-    left: 0;
-    width: 0.38rem;
-    height: 0.38rem;
-    border-radius: 999px;
-    background: #F37021;
-    content: "";
-  }
-`;
-
-const LeaderCardList = styled.div`
-  display: grid;
-  gap: 0.8rem;
-`;
-
-const LeaderCardButton = styled.button<{ $active: boolean; $accent: string }>`
-  width: 100%;
-  min-height: 116px;
-  border: 1px solid ${({ $active, $accent }) =>
-    $active ? $accent : "rgba(15, 23, 42, 0.08)"};
-  border-radius: 20px;
-  background: ${({ $active }) =>
-    $active ? "#ffffff" : "rgba(255, 255, 255, 0.58)"};
-  padding: 1rem;
-  color: #0f172a;
-  text-align: left;
-  cursor: pointer;
-  box-shadow: ${({ $active }) =>
-    $active ? "0 18px 45px rgba(15, 23, 42, 0.1)" : "none"};
-  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
-
-  &:hover,
-  &:focus-visible {
-    border-color: ${({ $accent }) => $accent};
-    background: #ffffff;
-    transform: translateY(-2px);
-    outline: none;
-  }
-`;
-
-const LeaderCardInner = styled.div`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.85rem;
-  align-items: center;
-`;
-
-const LeaderCardInitial = styled.div<{ $accent: string }>`
-  display: grid;
-  width: 3rem;
-  height: 3rem;
-  place-items: center;
-  border-radius: 16px;
-  background: ${({ $accent }) => $accent};
-  color: #ffffff;
-  font-size: 1.4rem;
-  font-weight: 950;
-`;
-
-const LeaderCardName = styled.strong`
-  display: block;
-  color: #0f172a;
-  font-size: 1rem;
-  line-height: 1.2;
-`;
-
-const LeaderCardMeta = styled.span`
-  display: block;
-  margin-top: 0.22rem;
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 720;
-`;
-
 const LeaderEmptyState = styled.div`
   display: grid;
   min-height: 250px;
@@ -755,6 +602,154 @@ const LeaderEmptyState = styled.div`
   text-align: center;
   font-weight: 720;
   line-height: 1.55;
+`;
+
+const LeaderCardSlider = styled.div`
+  display: flex;
+  gap: clamp(1rem, 3vw, 1.4rem);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding: 20px;
+  scroll-snap-type: x mandatory;
+  padding: 0.2rem 0 1rem;
+  scrollbar-width: thin;
+
+  @media (max-width: 768px) {
+    margin: 0 calc(${MOBILE_NAV_GUTTER} * -1);
+    padding: 0.2rem ${MOBILE_NAV_GUTTER} 1rem;
+  }
+`;
+
+const LeaderFifaCard = styled.article<{ $accent: string; $active: boolean }>`
+  position: relative;
+  flex: 0 0 min(300px, 72vw);
+  min-height: 438px;
+  scroll-snap-align: start;
+  overflow: hidden;
+  border: 1px solid ${({ $active, $accent }) =>
+    $active ? $accent : "rgba(15, 23, 42, 0.1)"};
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.84)),
+    radial-gradient(circle at 18% 8%, ${({ $accent }) => `${$accent}33`}, transparent 32%);
+  padding: 1.25rem;
+  box-shadow: ${({ $active }) =>
+    $active
+      ? "0 26px 70px rgba(15, 23, 42, 0.16)"
+      : "0 16px 44px rgba(15, 23, 42, 0.08)"};
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: ${({ $accent }) => $accent};
+    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.16);
+    outline: none;
+    transform: translateY(-3px);
+  }
+
+  @media (min-width: 940px) {
+    flex-basis: calc((100% - 1.4rem) / 2);
+  }
+`;
+
+const LeaderCardTopline = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+`;
+
+const LeaderRating = styled.div<{ $accent: string }>`
+  color: ${({ $accent }) => $accent};
+  font-size: 2.55rem;
+  font-weight: 950;
+  line-height: 0.9;
+
+  span {
+    display: block;
+    margin-top: 0.35rem;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+`;
+
+const LeaderCardBadge = styled.div`
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.38rem 0.65rem;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 850;
+`;
+
+const LeaderCardPortrait = styled.div<{ $accent: string }>`
+  display: grid;
+  width: 7rem;
+  height: 7rem;
+  margin: 1.35rem auto 1.15rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  border-radius: 34px;
+  background:
+    linear-gradient(145deg, ${({ $accent }) => $accent}, #101418);
+  color: #ffffff;
+  font-size: 4.1rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+`;
+
+const LeaderFifaName = styled.h3`
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 950;
+  line-height: 0.95;
+  text-align: center;
+`;
+
+const LeaderFifaRole = styled.p`
+  margin: 0.55rem 0 1.15rem;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 780;
+  text-align: center;
+`;
+
+const LeaderStatList = styled.ul`
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.48rem;
+  list-style: none;
+`;
+
+const LeaderStatItem = styled.li`
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.35;
+  word-break: keep-all;
+
+  strong {
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 950;
+    letter-spacing: 0.05em;
+  }
+`;
+
+const LeaderCardActionRow = styled.div`
+  margin-top: 1.1rem;
+  display: flex;
+  justify-content: center;
 `;
 
 
@@ -2743,57 +2738,51 @@ export default function NewHomeClient({
                 </LeaderMethodHeader>
 
                 {activeLeader ? (
-                  <LeaderMethodGrid>
-                    <LeaderSpotlight>
-                      <LeaderMonogram $accent={activeLeader.accent}>
-                        {activeLeader.initials}
-                      </LeaderMonogram>
-                      <LeaderNameRow>
-                        <LeaderName>{activeLeader.name}</LeaderName>
-                        <LeaderRole>{activeLeader.role}</LeaderRole>
-                      </LeaderNameRow>
-                      <LeaderLinkedInButton
-                        href={activeLeader.linkedinUrl || undefined}
-                        target={activeLeader.linkedinUrl ? "_blank" : undefined}
-                        rel={activeLeader.linkedinUrl ? "noreferrer" : undefined}
-                        $disabled={!activeLeader.linkedinUrl}
-                        aria-disabled={!activeLeader.linkedinUrl}
+                  <LeaderCardSlider aria-label="커뮤니티 리더 프로필">
+                    {visibleLeaders.map((leader, index) => (
+                      <LeaderFifaCard
+                        key={leader.id}
+                        $active={activeLeader.id === leader.id}
+                        $accent={leader.accent}
+                        onMouseEnter={() => setActiveLeaderId(leader.id)}
                       >
-                        {activeLeader.linkedinUrl
-                          ? "LinkedIn"
-                          : t.home.leaderMethod.linkedInUnavailable}
-                        <ArrowTopRightOnSquareIcon aria-hidden="true" />
-                      </LeaderLinkedInButton>
-                      <LeaderHighlights>
-                        {activeLeader.highlights.map((highlight) => (
-                          <li key={highlight}>{highlight}</li>
-                        ))}
-                      </LeaderHighlights>
-                    </LeaderSpotlight>
-                    <LeaderCardList>
-                      {visibleLeaders.map((leader) => (
-                        <LeaderCardButton
-                          key={leader.id}
-                          type="button"
-                          $active={activeLeader.id === leader.id}
-                          $accent={leader.accent}
-                          onClick={() => setActiveLeaderId(leader.id)}
-                          onMouseEnter={() => setActiveLeaderId(leader.id)}
-                          onFocus={() => setActiveLeaderId(leader.id)}
-                        >
-                          <LeaderCardInner>
-                            <LeaderCardInitial $accent={leader.accent}>
-                              {leader.initials}
-                            </LeaderCardInitial>
-                            <div>
-                              <LeaderCardName>{leader.name}</LeaderCardName>
-                              <LeaderCardMeta>{leader.highlights[0]}</LeaderCardMeta>
-                            </div>
-                          </LeaderCardInner>
-                        </LeaderCardButton>
-                      ))}
-                    </LeaderCardList>
-                  </LeaderMethodGrid>
+                        <LeaderCardTopline>
+                          <LeaderRating $accent={leader.accent}>
+                            {index === 0 ? "98" : "96"}
+                            <span>LEAD</span>
+                          </LeaderRating>
+                          <LeaderCardBadge>{leader.role}</LeaderCardBadge>
+                        </LeaderCardTopline>
+                        <LeaderCardPortrait $accent={leader.accent}>
+                          {leader.initials}
+                        </LeaderCardPortrait>
+                        <LeaderFifaName>{leader.name}</LeaderFifaName>
+                        <LeaderFifaRole>{leader.highlights[0]}</LeaderFifaRole>
+                        <LeaderStatList>
+                          {leader.highlights.slice(1).map((highlight, itemIndex) => (
+                            <LeaderStatItem key={highlight}>
+                              <strong>{String(itemIndex + 1).padStart(2, "0")}</strong>
+                              <span>{highlight}</span>
+                            </LeaderStatItem>
+                          ))}
+                        </LeaderStatList>
+                        <LeaderCardActionRow>
+                          <LeaderLinkedInButton
+                            href={leader.linkedinUrl || undefined}
+                            target={leader.linkedinUrl ? "_blank" : undefined}
+                            rel={leader.linkedinUrl ? "noreferrer" : undefined}
+                            $disabled={!leader.linkedinUrl}
+                            aria-disabled={!leader.linkedinUrl}
+                          >
+                            {leader.linkedinUrl
+                              ? "LinkedIn"
+                              : t.home.leaderMethod.linkedInUnavailable}
+                            <ArrowTopRightOnSquareIcon aria-hidden="true" />
+                          </LeaderLinkedInButton>
+                        </LeaderCardActionRow>
+                      </LeaderFifaCard>
+                    ))}
+                  </LeaderCardSlider>
                 ) : (
                   <LeaderEmptyState>
                     <div>
