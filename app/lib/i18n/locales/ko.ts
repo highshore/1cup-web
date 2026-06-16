@@ -23,6 +23,33 @@ const ko = {
       mobileSubtitle: "국내파 통역사가 손수 개발한\n국내 최고 영어 스피킹 모임",
       eventPrompt: "바로 지금! 통역사가 직접 리딩하는 영어 모임에 참여해보세요!",
     },
+    memberLogos: {
+      titleLine1: "다양한 배경의 멤버들이",
+      titleHighlight: "영어 한잔",
+      titleLine2Suffix: "과 함께했습니다",
+      items: [
+        "SK하이닉스",
+        "쿠팡",
+        "SAP",
+        "네슬레",
+        "고려대학교",
+        "연세대학교 MBA",
+      ],
+    },
+    topicVideo: {
+      sectionTitle: "모임 진행 방식 #1",
+      title: "월가와 실리콘밸리의\n핫토픽을 골라\n토론합니다",
+      description: "토픽은 주로 Wall Street Journal, Financial Times 등에서 글로벌 리더들이 매일 정독하는 최고급 영문 기사들을 가져옵니다",
+      caveat: "저작권 이슈로 멤버 토론 목적 외에는 기사를 공개하지 않습니다.",
+      videoTitle: "JP모건 Jamie Dimon의 모닝 루틴",
+    },
+    leaderMethod: {
+      sectionTitle: "모임 진행 방식 #2",
+      title: "경험 있는 리더들이\n토론의 방향을 잡아줍니다",
+      emptyTitle: "여의도 리더 라인업 준비 중",
+      emptyDescription: "여의도 모임 리더 프로필은 확정되는 대로 업데이트됩니다.",
+      linkedInUnavailable: "LinkedIn 준비 중",
+    },
     cta: {
       title: "영어 소통 능력을 키우고 싶다면?",
       description: "통역사, 직장인, 대학생, 전문가 등 다양한 백그라운드를 가진\n멤버들과 함께하는 영어 밋업에 참여해보세요.",

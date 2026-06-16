@@ -1591,6 +1591,52 @@ const ProfileSubsection = styled.div`
   margin-top: 1.5rem;
 `;
 
+const SubscriptionManagementPanel = styled(ProfilePanel)`
+  display: grid;
+  gap: 1rem;
+`;
+
+const SubscriptionDetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SubscriptionDetailItem = styled.div`
+  border: 1px solid #eeeeec;
+  border-radius: 16px;
+  background: #f7f7f5;
+  padding: 0.9rem;
+
+  span {
+    display: block;
+    color: #717171;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    display: block;
+    margin-top: 0.35rem;
+    color: #222222;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+`;
+
+const SubscriptionActionNote = styled.p`
+  margin: 0;
+  color: #717171;
+  font-size: 0.84rem;
+  line-height: 1.5;
+`;
+
 const ChipCloud = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -2466,6 +2512,51 @@ export default function ProfileClient() {
         ? "결제 중단 예정"
         : "이용 중"
       : "비활성";
+  const isManagedMembership =
+    userData?.account_status !== "admin" &&
+    (userData?.gdg_member || userData?.account_status === "leader");
+  const recentPaymentLabel = isManagedMembership
+    ? "해당 없음"
+    : formatDate(subscriptionData.startDate);
+  const nextBillingLabel = isManagedMembership
+    ? "해당 없음"
+    : subscriptionData.status === "active" &&
+        !subscriptionData.billingCancelled &&
+        subscriptionData.nextBillingDate
+      ? formatDate(subscriptionData.nextBillingDate)
+      : subscriptionData.billingCancelled
+        ? "결제 중단됨"
+        : "-";
+  const subscriptionActionLabel = isManagedMembership
+    ? "관리 필요 없음"
+    : subscriptionData.status === "active"
+      ? subscriptionData.billingCancelled
+        ? "결제 재활성화하기"
+        : "멤버십 중지하기"
+      : "멤버십 시작하기";
+  const subscriptionActionNote = isManagedMembership
+    ? "리더 또는 GDG 멤버십은 별도 결제 관리가 필요하지 않습니다."
+    : subscriptionData.status === "active" && subscriptionData.billingCancelled
+      ? "다음 결제가 중단되었습니다. 현재 구독 기간 만료 시까지 서비스를 이용할 수 있습니다."
+      : subscriptionData.status === "active"
+        ? "다음 결제 중단 또는 환불 요청을 진행할 수 있습니다."
+        : "멤버십을 시작하면 영어 한잔 서비스를 이용할 수 있습니다.";
+
+  const handleSubscriptionAction = () => {
+    if (isManagedMembership) return;
+
+    if (subscriptionData.status !== "active") {
+      router.push("/payment");
+      return;
+    }
+
+    if (subscriptionData.billingCancelled) {
+      handleReactivateBilling();
+      return;
+    }
+
+    setShowCancellationOptions(true);
+  };
 
   return (
     <>
@@ -2690,6 +2781,65 @@ export default function ProfileClient() {
               </ProfileSubsection>
             </ProfilePanel>
 
+            <SubscriptionManagementPanel>
+              <div>
+                <ProfileSectionLabel>Membership</ProfileSectionLabel>
+                <EditSectionHeading>멤버십 관리</EditSectionHeading>
+                <EditSectionDescription>
+                  현재 멤버십 상태와 다음 결제 일정을 확인하고 결제를 관리합니다.
+                </EditSectionDescription>
+              </div>
+
+              <SubscriptionDetailGrid>
+                <SubscriptionDetailItem>
+                  <span>상태</span>
+                  <strong>{membershipStatus}</strong>
+                </SubscriptionDetailItem>
+                <SubscriptionDetailItem>
+                  <span>최근 결제일</span>
+                  <strong>{recentPaymentLabel}</strong>
+                </SubscriptionDetailItem>
+                <SubscriptionDetailItem>
+                  <span>다음 결제일</span>
+                  <strong>{nextBillingLabel}</strong>
+                </SubscriptionDetailItem>
+                <SubscriptionDetailItem>
+                  <span>결제 수단</span>
+                  <strong>
+                    {isManagedMembership
+                      ? "해당 없음"
+                      : subscriptionData.paymentMethod || "카드"}
+                  </strong>
+                </SubscriptionDetailItem>
+              </SubscriptionDetailGrid>
+
+              <SubscriptionActionNote>
+                {subscriptionActionNote}
+              </SubscriptionActionNote>
+
+              {!isManagedMembership && (
+                <ActionRow>
+                  {subscriptionData.status === "active" &&
+                  !subscriptionData.billingCancelled ? (
+                    <SecondaryAction
+                      type="button"
+                      onClick={() => setShowCancellationOptions(true)}
+                    >
+                      멤버십 중지하기
+                    </SecondaryAction>
+                  ) : (
+                    <PrimaryAction
+                      type="button"
+                      onClick={handleSubscriptionAction}
+                      disabled={isLoading}
+                    >
+                      {subscriptionActionLabel}
+                    </PrimaryAction>
+                  )}
+                </ActionRow>
+              )}
+            </SubscriptionManagementPanel>
+
             {isEditingDetails && (
               <ProfileFormPanel>
                 <EditSectionHeading>프로필 편집</EditSectionHeading>
@@ -2777,10 +2927,10 @@ export default function ProfileClient() {
                 <strong>{userData?.location || "Add"}</strong>
                 <ChevronRightIcon />
               </ProfileEditRow>
-              <ProfileEditRow type="button" onClick={() => router.push("/payment")}>
+              <ProfileEditRow type="button" onClick={handleSubscriptionAction}>
                 <CreditCardIcon />
                 <span>Subscription</span>
-                <strong>{membershipStatus}</strong>
+                <strong>{subscriptionActionLabel}</strong>
                 <ChevronRightIcon />
               </ProfileEditRow>
               <ProfileEditRow type="button" onClick={handleLogout}>

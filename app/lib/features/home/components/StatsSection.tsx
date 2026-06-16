@@ -49,7 +49,7 @@ const HeaderWrapper = styled.div`
 `;
 
 const Title = styled.h2`
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 1.5rem;

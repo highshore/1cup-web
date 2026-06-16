@@ -219,7 +219,7 @@ const Content = styled.div`
   margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 1rem 0 0;
+    padding: 1rem ${appLayout.pageGutterMobile} 0;
     max-width: 100%;
   }
 `;
@@ -589,12 +589,37 @@ const DiscussionPoint = styled.div`
   }
 `;
 
+const ActionButtonSlot = styled.div`
+  width: 100%;
+  min-height: 58px;
+
+  @media (max-width: 768px) {
+    min-height: 54px;
+  }
+`;
+
+const fixedActionButtonInset = css`
+  left: max(
+    ${appLayout.pageGutterDesktop},
+    calc((100vw - ${appLayout.pageMaxWidth}) / 2 + ${appLayout.pageGutterDesktop})
+  );
+  right: max(
+    ${appLayout.pageGutterDesktop},
+    calc((100vw - ${appLayout.pageMaxWidth}) / 2 + ${appLayout.pageGutterDesktop})
+  );
+
+  @media (max-width: 768px) {
+    left: ${appLayout.pageGutterMobile};
+    right: ${appLayout.pageGutterMobile};
+  }
+`;
+
 const ActionButtons = styled.div<{ $isFloating: boolean }>`
   display: flex;
   gap: 16px;
   width: 100%;
   max-width: calc(${appLayout.pageMaxWidth} - (${appLayout.pageGutterDesktop} * 2));
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  transition: opacity 0.3s ease-in-out;
   z-index: 1000;
 
   ${({ $isFloating }) =>
@@ -602,15 +627,10 @@ const ActionButtons = styled.div<{ $isFloating: boolean }>`
       ? css`
           position: fixed;
           bottom: 30px;
-          left: 50%;
-          right: auto;
-          width: min(
-            calc(100% - (${appLayout.pageGutterDesktop} * 2)),
-            calc(${appLayout.pageMaxWidth} - (${appLayout.pageGutterDesktop} * 2))
-          );
+          ${fixedActionButtonInset}
+          width: auto;
           margin: 0;
           padding-bottom: 0;
-          transform: translateX(-50%);
           z-index: 1050;
         `
       : css`
@@ -623,31 +643,24 @@ const ActionButtons = styled.div<{ $isFloating: boolean }>`
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 12px;
-    width: auto;
+    max-width: none;
 
     ${({ $isFloating }) =>
       $isFloating
         ? css`
             position: fixed !important;
-            bottom: 20px !important;
-            left: 0 !important;
-            right: auto !important;
-            width: 100% !important;
+            bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+            left: ${appLayout.pageGutterMobile} !important;
+            right: ${appLayout.pageGutterMobile} !important;
+            width: auto !important;
             margin: 0 !important;
-            padding-bottom: 16px;
-            transform: none !important;
+            padding-bottom: 0;
             z-index: 1050 !important;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
           `
         : css`
             position: static !important;
             margin: 1.5rem auto 0 auto !important;
             z-index: 1000;
-            box-shadow: none;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
           `}
   }
 `;
@@ -1445,10 +1458,6 @@ export function EventDetailClient() {
   );
   const actionButtonRef = useRef<HTMLDivElement>(null);
   const [isButtonFloating, setIsButtonFloating] = useState(false);
-  const staticButtonPositionRef = useRef<{
-    top: number;
-    height: number;
-  } | null>(null);
 
   // Use accountStatus from auth context
   const isAdmin = accountStatus === "admin";
@@ -1906,21 +1915,9 @@ export function EventDetailClient() {
         return;
       }
 
-      if (!isButtonFloating || !staticButtonPositionRef.current) {
-        const rect = actionButtonRef.current.getBoundingClientRect();
-        staticButtonPositionRef.current = {
-          top: rect.top + window.scrollY,
-          height: actionButtonRef.current.offsetHeight,
-        };
-      }
-
-      if (!staticButtonPositionRef.current) {
-        setIsButtonFloating(false);
-        return;
-      }
-
-      const { top: staticTop, height: staticHeight } =
-        staticButtonPositionRef.current;
+      const rect = actionButtonRef.current.getBoundingClientRect();
+      const staticTop = rect.top + window.scrollY;
+      const staticHeight = actionButtonRef.current.offsetHeight;
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
@@ -1951,7 +1948,6 @@ export function EventDetailClient() {
     };
 
     const handleResize = () => {
-      staticButtonPositionRef.current = null;
       setIsButtonFloating(false);
       setTimeout(calculatePositionAndCheckFloat, 100);
     };
@@ -2893,35 +2889,37 @@ export function EventDetailClient() {
           </TopicsSection>
         )}
 
-        <ActionButtons ref={actionButtonRef} $isFloating={isButtonFloating}>
-          <ActionButton
-            $variant={
-              isButtonDisabled
-                ? "locked"
-                : isCurrentUserParticipant
-                ? "cancel"
-                : "join"
-            }
-            onClick={isButtonDisabled ? undefined : handleJoinClick}
-          >
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+        <ActionButtonSlot ref={actionButtonRef}>
+          <ActionButtons $isFloating={isButtonFloating}>
+            <ActionButton
+              $variant={
+                isButtonDisabled
+                  ? "locked"
+                  : isCurrentUserParticipant
+                  ? "cancel"
+                  : "join"
+              }
+              onClick={isButtonDisabled ? undefined : handleJoinClick}
             >
-              {isButtonDisabled ? (
-                "🔒"
-              ) : isCurrentUserParticipant ? (
-                <CancelIcon fillColor="#FFFFFF" width="20px" height="20px" />
-              ) : (
-                <JoinIcon fillColor="#FFFFFF" width="20px" height="20px" />
-              )}
-            </span>
-            {getButtonText()}
-          </ActionButton>
-        </ActionButtons>
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {isButtonDisabled ? (
+                  "🔒"
+                ) : isCurrentUserParticipant ? (
+                  <CancelIcon fillColor="#FFFFFF" width="20px" height="20px" />
+                ) : (
+                  <JoinIcon fillColor="#FFFFFF" width="20px" height="20px" />
+                )}
+              </span>
+              {getButtonText()}
+            </ActionButton>
+          </ActionButtons>
+        </ActionButtonSlot>
 
         {(isAdmin ||
           accountStatus === "leader" ||

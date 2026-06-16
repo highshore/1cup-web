@@ -33,6 +33,7 @@ import {
   MapPinIcon,
   CalendarIcon as CalendarIconOutline,
   ClockIcon,
+  ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleIconSolid } from "@heroicons/react/24/solid";
 import {
@@ -44,7 +45,6 @@ import {
   query,
 } from "firebase/firestore";
 import { db as clientDb } from "../lib/firebase/firebase";
-import { SectionTitle, Highlight } from "./components/SectionHeading";
 import MembershipSection from "./sections/MembershipSection";
 import FaqSection from "./sections/FaqSection";
 import CtaSection from "./sections/CtaSection";
@@ -69,6 +69,59 @@ const GlobalStyle = createGlobalStyle<{ $machineMode: boolean }>`
 // Use shared colors
 
 const MOBILE_NAV_GUTTER = "1rem";
+
+const MEMBER_COMPANY_LOGOS = [
+  { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", scale: 1.04 },
+  { label: "쿠팡", src: "/assets/homepage/logos/coupang.webp", scale: 1.02 },
+  { label: "SAP", src: "/assets/homepage/logos/sap.webp", scale: 0.94 },
+  { label: "네슬레", src: "/assets/homepage/logos/nestle.webp", scale: 0.92 },
+  { label: "고려대학교", src: "/assets/homepage/logos/korea-university.webp", scale: 1 },
+  { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", scale: 1 },
+] as const;
+
+const MEMBER_LOGO_GRID_LIMIT = 8;
+
+type LeaderLocation = "anam" | "yeouido";
+
+const LEADER_LOCATIONS: Array<{ id: LeaderLocation; label: string }> = [
+  { id: "anam", label: "안암" },
+  { id: "yeouido", label: "여의도" },
+];
+
+const COMMUNITY_LEADERS = [
+  {
+    id: "kyle",
+    location: "anam",
+    name: "Kyle",
+    role: "안암 커뮤니티 매니저",
+    initials: "K",
+    accent: "#F37021",
+    linkedinUrl: "",
+    highlights: [
+      "(현) Fortune 500 기업 AI 엔지니어",
+      "(현) 안암 커뮤니티 매니저",
+      "TOEFL 118점, OPIc AL",
+      "CJ, 센드버드, 한미연합사 통역사 (5년 이상)",
+      "고려대 컴퓨터학과 재학, 외고 졸업",
+    ],
+  },
+  {
+    id: "joey",
+    location: "anam",
+    name: "Joey",
+    role: "안암 커뮤니티 매니저",
+    initials: "J",
+    accent: "#800021",
+    linkedinUrl: "",
+    highlights: [
+      "(현) Fortune 500 기업 PM",
+      "(현) 안암 커뮤니티 매니저",
+      "OPIc AL",
+      "외국계 경력 8년 이상",
+      "연세대 MBA 재학, 영국 석사 졸업",
+    ],
+  },
+] as const;
 
 // Common section styles
 const SectionBase = css`
@@ -120,6 +173,588 @@ const MainContent = styled.div`
   flex: 1;
   background: #ffffff;
   isolation: isolate;
+`;
+
+const MemberBackgroundSection = styled.section`
+  width: 100%;
+  background: #111111;
+  color: #ffffff;
+  padding: clamp(3.5rem, 7vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
+`;
+
+const MemberBackgroundHeader = styled.div`
+  max-width: 48rem;
+  margin-bottom: 3rem;
+
+  @media (max-width: 768px) {
+    margin: 0 auto 2.5rem;
+    text-align: center;
+  }
+`;
+
+const MemberBackgroundTitle = styled.h2`
+  margin: 0;
+  color: #ffffff;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+
+  @media (max-width: 768px) {
+    text-align: center;
+  }
+`;
+
+const MemberBackgroundTitleAccent = styled.span`
+  color: #F37021;
+`;
+
+const MemberBackgroundLayout = styled.div`
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  @media (max-width: 768px) {
+    padding: 0 ${MOBILE_NAV_GUTTER};
+  }
+`;
+
+const MemberLogoViewport = styled.div`
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.8rem;
+
+  @media (max-width: 520px) {
+    padding: 0.5rem;
+    border-radius: 18px;
+  }
+`;
+
+const MemberLogoTrack = styled.div<{ $columns: number }>`
+  display: grid;
+  grid-template-columns: repeat(${({ $columns }) => $columns}, minmax(0, 1fr));
+  gap: 0.8rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+`;
+
+const MemberLogoTile = styled.div`
+  display: flex;
+  min-height: 116px;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1.1rem 1rem 1rem;
+
+  span {
+    color: #222222;
+    font-size: 0.78rem;
+    font-weight: 760;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    min-height: 100px;
+    gap: 0.7rem;
+    padding: 0.9rem 0.75rem 0.8rem;
+    border-radius: 12px;
+
+    span {
+      font-size: 0.72rem;
+    }
+  }
+`;
+
+const MemberLogoOverflow = styled.div`
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const MemberLogoOverflowTile = styled.div`
+  display: inline-flex;
+  min-height: 48px;
+  min-width: 0;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.45rem 0.7rem;
+
+  img {
+    display: block;
+    width: auto;
+    height: 22px;
+    max-width: 72px;
+    object-fit: contain;
+  }
+
+  span {
+    color: #222222;
+    font-size: 0.72rem;
+    font-weight: 760;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    min-height: 42px;
+    padding: 0.4rem 0.58rem;
+
+    img {
+      height: 19px;
+      max-width: 64px;
+    }
+
+    span {
+      font-size: 0.68rem;
+    }
+  }
+`;
+
+const MemberLogoMark = styled.div<{ $scale: number }>`
+  display: grid;
+  width: 100%;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+
+  img {
+    display: block;
+    width: auto;
+    height: 34px;
+    max-width: 132px;
+    object-fit: contain;
+    object-position: center;
+    transform: scale(${({ $scale }) => $scale});
+    transform-origin: center;
+  }
+
+  @media (max-width: 768px) {
+    height: 34px;
+
+    img {
+      height: 28px;
+      max-width: 112px;
+    }
+  }
+`;
+
+const TopicVideoSection = styled.section`
+  width: 100%;
+  background: #f3f3f1;
+  color: #0f172a;
+  padding: clamp(4rem, 7vw, 5.5rem) 0;
+`;
+
+const TopicVideoLayout = styled.div`
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(2rem, 5vw, 3.5rem);
+  align-items: center;
+
+  @media (max-width: 820px) {
+    grid-template-columns: 1fr;
+    padding: 0 ${MOBILE_NAV_GUTTER};
+    text-align: center;
+  }
+`;
+
+const TopicVideoCopy = styled.div`
+  max-width: 28rem;
+
+  @media (max-width: 820px) {
+    max-width: 100%;
+  }
+`;
+
+const TopicVideoSectionTitle = styled.p`
+  margin: 0 0 0.85rem;
+  color: #F37021;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+`;
+
+const TopicVideoTitle = styled.h2`
+  margin: 0;
+  color: #0f172a;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: 0;
+  white-space: pre-line;
+  word-break: keep-all;
+`;
+
+const TopicVideoDescription = styled.p`
+  margin: 1.2rem 0 0;
+  color: #475569;
+  font-size: clamp(0.98rem, 1.5vw, 1.08rem);
+  font-weight: 560;
+  line-height: 1.65;
+  white-space: pre-line;
+  word-break: keep-all;
+`;
+
+const TopicVideoCaveat = styled.p`
+  margin: 0.7rem 0 0;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 620;
+  line-height: 1.55;
+  word-break: keep-all;
+`;
+
+const TopicVideoFrameGroup = styled.div`
+  min-width: 0;
+`;
+
+const TopicVideoFrame = styled.div`
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #0f172a;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.18);
+
+  iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  @media (max-width: 768px) {
+    border-radius: 14px;
+  }
+`;
+
+const TopicVideoCaption = styled.div`
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 760;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-align: center;
+  }
+`;
+
+const LeaderMethodSection = styled.section`
+  width: 100%;
+  background: #f3f3f1;
+  color: #0f172a;
+  padding: 0 0 clamp(4.5rem, 8vw, 6rem);
+  overflow: hidden;
+`;
+
+const LeaderMethodLayout = styled.div`
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  @media (max-width: 768px) {
+    padding: 0 ${MOBILE_NAV_GUTTER};
+  }
+`;
+
+const LeaderMethodHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: end;
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+
+  @media (max-width: 820px) {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+`;
+
+const LeaderMethodSectionTitle = styled.p`
+  margin: 0 0 0.85rem;
+  color: #F37021;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+`;
+
+const LeaderMethodTitle = styled.h2`
+  max-width: 35rem;
+  margin: 0;
+  color: #0f172a;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: 0;
+  word-break: keep-all;
+
+  @media (max-width: 820px) {
+    max-width: 100%;
+  }
+`;
+
+const LeaderLocationTabs = styled.div`
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(88px, 1fr));
+  gap: 0.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.25rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+
+  @media (max-width: 820px) {
+    justify-self: center;
+  }
+`;
+
+const LeaderLocationButton = styled.button<{ $active: boolean }>`
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: ${({ $active }) => ($active ? "#101418" : "transparent")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#475569")};
+  padding: 0.45rem 1rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+
+  &:hover {
+    color: ${({ $active }) => ($active ? "#ffffff" : "#0f172a")};
+    transform: translateY(-1px);
+  }
+`;
+
+const LeaderMethodGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(280px, 0.98fr);
+  gap: clamp(1rem, 4vw, 2rem);
+  align-items: stretch;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const LeaderSpotlight = styled.div`
+  position: relative;
+  min-height: 390px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  background: #ffffff;
+  padding: clamp(1.4rem, 4vw, 2rem);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
+
+  @media (max-width: 860px) {
+    min-height: auto;
+  }
+`;
+
+const LeaderMonogram = styled.div<{ $accent: string }>`
+  display: grid;
+  width: 6.25rem;
+  height: 6.25rem;
+  place-items: center;
+  border-radius: 28px;
+  background: ${({ $accent }) => $accent};
+  color: #ffffff;
+  font-size: 3.2rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+`;
+
+const LeaderNameRow = styled.div`
+  margin-top: clamp(2.2rem, 7vw, 4rem);
+`;
+
+const LeaderName = styled.h3`
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(2.4rem, 7vw, 4.9rem);
+  font-weight: 950;
+  line-height: 0.95;
+  letter-spacing: 0;
+`;
+
+const LeaderRole = styled.p`
+  margin: 0.8rem 0 0;
+  color: #64748b;
+  font-size: 0.98rem;
+  font-weight: 760;
+`;
+
+const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
+  margin-top: 1.5rem;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: ${({ $disabled }) =>
+    $disabled ? "rgba(15, 23, 42, 0.04)" : "#101418"};
+  color: ${({ $disabled }) => ($disabled ? "#94a3b8" : "#ffffff")};
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 880;
+  text-decoration: none;
+  pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+`;
+
+const LeaderHighlights = styled.ul`
+  margin: 2rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+  list-style: none;
+
+  li {
+    position: relative;
+    padding-left: 1.1rem;
+    color: #334155;
+    font-size: 0.94rem;
+    font-weight: 640;
+    line-height: 1.5;
+    word-break: keep-all;
+  }
+
+  li::before {
+    position: absolute;
+    top: 0.68em;
+    left: 0;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: #F37021;
+    content: "";
+  }
+`;
+
+const LeaderCardList = styled.div`
+  display: grid;
+  gap: 0.8rem;
+`;
+
+const LeaderCardButton = styled.button<{ $active: boolean; $accent: string }>`
+  width: 100%;
+  min-height: 116px;
+  border: 1px solid ${({ $active, $accent }) =>
+    $active ? $accent : "rgba(15, 23, 42, 0.08)"};
+  border-radius: 20px;
+  background: ${({ $active }) =>
+    $active ? "#ffffff" : "rgba(255, 255, 255, 0.58)"};
+  padding: 1rem;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: ${({ $active }) =>
+    $active ? "0 18px 45px rgba(15, 23, 42, 0.1)" : "none"};
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: ${({ $accent }) => $accent};
+    background: #ffffff;
+    transform: translateY(-2px);
+    outline: none;
+  }
+`;
+
+const LeaderCardInner = styled.div`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+`;
+
+const LeaderCardInitial = styled.div<{ $accent: string }>`
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 16px;
+  background: ${({ $accent }) => $accent};
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 950;
+`;
+
+const LeaderCardName = styled.strong`
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.2;
+`;
+
+const LeaderCardMeta = styled.span`
+  display: block;
+  margin-top: 0.22rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 720;
+`;
+
+const LeaderEmptyState = styled.div`
+  display: grid;
+  min-height: 250px;
+  place-items: center;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 2rem;
+  color: #64748b;
+  text-align: center;
+  font-weight: 720;
+  line-height: 1.55;
 `;
 
 
@@ -1484,6 +2119,31 @@ const buildWebsiteMarkdown = ({
     "",
     `**Primary CTA:** ${sanitizeMarkdownText(t.home.cta.button)}`,
     "",
+    "## Member Backgrounds",
+    `${sanitizeMarkdownText(t.home.memberLogos.titleLine1)} ${sanitizeMarkdownText(
+      t.home.memberLogos.titleHighlight,
+    )}${sanitizeMarkdownText(t.home.memberLogos.titleLine2Suffix)}`,
+    "",
+    `- ${t.home.memberLogos.items.map(sanitizeMarkdownText).join(", ")}`,
+    "",
+    "## Topic Sample",
+    sanitizeMarkdownText(t.home.topicVideo.title),
+    "",
+    sanitizeMarkdownText(t.home.topicVideo.description),
+    sanitizeMarkdownText(t.home.topicVideo.caveat),
+    "",
+    `**Video:** ${sanitizeMarkdownText(t.home.topicVideo.videoTitle)}`,
+    "",
+    "## Leader-Guided Discussion",
+    sanitizeMarkdownText(t.home.leaderMethod.sectionTitle),
+    "",
+    sanitizeMarkdownText(t.home.leaderMethod.title),
+    "",
+    ...COMMUNITY_LEADERS.map((leader) => [
+      `### ${sanitizeMarkdownText(leader.name)}`,
+      ...leader.highlights.map((highlight) => `- ${sanitizeMarkdownText(highlight)}`),
+      "",
+    ]).flat(),
     "## Stats",
     `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.meetups)}: ${formatStatValue(stats?.totalMeetups)}`,
     `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.members)}: ${formatStatValue(stats?.totalMembers)}`,
@@ -1581,6 +2241,34 @@ export default function NewHomeClient({
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const { t, locale } = useI18n();
+  const [selectedLeaderLocation, setSelectedLeaderLocation] =
+    useState<LeaderLocation>("anam");
+  const [activeLeaderId, setActiveLeaderId] = useState<string>(
+    COMMUNITY_LEADERS[0].id,
+  );
+
+  const visibleLeaders = useMemo(
+    () =>
+      COMMUNITY_LEADERS.filter(
+        (leader) => leader.location === selectedLeaderLocation,
+      ),
+    [selectedLeaderLocation],
+  );
+
+  const activeLeader =
+    visibleLeaders.find((leader) => leader.id === activeLeaderId) ??
+    visibleLeaders[0] ??
+    null;
+
+  const handleLeaderLocationChange = useCallback((location: LeaderLocation) => {
+    setSelectedLeaderLocation(location);
+    const firstLeader = COMMUNITY_LEADERS.find(
+      (leader) => leader.location === location,
+    );
+    if (firstLeader) {
+      setActiveLeaderId(firstLeader.id);
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1902,6 +2590,8 @@ export default function NewHomeClient({
       }),
     [t, locale, homeStats, upcomingEvents, initialTopics],
   );
+  const visibleMemberLogos = MEMBER_COMPANY_LOGOS.slice(0, MEMBER_LOGO_GRID_LIMIT);
+  const overflowMemberLogos = MEMBER_COMPANY_LOGOS.slice(MEMBER_LOGO_GRID_LIMIT);
 
   return (
     <PageWrapper $machineMode={displayMode === "machine"}>
@@ -1966,6 +2656,155 @@ export default function NewHomeClient({
           </HeroSection>
 
           <MainContent>
+            <MemberBackgroundSection>
+              <MemberBackgroundLayout>
+                <MemberBackgroundHeader>
+                  <MemberBackgroundTitle>
+                    {t.home.memberLogos.titleLine1}
+                    <br />
+                    <MemberBackgroundTitleAccent>
+                      {t.home.memberLogos.titleHighlight}
+                    </MemberBackgroundTitleAccent>
+                    {t.home.memberLogos.titleLine2Suffix}
+                  </MemberBackgroundTitle>
+                </MemberBackgroundHeader>
+                <MemberLogoViewport>
+                  <MemberLogoTrack $columns={visibleMemberLogos.length <= 6 ? 3 : 4}>
+                    {visibleMemberLogos.map((company) => (
+                      <MemberLogoTile key={company.label}>
+                        <MemberLogoMark $scale={company.scale}>
+                          <img src={company.src} alt={company.label} loading="lazy" />
+                        </MemberLogoMark>
+                        <span>{company.label}</span>
+                      </MemberLogoTile>
+                    ))}
+                  </MemberLogoTrack>
+                  {overflowMemberLogos.length > 0 ? (
+                    <MemberLogoOverflow aria-label="Additional member backgrounds">
+                      {overflowMemberLogos.map((company) => (
+                        <MemberLogoOverflowTile key={company.label}>
+                          <img src={company.src} alt={company.label} loading="lazy" />
+                          <span>{company.label}</span>
+                        </MemberLogoOverflowTile>
+                      ))}
+                    </MemberLogoOverflow>
+                  ) : null}
+                </MemberLogoViewport>
+              </MemberBackgroundLayout>
+            </MemberBackgroundSection>
+            <TopicVideoSection>
+              <TopicVideoLayout>
+                <TopicVideoCopy>
+                  <TopicVideoSectionTitle>
+                    {t.home.topicVideo.sectionTitle}
+                  </TopicVideoSectionTitle>
+                  <TopicVideoTitle>{t.home.topicVideo.title}</TopicVideoTitle>
+                  <TopicVideoDescription>
+                    {t.home.topicVideo.description}
+                  </TopicVideoDescription>
+                  <TopicVideoCaveat>{t.home.topicVideo.caveat}</TopicVideoCaveat>
+                </TopicVideoCopy>
+                <TopicVideoFrameGroup>
+                  <TopicVideoFrame>
+                    <iframe
+                      src="https://www.youtube-nocookie.com/embed/yKtw4of-j0E?start=2143&end=2203&rel=0&modestbranding=1"
+                      title={t.home.topicVideo.videoTitle}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </TopicVideoFrame>
+                  <TopicVideoCaption>
+                    <span>{t.home.topicVideo.videoTitle}</span>
+                  </TopicVideoCaption>
+                </TopicVideoFrameGroup>
+              </TopicVideoLayout>
+            </TopicVideoSection>
+            <LeaderMethodSection>
+              <LeaderMethodLayout>
+                <LeaderMethodHeader>
+                  <div>
+                    <LeaderMethodSectionTitle>
+                      {t.home.leaderMethod.sectionTitle}
+                    </LeaderMethodSectionTitle>
+                    <LeaderMethodTitle>{t.home.leaderMethod.title}</LeaderMethodTitle>
+                  </div>
+                  <LeaderLocationTabs aria-label="리더 지역 선택">
+                    {LEADER_LOCATIONS.map((location) => (
+                      <LeaderLocationButton
+                        key={location.id}
+                        type="button"
+                        $active={selectedLeaderLocation === location.id}
+                        onClick={() => handleLeaderLocationChange(location.id)}
+                      >
+                        {location.label}
+                      </LeaderLocationButton>
+                    ))}
+                  </LeaderLocationTabs>
+                </LeaderMethodHeader>
+
+                {activeLeader ? (
+                  <LeaderMethodGrid>
+                    <LeaderSpotlight>
+                      <LeaderMonogram $accent={activeLeader.accent}>
+                        {activeLeader.initials}
+                      </LeaderMonogram>
+                      <LeaderNameRow>
+                        <LeaderName>{activeLeader.name}</LeaderName>
+                        <LeaderRole>{activeLeader.role}</LeaderRole>
+                      </LeaderNameRow>
+                      <LeaderLinkedInButton
+                        href={activeLeader.linkedinUrl || undefined}
+                        target={activeLeader.linkedinUrl ? "_blank" : undefined}
+                        rel={activeLeader.linkedinUrl ? "noreferrer" : undefined}
+                        $disabled={!activeLeader.linkedinUrl}
+                        aria-disabled={!activeLeader.linkedinUrl}
+                      >
+                        {activeLeader.linkedinUrl
+                          ? "LinkedIn"
+                          : t.home.leaderMethod.linkedInUnavailable}
+                        <ArrowTopRightOnSquareIcon aria-hidden="true" />
+                      </LeaderLinkedInButton>
+                      <LeaderHighlights>
+                        {activeLeader.highlights.map((highlight) => (
+                          <li key={highlight}>{highlight}</li>
+                        ))}
+                      </LeaderHighlights>
+                    </LeaderSpotlight>
+                    <LeaderCardList>
+                      {visibleLeaders.map((leader) => (
+                        <LeaderCardButton
+                          key={leader.id}
+                          type="button"
+                          $active={activeLeader.id === leader.id}
+                          $accent={leader.accent}
+                          onClick={() => setActiveLeaderId(leader.id)}
+                          onMouseEnter={() => setActiveLeaderId(leader.id)}
+                          onFocus={() => setActiveLeaderId(leader.id)}
+                        >
+                          <LeaderCardInner>
+                            <LeaderCardInitial $accent={leader.accent}>
+                              {leader.initials}
+                            </LeaderCardInitial>
+                            <div>
+                              <LeaderCardName>{leader.name}</LeaderCardName>
+                              <LeaderCardMeta>{leader.highlights[0]}</LeaderCardMeta>
+                            </div>
+                          </LeaderCardInner>
+                        </LeaderCardButton>
+                      ))}
+                    </LeaderCardList>
+                  </LeaderMethodGrid>
+                ) : (
+                  <LeaderEmptyState>
+                    <div>
+                      <strong>{t.home.leaderMethod.emptyTitle}</strong>
+                      <br />
+                      {t.home.leaderMethod.emptyDescription}
+                    </div>
+                  </LeaderEmptyState>
+                )}
+              </LeaderMethodLayout>
+            </LeaderMethodSection>
             <StatsSection stats={homeStats} />
             <TopicsShowcase topics={initialTopics || []} />
             <MembershipSection />

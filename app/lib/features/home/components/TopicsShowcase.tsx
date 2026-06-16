@@ -36,7 +36,7 @@ const SectionHeader = styled.div`
 `;
 
 const SectionTitle = styled.h2`
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
   font-weight: 900;
   color: #ffffff;
   margin-bottom: 1.5rem;
