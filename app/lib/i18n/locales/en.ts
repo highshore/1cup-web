@@ -22,38 +22,116 @@ const en = {
       subtitle: "Network with Professionals in Korea. Test your Communication Skills.",
       mobileSubtitle: "Built by an interpreter\nfor serious speaking practice",
       eventPrompt: "Join the English meetup led by an interpreter right now!",
+      videoUnsupported: "Your browser does not support the video tag.",
     },
     memberLogos: {
-      titleLine1: "다양한 배경의 멤버들이",
-      titleHighlight: "영어 한잔",
-      titleLine2Suffix: "과 함께했습니다",
+      titleLine1: "Members from diverse backgrounds",
+      titleHighlight: "joined One Cup English",
+      titleLine2Suffix: "",
+      additionalAria: "Additional member backgrounds",
       items: [
-        "SK하이닉스",
-        "쿠팡",
+        "SK hynix",
+        "Coupang",
         "SAP",
-        "네슬레",
-        "고려대학교",
-        "연세대학교 MBA",
+        "Nestle",
+        "Korea University",
+        "Yonsei MBA",
       ],
     },
     topicVideo: {
-      sectionTitle: "모임 진행 방식 #1",
-      title: "월가와 실리콘밸리의\n핫토픽을 선정합니다",
-      description: "Wall Street Journal, Financial Times 등에서 글로벌 리더들이 정독하는 최고급 영문 기사들을 기반으로 토론합니다",
-      caveat: "영어 한잔은 신문사의 지식재산권을 준수하여 멤버 토론 목적 외의 기사를 공개하지 않습니다.",
-      videoTitle: "매일 오전 NYT, WSJ, FT를 읽는 JP 모건 회장 제이미 다이먼",
+      sectionTitle: "Meetup Method #1",
+      title: "We pick timely topics\nfrom Wall Street and Silicon Valley",
+      description: "Discussions are based on premium English articles that global leaders read closely, including The Wall Street Journal and Financial Times.",
+      caveat: "One Cup English respects publisher intellectual property and does not publicly share articles beyond member discussion purposes.",
+      videoTitle: "JPMorgan CEO Jamie Dimon reads WSJ and FT every day",
     },
     leaderMethod: {
-      sectionTitle: "모임 진행 방식 #2",
-      title: "경험 있는 리더들이\n토론의 방향을 잡아줍니다",
-      emptyTitle: "여의도 리더 라인업 준비 중",
-      emptyDescription: "여의도 모임 리더 프로필은 확정되는 대로 업데이트됩니다.",
-      linkedInUnavailable: "LinkedIn 준비 중",
+      sectionTitle: "Meetup Method #2",
+      title: "Experienced leaders\nguide the discussion",
+      emptyTitle: "Leader lineup coming soon",
+      emptyDescription: "Leader profiles will be updated once confirmed.",
+      linkedInUnavailable: "LinkedIn coming soon",
+      locationTabsAria: "Choose leader location",
+      profilesAria: "Community leader profiles",
+      readingStyleLabel: "Leading style",
+      locations: {
+        anam: "Anam",
+        yeouido: "Yeouido",
+      },
+      profiles: {
+        sj: {
+          name: "SJ",
+          role: "Community Manager",
+          bullets: [
+            { icon: "work", text: "Current full-stack engineer at an AI translation company" },
+            { icon: "uk", text: "TOEIC 935" },
+            { icon: "military", text: "Served as a KATUSA at the U.S. Army Garrison Humphreys" },
+            { icon: "school", text: "Studying Cyber Defense at Korea University Seoul Campus" },
+            { icon: "school", text: "Graduated from a science high school" },
+          ],
+          readingStyle: "",
+        },
+        kyle: {
+          name: "Kyle",
+          role: "Community Manager",
+          locationRoles: {
+            yeouido: "Leader",
+          },
+          bullets: [
+            { icon: "work", text: "Current AI engineer intern at a global enterprise" },
+            { icon: "work", text: "4+ years as an interpreter at CJ CheilJedang and Sendbird" },
+            { icon: "military", text: "English interpreter soldier at ROK-US Combined Forces Command" },
+            { icon: "uk", text: "New TOEFL full score 6, old TOEFL 118, and OPIc AL" },
+            { icon: "school", text: "Senior in Computer Science at Korea University Seoul Campus" },
+            { icon: "school", text: "Graduated from Goyang Foreign Language High School" },
+          ],
+          readingStyle: "Actively encourages members to offer opposing views and new perspectives. Values the will to grow more than current English ability.",
+        },
+        joey: {
+          name: "Joey",
+          role: "Community Manager",
+          locationRoles: {
+            yeouido: "Leader",
+          },
+          bullets: [
+            { icon: "work", text: "8th-year PM at a global enterprise" },
+            { icon: "uk", text: "Achieved OPIc AL twice" },
+            { icon: "work", text: "Experience at Korean conglomerates and global companies" },
+            { icon: "school", text: "MBA student at Yonsei Graduate School of Business" },
+            { icon: "school", text: "Master's degree from the UK" },
+          ],
+          readingStyle: "Values a wide range of views on each topic and leads an enjoyable discussion atmosphere.",
+        },
+        ey: {
+          name: "EY",
+          role: "Leader",
+          bullets: [],
+          readingStyle: "",
+        },
+        jc: {
+          name: "JC",
+          role: "Leader",
+          bullets: [],
+          readingStyle: "",
+        },
+        ab: {
+          name: "AB",
+          role: "Leader",
+          bullets: [],
+          readingStyle: "",
+        },
+      },
     },
     networkingMethod: {
-      sectionTitle: "모임 진행 방식 #3",
-      title: "정식 밋업 외에도\n다양한 활동으로 네트워킹을 합니다",
-      description: "검증된 멤버들과 토론 이후에도 자연스럽게 연결되는 커뮤니티를 만듭니다.",
+      sectionTitle: "Meetup Method #3",
+      title: "Beyond regular meetups,\nnetworking through community activities",
+      description: "We build a community where members can naturally stay connected with the people they want to meet after each meetup.",
+      images: {
+        member: "Meetup members in discussion",
+        galleryTwo: "Networking after the meetup",
+        galleryThree: "One Cup English community activity",
+        activity: "One Cup English member networking activity",
+      },
     },
     cta: {
       title: "Want to improve your English communication skills?",
@@ -72,8 +150,18 @@ const en = {
       machine: "Machine",
       ariaLabel: "Homepage render mode",
     },
+    jobCelebration: {
+      ariaLabel: "Member job celebration",
+      eyebrow: "Member career celebration",
+      title: "Congratulations to 1 Cup English member Nam OO on landing SK Hynix",
+      description: "We are celebrating a member starting a new chapter at one of Korea's leading semiconductor companies.",
+      close: "Celebrate and close",
+    },
     topicsShowcase: {
       title: "What topics do we dive into each week?",
+      titlePrefix: "What ",
+      titleHighlight: "topics",
+      titleSuffix: " do we dive into each week?",
       subtitle: "We curate timely articles from WSJ, FT, NYT and more to spark fresh discussions.",
       hoverPrompt: "Read the article",
     },
@@ -107,11 +195,15 @@ const en = {
         description: "Instead of light small talk, we cover articles from global top-tier media such as WSJ, FT, NYT, and TechCrunch.",
       },
       growth: {
-        title: "The fastest opportunity for growth is now",
+        title: "A meetup proven by many members over time",
         metrics: {
           meetups: "Cumulative Meetups",
           members: "Cumulative Paid Members",
           retention: "Retention Rate",
+        },
+        valueSuffixes: {
+          meetups: "",
+          members: "+",
         },
         cta: "View Membership",
       },
@@ -121,18 +213,18 @@ const en = {
       cta: "Apply for Membership",
     },
     pricingNew: {
-      sectionTitle: "Overwhelming value\nat 9,700 KRW per month",
+      sectionTitle: "A better English room,\nat an accessible price.",
       leftTitle: "Access to all meetups held\nduring membership period",
       referralDiscount: "Additional discount available for referrals",
       caveats: {
         line1: "* Meetups are held once a week (up to 4 times a month).",
         line2: "* If a meetup is cancelled due to operator reasons, the subscription period will be extended by 2 weeks.",
-        line3: "* Extensions are not granted if a member misses a meetup due to their own reasons.",
+        line3: "* Refunds or extensions are not available if a member misses a meetup due to their own reasons.",
         line4: "* Forced refunds may proceed in case of violation of operation policies such as bad manners.",
       },
       chart: {
-        title: "Overwhelming value\nat 9,700 KRW per month",
-        highlight: "Overwhelming value",
+        title: "A better English room,\nat an accessible price.",
+        highlight: "accessible price",
         header: "Cost per 1 hour comparison",
         unit: "(Unit: KRW)",
         labels: {
@@ -143,6 +235,107 @@ const en = {
           premium: "Premium Video English",
         },
       },
+    },
+    support: {
+      label: "Support",
+      ariaLabel: "Contact customer support",
+    },
+  },
+  nonKoreanApplicants: {
+    hero: {
+      eyebrow: "For Non-Korean Applicants",
+      title: "Build Your Quality Network in Korea.",
+      subtitle:
+        "1 Cup English welcomes long-term international inhabitants who are building a professional life in Korea and want to connect with Korean professionals and students through meaningful conversations.",
+      primaryCta: "Sign In to Apply",
+      secondaryCta: "View Meetups",
+      cardTitle: "Designed for Long-Term Professional Connection",
+      points: [
+        "High-quality English networking with Korean professionals",
+        "A community beyond short-term exchange, tourist, or temporary visitor circles",
+        "A place to share professional and cultural perspectives with avid learners",
+      ],
+    },
+    eligibility: {
+      eyebrow: "Eligibility",
+      title: "Who This Meetup Is For",
+      description:
+        "This application channel is designed for non-Korean applicants who can contribute to a professional, long-term English networking environment in Korea.",
+      items: [
+        {
+          title: "Native English Speaker",
+          description:
+            "You hold citizenship from one of the following core English-speaking countries. You may still apply if you don’t hold a citizenship from these 5 countries, but approval will NOT be guaranteed.",
+          countries: [
+            { flag: "🇦🇺", name: "Australia" },
+            { flag: "🇨🇦", name: "Canada" },
+            { flag: "🇳🇿", name: "New Zealand" },
+            { flag: "🇬🇧", name: "United Kingdom" },
+            { flag: "🇺🇸", name: "United States" },
+          ],
+        },
+        {
+          title: "Professional Background in Korea",
+          description:
+            "You are currently working in Korea at a company, public institution, or professional organization. The meetup is not designed for stays mainly based on short-term teaching, military service, exchange study, tourism, or temporary travel.",
+        },
+        {
+          title: "Long-Term Stay in Korea",
+          description:
+            "You have already stayed in South Korea for more than 2 years, or you plan to stay for more than 2 years from the time of application.",
+        },
+        {
+          title: "Community Fit",
+          description:
+            "You are interested in thoughtful conversation, professional networking, and helping Korean members practice real English communication.",
+        },
+      ],
+    },
+    benefits: {
+      eyebrow: "Benefits",
+      title: "What You Can Expect as Our Valued Member",
+      items: [
+        "Network with Korean professionals or SKY+ students in a relaxed but professional English-speaking environment.",
+        "Meet other long-term international professionals based in Korea.",
+        "Build meaningful connections beyond short-term visitor circles.",
+        "Share your professional and cultural perspective with Korean members serious about English communication.",
+      ],
+      note: "International member fees are waived (free of charge), but you’ll be required to pay for your own coffee at the meetup location.",
+    },
+    process: {
+      eyebrow: "Application Process",
+      title: "Simple Review, High Signal",
+      description:
+        "We review applications to keep the community relevant, respectful, and useful for both Korean and international members.",
+      steps: [
+        {
+          title: "Sign In",
+          description:
+            "Create a 1 Cup English account or sign in to your existing account.",
+        },
+        {
+          title: "Submit Your Details",
+          description:
+            "Please submit your email address, nationality, and LinkedIn profile URL. We use these to contact you and review your fit with our meetup.",
+        },
+        {
+          title: "Application Review",
+          description:
+            "We review your background and fit with the 1 Cup English community. Ideally, the review will take 3 days or less.",
+        },
+        {
+          title: "Confirmation by Email",
+          description:
+            "Once the review is complete, we will contact you by email with the next steps.",
+        },
+      ],
+    },
+    cta: {
+      title: "Ready to Connect with Professionals in Korea?",
+      description:
+        "If you are a long-term international professional in Korea and want to build meaningful relationships through English conversation, we would be happy to hear from you.",
+      primary: "Sign In to Apply",
+      secondary: "Explore Meetups",
     },
   },
   blog: {

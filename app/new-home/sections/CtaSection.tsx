@@ -28,11 +28,13 @@ const CTAInner = styled.div`
 
 const CTASectionCard = styled.div`
   position: relative;
+  border: 2px solid #050505;
   border-radius: 18px;
   padding: 3rem;
   text-align: center;
   width: 100%;
   overflow: hidden;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.92);
 
   @media (max-width: 768px) {
     padding: 2rem;
@@ -95,7 +97,7 @@ const CTADescription = styled.p`
 const CTAButton = styled.button`
   min-height: 48px;
   padding: 0.78rem 1.55rem;
-  border: 1px solid rgba(255, 255, 255, 0.94);
+  border: 2px solid #050505;
   border-radius: 999px;
   font-size: 1rem;
   font-weight: 850;
@@ -111,13 +113,13 @@ const CTAButton = styled.button`
   color: #0f172a;
   font-family: inherit;
   background: #ffffff;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+  box-shadow: 5px 5px 0 #f47a4a;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26);
-    transform: translateY(-1px);
+    background: #fff8dc;
+    border-color: #050505;
+    box-shadow: 7px 7px 0 #f47a4a;
+    transform: translate(-1px, -1px);
   }
 
   &:active {

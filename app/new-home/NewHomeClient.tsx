@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import styled, { createGlobalStyle, css, keyframes } from "styled-components";
 import { colors } from "../lib/constants/colors";
 import React from "react";
+import Image from "next/image";
 // GNB and Footer are now handled by the layout
 
 // Imports for Meetup Event Display
@@ -23,8 +24,6 @@ import { HomeStats } from "../lib/features/home/services/stats_service";
 import TopicsShowcase from "../lib/features/home/components/TopicsShowcase";
 import { HomeTopicArticle } from "../lib/features/home/services/topics_service";
 import {
-  AcademicCapIcon,
-  BriefcaseIcon,
   CheckCircleIcon,
   PhotoIcon,
   RocketLaunchIcon,
@@ -34,6 +33,7 @@ import {
   CalendarIcon as CalendarIconOutline,
   ClockIcon,
   ArrowTopRightOnSquareIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleIconSolid } from "@heroicons/react/24/solid";
 import {
@@ -64,79 +64,103 @@ const GlobalStyle = createGlobalStyle<{ $machineMode: boolean }>`
         display: none !important;
       }
     `}
+
+  body[data-home-image-guard="true"] img {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
 `;
 
 // Use shared colors
 
 const MOBILE_NAV_GUTTER = "1rem";
+const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
+const JOB_CELEBRATION_STORAGE_KEY = "one-cup-sk-hynix-celebration-dismissed";
 
 const MEMBER_COMPANY_LOGOS = [
-  { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", scale: 1.04 },
-  { label: "쿠팡", src: "/assets/homepage/logos/coupang.webp", scale: 1.02 },
-  { label: "SAP", src: "/assets/homepage/logos/sap.webp", scale: 0.94 },
-  { label: "네슬레", src: "/assets/homepage/logos/nestle.webp", scale: 0.92 },
-  { label: "고려대학교", src: "/assets/homepage/logos/korea-university.webp", scale: 1 },
-  { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", scale: 1 },
+  { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", width: 260, height: 129, scale: 1.04 },
+  { label: "쿠팡", src: "/assets/homepage/logos/coupang.webp", width: 320, height: 73, scale: 1.02 },
+  { label: "SAP", src: "/assets/homepage/logos/sap.webp", width: 220, height: 109, scale: 0.94 },
+  { label: "네슬레", src: "/assets/homepage/logos/nestle.webp", width: 165, height: 170, scale: 0.92 },
+  { label: "고려대학교", src: "/assets/homepage/logos/korea-university.webp", width: 280, height: 93, scale: 1 },
+  { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", width: 280, height: 86, scale: 1 },
 ] as const;
 
 const MEMBER_LOGO_GRID_LIMIT = 8;
 
 type LeaderLocation = "anam" | "yeouido";
-
-const LEADER_LOCATIONS: Array<{ id: LeaderLocation; label: string }> = [
-  { id: "anam", label: "안암" },
-  { id: "yeouido", label: "여의도" },
-];
+const LEADER_LOCATIONS: LeaderLocation[] = ["anam", "yeouido"];
 
 const COMMUNITY_LEADERS = [
   {
-    id: "kyle",
-    location: "anam",
-    name: "Kyle",
-    role: "안암 커뮤니티 매니저",
-    initials: "K",
-    accent: "#F37021",
-    imageSrc: "/assets/homepage/member1.webp",
+    id: "sj",
+    locations: ["yeouido"],
+    name: "SJ",
+    initials: "SJ",
+    accent: "#f47a4a",
+    imageSrc: "",
     linkedinUrl: "",
-    highlights: [
-      "(현) Fortune 500 기업 AI 엔지니어",
-      "(현) 안암 커뮤니티 매니저",
-      "TOEFL 118점, OPIc AL",
-      "CJ, 센드버드, 한미연합사 통역사 (5년 이상)",
-      "고려대 컴퓨터학과 재학, 외고 졸업",
-    ],
+  },
+  {
+    id: "kyle",
+    locations: ["anam", "yeouido"],
+    name: "Kyle",
+    initials: "K",
+    accent: "#f47a4a",
+    imageSrc: "/assets/homepage/member1.webp",
+    linkedinUrl: "https://www.linkedin.com/in/sk-kyle-kim/",
   },
   {
     id: "joey",
-    location: "anam",
+    locations: ["anam", "yeouido"],
     name: "Joey",
-    role: "안암 커뮤니티 매니저",
     initials: "J",
+    accent: "#800021",
+    imageSrc: "/assets/homepage/joey.webp",
+    linkedinUrl: "https://www.linkedin.com/in/sooojo/",
+  },
+  {
+    id: "ey",
+    locations: ["anam"],
+    name: "EY",
+    initials: "EY",
+    accent: "#f47a4a",
+    imageSrc: "",
+    linkedinUrl: "",
+  },
+  {
+    id: "jc",
+    locations: ["anam"],
+    name: "JC",
+    initials: "JC",
+    accent: "#a6c9d8",
+    imageSrc: "",
+    linkedinUrl: "",
+  },
+  {
+    id: "ab",
+    locations: ["anam"],
+    name: "AB",
+    initials: "AB",
     accent: "#800021",
     imageSrc: "",
     linkedinUrl: "",
-    highlights: [
-      "(현) Fortune 500 기업 PM",
-      "(현) 안암 커뮤니티 매니저",
-      "OPIc AL",
-      "외국계 경력 8년 이상",
-      "연세대 MBA 재학, 영국 석사 졸업",
-    ],
   },
 ] as const;
 
 const DISCUSSION_SEATS = [
-  { id: "lead", top: "18%", left: "50%", accent: "#F37021", delay: "0s", leader: true },
-  { id: "member-a", top: "40%", left: "78%", accent: "#CBD5E1", delay: "0.35s", leader: false },
-  { id: "member-b", top: "74%", left: "66%", accent: "#CBD5E1", delay: "0.7s", leader: false },
-  { id: "member-c", top: "74%", left: "34%", accent: "#CBD5E1", delay: "1.05s", leader: false },
-  { id: "member-d", top: "40%", left: "22%", accent: "#CBD5E1", delay: "1.4s", leader: false },
+  { id: "lead", top: "19%", left: "50%", accent: "#5a321f", delay: "0s", leader: true },
+  { id: "member-a", top: "48%", left: "79%", accent: "#ef8a42", delay: "0.35s", leader: false },
+  { id: "member-b", top: "81%", left: "68%", accent: "#a79880", delay: "0.7s", leader: false },
+  { id: "member-c", top: "81%", left: "32%", accent: "#d6b995", delay: "1.05s", leader: false },
+  { id: "member-d", top: "48%", left: "21%", accent: "#83906f", delay: "1.4s", leader: false },
 ] as const;
 
 const NETWORKING_IMAGES = [
-  { id: "member", src: "/assets/homepage/gallery1.webp", alt: "밋업 멤버 토론" },
-  { id: "gallery-two", src: "/assets/homepage/gallery2.webp", alt: "밋업 후 네트워킹" },
-  { id: "gallery-three", src: "/assets/homepage/gallery3.webp", alt: "영어 한잔 커뮤니티 활동" },
+  { id: "member", src: "/assets/homepage/gallery1.webp", width: 900, height: 902, altKey: "member" },
+  { id: "gallery-two", src: "/assets/homepage/gallery2.webp", width: 1100, height: 825, altKey: "galleryTwo" },
+  { id: "gallery-three", src: "/assets/homepage/gallery3.webp", width: 1100, height: 825, altKey: "galleryThree", rotate: 90 },
+  { id: "activity", src: "/assets/homepage/activity.webp", width: 768, height: 1024, altKey: "activity", objectPosition: "center 72%" },
 ] as const;
 
 // Common section styles
@@ -223,7 +247,7 @@ const MemberBackgroundTitle = styled.h2`
 `;
 
 const MemberBackgroundTitleAccent = styled.span`
-  color: #F37021;
+  color: #f47a4a;
 `;
 
 const MemberBackgroundLayout = styled.div`
@@ -382,31 +406,98 @@ const MethodFlowWrapper = styled.div`
   position: relative;
   overflow: hidden;
   background: #f3f3f1;
+  isolation: isolate;
 
   &::before {
     position: absolute;
-    top: clamp(4.4rem, 7vw, 5.6rem);
-    bottom: clamp(4.5rem, 8vw, 6rem);
-    left: max(0.75rem, calc((100vw - 960px) / 2 - 8px));
-    width: 1px;
-    background: linear-gradient(
-      to bottom,
-      rgba(243, 112, 33, 0.18),
-      rgba(15, 23, 42, 0.14),
-      rgba(15, 23, 42, 0.08)
-    );
+    inset: 0;
+    z-index: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 18%),
+      radial-gradient(circle at 76% 18%, rgba(244, 122, 74, 0.06), transparent 24rem),
+      radial-gradient(circle at 16% 62%, rgba(5, 5, 5, 0.045), transparent 28rem);
     content: "";
   }
+`;
 
-  @media (max-width: 768px) {
-    &::before {
-      left: 0.65rem;
+const MethodFlowRoute = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  svg {
+    position: absolute;
+    top: clamp(3rem, 5vw, 4.4rem);
+    left: 50%;
+    width: min(1120px, calc(100% - 2rem));
+    height: calc(100% - clamp(6rem, 10vw, 8rem));
+    overflow: visible;
+    transform: translateX(-50%);
+  }
+
+  .mobile-route {
+    display: none;
+  }
+
+  .route-shadow {
+    fill: none;
+    stroke: rgba(244, 122, 74, 0.11);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 8px rgba(244, 122, 74, 0.11));
+    vector-effect: non-scaling-stroke;
+  }
+
+  .route-line {
+    fill: none;
+    stroke: rgba(244, 122, 74, 0.28);
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 12 14;
+    filter: drop-shadow(0 0 5px rgba(244, 122, 74, 0.13));
+    vector-effect: non-scaling-stroke;
+  }
+
+  .route-anchor {
+    display: none;
+  }
+
+  .route-anchor-core {
+    display: none;
+  }
+
+  @media (max-width: 820px) {
+    svg {
+      top: 2.25rem;
+      width: calc(100% - 1.5rem);
+      height: calc(100% - 4rem);
+    }
+
+    .desktop-route {
+      display: none;
+    }
+
+    .mobile-route {
+      display: block;
+    }
+
+    .route-shadow {
+      stroke-width: 7;
+    }
+
+    .route-line {
+      stroke-width: 1.65;
+      stroke-dasharray: 10 12;
     }
   }
 `;
 
 const TopicVideoSection = styled.section`
   position: relative;
+  z-index: 1;
   width: 100%;
   color: #0f172a;
   padding: clamp(4rem, 7vw, 5.5rem) 0;
@@ -422,28 +513,10 @@ const TopicVideoLayout = styled.div`
   gap: clamp(2rem, 5vw, 3.5rem);
   align-items: center;
 
-  &::before {
-    position: absolute;
-    top: 0.15rem;
-    left: -8px;
-    z-index: 1;
-    width: 0.7rem;
-    height: 0.7rem;
-    border: 3px solid #f3f3f1;
-    border-radius: 999px;
-    background: #F37021;
-    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
-    content: "";
-  }
-
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
     padding: 0 ${MOBILE_NAV_GUTTER};
     text-align: center;
-
-    &::before {
-      left: 0.25rem;
-    }
   }
 `;
 
@@ -456,14 +529,26 @@ const TopicVideoCopy = styled.div`
 `;
 
 const TopicVideoSectionTitle = styled.p`
+  display: inline-flex;
+  max-width: min(100%, 18rem);
+  align-items: center;
+  justify-content: center;
   margin: 0 0 0.85rem;
-  color: #F37021;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.34rem 0.72rem;
   font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
 
   @media (max-width: 768px) {
-    padding-left: 1rem;
+    max-width: 100%;
   }
 `;
 
@@ -507,9 +592,10 @@ const TopicVideoFrame = styled.div`
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: 18px;
+  border: 2px solid #050505;
+  border-radius: 14px;
   background: #0f172a;
-  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.18);
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
 
   iframe {
     position: absolute;
@@ -544,37 +630,9 @@ const TopicVideoCaption = styled.div`
   }
 `;
 
-const leaderSeatPulse = keyframes`
-  0%, 100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-50%, -54%) scale(1.04);
-  }
-`;
-
-const leaderTablePulse = keyframes`
-  0%, 100% {
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
-  }
-  50% {
-    box-shadow: 0 22px 52px rgba(243, 112, 33, 0.14);
-  }
-`;
-
-const leaderChatPulse = keyframes`
-  0%, 42%, 100% {
-    opacity: 0.28;
-    transform: translateY(0) scale(0.96);
-  }
-  12%, 30% {
-    opacity: 1;
-    transform: translateY(-4px) scale(1);
-  }
-`;
-
 const LeaderMethodSection = styled.section`
   position: relative;
+  z-index: 1;
   width: 100%;
   color: #0f172a;
   padding: 0 0 clamp(4.5rem, 8vw, 6rem);
@@ -587,26 +645,8 @@ const LeaderMethodLayout = styled.div`
   margin: 0 auto;
   padding: 0 20px;
 
-  &::before {
-    position: absolute;
-    top: 0.15rem;
-    left: -8px;
-    z-index: 1;
-    width: 0.7rem;
-    height: 0.7rem;
-    border: 3px solid #f3f3f1;
-    border-radius: 999px;
-    background: #F37021;
-    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
-    content: "";
-  }
-
   @media (max-width: 768px) {
     padding: 0 ${MOBILE_NAV_GUTTER};
-
-    &::before {
-      left: 0.25rem;
-    }
   }
 `;
 
@@ -617,16 +657,29 @@ const LeaderMethodHeader = styled.div`
   text-align: right;
 
   @media (max-width: 820px) {
-    justify-items: end;
+    justify-items: center;
+    text-align: center;
   }
 `;
 
 const LeaderMethodSectionTitle = styled.p`
+  display: inline-flex;
+  max-width: min(100%, 18rem);
+  align-items: center;
+  justify-content: center;
   margin: 0 0 0.85rem;
-  color: #F37021;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.34rem 0.72rem;
   font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
 `;
 
 const LeaderMethodTitle = styled.h2`
@@ -638,10 +691,12 @@ const LeaderMethodTitle = styled.h2`
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
+  white-space: pre-line;
   word-break: keep-all;
 
   @media (max-width: 820px) {
     max-width: 100%;
+    text-align: center;
   }
 `;
 
@@ -649,57 +704,121 @@ const LeaderMethodContent = styled.div`
   display: grid;
   grid-template-columns: minmax(280px, 0.86fr) minmax(0, 1.14fr);
   gap: clamp(1.25rem, 4vw, 2rem);
-  align-items: stretch;
+  align-items: center;
 
   @media (max-width: 860px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const LeaderDiagramPanel = styled.div`
+const LeaderDiagramPanel = styled.div<{ $location: LeaderLocation }>`
   position: relative;
-  min-height: 390px;
-  overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 18px 54px rgba(15, 23, 42, 0.06);
+  width: min(100%, 420px, 72vw);
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 
   &::before {
     position: absolute;
+    z-index: 1;
     top: 50%;
     left: 50%;
-    width: min(68%, 270px);
-    aspect-ratio: 1;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    border-radius: 999px;
+    width: 78%;
+    height: 78%;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 47% 53% 49% 51% / 56% 55% 45% 44%;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.36), transparent 28%),
+      linear-gradient(135deg, rgba(255, 246, 232, 0.98), rgba(245, 213, 174, 0.78));
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.64),
+      0 18px 44px rgba(58, 33, 17, 0.08);
     transform: translate(-50%, -50%);
     content: "";
   }
 
-  @media (max-width: 860px) {
-    min-height: 320px;
+  &::after {
+    position: absolute;
+    z-index: 0;
+    right: 5%;
+    bottom: 8%;
+    left: 5%;
+    height: 42%;
+    border-radius: 0 0 26% 26%;
+    background: ${({ $location }) =>
+      $location === "anam"
+        ? `
+          linear-gradient(90deg, transparent 0 6%, rgba(128, 0, 33, 0.12) 6% 8%, transparent 8% 12%),
+          linear-gradient(90deg, transparent 0 16%, rgba(128, 0, 33, 0.12) 16% 19%, transparent 19% 24%),
+          linear-gradient(90deg, transparent 0 30%, rgba(128, 0, 33, 0.11) 30% 33%, transparent 33% 38%),
+          linear-gradient(90deg, transparent 0 46%, rgba(128, 0, 33, 0.12) 46% 50%, transparent 50% 56%),
+          linear-gradient(90deg, transparent 0 64%, rgba(128, 0, 33, 0.11) 64% 67%, transparent 67% 72%),
+          linear-gradient(90deg, transparent 0 82%, rgba(128, 0, 33, 0.12) 82% 85%, transparent 85% 100%),
+          linear-gradient(to top, rgba(128, 0, 33, 0.11), rgba(128, 0, 33, 0.03) 58%, transparent 59%)
+        `
+        : `
+          linear-gradient(90deg, transparent 0 8%, rgba(15, 23, 42, 0.11) 8% 13%, transparent 13% 18%),
+          linear-gradient(90deg, transparent 0 23%, rgba(15, 23, 42, 0.1) 23% 27%, transparent 27% 34%),
+          linear-gradient(90deg, transparent 0 42%, rgba(15, 23, 42, 0.12) 42% 47%, transparent 47% 54%),
+          linear-gradient(90deg, transparent 0 60%, rgba(15, 23, 42, 0.1) 60% 64%, transparent 64% 70%),
+          linear-gradient(90deg, transparent 0 78%, rgba(15, 23, 42, 0.11) 78% 84%, transparent 84% 100%),
+          linear-gradient(to top, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.03) 58%, transparent 59%)
+        `};
+    opacity: 0.9;
+    filter: blur(0.2px);
+    content: "";
+  }
+`;
+
+const leaderChatPulse = keyframes`
+  0%, 44%, 100% {
+    opacity: 0.36;
+    transform: translate(-50%, -50%) translateY(0) scale(0.96);
+  }
+  12%, 30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-4px) scale(1);
   }
 `;
 
 const LeaderDiagramTable = styled.div`
   position: absolute;
-  top: 50%;
+  top: 51%;
   left: 50%;
-  z-index: 1;
-  width: min(39%, 150px);
-  aspect-ratio: 1.22 / 1;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 30px;
-  background: #111827;
-  transform: translate(-50%, -50%) rotate(-8deg);
-  animation: ${leaderTablePulse} 3.8s ease-in-out infinite;
+  z-index: 4;
+  width: 17%;
+  aspect-ratio: 1.16 / 1;
+  border-radius: 0.2rem 0.18rem 42% 42%;
+  background: #4b2a1b;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 8px 16px rgba(58, 33, 17, 0.13);
 
   &::before {
     position: absolute;
-    inset: 22%;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: inherit;
+    top: 18%;
+    right: -34%;
+    width: 38%;
+    height: 50%;
+    border: 0.3rem solid #4b2a1b;
+    border-left: 0;
+    border-radius: 0 999px 999px 0;
+    background: transparent;
+    content: "";
+  }
+
+  &::after {
+    position: absolute;
+    right: 10%;
+    bottom: -9%;
+    left: 10%;
+    height: 12%;
+    border-radius: 999px;
+    background: #4b2a1b;
     content: "";
   }
 `;
@@ -714,63 +833,78 @@ const LeaderDiagramSeat = styled.div<{
   position: absolute;
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
-  z-index: ${({ $leader }) => ($leader ? 4 : 2)};
-  width: ${({ $leader }) => ($leader ? "clamp(3.5rem, 8vw, 4.5rem)" : "clamp(2.45rem, 6vw, 3.15rem)")};
-  height: ${({ $leader }) => ($leader ? "clamp(3.5rem, 8vw, 4.5rem)" : "clamp(2.45rem, 6vw, 3.15rem)")};
-  border: ${({ $leader }) =>
-    $leader ? "8px solid rgba(255, 255, 255, 0.94)" : "6px solid rgba(255, 255, 255, 0.72)"};
+  z-index: ${({ $leader }) => ($leader ? 5 : 4)};
+  width: ${({ $leader }) => ($leader ? "clamp(4.55rem, 8.6vw, 5.35rem)" : "clamp(3.65rem, 7vw, 4.35rem)")};
+  aspect-ratio: 1;
+  border: 5px solid #ffffff;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.72), transparent 22%),
+    radial-gradient(circle at 38% 28%, rgba(255, 255, 255, 0.26), transparent 26%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(5, 5, 5, 0.12)),
     ${({ $accent }) => $accent};
-  opacity: ${({ $leader }) => ($leader ? 1 : 0.52)};
-  box-shadow: ${({ $leader }) =>
-    $leader
-      ? "0 0 0 16px rgba(243, 112, 33, 0.12), 0 18px 42px rgba(243, 112, 33, 0.22)"
-      : "0 14px 30px rgba(15, 23, 42, 0.08)"};
+  opacity: 1;
+  box-shadow: 0 11px 26px rgba(58, 33, 17, 0.16);
   transform: translate(-50%, -50%);
-  animation: ${leaderSeatPulse} 3s ease-in-out infinite;
-  animation-delay: ${({ $delay }) => $delay};
+
+  &::before {
+    position: absolute;
+    inset: -0.34rem;
+    border: 1px solid rgba(58, 33, 17, 0.08);
+    border-radius: inherit;
+    content: "";
+  }
 
   &::after {
-    position: absolute;
-    right: 0.52rem;
-    bottom: 0.38rem;
-    left: 0.52rem;
-    height: 30%;
-    border-radius: 999px 999px 0 0;
-    background: rgba(15, 23, 42, 0.18);
-    content: "";
+    ${({ $leader }) =>
+      $leader
+        ? css`
+            position: absolute;
+            top: -1.45rem;
+            left: 50%;
+            width: 0.32rem;
+            height: 0.9rem;
+            border-radius: 999px;
+            background: #8a5a36;
+            box-shadow:
+              -1rem 0.28rem 0 #8a5a36,
+              1rem 0.28rem 0 #8a5a36;
+            transform: translateX(-50%);
+            content: "";
+          `
+        : css`
+            display: none;
+          `}
   }
 `;
 
 const LeaderChatBubble = styled.div<{
   $top: string;
   $left: string;
-  $leader: boolean;
+  $leader?: boolean;
   $delay: string;
 }>`
   position: absolute;
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
-  z-index: 5;
+  z-index: 3;
   display: flex;
-  gap: 0.22rem;
+  gap: 0.28rem;
   align-items: center;
-  border: 1px solid ${({ $leader }) =>
-    $leader ? "rgba(243, 112, 33, 0.22)" : "rgba(15, 23, 42, 0.08)"};
-  border-radius: 999px;
-  background: ${({ $leader }) => ($leader ? "#fff7ed" : "#ffffff")};
-  padding: 0.5rem 0.62rem;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
   animation: ${leaderChatPulse} 4.8s ease-in-out infinite;
   animation-delay: ${({ $delay }) => $delay};
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 
   span {
-    width: 0.34rem;
-    height: 0.34rem;
+    width: ${({ $leader }) => ($leader ? "0.34rem" : "0.31rem")};
+    height: ${({ $leader }) => ($leader ? "0.34rem" : "0.31rem")};
     border-radius: 999px;
-    background: ${({ $leader }) => ($leader ? "#F37021" : "#94a3b8")};
+    background: ${({ $leader }) => ($leader ? "#8a5a36" : "#4b2a1b")};
+    box-shadow: 0 1px 3px rgba(58, 33, 17, 0.16);
   }
 `;
 
@@ -783,12 +917,12 @@ const LeaderAccordionColumn = styled.div`
 const LeaderLocationTabs = styled.div`
   display: inline-grid;
   grid-template-columns: repeat(2, minmax(88px, 1fr));
-  gap: 0.25rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  gap: 0.35rem;
+  border: 2px solid #050505;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  padding: 0.25rem;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  padding: 0.35rem;
+  box-shadow: 3px 3px 0 #f47a4a;
 
   @media (max-width: 820px) {
     justify-self: center;
@@ -796,15 +930,15 @@ const LeaderLocationTabs = styled.div`
 `;
 
 const LeaderLocationButton = styled.button<{ $active: boolean }>`
-  min-height: 38px;
+  min-height: 36px;
   border: 0;
   border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#101418" : "transparent")};
+  background: ${({ $active }) => ($active ? "#050505" : "transparent")};
   color: ${({ $active }) => ($active ? "#ffffff" : "#475569")};
-  padding: 0.45rem 1rem;
+  padding: 0.42rem 0.95rem;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 850;
+  font-size: 0.84rem;
+  font-weight: 800;
   cursor: pointer;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 
@@ -816,18 +950,16 @@ const LeaderLocationButton = styled.button<{ $active: boolean }>`
 
 const LeaderAccordionList = styled.div`
   display: grid;
-  gap: 0.8rem;
+  gap: 0.75rem;
 `;
 
 const LeaderAccordionItem = styled.article<{ $active: boolean; $accent: string }>`
   overflow: hidden;
-  border: 1px solid ${({ $active, $accent }) =>
-    $active ? $accent : "rgba(15, 23, 42, 0.08)"};
-  border-radius: 22px;
-  background: ${({ $active }) =>
-    $active ? "#ffffff" : "rgba(255, 255, 255, 0.62)"};
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #ffffff;
   box-shadow: ${({ $active }) =>
-    $active ? "0 20px 52px rgba(15, 23, 42, 0.1)" : "none"};
+    $active ? "5px 5px 0 #f47a4a" : "3px 3px 0 rgba(5, 5, 5, 0.82)"};
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 `;
 
@@ -835,14 +967,14 @@ const LeaderAccordionButton = styled.button`
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 1.05rem 1.1rem;
+  padding: 0.95rem 1rem;
   color: #0f172a;
   font: inherit;
   text-align: left;
   cursor: pointer;
 
   &:focus-visible {
-    outline: 2px solid #F37021;
+    outline: 2px solid #f47a4a;
     outline-offset: -4px;
   }
 `;
@@ -850,22 +982,24 @@ const LeaderAccordionButton = styled.button`
 const LeaderAccordionSummary = styled.span`
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.85rem;
+  gap: 0.8rem;
   align-items: center;
 `;
 
 const LeaderAccordionInitial = styled.span<{ $accent: string }>`
   display: grid;
-  width: 3.35rem;
-  height: 3.35rem;
+  width: 3.15rem;
+  height: 3.15rem;
   place-items: center;
   overflow: hidden;
-  border-radius: 18px;
-  background: linear-gradient(145deg, ${({ $accent }) => $accent}, #101418);
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: ${({ $accent }) => $accent};
   color: #ffffff;
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 950;
   line-height: 1;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
 
   img {
     width: 100%;
@@ -876,30 +1010,26 @@ const LeaderAccordionInitial = styled.span<{ $accent: string }>`
 
 const LeaderAccordionName = styled.strong`
   display: block;
-  color: #0f172a;
-  font-size: 1.15rem;
+  color: #050505;
+  font-size: 1rem;
   font-weight: 920;
-  line-height: 1.18;
-`;
+  line-height: 1.22;
 
-const LeaderAccordionRole = styled.span`
-  display: block;
-  margin-top: 0.2rem;
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 720;
-  line-height: 1.35;
-  word-break: keep-all;
+  span {
+    color: rgba(5, 5, 5, 0.58);
+    font-weight: 760;
+  }
 `;
 
 const LeaderAccordionIcon = styled.span<{ $active: boolean }>`
   display: grid;
-  width: 2rem;
-  height: 2rem;
+  width: 1.8rem;
+  height: 1.8rem;
   place-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 999px;
-  color: #475569;
+  background: #f3f3f1;
+  color: #050505;
   font-size: 1.3rem;
   font-weight: 500;
 
@@ -921,30 +1051,41 @@ const LeaderAccordionPanelInner = styled.div`
 `;
 
 const LeaderAccordionContent = styled.div`
-  padding: 0 1.1rem 1.2rem 5.1rem;
+  padding: 0 1rem 1rem 5rem;
 
   @media (max-width: 520px) {
-    padding-left: 1.1rem;
+    padding-left: 1rem;
   }
 `;
 
 const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
-  margin-top: 1rem;
+  margin-top: 0.95rem;
   display: inline-flex;
-  min-height: 42px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  border: 2px solid ${({ $disabled }) => ($disabled ? "rgba(15, 23, 42, 0.12)" : "#050505")};
   border-radius: 999px;
   background: ${({ $disabled }) =>
-    $disabled ? "rgba(15, 23, 42, 0.04)" : "#101418"};
+    $disabled ? "rgba(15, 23, 42, 0.04)" : "#0a66c2"};
   color: ${({ $disabled }) => ($disabled ? "#94a3b8" : "#ffffff")};
-  padding: 0.55rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
   font-weight: 880;
   text-decoration: none;
   pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
+  box-shadow: ${({ $disabled }) => ($disabled ? "none" : "3px 3px 0 #050505")};
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+
+  &:hover {
+    background: ${({ $disabled }) =>
+      $disabled ? "rgba(15, 23, 42, 0.04)" : "#004182"};
+    color: ${({ $disabled }) => ($disabled ? "#94a3b8" : "#ffffff")};
+    text-decoration: none;
+    transform: ${({ $disabled }) => ($disabled ? "none" : "translate(-1px, -1px)")};
+    box-shadow: ${({ $disabled }) => ($disabled ? "none" : "4px 4px 0 #050505")};
+  }
 
   svg {
     width: 1rem;
@@ -966,38 +1107,81 @@ const LeaderEmptyState = styled.div`
   line-height: 1.55;
 `;
 
-const LeaderStatList = styled.ul`
+const LeaderStatList = styled.div`
   margin: 0;
   padding: 0;
+`;
+
+const LeaderCredentialList = styled.ul`
   display: grid;
-  gap: 0.48rem;
+  gap: 0.46rem;
+  margin: 0;
+  padding: 0;
   list-style: none;
 `;
 
-const LeaderStatItem = styled.li`
+const LeaderCredentialItem = styled.li`
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr);
-  gap: 0.55rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.48rem;
   align-items: start;
-  color: #334155;
-  font-size: 0.78rem;
+  color: rgba(5, 5, 5, 0.74);
+  font-size: 0.86rem;
+  font-weight: 720;
+  line-height: 1.48;
+  word-break: keep-all;
+`;
+
+const LeaderStatEmoji = styled.span`
+  display: inline-flex;
+  width: 1.25rem;
+  justify-content: center;
+`;
+
+const LeaderReadingStyle = styled.div`
+  margin-top: 0.9rem;
+  border: 1px solid rgba(5, 5, 5, 0.12);
+  border-radius: 10px;
+  background: #f3f3f1;
+  padding: 0.78rem 0.85rem;
+  color: rgba(5, 5, 5, 0.72);
+  font-size: 0.84rem;
   font-weight: 680;
-  line-height: 1.35;
+  line-height: 1.55;
   word-break: keep-all;
 
   strong {
-    color: #0f172a;
-    font-size: 0.72rem;
-    font-weight: 950;
-    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #050505;
+    font-size: 0.74rem;
+    font-weight: 920;
+    letter-spacing: 0.04em;
   }
 `;
 
+const getLeaderBulletEmoji = (icon: string) => {
+  if (icon === "work") {
+    return "💼";
+  }
+
+  if (icon === "military") {
+    return "🪖";
+  }
+
+  if (icon === "school") {
+    return "🎓";
+  }
+
+  return "🇬🇧";
+};
+
 const NetworkingMethodSection = styled.section`
   position: relative;
+  z-index: 1;
   width: 100%;
   color: #0f172a;
-  padding: 0 0 clamp(4.5rem, 8vw, 6rem);
+  padding: 0 0 clamp(2rem, 4vw, 3rem);
   overflow: hidden;
 `;
 
@@ -1007,43 +1191,43 @@ const NetworkingMethodLayout = styled.div`
   margin: 0 auto;
   padding: 0 20px;
 
-  &::before {
-    position: absolute;
-    top: 0.15rem;
-    left: -8px;
-    z-index: 1;
-    width: 0.7rem;
-    height: 0.7rem;
-    border: 3px solid #f3f3f1;
-    border-radius: 999px;
-    background: #F37021;
-    box-shadow: 0 0 0 1px rgba(243, 112, 33, 0.26);
-    content: "";
-  }
-
   @media (max-width: 768px) {
     padding: 0 ${MOBILE_NAV_GUTTER};
-
-    &::before {
-      left: 0.25rem;
-    }
   }
 `;
 
 const NetworkingMethodHeader = styled.div`
   max-width: 44rem;
   margin: 0 0 clamp(1.5rem, 4vw, 2.4rem);
+
+  @media (max-width: 768px) {
+    margin-right: auto;
+    margin-left: auto;
+    text-align: center;
+  }
 `;
 
 const NetworkingMethodSectionTitle = styled.p`
+  display: inline-flex;
+  max-width: min(100%, 18rem);
+  align-items: center;
+  justify-content: center;
   margin: 0 0 0.85rem;
-  color: #F37021;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.34rem 0.72rem;
   font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
 
   @media (max-width: 768px) {
-    padding-left: 1rem;
+    max-width: 100%;
   }
 `;
 
@@ -1067,45 +1251,65 @@ const NetworkingMethodDescription = styled.p`
   font-weight: 620;
   line-height: 1.65;
   word-break: keep-all;
-`;
 
-const NetworkingGallery = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(190px, 0.78fr);
-  gap: clamp(0.72rem, 1.6vw, 0.9rem);
-  align-items: stretch;
-  max-width: 800px;
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-    max-width: 100%;
+  @media (max-width: 768px) {
+    margin-right: auto;
+    margin-left: auto;
+    text-align: center;
   }
 `;
 
-const NetworkingImageCard = styled.figure<{ $featured?: boolean }>`
-  min-height: ${({ $featured }) => ($featured ? "330px" : "158px")};
+const NetworkingGallery = styled.div`
+  display: flex;
+  max-width: 100%;
+  gap: clamp(0.85rem, 2vw, 1.1rem);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 1rem;
+  scroll-padding: 0;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.24);
+  }
+`;
+
+const NetworkingImageCard = styled.figure<{ $objectPosition?: string; $rotate?: number }>`
+  flex: 0 0 min(78vw, 420px);
+  aspect-ratio: 4 / 3;
   margin: 0;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 14px;
   background: #ffffff;
+  scroll-snap-align: start;
   box-shadow: 0 18px 52px rgba(15, 23, 42, 0.08);
 
   img {
     width: 100%;
     height: 100%;
-    min-height: inherit;
     display: block;
     object-fit: cover;
+    object-position: ${({ $objectPosition }) => $objectPosition ?? "center center"};
+    transform: ${({ $rotate }) => ($rotate ? `rotate(${$rotate}deg) scale(1.34)` : "none")};
+    transform-origin: center;
   }
 
   @media (max-width: 760px) {
-    min-height: ${({ $featured }) => ($featured ? "250px" : "170px")};
+    flex-basis: min(84vw, 340px);
+    border-radius: 12px;
   }
-`;
-
-const NetworkingSideGallery = styled.div`
-  display: grid;
-  gap: clamp(0.72rem, 1.6vw, 0.9rem);
 `;
 
 
@@ -1798,13 +2002,13 @@ const CTAButton = styled.button`
 const HeroCTAButton = styled(CTAButton)`
   min-height: 52px;
   padding: 0.875rem 1.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.94);
+  border: 2px solid #050505;
   border-radius: 999px;
   background: #ffffff;
-  color: #0f172a;
+  color: #050505;
   font-size: 1rem;
   font-weight: 850;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+  box-shadow: 5px 5px 0 #f47a4a;
   backdrop-filter: none;
 
   &::before {
@@ -1812,10 +2016,10 @@ const HeroCTAButton = styled(CTAButton)`
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
-    transform: translateY(-1px);
+    background: #fff8dc;
+    border-color: #050505;
+    box-shadow: 7px 7px 0 #f47a4a;
+    transform: translate(-1px, -1px);
   }
 
   &:active {
@@ -1839,6 +2043,11 @@ const PageWrapper = styled.div<{ $machineMode?: boolean }>`
   flex-direction: column;
   min-height: 100vh;
   background: ${({ $machineMode }) => ($machineMode ? "#000000" : "transparent")};
+
+  img {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
 `;
 
 // New styled components for marketing text
@@ -2153,35 +2362,29 @@ const UrgencyButton = styled.button<{ $isHigh?: boolean }>`
   justify-content: center;
   gap: 0.5rem;
   min-height: 38px;
-  background: ${(props) => (props.$isHigh ? "#fff1f2" : "#0f172a")};
-  color: ${(props) => (props.$isHigh ? "#9f1239" : "#ffffff")};
+  background: ${(props) => (props.$isHigh ? "#fff8dc" : "#050505")};
+  color: ${(props) => (props.$isHigh ? "#050505" : "#ffffff")};
   padding: 0.55rem 0.9rem;
   border-radius: 999px;
-  border: 1px solid ${(props) => (props.$isHigh ? "#fecdd3" : "#0f172a")};
+  border: 2px solid #050505;
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease,
-    box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+    color 160ms ease, transform 160ms ease;
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 58%;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: ${(props) =>
-    props.$isHigh
-      ? "0 7px 16px rgba(159, 18, 57, 0.1)"
-      : "0 7px 16px rgba(15, 23, 42, 0.14)"};
+  box-shadow: none;
 
   &:hover {
-    background: ${(props) => (props.$isHigh ? "#ffe4e6" : "#020617")};
-    border-color: ${(props) => (props.$isHigh ? "#fda4af" : "#020617")};
+    background: ${(props) => (props.$isHigh ? "#ffffff" : "#050505")};
+    border-color: #050505;
     transform: translateY(-1px);
-    box-shadow: ${(props) =>
-      props.$isHigh
-        ? "0 10px 22px rgba(159, 18, 57, 0.14)"
-        : "0 10px 24px rgba(15, 23, 42, 0.2)"};
+    box-shadow: none;
   }
 
   &:active {
@@ -2221,6 +2424,10 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
         <img 
           src={meetup.image_urls?.[0] || "/images/placeholder.jpg"} 
           alt={meetup.title}
+          width={360}
+          height={270}
+          loading="lazy"
+          decoding="async"
           onError={(e) => {
             e.currentTarget.style.display = 'none';
             e.currentTarget.parentElement!.style.backgroundColor = '#e5e7eb';
@@ -2276,41 +2483,7 @@ interface HomePageClientProps {
 
 type RenderMode = "human" | "machine";
 
-const humanToggleGlow = keyframes`
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px rgba(251, 191, 36, 0.2),
-      0 0 14px rgba(245, 158, 11, 0.48),
-      0 0 28px rgba(251, 191, 36, 0.22),
-      0 14px 32px rgba(0, 0, 0, 0.42);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(251, 191, 36, 0.34),
-      0 0 22px rgba(245, 158, 11, 0.76),
-      0 0 42px rgba(251, 191, 36, 0.34),
-      0 14px 32px rgba(0, 0, 0, 0.42);
-  }
-`;
-
-const machineToggleGlow = keyframes`
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px rgba(56, 189, 248, 0.2),
-      0 0 14px rgba(14, 165, 233, 0.5),
-      0 0 28px rgba(37, 99, 235, 0.28),
-      0 14px 32px rgba(0, 0, 0, 0.46);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(56, 189, 248, 0.36),
-      0 0 24px rgba(14, 165, 233, 0.86),
-      0 0 48px rgba(37, 99, 235, 0.44),
-      0 14px 32px rgba(0, 0, 0, 0.46);
-  }
-`;
-
-const FloatingModeToggle = styled.div<{ $mode: RenderMode }>`
+const FloatingModeToggle = styled.div`
   position: fixed;
   left: 50%;
   bottom: calc(1.5rem + env(safe-area-inset-bottom));
@@ -2318,22 +2491,19 @@ const FloatingModeToggle = styled.div<{ $mode: RenderMode }>`
   display: inline-flex;
   align-items: center;
   transform: translateX(-50%);
-  border: 2px solid
-    ${({ $mode }) => ($mode === "machine" ? "#0b6fff" : "#f59e0b")};
+  border: 2px solid #050505;
   border-radius: 999px;
-  background: rgba(9, 9, 10, 0.94);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
   padding: 3px;
   white-space: nowrap;
-  animation: ${({ $mode }) =>
-      $mode === "machine" ? machineToggleGlow : humanToggleGlow}
-    2.3s ease-in-out infinite;
+  box-shadow: 4px 4px 0 #f47a4a;
   transition: border-color 360ms ease, background-color 360ms ease,
-    filter 360ms ease;
+    box-shadow 360ms ease, filter 360ms ease;
 
   @media (max-width: 480px) {
-    bottom: calc(1rem + env(safe-area-inset-bottom));
-    padding: 2px;
+    bottom: calc(0.9rem + env(safe-area-inset-bottom));
+    padding: 3px;
+    box-shadow: 3px 3px 0 #f47a4a;
   }
 `;
 
@@ -2353,8 +2523,8 @@ const ModeToggleOptions = styled.div<{ $mode: RenderMode }>`
     z-index: -1;
     width: 50%;
     border-radius: 999px;
-    background: #2b2b2d;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: #050505;
+    box-shadow: none;
     content: "";
     transform: translateX(
       ${({ $mode }) => ($mode === "machine" ? "100%" : "0")}
@@ -2372,13 +2542,12 @@ const ModeToggleButton = styled.button<{ $active: boolean }>`
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: ${({ $active }) => ($active ? "#ffffff" : "#9ca3af")};
-  padding: 0.46rem 0.68rem;
+  color: ${({ $active }) => ($active ? "#ffffff" : "rgba(5, 5, 5, 0.66)")};
+  padding: 0.5rem 0.72rem;
   font-family: inherit;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
   cursor: pointer;
   transition: color 280ms ease, transform 280ms ease;
 
@@ -2389,13 +2558,276 @@ const ModeToggleButton = styled.button<{ $active: boolean }>`
     `}
 
   &:hover {
-    color: #ffffff;
+    color: ${({ $active }) => ($active ? "#ffffff" : "#050505")};
   }
 
   @media (max-width: 480px) {
-    padding: 0.42rem 0.52rem;
-    font-size: 0.62rem;
+    padding: 0.46rem 0.58rem;
+    font-size: 0.72rem;
   }
+`;
+
+const supportBob = keyframes`
+  0%, 100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+`;
+
+const FloatingSupportLink = styled.a`
+  position: fixed;
+  right: clamp(1rem, 3vw, 1.5rem);
+  bottom: calc(1.45rem + env(safe-area-inset-bottom));
+  z-index: 61;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-height: 48px;
+  padding: 0.55rem 0.78rem 0.55rem 0.6rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 4px 4px 0 #f47a4a;
+  animation: ${supportBob} 3.2s ease-in-out infinite;
+  transition: background-color 180ms ease, box-shadow 180ms ease,
+    transform 180ms ease;
+
+  &:hover {
+    background: #fff8dc;
+    box-shadow: 6px 6px 0 #f47a4a;
+    transform: translate(-1px, -1px);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.38);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  @media (max-width: 620px) {
+    right: calc(0.9rem + env(safe-area-inset-right));
+    bottom: calc(0.9rem + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    padding: 0.5rem;
+    width: 52px;
+    height: 52px;
+    justify-content: center;
+    gap: 0;
+    box-shadow: 3px 3px 0 #f47a4a;
+    animation: none;
+  }
+`;
+
+const FloatingSupportIcon = styled.span`
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.4;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid #050505;
+    border-radius: 999px;
+    background: #ffffff;
+  }
+`;
+
+const FloatingSupportText = styled.span`
+  white-space: nowrap;
+
+  @media (max-width: 620px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+`;
+
+const jobCelebrationBurst = keyframes`
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.85);
+  }
+`;
+
+const JobCelebrationPopup = styled.aside`
+  position: fixed;
+  right: clamp(1rem, 3vw, 1.5rem);
+  bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  z-index: 62;
+  width: min(380px, calc(100vw - 2rem));
+  border: 2px solid #050505;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #050505;
+  box-shadow: 5px 5px 0 #f47a4a;
+  overflow: hidden;
+
+  @media (max-width: 620px) {
+    top: calc(4.8rem + env(safe-area-inset-top));
+    right: 0.9rem;
+    bottom: auto;
+    left: 0.9rem;
+    width: auto;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 #f47a4a;
+  }
+`;
+
+const JobCelebrationInner = styled.div`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 1rem;
+
+  @media (max-width: 620px) {
+    gap: 0.68rem;
+    padding: 0.9rem;
+  }
+`;
+
+const JobCelebrationIcon = styled.span`
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #ffffff;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.5;
+  }
+`;
+
+const JobCelebrationCopy = styled.div`
+  min-width: 0;
+
+  strong {
+    display: block;
+    margin: 0 0 0.28rem;
+    font-size: 0.98rem;
+    line-height: 1.25;
+    font-weight: 950;
+  }
+
+  p {
+    margin: 0;
+    color: rgba(5, 5, 5, 0.68);
+    font-size: 0.84rem;
+    line-height: 1.48;
+    font-weight: 650;
+  }
+`;
+
+const JobCelebrationClose = styled.button<{ $bursting: boolean }>`
+  position: relative;
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  width: 100%;
+  margin-top: 0.12rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+  overflow: visible;
+  box-shadow: 3px 3px 0 #050505;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease,
+    box-shadow 160ms ease;
+
+  &::before,
+  &::after {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 94px;
+    height: 94px;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle, #f47a4a 0 3px, transparent 3.5px) 50% 0 / 12px 12px no-repeat,
+      radial-gradient(circle, #050505 0 2.5px, transparent 3px) 100% 50% / 12px 12px no-repeat,
+      radial-gradient(circle, #f47a4a 0 3px, transparent 3.5px) 50% 100% / 12px 12px no-repeat,
+      radial-gradient(circle, #050505 0 2.5px, transparent 3px) 0 50% / 12px 12px no-repeat,
+      radial-gradient(circle, #f47a4a 0 2.5px, transparent 3px) 18% 18% / 12px 12px no-repeat,
+      radial-gradient(circle, #050505 0 2px, transparent 2.5px) 82% 82% / 12px 12px no-repeat;
+    content: "";
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+
+  &::after {
+    width: 70px;
+    height: 70px;
+    transform: translate(-50%, -50%) rotate(24deg) scale(0.2);
+  }
+
+  &:hover {
+    background: #050505;
+    color: #ffffff;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #f47a4a;
+  }
+
+  ${({ $bursting }) =>
+    $bursting &&
+    css`
+      &::before {
+        animation: ${jobCelebrationBurst} 560ms ease-out forwards;
+      }
+
+      &::after {
+        animation: ${jobCelebrationBurst} 560ms 90ms ease-out forwards;
+      }
+    `}
 `;
 
 const MachineMarkdownView = styled.main`
@@ -2447,6 +2879,19 @@ const formatStatValue = (value: number | undefined) => {
   return typeof value === "number" ? value.toLocaleString() : "0";
 };
 
+const formatMarkdownCurrency = (value: number, locale: string) => {
+  return locale === "ko"
+    ? `${value.toLocaleString("ko-KR")}원`
+    : `${value.toLocaleString("en-US")} KRW`;
+};
+
+const formatMetricValue = (
+  value: number | undefined,
+  suffix: string | undefined,
+) => {
+  return `${formatStatValue(value)}${suffix ?? ""}`;
+};
+
 const buildWebsiteMarkdown = ({
   t,
   locale,
@@ -2460,67 +2905,90 @@ const buildWebsiteMarkdown = ({
   events: MeetupEvent[];
   topics: HomeTopicArticle[];
 }) => {
+  const pricingLabels = t.home.pricingNew.chart.labels;
+  const pricingComparisons = [
+    { label: pricingLabels.oneCup, value: 1212 },
+    { label: pricingLabels.exchange, value: 5000 },
+    { label: pricingLabels.phone, value: 20000, suffix: "~" },
+    { label: pricingLabels.academy, value: 35000, suffix: "~" },
+    { label: pricingLabels.premium, value: 60000, suffix: "~" },
+  ];
+
   const lines: string[] = [
     "# 1 Cup English",
     "",
-    "## Hero",
+    "## Overview",
     sanitizeMarkdownText(t.home.hero.title),
     "",
     sanitizeMarkdownText(t.home.hero.subtitle),
     "",
-    `**Primary CTA:** ${sanitizeMarkdownText(t.home.cta.button)}`,
+    `**CTA:** ${sanitizeMarkdownText(t.home.cta.button)}`,
     "",
     "## Member Backgrounds",
-    `${sanitizeMarkdownText(t.home.memberLogos.titleLine1)} ${sanitizeMarkdownText(
+    `**${sanitizeMarkdownText(t.home.memberLogos.titleLine1)} ${sanitizeMarkdownText(
       t.home.memberLogos.titleHighlight,
-    )}${sanitizeMarkdownText(t.home.memberLogos.titleLine2Suffix)}`,
+    )}${sanitizeMarkdownText(t.home.memberLogos.titleLine2Suffix)}**`,
     "",
-    `- ${t.home.memberLogos.items.map(sanitizeMarkdownText).join(", ")}`,
+    ...t.home.memberLogos.items.map((item) => `- ${sanitizeMarkdownText(item)}`),
     "",
-    "## Topic Sample",
+    "## Meetup Method",
+    "",
+    `### ${sanitizeMarkdownText(t.home.topicVideo.sectionTitle)}`,
     sanitizeMarkdownText(t.home.topicVideo.title),
     "",
     sanitizeMarkdownText(t.home.topicVideo.description),
-    sanitizeMarkdownText(t.home.topicVideo.caveat),
     "",
-    `**Video:** ${sanitizeMarkdownText(t.home.topicVideo.videoTitle)}`,
+    `- Video reference: ${sanitizeMarkdownText(t.home.topicVideo.videoTitle)}`,
+    `- Note: ${sanitizeMarkdownText(t.home.topicVideo.caveat)}`,
     "",
-    "## Leader-Guided Discussion",
-    sanitizeMarkdownText(t.home.leaderMethod.sectionTitle),
-    "",
+    `### ${sanitizeMarkdownText(t.home.leaderMethod.sectionTitle)}`,
     sanitizeMarkdownText(t.home.leaderMethod.title),
     "",
     ...COMMUNITY_LEADERS.map((leader) => [
-      `### ${sanitizeMarkdownText(leader.name)}`,
-      ...leader.highlights.map((highlight) => `- ${sanitizeMarkdownText(highlight)}`),
+      `#### ${sanitizeMarkdownText(`${t.home.leaderMethod.profiles[leader.id].name} | ${t.home.leaderMethod.profiles[leader.id].role}`)}`,
+      ...t.home.leaderMethod.profiles[leader.id].bullets.map(
+        (bullet) => `- ${getLeaderBulletEmoji(bullet.icon)} ${sanitizeMarkdownText(bullet.text)}`,
+      ),
+      `**${sanitizeMarkdownText(t.home.leaderMethod.readingStyleLabel)}:** ${sanitizeMarkdownText(t.home.leaderMethod.profiles[leader.id].readingStyle)}`,
       "",
     ]).flat(),
-    "## Networking",
-    sanitizeMarkdownText(t.home.networkingMethod.sectionTitle),
-    "",
+    `### ${sanitizeMarkdownText(t.home.networkingMethod.sectionTitle)}`,
     sanitizeMarkdownText(t.home.networkingMethod.title),
     "",
     sanitizeMarkdownText(t.home.networkingMethod.description),
     "",
-    "## Stats",
-    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.meetups)}: ${formatStatValue(stats?.totalMeetups)}`,
-    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.members)}: ${formatStatValue(stats?.totalMembers)}`,
-    `- Articles: ${formatStatValue(stats?.totalArticles)}`,
+    "## Proven Community",
+    sanitizeMarkdownText(t.home.stats.growth.title),
     "",
-    "## Positioning",
-    `### ${sanitizeMarkdownText(t.home.stats.header.title)}`,
+    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.meetups)}: ${formatMetricValue(stats?.totalMeetups, t.home.stats.growth.valueSuffixes.meetups)}`,
+    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.members)}: ${formatMetricValue(stats?.totalMembers, t.home.stats.growth.valueSuffixes.members)}`,
+    `- ${sanitizeMarkdownText(t.home.stats.growth.metrics.retention)}: 90%+`,
     "",
-    `### ${sanitizeMarkdownText(t.home.stats.insights.title)}`,
-    sanitizeMarkdownText(t.home.stats.insights.description),
+    "## Weekly Topics",
+    sanitizeMarkdownText(t.home.topicsShowcase.title),
     "",
-    `### ${sanitizeMarkdownText(t.home.stats.leader.title)}`,
-    sanitizeMarkdownText(t.home.stats.leader.description),
-    "",
-    `### ${sanitizeMarkdownText(t.home.stats.topics.title)}`,
-    sanitizeMarkdownText(t.home.stats.topics.description),
-    "",
-    "## Upcoming Meetups",
+    sanitizeMarkdownText(t.home.topicsShowcase.subtitle),
   ];
+
+  lines.push("");
+
+  if (topics.length > 0) {
+    topics.slice(0, 6).forEach((topic) => {
+      const title =
+        locale === "ko" ? topic.titleKorean || topic.titleEnglish : topic.titleEnglish || topic.titleKorean;
+      lines.push(`- **${sanitizeMarkdownText(title)}**`);
+      if (topic.excerpt) {
+        lines.push(`  - ${sanitizeMarkdownText(topic.excerpt)}`);
+      }
+      if (topic.keywords.length > 0) {
+        lines.push(`  - Keywords: ${topic.keywords.map(sanitizeMarkdownText).join(", ")}`);
+      }
+    });
+  } else {
+    lines.push("- Featured articles are loaded from the article library.");
+  }
+
+  lines.push("", "## Upcoming Meetups");
 
   if (events.length > 0) {
     events.slice(0, 6).forEach((event) => {
@@ -2539,29 +3007,17 @@ const buildWebsiteMarkdown = ({
     lines.push(`- ${sanitizeMarkdownText(t.meetup.sections.noEvents)}`);
   }
 
-  lines.push("", "## Discussion Topics");
-
-  if (topics.length > 0) {
-    topics.slice(0, 6).forEach((topic) => {
-      const title =
-        locale === "ko" ? topic.titleKorean || topic.titleEnglish : topic.titleEnglish || topic.titleKorean;
-      lines.push(
-        `- **${sanitizeMarkdownText(title)}**`,
-        `  - ${sanitizeMarkdownText(topic.excerpt)}`,
-      );
-      if (topic.keywords.length > 0) {
-        lines.push(`  - Keywords: ${topic.keywords.map(sanitizeMarkdownText).join(", ")}`);
-      }
-    });
-  } else {
-    lines.push("- Featured articles are loaded from the article library.");
-  }
-
   lines.push(
     "",
     "## Membership",
     `### ${sanitizeMarkdownText(t.home.pricingNew.sectionTitle)}`,
     sanitizeMarkdownText(t.home.pricingNew.leftTitle),
+    "",
+    `**${sanitizeMarkdownText(t.home.pricingNew.chart.header)} ${sanitizeMarkdownText(t.home.pricingNew.chart.unit)}**`,
+    ...pricingComparisons.map(
+      (item) =>
+        `- ${sanitizeMarkdownText(item.label)}: ${formatMarkdownCurrency(item.value, locale)}${item.suffix ?? ""}`,
+    ),
     "",
     `- ${sanitizeMarkdownText(t.home.pricingNew.referralDiscount)}`,
     `- ${sanitizeMarkdownText(t.home.pricingNew.caveats.line1)}`,
@@ -2583,6 +3039,9 @@ const buildWebsiteMarkdown = ({
     sanitizeMarkdownText(t.home.cta.description),
     "",
     `**Action:** ${sanitizeMarkdownText(t.home.cta.button)}`,
+    "",
+    "## Support",
+    `- ${sanitizeMarkdownText(t.home.support.label)}: ${SUPPORT_URL}`,
   );
 
   return lines.join("\n");
@@ -2600,17 +3059,51 @@ export default function NewHomeClient({
   const router = useRouter();
   const { t, locale } = useI18n();
   const [selectedLeaderLocation, setSelectedLeaderLocation] =
-    useState<LeaderLocation>("anam");
-  const [activeLeaderId, setActiveLeaderId] = useState<string>(
-    COMMUNITY_LEADERS[0].id,
+    useState<LeaderLocation>("yeouido");
+  const [activeLeaderId, setActiveLeaderId] = useState<string>("");
+  const [showJobCelebration, setShowJobCelebration] = useState(false);
+  const [isJobCelebrationBursting, setIsJobCelebrationBursting] = useState(false);
+  const jobCelebrationCloseTimerRef = useRef<number | null>(null);
+
+  const localizedLeaders = useMemo(
+    () =>
+      COMMUNITY_LEADERS.map((leader) => {
+        const profile = t.home.leaderMethod.profiles[leader.id];
+        const locationRoles =
+          "locationRoles" in profile
+            ? (profile.locationRoles as Partial<Record<LeaderLocation, string>>)
+            : undefined;
+        const role = locationRoles?.[selectedLeaderLocation] ?? profile.role;
+
+        return {
+          ...leader,
+          name: profile.name,
+          role,
+          bullets: profile.bullets,
+          readingStyle: profile.readingStyle,
+        };
+      }),
+    [selectedLeaderLocation, t],
+  );
+
+  const networkingImages = useMemo(
+    () =>
+      NETWORKING_IMAGES.map((image) => ({
+        ...image,
+        alt: t.home.networkingMethod.images[image.altKey],
+      })),
+    [t],
   );
 
   const visibleLeaders = useMemo(
     () =>
-      COMMUNITY_LEADERS.filter(
-        (leader) => leader.location === selectedLeaderLocation,
+      localizedLeaders.filter(
+        (leader) =>
+          (leader.locations as readonly LeaderLocation[]).includes(
+            selectedLeaderLocation,
+          ),
       ),
-    [selectedLeaderLocation],
+    [localizedLeaders, selectedLeaderLocation],
   );
 
   const activeLeader =
@@ -2618,16 +3111,57 @@ export default function NewHomeClient({
 
   const handleLeaderLocationChange = useCallback((location: LeaderLocation) => {
     setSelectedLeaderLocation(location);
-    const firstLeader = COMMUNITY_LEADERS.find(
-      (leader) => leader.location === location,
-    );
-    setActiveLeaderId(firstLeader?.id ?? "");
+    setActiveLeaderId("");
+  }, []);
+
+  const handleCloseJobCelebration = useCallback(() => {
+    if (isJobCelebrationBursting) return;
+
+    setIsJobCelebrationBursting(true);
+
+    try {
+      window.sessionStorage.setItem(JOB_CELEBRATION_STORAGE_KEY, "true");
+    } catch {
+      // Ignore storage failures; the close action should still work.
+    }
+
+    jobCelebrationCloseTimerRef.current = window.setTimeout(() => {
+      setShowJobCelebration(false);
+      setIsJobCelebrationBursting(false);
+      jobCelebrationCloseTimerRef.current = null;
+    }, 620);
+  }, [isJobCelebrationBursting]);
+
+  useEffect(() => {
+    let showTimer: number | null = null;
+
+    try {
+      if (window.sessionStorage.getItem(JOB_CELEBRATION_STORAGE_KEY) === "true") {
+        return undefined;
+      }
+    } catch {
+      // Continue without persistence when sessionStorage is unavailable.
+    }
+
+    showTimer = window.setTimeout(() => {
+      setShowJobCelebration(true);
+    }, 900);
+
+    return () => {
+      if (showTimer !== null) {
+        window.clearTimeout(showTimer);
+      }
+    };
   }, []);
 
   useEffect(() => {
     return () => {
       if (modeTransitionTimeoutRef.current !== null) {
         window.clearTimeout(modeTransitionTimeoutRef.current);
+      }
+
+      if (jobCelebrationCloseTimerRef.current !== null) {
+        window.clearTimeout(jobCelebrationCloseTimerRef.current);
       }
     };
   }, []);
@@ -2946,9 +3480,28 @@ export default function NewHomeClient({
   );
   const visibleMemberLogos = MEMBER_COMPANY_LOGOS.slice(0, MEMBER_LOGO_GRID_LIMIT);
   const overflowMemberLogos = MEMBER_COMPANY_LOGOS.slice(MEMBER_LOGO_GRID_LIMIT);
+  const handleHomepageContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+
+    if (target instanceof Element && target.closest("img, picture")) {
+      event.preventDefault();
+    }
+  }, []);
+
+  const handleHomepageDragStart = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const target = event.target;
+
+    if (target instanceof Element && target.closest("img, picture")) {
+      event.preventDefault();
+    }
+  }, []);
 
   return (
-    <PageWrapper $machineMode={displayMode === "machine"}>
+    <PageWrapper
+      $machineMode={displayMode === "machine"}
+      onContextMenu={handleHomepageContextMenu}
+      onDragStart={handleHomepageDragStart}
+    >
       <GlobalStyle $machineMode={displayMode === "machine"} />
       {displayMode === "machine" ? (
         <MachineMarkdownView>
@@ -2959,7 +3512,7 @@ export default function NewHomeClient({
           <HeroSection>
             <video autoPlay loop muted playsInline ref={videoRef}>
               <source src="/assets/homepage/alphabet.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
+              {t.home.hero.videoUnsupported}
             </video>
             <VideoOverlay />
 
@@ -3024,21 +3577,43 @@ export default function NewHomeClient({
                 </MemberBackgroundHeader>
                 <MemberLogoViewport>
                   <MemberLogoTrack $columns={visibleMemberLogos.length <= 6 ? 3 : 4}>
-                    {visibleMemberLogos.map((company) => (
+                    {visibleMemberLogos.map((company, index) => (
                       <MemberLogoTile key={company.label}>
                         <MemberLogoMark $scale={company.scale}>
-                          <img src={company.src} alt={company.label} loading="lazy" />
+                          <Image
+                            src={company.src}
+                            alt={t.home.memberLogos.items[index] ?? company.label}
+                            width={company.width}
+                            height={company.height}
+                            sizes="(max-width: 768px) 96px, 112px"
+                            loading="lazy"
+                          />
                         </MemberLogoMark>
-                        <span>{company.label}</span>
+                        <span>{t.home.memberLogos.items[index] ?? company.label}</span>
                       </MemberLogoTile>
                     ))}
                   </MemberLogoTrack>
                   {overflowMemberLogos.length > 0 ? (
-                    <MemberLogoOverflow aria-label="Additional member backgrounds">
-                      {overflowMemberLogos.map((company) => (
+                    <MemberLogoOverflow aria-label={t.home.memberLogos.additionalAria}>
+                      {overflowMemberLogos.map((company, index) => (
                         <MemberLogoOverflowTile key={company.label}>
-                          <img src={company.src} alt={company.label} loading="lazy" />
-                          <span>{company.label}</span>
+                          <Image
+                            src={company.src}
+                            alt={
+                              t.home.memberLogos.items[
+                                visibleMemberLogos.length + index
+                              ] ?? company.label
+                            }
+                            width={company.width}
+                            height={company.height}
+                            sizes="72px"
+                            loading="lazy"
+                          />
+                          <span>
+                            {t.home.memberLogos.items[
+                              visibleMemberLogos.length + index
+                            ] ?? company.label}
+                          </span>
                         </MemberLogoOverflowTile>
                       ))}
                     </MemberLogoOverflow>
@@ -3047,6 +3622,36 @@ export default function NewHomeClient({
               </MemberBackgroundLayout>
             </MemberBackgroundSection>
             <MethodFlowWrapper>
+              <MethodFlowRoute aria-hidden="true">
+                <svg
+                  className="desktop-route"
+                  viewBox="0 0 1000 1680"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    className="route-shadow"
+                    d="M 130 115 C 245 58 366 112 365 202 C 364 278 255 296 230 224 C 200 136 337 107 454 180 C 548 238 635 226 732 176 C 832 125 918 205 900 324 C 878 468 748 465 704 560 C 657 662 794 713 782 810 C 768 929 618 924 508 865 C 386 799 270 866 252 988 C 232 1118 372 1182 506 1132 C 646 1080 798 1168 768 1322 C 742 1457 579 1472 460 1438 C 350 1406 246 1432 176 1518"
+                  />
+                  <path
+                    className="route-line"
+                    d="M 130 115 C 245 58 366 112 365 202 C 364 278 255 296 230 224 C 200 136 337 107 454 180 C 548 238 635 226 732 176 C 832 125 918 205 900 324 C 878 468 748 465 704 560 C 657 662 794 713 782 810 C 768 929 618 924 508 865 C 386 799 270 866 252 988 C 232 1118 372 1182 506 1132 C 646 1080 798 1168 768 1322 C 742 1457 579 1472 460 1438 C 350 1406 246 1432 176 1518"
+                  />
+                </svg>
+                <svg
+                  className="mobile-route"
+                  viewBox="0 0 360 1900"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    className="route-shadow"
+                    d="M 178 92 C 94 172 96 300 176 352 C 260 406 270 532 184 596 C 92 665 106 820 204 884 C 290 940 284 1074 190 1138 C 96 1202 92 1364 190 1432 C 274 1490 278 1632 182 1716"
+                  />
+                  <path
+                    className="route-line"
+                    d="M 178 92 C 94 172 96 300 176 352 C 260 406 270 532 184 596 C 92 665 106 820 204 884 C 290 940 284 1074 190 1138 C 96 1202 92 1364 190 1432 C 274 1490 278 1632 182 1716"
+                  />
+                </svg>
+              </MethodFlowRoute>
               <TopicVideoSection>
                 <TopicVideoLayout>
                   <TopicVideoCopy>
@@ -3086,7 +3691,10 @@ export default function NewHomeClient({
                   </LeaderMethodHeader>
 
                   <LeaderMethodContent>
-                    <LeaderDiagramPanel aria-hidden="true">
+                    <LeaderDiagramPanel
+                      aria-hidden="true"
+                      $location={selectedLeaderLocation}
+                    >
                       <LeaderDiagramTable />
                       {DISCUSSION_SEATS.map((seat) => (
                         <LeaderDiagramSeat
@@ -3098,32 +3706,22 @@ export default function NewHomeClient({
                           $leader={seat.leader}
                         />
                       ))}
-                      <LeaderChatBubble
-                        $top="25%"
-                        $left="61%"
-                        $leader
-                        $delay="0s"
-                      >
+                      <LeaderChatBubble $top="39%" $left="39%" $leader $delay="0s">
                         <span />
                         <span />
                         <span />
                       </LeaderChatBubble>
-                      <LeaderChatBubble
-                        $top="58%"
-                        $left="24%"
-                        $leader={false}
-                        $delay="1.6s"
-                      >
+                      <LeaderChatBubble $top="39%" $left="62%" $delay="1.2s">
                         <span />
                         <span />
                         <span />
                       </LeaderChatBubble>
-                      <LeaderChatBubble
-                        $top="70%"
-                        $left="72%"
-                        $leader={false}
-                        $delay="3.2s"
-                      >
+                      <LeaderChatBubble $top="63%" $left="39%" $delay="2.4s">
+                        <span />
+                        <span />
+                        <span />
+                      </LeaderChatBubble>
+                      <LeaderChatBubble $top="63%" $left="62%" $delay="3.2s">
                         <span />
                         <span />
                         <span />
@@ -3131,22 +3729,26 @@ export default function NewHomeClient({
                     </LeaderDiagramPanel>
 
                     <LeaderAccordionColumn>
-                      <LeaderLocationTabs aria-label="리더 지역 선택">
+                      <LeaderLocationTabs aria-label={t.home.leaderMethod.locationTabsAria}>
                         {LEADER_LOCATIONS.map((location) => (
                           <LeaderLocationButton
-                            key={location.id}
+                            key={location}
                             type="button"
-                            $active={selectedLeaderLocation === location.id}
-                            onClick={() => handleLeaderLocationChange(location.id)}
+                            $active={selectedLeaderLocation === location}
+                            onClick={() => handleLeaderLocationChange(location)}
                           >
-                            {location.label}
+                            {t.home.leaderMethod.locations[location]}
                           </LeaderLocationButton>
                         ))}
                       </LeaderLocationTabs>
 
                       {visibleLeaders.length > 0 ? (
-                        <LeaderAccordionList aria-label="커뮤니티 리더 프로필">
+                        <LeaderAccordionList aria-label={t.home.leaderMethod.profilesAria}>
                           {visibleLeaders.map((leader) => {
+                            const hasLeaderDetails =
+                              leader.bullets.length > 0 ||
+                              Boolean(leader.readingStyle) ||
+                              Boolean(leader.linkedinUrl);
                             const isActive = activeLeader?.id === leader.id;
 
                             return (
@@ -3158,61 +3760,82 @@ export default function NewHomeClient({
                                 <LeaderAccordionButton
                                   type="button"
                                   aria-expanded={isActive}
+                                  aria-disabled={!hasLeaderDetails}
                                   onClick={() =>
+                                    hasLeaderDetails &&
                                     setActiveLeaderId(isActive ? "" : leader.id)
                                   }
                                 >
                                   <LeaderAccordionSummary>
                                     <LeaderAccordionInitial $accent={leader.accent}>
                                       {leader.imageSrc ? (
-                                        <img src={leader.imageSrc} alt={leader.name} loading="lazy" />
+                                        <Image
+                                          src={leader.imageSrc}
+                                          alt={leader.name}
+                                          width={96}
+                                          height={96}
+                                          sizes="48px"
+                                          loading="lazy"
+                                        />
                                       ) : (
                                         leader.initials
                                       )}
                                     </LeaderAccordionInitial>
                                     <span>
-                                      <LeaderAccordionName>{leader.name}</LeaderAccordionName>
-                                      <LeaderAccordionRole>
-                                        {leader.highlights[0]}
-                                      </LeaderAccordionRole>
+                                      <LeaderAccordionName>
+                                        {leader.name} <span>| {leader.role}</span>
+                                      </LeaderAccordionName>
                                     </span>
-                                    <LeaderAccordionIcon
-                                      $active={isActive}
-                                      aria-hidden="true"
-                                    />
+                                    {hasLeaderDetails && (
+                                      <LeaderAccordionIcon
+                                        $active={isActive}
+                                        aria-hidden="true"
+                                      />
+                                    )}
                                   </LeaderAccordionSummary>
                                 </LeaderAccordionButton>
-                                <LeaderAccordionPanel
-                                  $active={isActive}
-                                  aria-hidden={!isActive}
-                                >
-                                  <LeaderAccordionPanelInner>
-                                    <LeaderAccordionContent>
-                                      <LeaderStatList>
-                                        {leader.highlights.slice(1).map((highlight, itemIndex) => (
-                                          <LeaderStatItem key={highlight}>
-                                            <strong>
-                                              {String(itemIndex + 1).padStart(2, "0")}
-                                            </strong>
-                                            <span>{highlight}</span>
-                                          </LeaderStatItem>
-                                        ))}
-                                      </LeaderStatList>
-                                      <LeaderLinkedInButton
-                                        href={leader.linkedinUrl || undefined}
-                                        target={leader.linkedinUrl ? "_blank" : undefined}
-                                        rel={leader.linkedinUrl ? "noreferrer" : undefined}
-                                        $disabled={!leader.linkedinUrl}
-                                        aria-disabled={!leader.linkedinUrl}
-                                      >
-                                        {leader.linkedinUrl
-                                          ? "LinkedIn"
-                                          : t.home.leaderMethod.linkedInUnavailable}
-                                        <ArrowTopRightOnSquareIcon aria-hidden="true" />
-                                      </LeaderLinkedInButton>
-                                    </LeaderAccordionContent>
-                                  </LeaderAccordionPanelInner>
-                                </LeaderAccordionPanel>
+                                {hasLeaderDetails && (
+                                  <LeaderAccordionPanel
+                                    $active={isActive}
+                                    aria-hidden={!isActive}
+                                  >
+                                    <LeaderAccordionPanelInner>
+                                      <LeaderAccordionContent>
+                                        {leader.bullets.length > 0 && (
+                                          <LeaderStatList>
+                                            <LeaderCredentialList>
+                                              {leader.bullets.map((bullet) => (
+                                                <LeaderCredentialItem key={bullet.text}>
+                                                  <LeaderStatEmoji aria-hidden="true">
+                                                    {getLeaderBulletEmoji(bullet.icon)}
+                                                  </LeaderStatEmoji>
+                                                  <span>{bullet.text}</span>
+                                                </LeaderCredentialItem>
+                                              ))}
+                                            </LeaderCredentialList>
+                                          </LeaderStatList>
+                                        )}
+                                        {leader.readingStyle && (
+                                          <LeaderReadingStyle>
+                                            <strong>{t.home.leaderMethod.readingStyleLabel}</strong>
+                                            <span>{leader.readingStyle}</span>
+                                          </LeaderReadingStyle>
+                                        )}
+                                        {leader.linkedinUrl && (
+                                          <LeaderLinkedInButton
+                                            href={leader.linkedinUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            $disabled={false}
+                                          >
+                                            LinkedIn
+                                            <ArrowTopRightOnSquareIcon aria-hidden="true" />
+                                          </LeaderLinkedInButton>
+                                        )}
+                                      </LeaderAccordionContent>
+                                    </LeaderAccordionPanelInner>
+                                  </LeaderAccordionPanel>
+                                )}
                               </LeaderAccordionItem>
                             );
                           })}
@@ -3244,25 +3867,29 @@ export default function NewHomeClient({
                     </NetworkingMethodDescription>
                   </NetworkingMethodHeader>
                   <NetworkingGallery>
-                    <NetworkingImageCard $featured>
-                      <img
-                        src={NETWORKING_IMAGES[0].src}
-                        alt={NETWORKING_IMAGES[0].alt}
-                        loading="lazy"
-                      />
-                    </NetworkingImageCard>
-                    <NetworkingSideGallery>
-                      {NETWORKING_IMAGES.slice(1).map((image) => (
-                        <NetworkingImageCard key={image.id}>
-                          <img src={image.src} alt={image.alt} loading="lazy" />
-                        </NetworkingImageCard>
-                      ))}
-                    </NetworkingSideGallery>
+                    {networkingImages.map((image) => (
+                      <NetworkingImageCard
+                        key={image.id}
+                        $objectPosition={
+                          "objectPosition" in image ? image.objectPosition : undefined
+                        }
+                        $rotate={"rotate" in image ? image.rotate : undefined}
+                      >
+                        <Image
+                          src={image.src}
+                          alt={image.alt}
+                          width={image.width}
+                          height={image.height}
+                          sizes="(max-width: 760px) 84vw, 420px"
+                          loading="lazy"
+                        />
+                      </NetworkingImageCard>
+                    ))}
                   </NetworkingGallery>
                 </NetworkingMethodLayout>
               </NetworkingMethodSection>
+              <StatsSection stats={homeStats} />
             </MethodFlowWrapper>
-            <StatsSection stats={homeStats} />
             <TopicsShowcase topics={initialTopics || []} />
             <MembershipSection />
             <FaqSection />
@@ -3270,9 +3897,45 @@ export default function NewHomeClient({
           </MainContent>
         </>
       )}
+      {displayMode === "human" && (
+        <FloatingSupportLink
+          href={SUPPORT_URL}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={t.home.support.ariaLabel}
+        >
+          <FloatingSupportIcon aria-hidden="true">
+            <ChatBubbleOvalLeftEllipsisIcon />
+          </FloatingSupportIcon>
+          <FloatingSupportText>{t.home.support.label}</FloatingSupportText>
+        </FloatingSupportLink>
+      )}
+      {displayMode === "human" && showJobCelebration && (
+        <JobCelebrationPopup
+          role="status"
+          aria-label={t.home.jobCelebration.ariaLabel}
+        >
+          <JobCelebrationInner>
+            <JobCelebrationIcon aria-hidden="true">
+              <SparklesIcon />
+            </JobCelebrationIcon>
+            <JobCelebrationCopy>
+              <strong>{t.home.jobCelebration.title}</strong>
+              <p>{t.home.jobCelebration.description}</p>
+            </JobCelebrationCopy>
+            <JobCelebrationClose
+              type="button"
+              aria-label={t.home.jobCelebration.close}
+              onClick={handleCloseJobCelebration}
+              $bursting={isJobCelebrationBursting}
+            >
+              {t.home.jobCelebration.close}
+            </JobCelebrationClose>
+          </JobCelebrationInner>
+        </JobCelebrationPopup>
+      )}
       <FloatingModeToggle
         aria-label={t.home.renderMode.ariaLabel}
-        $mode={renderMode}
       >
         <ModeToggleOptions $mode={renderMode}>
           <ModeToggleButton

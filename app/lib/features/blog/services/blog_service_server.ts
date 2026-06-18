@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { db } from "../../../firebase/firebaseAdmin";
 import { BlogPost } from "../types/blog_types";
 
@@ -27,7 +29,7 @@ const docToBlogPost = (doc: any): BlogPost => {
 };
 
 // Fetch all published blog posts (for SSG)
-export const fetchPublishedBlogPostsServer = async (): Promise<BlogPost[]> => {
+export const fetchPublishedBlogPostsServer = cache(async (): Promise<BlogPost[]> => {
   try {
     // Check if Firebase Admin SDK is properly initialized
     if (!db || !db.collection) {
@@ -47,11 +49,10 @@ export const fetchPublishedBlogPostsServer = async (): Promise<BlogPost[]> => {
       return [];
     }
 
-    const querySnapshot = await blogRef.get();
+    const querySnapshot = await blogRef.where("status", "==", "published").get();
 
     const posts = querySnapshot.docs
       .map(docToBlogPost)
-      .filter((post) => post.status === "published")
       .sort((a, b) => {
         const dateA = a.publishedAt || a.createdAt;
         const dateB = b.publishedAt || b.createdAt;
@@ -63,10 +64,10 @@ export const fetchPublishedBlogPostsServer = async (): Promise<BlogPost[]> => {
     console.error("Error fetching published blog posts on server:", error);
     return [];
   }
-};
+});
 
 // Fetch a single published blog post by ID (for SSG/SSR)
-export const fetchPublishedBlogPostByIdServer = async (
+export const fetchPublishedBlogPostByIdServer = cache(async (
   id: string
 ): Promise<BlogPost | null> => {
   try {
@@ -102,10 +103,10 @@ export const fetchPublishedBlogPostByIdServer = async (
     console.error("Error fetching published blog post by ID on server:", error);
     return null;
   }
-};
+});
 
 // Get all published blog post IDs (for getStaticPaths)
-export const getPublishedBlogPostIdsServer = async (): Promise<string[]> => {
+export const getPublishedBlogPostIdsServer = cache(async (): Promise<string[]> => {
   try {
     // Check if Firebase Admin SDK is properly initialized
     if (!db || !db.collection) {
@@ -125,11 +126,10 @@ export const getPublishedBlogPostIdsServer = async (): Promise<string[]> => {
       return [];
     }
 
-    const querySnapshot = await blogRef.get();
+    const querySnapshot = await blogRef.where("status", "==", "published").get();
 
     const postIds = querySnapshot.docs
       .map(docToBlogPost)
-      .filter((post) => post.status === "published")
       .map((post) => post.id);
 
     return postIds;
@@ -137,4 +137,4 @@ export const getPublishedBlogPostIdsServer = async (): Promise<string[]> => {
     console.error("Error fetching blog post IDs on server:", error);
     return [];
   }
-};
+});

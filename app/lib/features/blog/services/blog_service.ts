@@ -3,6 +3,8 @@ import {
   doc,
   getDocs,
   getDoc,
+  query,
+  where,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -49,13 +51,10 @@ const docToBlogPost = (doc: any): BlogPost => {
 export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
   try {
     const blogRef = collection(db, COLLECTION_NAME);
-
-    // First try to get all documents and then filter/sort in memory
-    // This avoids issues with missing indexes on empty collections
-    const querySnapshot = await getDocs(blogRef);
+    const publishedPostsQuery = query(blogRef, where("status", "==", "published"));
+    const querySnapshot = await getDocs(publishedPostsQuery);
     const posts = querySnapshot.docs
       .map(docToBlogPost)
-      .filter((post) => post.status === "published")
       .sort((a, b) => {
         const dateA = a.publishedAt || a.createdAt;
         const dateB = b.publishedAt || b.createdAt;

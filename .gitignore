@@ -16,6 +16,7 @@ dist-ssr
 .next/
 out/
 *.tsbuildinfo
+articles_export.csv
 
 # Firebase Functions build output
 functions/.next/

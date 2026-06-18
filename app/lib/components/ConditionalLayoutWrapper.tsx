@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import MainLayoutWrapper from "./MainLayoutWrapper";
 import DisplayNamePrompt from "./DisplayNamePrompt";
+import RouteTransitionLoader from "./RouteTransitionLoader";
 import { useDisplayNamePrompt } from "../hooks/useDisplayNamePrompt";
 import { I18nProvider } from "../i18n/I18nProvider";
 
@@ -32,6 +33,7 @@ export default function ConditionalLayoutWrapper({
       {shouldUseMainLayout && !loading && shouldShowPrompt && (
         <DisplayNamePrompt onComplete={hidePrompt} />
       )}
+      <RouteTransitionLoader />
     </I18nProvider>
   );
 }

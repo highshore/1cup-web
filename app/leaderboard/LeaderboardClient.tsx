@@ -15,8 +15,9 @@ import { useI18n } from "../lib/i18n/I18nProvider";
 const PageShell = styled.div`
   width: 100%;
   min-height: 100vh;
-  padding: clamp(0.75rem, 2vw, 1rem) 0 clamp(2.5rem, 5vw, 3rem);
-  color: #111827;
+  padding: clamp(2rem, 5vw, 3rem) 0 clamp(3rem, 6vw, 4rem);
+  background: transparent;
+  color: #050505;
 `;
 
 const Content = styled.div`
@@ -26,7 +27,7 @@ const Content = styled.div`
   padding: 0 ${appLayout.pageGutterDesktop};
 
   @media (max-width: 768px) {
-    padding: 0;
+    padding: 0 1rem;
   }
 `;
 
@@ -42,23 +43,31 @@ const LeaderboardsGrid = styled.section`
 
 const LeaderboardCard = styled.div`
   min-width: 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
+  border: 2px solid #050505;
+  border-radius: 14px;
   background: #ffffff;
   padding: clamp(0.95rem, 2vw, 1.15rem);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
 
   @media (max-width: 768px) {
-    border-radius: 16px;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
   }
 `;
 
 const LeaderboardTitle = styled.h2`
-  margin: 0 0 0.35rem;
-  color: #111827;
-  font-size: clamp(0.95rem, 1.8vw, 1.05rem);
-  font-weight: 760;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.6rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.28rem 0.62rem;
+  font-size: clamp(0.82rem, 1.6vw, 0.92rem);
+  font-weight: 900;
   line-height: 1.25;
+  word-break: keep-all;
 `;
 
 const LeaderboardList = styled.ol`
@@ -75,7 +84,7 @@ const LeaderboardItem = styled.li`
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.08);
   padding: 0.7rem 0;
 
   &:last-child {
@@ -88,7 +97,7 @@ const LeaderboardRank = styled.span`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.52);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   font-weight: 720;
@@ -102,10 +111,10 @@ const LeaderboardAvatar = styled.div`
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1.5px solid #050505;
   border-radius: 50%;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #f3f3f1;
+  color: #050505;
   font-size: 0.76rem;
   font-weight: 760;
 `;
@@ -118,7 +127,7 @@ const LeaderboardAvatarImage = styled.img`
 
 const LeaderboardName = styled.span`
   overflow: hidden;
-  color: #1f2937;
+  color: #050505;
   font-size: 0.94rem;
   font-weight: 680;
   text-overflow: ellipsis;
@@ -126,7 +135,7 @@ const LeaderboardName = styled.span`
 `;
 
 const LeaderboardValue = styled.span`
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.62);
   font-size: 0.82rem;
   font-weight: 680;
   white-space: nowrap;
@@ -134,7 +143,7 @@ const LeaderboardValue = styled.span`
 
 const EmptyState = styled.div`
   padding: 0.65rem 0;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.48);
   font-size: 0.9rem;
 `;
 
@@ -280,7 +289,7 @@ export default function LeaderboardClient() {
   return (
     <PageShell>
       <Content>
-        {loading && <GlobalLoadingScreen size="large" />}
+        {loading && <GlobalLoadingScreen />}
         {error && <ErrorState>{error}</ErrorState>}
 
         {!loading && !error && leaderboards && (

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import styled, { keyframes } from "styled-components";
-import { colors } from "../../lib/constants/colors";
 import { BlogPost } from "../../lib/features/blog/types/blog_types";
 import {
   fetchBlogPost,
@@ -13,64 +12,71 @@ import {
 } from "../../lib/features/blog/services/blog_service";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { BlogEditor } from "../../lib/features/blog/components/blog_editor";
+import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import { DocumentTextIcon, RocketLaunchIcon } from "@heroicons/react/24/outline";
 
-// Using shared colors
-
-// Local dark theme for this page
 const theme = {
-  surface: "#111317",
-  surfaceAlt: "#14161a",
-  border: "rgba(255, 255, 255, 0.08)",
-  shadow: "rgba(0, 0, 0, 0.6)",
+  surface: "#ffffff",
+  surfaceAlt: "#f3f3f1",
+  border: "#050505",
+  softBorder: "rgba(5, 5, 5, 0.12)",
+  shadow: "#050505",
   text: {
-    dark: "#000000",
-    medium: "#f0f0f0",
+    dark: "#050505",
+    medium: "rgba(5, 5, 5, 0.68)",
     light: "#ffffff",
   },
   gray: {
-    light: "#1f2126",
-    medium: "#262a31",
-    dark: "#2f3540",
+    light: "#f8f8f6",
+    medium: "#f3f3f1",
+    dark: "rgba(5, 5, 5, 0.68)",
   },
-  primaryPale: "rgba(255, 255, 255, 0.04)",
-  accent: "#0ea5e9",
-  accentHover: "#38bdf8",
+  primaryPale: "#fff8dc",
+  accent: "#f47a4a",
+  accentHover: "#e86434",
 } as const;
 
 const DetailContainer = styled.div`
-  padding: 2rem 0;
+  padding: clamp(1.5rem, 4vw, 2.75rem) clamp(1rem, 4vw, 1.5rem)
+    clamp(3rem, 6vw, 4rem);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
   background-color: transparent;
   min-height: 100vh;
 
+  > * {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   @media (max-width: 768px) {
-    padding: 1.5rem 0;
+    padding: 1.25rem 0.9rem 3rem;
   }
 `;
 
 const BackButton = styled.button`
-  background: transparent;
+  background: #ffffff;
   color: ${theme.text.dark};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
+  border: 2px solid ${theme.border};
+  border-radius: 999px;
   padding: 0.75rem 1.5rem;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 850;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   margin-bottom: 2rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  box-shadow: 3px 3px 0 ${theme.accent};
 
   &:hover {
-    background: ${colors.primaryPale};
-    border-color: ${colors.accent};
-    color: ${colors.accent};
+    background: ${theme.primaryPale};
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 ${theme.accent};
   }
 
   @media (max-width: 768px) {
@@ -87,7 +93,7 @@ const FooterNav = styled.div`
 
 const BackLink = styled.button`
   background: transparent;
-  color: #9ca3af;
+  color: ${theme.text.medium};
   border: none;
   padding: 0.375rem 0.75rem;
   font-size: 0.9rem;
@@ -100,19 +106,19 @@ const BackLink = styled.button`
 
   &:hover {
     opacity: 1;
-    background: rgba(255, 255, 255, 0.06);
+    color: ${theme.text.dark};
+    background: rgba(5, 5, 5, 0.06);
   }
 `;
 
-const FeaturedImage = styled.div<{ $hasImage: boolean; $imageUrl?: string }>`
+const FeaturedImage = styled.div`
   width: 100%;
   height: 450px;
-  background: ${(props) =>
-    props.$hasImage && props.$imageUrl
-      ? `url(${props.$imageUrl}) center/cover`
-      : `${theme.gray.medium}`};
-  border-radius: 20px;
+  background: ${theme.gray.medium};
+  border: 2px solid ${theme.border};
+  border-radius: 14px;
   margin-bottom: 2rem;
+  box-shadow: 4px 4px 0 ${theme.shadow};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,8 +130,15 @@ const FeaturedImage = styled.div<{ $hasImage: boolean; $imageUrl?: string }>`
   }
 `;
 
+const FeaturedImageAsset = styled.img`
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
 const ImagePlaceholder = styled.div`
-  color: ${theme.text.light};
+  color: ${theme.text.medium};
   font-size: 3rem;
   font-weight: 300;
 
@@ -171,13 +184,13 @@ const StatusBadge = styled.div<{ $status: string }>`
 
 const PostHeader = styled.header`
   margin-bottom: 2rem;
-  border-bottom: 1px solid ${theme.border};
-  padding-bottom: 1rem;
+  border-bottom: 2px solid ${theme.border};
+  padding-bottom: 1.35rem;
 `;
 
 const PostTitle = styled.h1`
   font-size: 2.5rem;
-  font-weight: 700;
+  font-weight: 950;
   color: ${theme.text.dark};
   margin-bottom: 1rem;
   line-height: 1.2;
@@ -195,9 +208,11 @@ const PostMeta = styled.div`
   align-items: center;
   gap: 1rem;
   margin: 1.5rem 0 0 0;
-  background-color: ${theme.text.medium};
-  border-radius: 12px;
+  background-color: #ffffff;
+  border: 2px solid ${theme.border};
+  border-radius: 14px;
   padding: 1rem;
+  box-shadow: 3px 3px 0 ${theme.accent};
 `;
 
 const AuthorAvatar = styled.img`
@@ -247,13 +262,13 @@ const TagsContainer = styled.div`
 `;
 
 const Tag = styled.span`
-  background: ${theme.primaryPale};
-  color: ${theme.accent};
+  background: #ffffff;
+  color: ${theme.text.dark};
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
   font-size: 0.8rem;
-  font-weight: 500;
-  border: 1px solid ${theme.border};
+  font-weight: 750;
+  border: 1.5px solid ${theme.border};
 `;
 
 const PostContent = styled.div`
@@ -262,6 +277,11 @@ const PostContent = styled.div`
   color: ${theme.text.dark};
   font-family: inherit;
   margin-bottom: 2rem;
+  background: #ffffff;
+  border: 2px solid ${theme.border};
+  border-radius: 14px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: 4px 4px 0 ${theme.shadow};
 
   /* Enhanced typography styles */
   h1,
@@ -273,7 +293,7 @@ const PostContent = styled.div`
     font-family: inherit;
     color: ${theme.text.dark};
     margin: 1.1rem 0 0.45rem 0;
-    font-weight: 700;
+    font-weight: 850;
     line-height: 1.15;
     letter-spacing: -0.01em;
   }
@@ -328,7 +348,8 @@ const PostContent = styled.div`
   img {
     max-width: 100%;
     height: auto;
-    border-radius: 20px;
+    border: 2px solid ${theme.border};
+    border-radius: 12px;
     margin: 1.25rem 0;
     display: block;
   }
@@ -341,7 +362,8 @@ const PostContent = styled.div`
     color: ${theme.text.medium};
     background: ${theme.primaryPale};
     padding: 0.85rem 1.25rem;
-    border-radius: 20px;
+    border: 1.5px solid ${theme.border};
+    border-radius: 12px;
   }
 
   ul,
@@ -355,7 +377,7 @@ const PostContent = styled.div`
   }
 
   code {
-    background: ${theme.surface};
+    background: ${theme.surfaceAlt};
     padding: 0.2rem 0.45rem;
     border-radius: 8px;
     font-family: "JetBrains Mono", "Monaco", "Consolas", monospace;
@@ -367,10 +389,10 @@ const PostContent = styled.div`
   pre {
     background: ${theme.surfaceAlt};
     padding: 1.25rem;
-    border-radius: 20px;
+    border-radius: 12px;
     overflow-x: auto;
     margin: 1.25rem 0;
-    border: 1px solid ${theme.border};
+    border: 1.5px solid ${theme.border};
     font-family: "JetBrains Mono", "Monaco", "Consolas", monospace;
   }
 
@@ -449,9 +471,9 @@ const ErrorState = styled.div`
   text-align: center;
   padding: 1.25rem;
   color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-  border-radius: 20px;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: #fef2f2;
+  border-radius: 14px;
+  border: 2px solid #991b1b;
   margin: 1.25rem 0;
 `;
 
@@ -467,11 +489,13 @@ const gradientShine = keyframes`
 
 const CTASection = styled.div`
   position: relative;
-  border-radius: 20px;
+  border: 2px solid ${theme.border};
+  border-radius: 14px;
   padding: 3rem;
   text-align: center;
   margin-top: 3rem;
   overflow: hidden;
+  box-shadow: 4px 4px 0 ${theme.shadow};
 
   @media (max-width: 768px) {
     padding: 2rem;
@@ -505,7 +529,7 @@ const CTAContent = styled.div`
 
 const CTATitle = styled.h3`
   font-size: 1.75rem;
-  font-weight: 600;
+  font-weight: 900;
   color: ${theme.text.light};
   margin-bottom: 1rem;
   font-family: inherit;
@@ -517,7 +541,7 @@ const CTATitle = styled.h3`
 
 const CTADescription = styled.p`
   font-size: 1rem;
-  color: ${theme.text.medium};
+  color: rgba(255, 255, 255, 0.82);
   margin-bottom: 1.5rem;
   line-height: 1.5;
   font-family: inherit;
@@ -529,8 +553,8 @@ const CTADescription = styled.p`
 
 const CTAButton = styled.button`
   padding: 0.85rem 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
+  border: 2px solid ${theme.border};
+  border-radius: 999px;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
@@ -541,10 +565,10 @@ const CTAButton = styled.button`
   gap: 0.5rem;
   position: relative;
   overflow: hidden;
-  color: white;
+  color: ${theme.text.dark};
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: #ffffff;
+  box-shadow: 3px 3px 0 ${theme.accent};
 
   &::before {
     content: "";
@@ -562,8 +586,10 @@ const CTAButton = styled.button`
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: ${theme.primaryPale};
+    border-color: ${theme.border};
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 ${theme.accent};
   }
 
   @media (max-width: 768px) {
@@ -584,7 +610,7 @@ const AdminControls = styled.div`
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid ${theme.border};
+  border-top: 2px solid rgba(5, 5, 5, 0.1);
 
   @media (max-width: 768px) {
     justify-content: center;
@@ -592,13 +618,13 @@ const AdminControls = styled.div`
 `;
 
 const AdminButton = styled.button`
-  background: #1a1d22;
-  color: white;
-  border: 1px solid ${theme.border};
-  border-radius: 20px;
+  background: #ffffff;
+  color: ${theme.text.dark};
+  border: 2px solid ${theme.border};
+  border-radius: 999px;
   padding: 0.65rem 1.25rem;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 850;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -607,15 +633,17 @@ const AdminButton = styled.button`
   gap: 0.5rem;
 
   &:hover {
-    background: #262a31;
+    background: ${theme.primaryPale};
+    transform: translate(-1px, -1px);
   }
 
   &.delete {
-    background: #7f1d1d;
-    border-color: rgba(239, 68, 68, 0.35);
+    background: #991b1b;
+    color: #ffffff;
+    border-color: ${theme.border};
 
     &:hover {
-      background: #991b1b;
+      background: #7f1d1d;
     }
   }
 `;
@@ -778,11 +806,7 @@ export default function BlogDetailClient({
   }
 
   if (loading) {
-    return (
-      <DetailContainer>
-        <LoadingState>포스트를 불러오는 중...</LoadingState>
-      </DetailContainer>
-    );
+    return <GlobalLoadingScreen />;
   }
 
   if (error || !post) {
@@ -796,11 +820,16 @@ export default function BlogDetailClient({
 
   return (
     <DetailContainer>
-      <FeaturedImage
-        $hasImage={!!post.featuredImage}
-        $imageUrl={post.featuredImage}
-      >
-        {!post.featuredImage && (
+      <FeaturedImage>
+        {post.featuredImage ? (
+          <FeaturedImageAsset
+            src={post.featuredImage}
+            alt={post.title}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+          />
+        ) : (
           <ImagePlaceholder>
             <DocumentTextIcon />
           </ImagePlaceholder>

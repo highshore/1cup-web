@@ -7,6 +7,7 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { getDictionary } from "../lib/i18n";
 import { useAuth } from "../lib/contexts/auth_context";
 import { BlogPost } from "../lib/features/blog/types/blog_types";
+import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import {
   fetchBlogPosts,
   fetchAllBlogPosts,
@@ -18,16 +19,17 @@ import { BlogEditor } from "../lib/features/blog/components/blog_editor";
 
 // Clean, minimal blog palette
 const blog = {
-  text: { dark: "#111111", medium: "#555555", light: "#8A8A8A" },
-  border: "#e5e7eb",
-  shadow: "rgba(0,0,0,0.08)",
+  text: { dark: "#050505", medium: "rgba(5, 5, 5, 0.68)", light: "rgba(5, 5, 5, 0.48)" },
+  border: "#050505",
+  accent: "#f47a4a",
+  smoke: "#f3f3f1",
 } as const;
 
 const BlogContainer = styled.div`
-  padding: 2rem 0;
+  padding: clamp(2rem, 5vw, 3rem) 0 clamp(3rem, 6vw, 4rem);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  background-color: transparent;
+  background: transparent;
   min-height: 100vh;
 
   @media (max-width: 768px) {
@@ -49,22 +51,25 @@ const AdminControls = styled.div`
 `;
 
 const AdminButton = styled.button`
-  background: linear-gradient(180deg, #1a1d22, #111315);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: #ffffff;
+  color: ${blog.text.dark};
+  border: 2px solid ${blog.border};
+  border-radius: 999px;
   padding: 0.75rem 1.5rem;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 850;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   display: flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 3px 3px 0 ${blog.accent};
 
   &:hover {
-    transform: translateY(-2px);
+    background: #fff8dc;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 ${blog.accent};
   }
 
   &:active {
@@ -92,8 +97,8 @@ const EmptyState = styled.div`
   padding: 4rem 2rem;
   color: ${blog.text.medium};
   background: transparent;
-  border: 2px dashed ${blog.border};
-  border-radius: 8px;
+  border: 2px dashed rgba(5, 5, 5, 0.28);
+  border-radius: 14px;
   font-family: inherit;
 
   h3 {
@@ -128,8 +133,8 @@ const ErrorState = styled.div`
   padding: 2rem;
   color: #dc2626;
   background: #fef2f2;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
+  border-radius: 14px;
+  border: 2px solid #991b1b;
   margin: 2rem 0;
   font-family: inherit;
 `;
@@ -148,8 +153,8 @@ const SectionRow = styled.section`
 
 const SectionDivider = styled.div`
   width: calc(100% - 2rem);
-  height: 1px;
-  background: ${blog.border};
+  height: 2px;
+  background: rgba(5, 5, 5, 0.1);
   margin: 2.5rem auto;
   max-width: 920px;
 
@@ -161,15 +166,41 @@ const SectionDivider = styled.div`
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  font-size: clamp(1.2rem, 2.2vw, 1.45rem);
+  font-weight: 900;
   color: ${blog.text.dark};
-  margin: 0 0 1.5rem 0;
-  letter-spacing: -0.01em;
+  margin: 0 0 1.1rem 0;
+  letter-spacing: 0;
+  line-height: 1.25;
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(5, 5, 5, 0.14);
+  }
 
   @media (max-width: 768px) {
-    font-size: 1.3rem;
-    margin: 0 0 1.25rem 0;
+    gap: 0.55rem;
+    font-size: 1.18rem;
+    margin: 0 0 0.9rem 0;
+  }
+`;
+
+const SectionCount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: ${blog.accent};
+  font-size: 0.78rem;
+  font-weight: 900;
+
+  @media (max-width: 768px) {
+    font-size: 0.72rem;
   }
 `;
 
@@ -208,9 +239,9 @@ const ScrollButton = styled.button.withConfig({
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: rgba(17, 17, 17, 0.8);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: #ffffff;
+  color: ${blog.text.dark};
+  border: 2px solid ${blog.border};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -222,7 +253,8 @@ const ScrollButton = styled.button.withConfig({
 
   &:hover {
     opacity: 1;
-    transform: translateY(-50%) scale(1.06);
+    box-shadow: 3px 3px 0 ${blog.accent};
+    transform: translateY(-50%) scale(1.04);
   }
 
   ${(props) => (props.direction === "left" ? `left: -15px;` : `right: -15px;`)}
@@ -232,36 +264,45 @@ const ScrollButton = styled.button.withConfig({
 
 // List card
 const Card = styled.article`
-  border: 1px solid ${blog.border};
-  border-radius: 16px;
+  border: 2px solid ${blog.border};
+  border-radius: 14px;
   overflow: hidden;
   background: #ffffff;
-  transition: transform 0.25s ease, border-color 0.25s ease;
+  box-shadow: 4px 4px 0 #050505;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   cursor: pointer;
 
   &:hover {
-    transform: translateY(-3px);
-    border-color: #d1d5db;
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 ${blog.accent};
+    border-color: ${blog.border};
   }
 
   @media (max-width: 768px) {
-    border-radius: 14px;
+    box-shadow: 3px 3px 0 #050505;
 
     &:hover {
-      transform: translateY(-2px);
+      transform: translate(-1px, -1px);
     }
   }
 `;
 
-const CardImage = styled.div<{ $image?: string }>`
-  background: ${({ $image }) =>
-    $image ? `url(${$image}) center/cover` : "#f3f4f6"};
+const CardImage = styled.div`
+  background: ${blog.smoke};
   width: 100%;
   height: 200px;
+  overflow: hidden;
 
   @media (max-width: 768px) {
     height: 160px;
   }
+`;
+
+const CardImageAsset = styled.img`
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 const CardBody = styled.div`
@@ -275,7 +316,7 @@ const CardBody = styled.div`
 const CardTitle = styled.h3`
   margin: 0 0 0.75rem 0;
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 850;
   color: ${blog.text.dark};
   white-space: nowrap;
   overflow: hidden;
@@ -344,9 +385,9 @@ const Pill = styled.span`
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
-  border: 1px solid ${blog.border};
-  background: rgba(255, 255, 255, 0.8);
-  color: ${blog.text.medium};
+  border: 1.5px solid ${blog.border};
+  background: #ffffff;
+  color: ${blog.text.dark};
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -354,8 +395,8 @@ const Pill = styled.span`
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 1);
-    border-color: ${blog.text.light};
+    background: #fff8dc;
+    border-color: ${blog.border};
   }
 
   @media (max-width: 768px) {
@@ -373,32 +414,18 @@ const FeaturedSlide = styled.div`
 const FeaturedCard = styled(Card)`
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
-  background: transparent;
-  border: none;
-  overflow: visible;
-  box-shadow: none;
-
-  &:hover {
-    transform: none;
-    border-color: transparent;
-  }
-
-  @media (max-width: 768px) {
-    border-radius: 14px;
-  }
 `;
 
 const FeaturedContent = styled.div`
-  padding: 0;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 0;
 
   @media (max-width: 768px) {
     gap: 0.5rem;
-    margin-top: 0.75rem;
+    padding: 1rem;
   }
 `;
 
@@ -407,7 +434,7 @@ const FeaturedTitle = styled.h2`
   letter-spacing: -0.01em;
   margin: 0;
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 900;
   color: ${blog.text.dark};
 
   @media (max-width: 768px) {
@@ -438,10 +465,10 @@ const FeaturedButtons = styled.div`
 
 const CTAButton = styled.button`
   padding: 0.625rem 1.25rem;
-  border: 1px solid ${blog.border};
-  border-radius: 8px;
+  border: 2px solid ${blog.border};
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 850;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -450,11 +477,14 @@ const CTAButton = styled.button`
   gap: 0.5rem;
   color: ${blog.text.dark};
   font-family: inherit;
-  background: transparent;
+  background: #ffffff;
+  box-shadow: 3px 3px 0 ${blog.accent};
 
   &:hover {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: ${blog.text.medium};
+    background: #fff8dc;
+    transform: translate(-1px, -1px);
+    border-color: ${blog.border};
+    box-shadow: 4px 4px 0 ${blog.accent};
   }
 
   @media (max-width: 768px) {
@@ -465,14 +495,52 @@ const CTAButton = styled.button`
 
 const FeaturedImage = styled(CardImage)`
   height: 280px;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 
   @media (max-width: 768px) {
     height: 200px;
-    border-radius: 10px;
   }
 `;
+
+const BlogCardImage = ({
+  image,
+  title,
+  featured = false,
+}: {
+  image?: string;
+  title: string;
+  featured?: boolean;
+}) => {
+  const Frame = featured ? FeaturedImage : CardImage;
+
+  return (
+    <Frame>
+      {image ? (
+        <CardImageAsset
+          src={image}
+          alt={title}
+          loading={featured ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={featured ? "high" : "auto"}
+        />
+      ) : null}
+    </Frame>
+  );
+};
+
+const getPostPreview = (post: BlogPost, maxLength: number) => {
+  if (post.excerpt) return post.excerpt;
+
+  const cleaned = post.content
+    .replace(/<[^>]*>/g, "")
+    .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, "")
+    .replace(/https?:\/\/[^\s]+/g, "");
+
+  return `${cleaned.slice(0, maxLength)}${
+    post.content.length > maxLength ? "..." : ""
+  }`;
+};
 
 interface BlogClientProps {
   initialPosts: BlogPost[];
@@ -484,6 +552,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   const dict = getDictionary("ko");
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialPosts);
   const [loading, setLoading] = useState(false);
+  const [isNavigatingPost, setIsNavigatingPost] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
@@ -671,6 +740,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       title: post.title,
     });
     // Always use ID-based routing
+    setIsNavigatingPost(true);
     router.push(`/blog/${post.id}`);
   };
 
@@ -714,7 +784,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
       {error && <ErrorState>{error}</ErrorState>}
 
-      {loading && <LoadingState>Loading posts...</LoadingState>}
+      {(loading || isNavigatingPost) && <GlobalLoadingScreen />}
 
       {!loading && blogPosts.length === 0 && !error && (
         <EmptyState>
@@ -742,21 +812,15 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               {/* Single featured card; structure preserved for consistency */}
               <FeaturedSlide>
                 <FeaturedCard onClick={() => handlePostClick(featuredPost)}>
-                  <FeaturedImage $image={featuredPost.featuredImage} />
+                  <BlogCardImage
+                    image={featuredPost.featuredImage}
+                    title={featuredPost.title}
+                    featured
+                  />
                   <FeaturedContent>
                     <FeaturedTitle>{featuredPost.title}</FeaturedTitle>
                     <FeaturedDescription>
-                      {(featuredPost.excerpt ||
-                        featuredPost.content
-                          .replace(/<[^>]*>/g, "")
-                          .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, "")
-                          .replace(/https?:\/\/[^\s]+/g, "")
-                          .slice(0, 180)) +
-                        (featuredPost.excerpt
-                          ? ""
-                          : featuredPost.content.length > 180
-                          ? "..."
-                          : "")}
+                      {getPostPreview(featuredPost, 180)}
                     </FeaturedDescription>
                     <FeaturedButtons>
                       <CTAButton onClick={() => handlePostClick(featuredPost)}>
@@ -787,7 +851,10 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
       {!loading && announcements.length > 0 && (
         <SectionRow>
-          <SectionTitle>{dict.blog.announcements}</SectionTitle>
+          <SectionTitle>
+            <span>{dict.blog.announcements}</span>
+            <SectionCount>{announcements.length}</SectionCount>
+          </SectionTitle>
           <ScrollerWrapper>
             {showAnnouncementsScroll && (
               <ScrollButton
@@ -810,21 +877,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               {announcements.map((post) => (
                 <SlideItem key={post.id} onClick={() => handlePostClick(post)}>
                   <Card>
-                    <CardImage $image={post.featuredImage} />
+                    <BlogCardImage image={post.featuredImage} title={post.title} />
                     <CardBody>
                       <CardTitle>{post.title}</CardTitle>
                       <CardExcerpt>
-                        {(post.excerpt ||
-                          post.content
-                            .replace(/<[^>]*>/g, "")
-                            .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, "")
-                            .replace(/https?:\/\/[^\s]+/g, "")
-                            .slice(0, 120)) +
-                          (post.excerpt
-                            ? ""
-                            : post.content.length > 120
-                            ? "..."
-                            : "")}
+                        {getPostPreview(post, 120)}
                       </CardExcerpt>
                       <MetaRow>
                         <span>
@@ -864,7 +921,10 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
       {!loading && information.length > 0 && (
         <SectionRow>
-          <SectionTitle>{dict.blog.information}</SectionTitle>
+          <SectionTitle>
+            <span>{dict.blog.information}</span>
+            <SectionCount>{information.length}</SectionCount>
+          </SectionTitle>
           <ScrollerWrapper>
             {showInformationScroll && (
               <ScrollButton
@@ -887,21 +947,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               {information.map((post) => (
                 <SlideItem key={post.id} onClick={() => handlePostClick(post)}>
                   <Card>
-                    <CardImage $image={post.featuredImage} />
+                    <BlogCardImage image={post.featuredImage} title={post.title} />
                     <CardBody>
                       <CardTitle>{post.title}</CardTitle>
                       <CardExcerpt>
-                        {(post.excerpt ||
-                          post.content
-                            .replace(/<[^>]*>/g, "")
-                            .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, "")
-                            .replace(/https?:\/\/[^\s]+/g, "")
-                            .slice(0, 120)) +
-                          (post.excerpt
-                            ? ""
-                            : post.content.length > 120
-                            ? "..."
-                            : "")}
+                        {getPostPreview(post, 120)}
                       </CardExcerpt>
                       <MetaRow>
                         <span>
@@ -941,7 +991,10 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
       {!loading && reviews.length > 0 && (
         <SectionRow>
-          <SectionTitle>{dict.blog.reviews}</SectionTitle>
+          <SectionTitle>
+            <span>{dict.blog.reviews}</span>
+            <SectionCount>{reviews.length}</SectionCount>
+          </SectionTitle>
           <ScrollerWrapper>
             {showReviewsScroll && (
               <ScrollButton
@@ -964,21 +1017,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               {reviews.map((post) => (
                 <SlideItem key={post.id} onClick={() => handlePostClick(post)}>
                   <Card>
-                    <CardImage $image={post.featuredImage} />
+                    <BlogCardImage image={post.featuredImage} title={post.title} />
                     <CardBody>
                       <CardTitle>{post.title}</CardTitle>
                       <CardExcerpt>
-                        {(post.excerpt ||
-                          post.content
-                            .replace(/<[^>]*>/g, "")
-                            .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, "")
-                            .replace(/https?:\/\/[^\s]+/g, "")
-                            .slice(0, 120)) +
-                          (post.excerpt
-                            ? ""
-                            : post.content.length > 120
-                            ? "..."
-                            : "")}
+                        {getPostPreview(post, 120)}
                       </CardExcerpt>
                       <MetaRow>
                         <span>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import styled from "styled-components";
 import { colors } from "../../lib/constants/colors";
 import { useI18n } from "../../lib/i18n/I18nProvider";
-import { SectionTitle, Highlight } from "../components/SectionHeading";
+import { SectionTitle } from "../components/SectionHeading";
 
 const MOBILE_NAV_GUTTER = "1rem";
 
@@ -37,8 +37,8 @@ const FAQItem = styled.div`
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: #050505;
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
@@ -106,9 +106,7 @@ export default function FaqSection() {
   return (
     <FAQSectionWrapper>
       <FAQInner>
-        <SectionTitle>
-          자주 묻는 <Highlight>질문</Highlight>
-        </SectionTitle>
+        <SectionTitle>{t.home.faq.title}</SectionTitle>
         <FAQContainer>
           {FAQ_ITEMS.map((faq, index) => (
             <FAQItem key={index}>

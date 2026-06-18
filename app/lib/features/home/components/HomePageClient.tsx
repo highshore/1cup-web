@@ -267,7 +267,7 @@ const memberProfiles: MemberProfile[] = [
       "(전) 한미연합사 통역병",
     ],
     linkedInUrl: "https://www.linkedin.com/in/sk-kyle-kim/",
-    image: "/assets/homepage/member1.JPG",
+    image: "/assets/homepage/member1.webp",
     background:
       "linear-gradient(135deg, rgba(17, 24, 39, 0.88) 0%, rgba(30, 64, 175, 0.78) 100%)",
     accent: "#3b82f6",
@@ -1871,18 +1871,18 @@ export default function HomePageClient({
               통역사 출신이 리딩하는 영어 모임
             </GalleryTitle>
             <GalleryGrid>
-              <GalleryImageLarge 
-                src="/assets/homepage/gallery1.JPG" 
+              <GalleryImageLarge
+                src="/assets/homepage/gallery1.webp"
                 alt="영어 한잔 밋업 현장 1"
                 loading="lazy"
               />
-              <GalleryImageSmall 
-                src="/assets/homepage/gallery2.JPG" 
+              <GalleryImageSmall
+                src="/assets/homepage/gallery2.webp"
                 alt="영어 한잔 밋업 현장 2"
                 loading="lazy"
               />
-              <GalleryImageSmall 
-                src="/assets/homepage/gallery3.JPG" 
+              <GalleryImageSmall
+                src="/assets/homepage/gallery3.webp"
                 alt="영어 한잔 밋업 현장 3"
                 loading="lazy"
               />

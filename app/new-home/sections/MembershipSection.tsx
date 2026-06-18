@@ -1,11 +1,10 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, type CSSProperties } from "react";
 import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { CheckBadgeIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
-import { SectionTitle } from "../components/SectionHeading";
 
-type CSSVariableStyle = React.CSSProperties & {
+type CSSVariableStyle = CSSProperties & {
   ["--target-width"]?: string;
   ["--delay"]?: string;
 };
@@ -22,11 +21,11 @@ interface CostComparison {
 const MOBILE_NAV_GUTTER = "1rem";
 
 const MembershipSectionContainer = styled.section`
-  padding: 5rem 0;
-  background: #101418;
+  padding: clamp(4rem, 8vw, 5.5rem) 0;
+  background: #f3f3f1;
   position: relative;
   overflow: hidden;
-  color: white;
+  color: #050505;
 `;
 
 const MembershipWrapper = styled.div`
@@ -43,20 +42,20 @@ const MembershipWrapper = styled.div`
 const MembershipGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
-  gap: 3rem;
+  gap: clamp(1.5rem, 4vw, 2.25rem);
   
-  @media (min-width: 768px) {
-    grid-template-columns: 1.1fr 0.9fr;
-    align-items: center;
-    gap: 4rem;
+  @media (min-width: 860px) {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: stretch;
   }
 `;
 
 const LeftCol = styled.div`
-  color: white;
+  color: #050505;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  justify-content: center;
+  gap: 1.15rem;
   position: relative;
   z-index: 1;
 
@@ -71,7 +70,7 @@ const RightCol = styled.div`
   padding: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: stretch;
   position: relative;
   z-index: 1;
@@ -87,17 +86,28 @@ const RightCol = styled.div`
 const BulletList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.55rem;
   width: 100%;
+
+  @media (max-width: 768px) {
+    max-width: 34rem;
+  }
 `;
 
 const BulletItem = styled.p`
-  font-size: 1.05rem;
-  color: #ffb7c5;
+  font-size: 0.96rem;
+  color: rgba(5, 5, 5, 0.76);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   margin: 0;
+  line-height: 1.55;
+  font-weight: 700;
+
+  svg {
+    margin-top: 0.12rem;
+    color: #050505;
+  }
 
   @media (max-width: 768px) {
     justify-content: center;
@@ -105,43 +115,43 @@ const BulletItem = styled.p`
   }
 `;
 
-const ChartGridOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(0deg, rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 100% 28px, 48px 100%;
-  opacity: 0.5;
-  pointer-events: none;
+const chartBreath = keyframes`
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
 `;
 
 const ComparisonChart = styled.div`
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 42px -18px rgba(0, 0, 0, 0.55);
+  background: #ffffff;
+  border-radius: 10px;
+  padding: clamp(1.05rem, 2.5vw, 1.4rem);
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   transition: border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
   overflow: hidden;
   width: 100%;
   max-width: none;
+  animation: ${chartBreath} 5.2s ease-in-out infinite;
 
   &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
-    pointer-events: none;
-    transform: rotate(45deg);
+    display: none;
+  }
+
+  &::after {
+    display: none;
   }
   
   &:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.62);
+    border-color: #050505;
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
   
   @media (max-width: 768px) {
@@ -152,18 +162,23 @@ const ComparisonChart = styled.div`
 const ChartHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
   padding-bottom: 0.8rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #9ca3af;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.12);
+  font-size: 0.86rem;
+  font-weight: 850;
+  color: #050505;
+  position: relative;
+  z-index: 1;
 `;
 
 const CostBarContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.82rem;
+  position: relative;
+  z-index: 1;
 `;
 
 const fadeInUp = keyframes`
@@ -185,30 +200,25 @@ const CostLabelRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
-  color: #e5e7eb;
-  font-weight: 500;
+  gap: 0.75rem;
+  font-size: 0.86rem;
+  color: #050505;
+  font-weight: 760;
 `;
 
 const CostBarWrapper = styled.div`
   width: 100%;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  height: 12px;
+  background: #fff8dc;
   border-radius: 9999px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(5, 5, 5, 0.16);
   position: relative;
 `;
 
 const growBar = keyframes`
   from { width: 0; }
   to { width: var(--target-width, 100%); }
-`;
-
-const shimmer = keyframes`
-  0% { transform: translateX(-120%); opacity: 0; }
-  30% { opacity: 0.8; }
-  100% { transform: translateX(120%); opacity: 0; }
 `;
 
 const CostBar = styled.div<{ $color: string }>`
@@ -219,46 +229,50 @@ const CostBar = styled.div<{ $color: string }>`
   border-radius: 9999px;
   animation: ${growBar} 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: var(--delay, 0s);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
+  box-shadow: none;
   overflow: hidden;
 
   &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 45%, rgba(255,255,255,0) 80%);
-    transform: translateX(-120%);
-    animation: ${shimmer} 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    animation-delay: calc(var(--delay, 0s) + 0.2s);
+    display: none;
   }
 `;
 
 const CostValue = styled.span<{ $highlight?: boolean }>`
-  color: ${props => props.$highlight ? 'rgb(255, 100, 130)' : '#9ca3af'};
-  font-weight: ${props => props.$highlight ? '700' : '400'};
+  color: ${props => props.$highlight ? '#050505' : 'rgba(5, 5, 5, 0.58)'};
+  font-weight: ${props => props.$highlight ? '920' : '650'};
   font-size: 0.85rem;
+  white-space: nowrap;
+`;
+
+const CostLabelText = styled.span<{ $highlight?: boolean }>`
+  color: #050505;
+  font-weight: ${({ $highlight }) => ($highlight ? 920 : 760)};
+`;
+
+const BulletIcon = styled(CheckBadgeIcon)`
+  flex-shrink: 0;
 `;
 
 const CtaButton = styled.button`
   min-height: 48px;
   background: #ffffff;
-  color: #0f172a;
+  color: #050505;
   font-weight: 850;
   padding: 0.85rem 1.55rem;
   border-radius: 999px;
   transition: background-color 160ms ease, border-color 160ms ease,
     box-shadow 160ms ease, transform 160ms ease;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 5px 5px 0 #f47a4a;
   width: max-content;
-  border: 1px solid rgba(255, 255, 255, 0.94);
+  border: 2px solid #050505;
   cursor: pointer;
   font-size: 1rem;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(255, 255, 255, 0.98);
-    transform: translateY(-1px);
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
+    background: #fff8dc;
+    border-color: #050505;
+    transform: translate(-1px, -1px);
+    box-shadow: 7px 7px 0 #f47a4a;
   }
 
   &:active {
@@ -268,6 +282,49 @@ const CtaButton = styled.button`
   @media (max-width: 768px) {
     margin: 0 auto;
   }
+`;
+
+const ValueIntro = styled.div`
+  display: grid;
+  gap: 0.8rem;
+
+  @media (max-width: 768px) {
+    justify-items: center;
+    text-align: center;
+  }
+`;
+
+const MembershipTitle = styled.h2`
+  margin: 0;
+  color: #050505;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: 0;
+  word-break: keep-all;
+`;
+
+const MembershipHighlight = styled.span`
+  display: inline;
+  color: #d95f2d;
+`;
+
+const CaveatBox = styled.div`
+  margin-top: 1.15rem;
+  border: 1px solid rgba(5, 5, 5, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 0.9rem;
+`;
+
+const CaveatText = styled.p`
+  margin: 0;
+  color: rgba(5, 5, 5, 0.62);
+  font-size: 0.82rem;
+  font-weight: 580;
+  line-height: 1.6;
+  word-break: keep-all;
 `;
 
 export default function MembershipSection() {
@@ -296,7 +353,7 @@ export default function MembershipSection() {
         label: labels.oneCup,
         cost: 1212,
         displayValue: formatCostValue(1212),
-        color: "linear-gradient(90deg, #ff7aa2, #ff4d8f)",
+        color: "linear-gradient(90deg, #050505, #2a2a2a)",
         highlight: true,
       },
       {
@@ -304,28 +361,28 @@ export default function MembershipSection() {
         label: labels.exchange,
         cost: 5000,
         displayValue: formatCostValue(5000),
-        color: "linear-gradient(90deg, #4b5563, #6b7280)",
+        color: "linear-gradient(90deg, #f47a4a, #f79a72)",
       },
       {
         key: "phone",
         label: labels.phone,
         cost: 20000,
         displayValue: `${formatCostValue(20000)}~`,
-        color: "linear-gradient(90deg, #6366f1, #8b5cf6)",
+        color: "linear-gradient(90deg, #a6c9d8, #7fb1c5)",
       },
       {
         key: "academy",
         label: labels.academy,
         cost: 35000,
         displayValue: `${formatCostValue(35000)}~`,
-        color: "linear-gradient(90deg, #f97316, #fb923c)",
+        color: "linear-gradient(90deg, #d6c8aa, #bfae8b)",
       },
       {
         key: "premium",
         label: labels.premium,
         cost: 60000,
         displayValue: `${formatCostValue(60000)}~`,
-        color: "linear-gradient(90deg, #22d3ee, #38bdf8)",
+        color: "linear-gradient(90deg, #8e9b8d, #6f806e)",
       },
     ];
   }, [formatCostValue, t, locale]);
@@ -340,32 +397,36 @@ export default function MembershipSection() {
       <MembershipWrapper>
         <MembershipGrid>
           <LeftCol>
-            <SectionTitle style={{ color: 'white' }}>
-              {membershipSectionTitleLines[0]}
-              {membershipSectionTitleLines[1] && (
-                <>
-                  <br />
-                  <span style={{ color: '#ffb7c5' }}>{membershipSectionTitleLines[1]}</span>
-                </>
-              )}
-            </SectionTitle>
-            <div style={{ marginBottom: '2rem' }}>
+            <ValueIntro>
+              <MembershipTitle>
+                {membershipSectionTitleLines[0]}
+                {membershipSectionTitleLines[1] && (
+                  <>
+                    <br />
+                    <MembershipHighlight>
+                      {membershipSectionTitleLines[1]}
+                    </MembershipHighlight>
+                  </>
+                )}
+              </MembershipTitle>
+            </ValueIntro>
+            <div>
               <BulletList>
                 {[membershipAccessBullet, t.home.pricingNew.referralDiscount].map((text, idx) => (
                   <BulletItem key={idx}>
-                    <CheckBadgeIcon width={20} style={{ flexShrink: 0 }} />
+                    <BulletIcon width={20} />
                     {text}
                   </BulletItem>
                 ))}
               </BulletList>
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                 <p style={{ color: '#cbd5f5', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+              <CaveatBox>
+                <CaveatText>
                   {t.home.pricingNew.caveats.line1}<br/>
                   {t.home.pricingNew.caveats.line2}<br/>
                   {t.home.pricingNew.caveats.line3}<br/>
                   {t.home.pricingNew.caveats.line4}
-                </p>
-              </div>
+                </CaveatText>
+              </CaveatBox>
             </div>
             <CtaButton onClick={() => router.push("/payment")}>
               {t.home.pricing.cta}
@@ -373,10 +434,9 @@ export default function MembershipSection() {
           </LeftCol>
           <RightCol>
             <ComparisonChart>
-              <ChartGridOverlay />
               <ChartHeader>
                 <span>{t.home.pricingNew.chart.header}</span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>{t.home.pricingNew.chart.unit}</span>
+                <span>{t.home.pricingNew.chart.unit}</span>
               </ChartHeader>
               <CostBarContainer>
                 {costComparisons.map((item, index) => {
@@ -391,14 +451,9 @@ export default function MembershipSection() {
                   return (
                     <CostItem key={item.key} $delay={index * 0.08}>
                       <CostLabelRow>
-                        <span
-                          style={{
-                            color: item.highlight ? "#ffffff" : "#e5e7eb",
-                            fontWeight: item.highlight ? 700 : 500,
-                          }}
-                        >
+                        <CostLabelText $highlight={item.highlight}>
                           {item.label}
-                        </span>
+                        </CostLabelText>
                         <CostValue $highlight={item.highlight}>
                           {item.displayValue}
                         </CostValue>

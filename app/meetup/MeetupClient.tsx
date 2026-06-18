@@ -23,16 +23,26 @@ import { appLayout } from "../lib/constants/app_layout";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 
+const meetupTheme = {
+  text: "#050505",
+  muted: "rgba(5, 5, 5, 0.66)",
+  soft: "rgba(5, 5, 5, 0.1)",
+  border: "#050505",
+  smoke: "#f3f3f1",
+  accent: "#f47a4a",
+  pale: "#fff8dc",
+} as const;
+
 // Add subtle glow animation keyframes
 const subtleGlow = keyframes`
   0% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 4px 0 #050505;
   }
   50% {
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 5px 5px 0 #f47a4a;
   }
   100% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 4px 0 #050505;
   }
 `;
 
@@ -44,7 +54,7 @@ const MeetupContainer = styled.div`
   width: 100%;
   min-height: 100vh;
   background-color: transparent;
-  color: #333;
+  color: ${meetupTheme.text};
   padding: ${NAVBAR_CONTENT_GAP_DESKTOP} 0 clamp(2.5rem, 5vw, 3rem);
 
   @media (max-width: 768px) {
@@ -170,12 +180,12 @@ const BlogPostCard = styled.div<{ $imageUrl?: string }>`
   background: ${(props) =>
     props.$imageUrl
       ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${props.$imageUrl}) center/cover`
-      : "#f6f6f6"};
-  border-radius: 20px;
+      : meetupTheme.smoke};
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e1e5e9;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: 3px 3px 0 ${meetupTheme.border};
+  border: 2px solid ${meetupTheme.border};
   aspect-ratio: 4 / 3;
   position: relative;
   overflow: hidden;
@@ -183,9 +193,9 @@ const BlogPostCard = styled.div<{ $imageUrl?: string }>`
   width: 220px;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    border-color: #ff6600;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 ${meetupTheme.accent};
+    border-color: ${meetupTheme.border};
   }
 
   @media (max-width: 768px) {
@@ -217,8 +227,8 @@ const BlogPostCardText = styled.div<{ $imageUrl?: string }>`
 
 const BlogPostCardLabel = styled.div`
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #ff6600;
+  font-weight: 850;
+  color: ${meetupTheme.accent};
   margin-bottom: 0.375rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -254,6 +264,7 @@ const SectionTitle = styled.h2`
   font-size: 1.4rem;
   font-weight: 800;
   margin: 1.5rem 0 0.75rem 0;
+  line-height: 1.25;
 
   @media (max-width: 768px) {
     font-size: 1.3rem;
@@ -262,36 +273,39 @@ const SectionTitle = styled.h2`
 `;
 
 const EventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
-  background-color: white;
-  border-radius: 20px;
+  background-color: #ffffff;
+  border-radius: 14px;
   padding: 24px;
   margin: 12px 0;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+  box-shadow: ${(props) =>
+    props.$isPast ? "0 1px 4px rgba(0, 0, 0, 0.06)" : `4px 4px 0 ${meetupTheme.border}`};
+  border: ${(props) =>
+    props.$isPast ? "1px solid rgba(5, 5, 5, 0.08)" : `2px solid ${meetupTheme.border}`};
   width: 100%;
-  opacity: ${(props) => (props.$isPast ? 0.6 : 1)};
+  opacity: ${(props) => (props.$isPast ? 0.52 : 1)};
 
   /* Add subtle glow animation for closest upcoming event */
   ${(props) =>
-    props.$isClosest
+    props.$isClosest && !props.$isPast
       ? css`
           animation: ${subtleGlow} 3s ease-in-out infinite;
-          border: 1px solid rgba(76, 175, 80, 0.3);
         `
       : ""}
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: ${(props) => (props.$isPast ? "translateY(-1px)" : "translate(-1px, -1px)")};
+    box-shadow: ${(props) =>
+      props.$isPast ? "0 3px 10px rgba(0, 0, 0, 0.08)" : `5px 5px 0 ${meetupTheme.accent}`};
     opacity: ${(props) => (props.$isPast ? 0.8 : 1)};
   }
 
   @media (max-width: 768px) {
     padding: 16px;
     margin: 10px 0;
-    border-radius: 16px;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 ${meetupTheme.border};
   }
 `;
 
@@ -308,7 +322,8 @@ const EventContent = styled.div`
 const EventImageContainer = styled.div<{ $isPast?: boolean }>`
   width: 120px;
   height: 120px;
-  border-radius: 20px;
+  border: 2px solid ${meetupTheme.border};
+  border-radius: 12px;
   overflow: hidden;
   background-color: #000000;
   flex-shrink: 0;
@@ -327,7 +342,7 @@ const EventImageContainer = styled.div<{ $isPast?: boolean }>`
 const EventImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 `;
 
 const EventImagePlaceholder = styled.div`
@@ -357,7 +372,7 @@ const EventDetails = styled.div`
 `;
 
 const EventTitle = styled.h3<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "#999" : "#333")};
+  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.text)};
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 8px 0;
@@ -390,7 +405,7 @@ const EventInfo = styled.div`
 `;
 
 const EventIcon = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "#999" : "#666")};
+  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.muted)};
   flex-shrink: 0; // Prevents icons from shrinking
   display: flex; // Added for better alignment of SVG
   align-items: center; // Added for better alignment of SVG
@@ -401,7 +416,7 @@ const EventIcon = styled.span<{ $isPast?: boolean }>`
 `;
 
 const EventText = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "#999" : "#666")};
+  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.muted)};
   font-size: 16px;
   letter-spacing: 0;
   word-wrap: break-word; // Prevents long text from overflowing
@@ -427,13 +442,16 @@ const EventBottom = styled.div`
 
 // New StatusBadge styled component
 const StatusBadge = styled.span<{ $statusColor: string }>`
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 700;
   color: #ffffff; // White text for better contrast
   background-color: ${(props) => props.$statusColor};
-  border-radius: 20px;
+  border: 2px solid ${meetupTheme.border};
+  border-radius: 999px;
   text-align: center;
   min-width: 80px; // Minimum width for the badge
   flex-shrink: 0; /* Prevent badge from shrinking */
@@ -450,7 +468,7 @@ const StatusBadge = styled.span<{ $statusColor: string }>`
 const LoadingContainer = styled.div`
   text-align: center;
   padding: 2rem 1rem;
-  color: #666;
+  color: ${meetupTheme.muted};
   min-height: 50vh;
   display: flex;
   flex-direction: column;
@@ -479,20 +497,22 @@ const LoadMoreButton = styled.button`
   display: block;
   margin: 2rem auto 1rem auto;
   padding: 0.75rem 1.5rem;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 25px;
-  color: #666;
+  background-color: #ffffff;
+  border: 2px solid ${meetupTheme.border};
+  border-radius: 999px;
+  color: ${meetupTheme.text};
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 100px;
+  box-shadow: 3px 3px 0 ${meetupTheme.accent};
 
   &:hover {
-    background-color: #eeeeee;
-    border-color: #bbb;
-    transform: translateY(-1px);
+    background-color: ${meetupTheme.pale};
+    border-color: ${meetupTheme.border};
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 ${meetupTheme.accent};
   }
 
   &:disabled {
@@ -505,14 +525,14 @@ const LoadMoreButton = styled.button`
     padding: 0.625rem 1.25rem;
     margin: 1.5rem auto 0.75rem auto;
     font-size: 13px;
-    border-radius: 20px;
+    border-radius: 999px;
   }
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 3rem 1rem;
-  color: #666;
+  color: ${meetupTheme.muted};
 
   @media (max-width: 768px) {
     padding: 2rem 1rem;
@@ -817,7 +837,7 @@ const MeetupClient: React.FC = () => {
         {/* Blog Posts */}
         {blogPosts.length > 0 && <>{renderBlogPosts()}</>}
 
-        {loading && <GlobalLoadingScreen size="large" />}
+        {loading && <GlobalLoadingScreen />}
 
         {error && (
           <EmptyState>

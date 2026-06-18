@@ -18,8 +18,8 @@ const Section = styled.section`
   width: 100vw;
   margin-left: calc(50% - 50vw);
   padding: clamp(3.5rem, 7vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
-  background: rgb(128, 00, 33);
-  color: #e5e7ff;
+  background: #f47a4a;
+  color: #050505;
   overflow: hidden;
 `;
 
@@ -38,7 +38,7 @@ const SectionHeader = styled.div`
 const SectionTitle = styled.h2`
   font-size: clamp(1.85rem, 3vw, 2.4rem);
   font-weight: 900;
-  color: #ffffff;
+  color: #050505;
   margin-bottom: 1.5rem;
   line-height: 1.2;
   font-family: "Noto Sans KR", sans-serif;
@@ -49,7 +49,7 @@ const SectionTitle = styled.h2`
 `;
 
 const Highlight = styled.span`
-  color: #ffb7c5;
+  color: #050505;
 `;
 
 const CarouselShell = styled.div`
@@ -66,30 +66,46 @@ const CarouselViewport = styled.div`
 
 const autoScroll = keyframes`
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 `;
 
 const AutoScrollWrapper = styled.div`
   width: 100%;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
+  contain: layout paint style;
+  transform: translateZ(0);
+
+  &:hover > div {
+    animation-play-state: paused;
+  }
 `;
 
-const AutoScrollStrip = styled.div<{ $duration: number; $isPaused: boolean }>`
+const AutoScrollStrip = styled.div<{ $duration: number }>`
   display: flex;
   gap: clamp(0.85rem, 3vw, 1.5rem);
   animation: ${autoScroll} ${({ $duration }) => $duration}s linear infinite;
-  animation-play-state: ${({ $isPaused }) => ($isPaused ? "paused" : "running")};
+  animation-play-state: running;
   min-width: max-content;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
 `;
 
-const TopicCard = styled.div<{ $hovered: boolean }>`
+const TopicCard = styled.div`
   position: relative;
-  border-radius: 22px;
+  border: 2px solid #050505;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   scroll-snap-align: start;
@@ -97,22 +113,31 @@ const TopicCard = styled.div<{ $hovered: boolean }>`
   flex: 0 0 clamp(240px, 26vw, 320px);
   aspect-ratio: 1 / 1;
   isolation: isolate;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: #fff8dc;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+  contain: paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 
   &:hover {
-    transform: perspective(900px) rotateY(-6deg) translateY(-3px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: perspective(900px) rotateY(-3deg) translateY(-2px);
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
   }
 
   &::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
-    opacity: 0.8;
+    background: linear-gradient(180deg, rgba(5, 5, 5, 0) 22%, rgba(5, 5, 5, 0.82) 100%);
+    opacity: 0.9;
     transition: opacity 200ms ease;
     pointer-events: none;
     z-index: 3;
+  }
+
+  @media (max-width: 640px) {
+    flex-basis: min(78vw, 300px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
   }
 `;
 
@@ -123,12 +148,14 @@ const TopicImage = styled.img`
   height: 100%;
   object-fit: cover;
   z-index: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 `;
 
 const TopicImagePlaceholder = styled.div`
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  background: #fff8dc;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,6 +171,10 @@ const TopicContent = styled.div`
   flex-direction: column;
   justify-content: flex-end;
   height: 100%;
+
+  @media (max-width: 640px) {
+    padding: 1rem;
+  }
 `;
 
 const TopicTitle = styled.h3`
@@ -157,10 +188,16 @@ const TopicTitle = styled.h3`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.32);
+
+  @media (max-width: 640px) {
+    font-size: 0.98rem;
+    line-height: 1.32;
+    -webkit-line-clamp: 3;
+  }
 `;
 
-const ClickHint = styled.span<{ $visible: boolean }>`
+const ClickHint = styled.span`
   margin-top: 0.6rem;
   font-size: 0.82rem;
   letter-spacing: 0.08em;
@@ -169,20 +206,31 @@ const ClickHint = styled.span<{ $visible: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
-  transform: translateY(${({ $visible }) => ($visible ? "0" : "6px")});
+  opacity: 0;
+  transform: translateY(6px);
   transition: opacity 200ms ease, transform 200ms ease;
 
   svg {
     width: 0.95rem;
     height: 0.95rem;
   }
+
+  ${TopicCard}:hover & {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 640px) {
+    opacity: 0.92;
+    transform: none;
+    font-size: 0.74rem;
+  }
 `;
 
 const LoadingState = styled.div`
   text-align: center;
   padding: 2rem;
-  color: #94a3b8;
+  color: #050505;
   font-size: 1rem;
 `;
 
@@ -191,9 +239,6 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
   const { locale, t } = useI18n();
   const [topics, setTopics] = useState<HomeTopicArticle[]>(initialTopics || []);
   const [loading, setLoading] = useState(!initialTopics || initialTopics.length === 0);
-
-  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
   const displayTopics = useMemo(
     () => (topics.length > 0 ? [...topics, ...topics] : []),
@@ -220,22 +265,6 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
     }
   }, [initialTopics]);
 
-  const handleAutoHover = () => {
-    setIsCarouselHovered(true);
-  };
-
-  const handleAutoLeave = () => {
-    setIsCarouselHovered(false);
-  };
-
-  const handleCardMouseEnter = (id: string) => {
-    setHoveredCardId(id);
-  };
-
-  const handleCardMouseLeave = () => {
-    setHoveredCardId(null);
-  };
-
   const isAutoScrollEnabled = displayTopics.length > 0;
   const autoDuration = Math.max(displayTopics.length * 3, 18);
 
@@ -244,7 +273,9 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
     <Section>
       <SectionHeader>
         <SectionTitle>
-          모임에서 <Highlight>어떤 토픽</Highlight>을 다루나요?
+          {t.home.topicsShowcase.titlePrefix}
+          <Highlight>{t.home.topicsShowcase.titleHighlight}</Highlight>
+          {t.home.topicsShowcase.titleSuffix}
         </SectionTitle>
       </SectionHeader>
 
@@ -254,26 +285,27 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
         <CarouselShell>
           <CarouselViewport>
             {isAutoScrollEnabled ? (
-              <AutoScrollWrapper
-                onMouseEnter={handleAutoHover}
-                onMouseLeave={handleAutoLeave}
-              >
+              <AutoScrollWrapper>
                 <AutoScrollStrip
                   $duration={autoDuration}
-                  $isPaused={isCarouselHovered}
                 >
                   {displayTopics.map((topic, idx) => (
                     <TopicCard
                       key={`${topic.id}-${idx}`}
                       onClick={() => router.push(`/article/${topic.id}`)}
-                      onMouseEnter={() => handleCardMouseEnter(topic.id)}
-                      onMouseLeave={handleCardMouseLeave}
-                      $hovered={hoveredCardId === topic.id}
+                      aria-hidden={idx >= topics.length}
                     >
                       {topic.imageUrl ? (
                         <TopicImage
                           src={topic.imageUrl}
                           alt={topic.titleEnglish || topic.titleKorean}
+                          width={320}
+                          height={320}
+                          loading={idx < 3 ? "eager" : "lazy"}
+                          fetchPriority={idx < 2 ? "high" : "auto"}
+                          decoding="async"
+                          draggable={false}
+                          onContextMenu={(event) => event.preventDefault()}
                         />
                       ) : (
                         <TopicImagePlaceholder>📰</TopicImagePlaceholder>
@@ -284,7 +316,7 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
                             ? topic.titleKorean || topic.titleEnglish
                             : topic.titleEnglish || topic.titleKorean}
                         </TopicTitle>
-                        <ClickHint $visible={hoveredCardId === topic.id}>
+                        <ClickHint>
                           {t.home.topicsShowcase.hoverPrompt}
                           <ArrowUpRightIcon />
                         </ClickHint>

@@ -2560,7 +2560,7 @@ export default function ProfileClient() {
 
   return (
     <>
-      {isLoading && <GlobalLoadingScreen size="small" />}
+      {isLoading && <GlobalLoadingScreen />}
       <Wrapper>
         <ProfileRouteShell>
           <ProfileStack>

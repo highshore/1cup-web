@@ -19,7 +19,7 @@ const LoadingOverlay = styled.div<{
   width: 100vw;
   height: 100vh;
   background-color: ${(props) =>
-    props.$whiteBackground ? "white" : "transparent"};
+    props.$whiteBackground ? "#fdf9f6" : "transparent"};
   display: flex;
   justify-content: center;
   align-items: center;
@@ -110,7 +110,7 @@ interface GlobalLoadingScreenProps {
 export default function GlobalLoadingScreen({
   fullScreen = true, // Default to fullScreen for better UX
   size = "medium",
-  whiteBackground = false, // Default to transparent
+  whiteBackground = true,
   className,
 }: GlobalLoadingScreenProps) {
   const [mounted, setMounted] = useState(false);
