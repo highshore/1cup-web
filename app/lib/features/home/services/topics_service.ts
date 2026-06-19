@@ -29,42 +29,56 @@ export const fetchHomeTopics = async (): Promise<HomeTopicArticle[]> => {
       return [];
     }
 
-    const topics: HomeTopicArticle[] = [];
+    // Fetch all featured articles in a single batched round-trip (getAll)
+    // instead of N sequential reads — parallel within one session.
+    const refs = FEATURED_ARTICLE_IDS.map((id) =>
+      db.collection("articles").doc(id)
+    );
 
-    // Fetch each article by ID
-    for (const articleId of FEATURED_ARTICLE_IDS) {
-      try {
-        const doc = await db.collection("articles").doc(articleId).get();
-        
+    let docs;
+    try {
+      docs = await db.getAll(...refs);
+    } catch (error) {
+      console.error("Error batch-fetching home topics:", error);
+      return [];
+    }
+
+    const topics: HomeTopicArticle[] = docs
+      .filter((doc) => {
         if (!doc.exists) {
-          console.warn(`Article ${articleId} not found in Firestore`);
-          continue;
+          console.warn(`Article ${doc.id} not found in Firestore`);
+          return false;
         }
-
+        return true;
+      })
+      .map((doc) => {
         const data = doc.data() || {};
         const contentEnglish: string[] = data.content?.english || [];
-        const excerptSource = data.summary || data.excerpt || contentEnglish[0] || "";
-        const excerpt = typeof excerptSource === "string"
-          ? excerptSource
-          : Array.isArray(excerptSource)
-          ? excerptSource.join(" ")
-          : "";
+        const excerptSource =
+          data.summary || data.excerpt || contentEnglish[0] || "";
+        const excerpt =
+          typeof excerptSource === "string"
+            ? excerptSource
+            : Array.isArray(excerptSource)
+            ? excerptSource.join(" ")
+            : "";
 
         const timestamp = data.timestamp?.toDate?.();
 
-        topics.push({
+        return {
           id: doc.id,
           titleEnglish: data.title?.english || "",
           titleKorean: data.title?.korean || "",
           imageUrl: data.image_url || data.hero_image || "",
           excerpt: excerpt.slice(0, 140),
-          keywords: Array.isArray(data.keywords) ? data.keywords.slice(0, 5) : [],
-          timestampISO: timestamp ? timestamp.toISOString() : new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error(`Error fetching article ${articleId}:`, error);
-      }
-    }
+          keywords: Array.isArray(data.keywords)
+            ? data.keywords.slice(0, 5)
+            : [],
+          timestampISO: timestamp
+            ? timestamp.toISOString()
+            : new Date().toISOString(),
+        };
+      });
 
     console.log(`Server: Fetched ${topics.length} topics from Firestore`);
     return topics;

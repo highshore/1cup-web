@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchWithRetry } from "../../lib/utils/retry";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ export async function POST() {
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       "https://api.soniox.com/v1/auth/temporary-api-key",
       {
         method: "POST",
