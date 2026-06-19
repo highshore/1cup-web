@@ -34,6 +34,7 @@ export { generateReferralCode } from "./payment";
 
 // Export Kakao Auth Processor function
 import { processKakaoUser } from "./processKakaoUser";
+import { getAuthRecordsMap } from "./utils/authBatch";
 
 // Initialize CORS middleware.
 // Allow requests from your local frontend and a placeholder for your deployed app.
@@ -571,6 +572,12 @@ async function processAndSendLinks(testMode: boolean = false): Promise<{
     const businessRecipients: any[] = [];
     const expiryNotifications: any[] = [];
 
+    // Resolve every user's Auth record up-front in batched getUsers calls
+    // instead of multiple serial getUser round-trips inside the loop.
+    const authRecords = await getAuthRecordsMap(
+      usersSnapshot.docs.map((d) => d.id)
+    );
+
     // Process each user
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data() as UserData;
@@ -596,7 +603,10 @@ async function processAndSendLinks(testMode: boolean = false): Promise<{
           logger.debug(
             `Fetching customer name from Auth for user ${userDoc.id}`
           );
-          const authUser = await admin.auth().getUser(userDoc.id);
+          const authUser = authRecords.get(userDoc.id);
+          if (!authUser) {
+            throw new Error(`Auth record not found for ${userDoc.id}`);
+          }
 
           if (authUser.displayName && authUser.displayName.trim() !== "") {
             customerName = authUser.displayName;
@@ -634,7 +644,10 @@ async function processAndSendLinks(testMode: boolean = false): Promise<{
           logger.debug(
             `Fetching phone number from Auth for user ${userDoc.id}`
           );
-          const authUser = await admin.auth().getUser(userDoc.id);
+          const authUser = authRecords.get(userDoc.id);
+          if (!authUser) {
+            throw new Error(`Auth record not found for ${userDoc.id}`);
+          }
 
           if (authUser.phoneNumber) {
             // Format phone number from auth (remove country code and any non-digits)
@@ -720,7 +733,10 @@ async function processAndSendLinks(testMode: boolean = false): Promise<{
           logger.debug(
             `Fetching customer name from Auth for user ${userDoc.id}`
           );
-          const authUser = await admin.auth().getUser(userDoc.id);
+          const authUser = authRecords.get(userDoc.id);
+          if (!authUser) {
+            throw new Error(`Auth record not found for ${userDoc.id}`);
+          }
 
           if (authUser.displayName && authUser.displayName.trim() !== "") {
             customerName = authUser.displayName;
@@ -758,7 +774,10 @@ async function processAndSendLinks(testMode: boolean = false): Promise<{
           logger.debug(
             `Fetching phone number from Auth for user ${userDoc.id}`
           );
-          const authUser = await admin.auth().getUser(userDoc.id);
+          const authUser = authRecords.get(userDoc.id);
+          if (!authUser) {
+            throw new Error(`Auth record not found for ${userDoc.id}`);
+          }
 
           if (authUser.phoneNumber) {
             // Format phone number from auth (remove country code and any non-digits)
@@ -1224,6 +1243,12 @@ async function processCategoryLinks(
 
     const recipients: any[] = [];
 
+    // Resolve every user's Auth record up-front in batched getUsers calls
+    // instead of multiple serial getUser round-trips inside the loop.
+    const authRecords = await getAuthRecordsMap(
+      usersSnapshot.docs.map((d) => d.id)
+    );
+
     // Process each user
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data() as UserData;
@@ -1243,7 +1268,10 @@ async function processCategoryLinks(
       let customerName = "고객님"; // Default fallback
       try {
         logger.debug(`Fetching customer name from Auth for user ${userDoc.id}`);
-        const authUser = await admin.auth().getUser(userDoc.id);
+        const authUser = authRecords.get(userDoc.id);
+        if (!authUser) {
+          throw new Error(`Auth record not found for ${userDoc.id}`);
+        }
 
         if (authUser.displayName && authUser.displayName.trim() !== "") {
           customerName = authUser.displayName;
@@ -1280,7 +1308,10 @@ async function processCategoryLinks(
       let recipientNo = "";
       try {
         logger.debug(`Fetching phone number from Auth for user ${userDoc.id}`);
-        const authUser = await admin.auth().getUser(userDoc.id);
+        const authUser = authRecords.get(userDoc.id);
+        if (!authUser) {
+          throw new Error(`Auth record not found for ${userDoc.id}`);
+        }
 
         if (authUser.phoneNumber) {
           // Format phone number from auth (remove country code and any non-digits)
@@ -1528,44 +1559,45 @@ export const sendMeetupReminder = onCall(
         "meetup-link": `https://1cupenglish.com/meetup/${eventId}`,
       };
 
-      // Prepare recipient list with phone numbers
+      // Prepare recipient list with phone numbers.
+      // Resolve all participant Auth records in batched getUsers calls.
       const recipientList = [];
+      const participantAuth = await getAuthRecordsMap(uniqueParticipants);
 
       for (const participantUid of uniqueParticipants) {
-        try {
-          // Get user's phone number from Firebase Auth
-          const userRecord = await admin.auth().getUser(participantUid);
-          const phoneNumber = userRecord.phoneNumber;
+        const userRecord = participantAuth.get(participantUid);
+        if (!userRecord) {
+          logger.error(
+            `Error fetching user ${participantUid} from Auth (not found)`
+          );
+          continue;
+        }
 
-          if (phoneNumber) {
-            // Convert phone number format (remove +82 and replace with 0)
-            const recipientNo = phoneNumber
-              .replace(/^\+82/, "0")
-              .replace(/\D/g, "");
+        const phoneNumber = userRecord.phoneNumber;
 
-            // Validate phone number format
-            if (recipientNo.startsWith("010") && recipientNo.length >= 10) {
-              recipientList.push({
-                recipientNo: recipientNo,
-                templateParameter: templateParams,
-              });
-              logger.info(
-                `Added participant ${participantUid} with phone ${recipientNo} to recipient list`
-              );
-            } else {
-              logger.warn(
-                `Invalid phone number format for participant ${participantUid}: ${recipientNo}`
-              );
-            }
+        if (phoneNumber) {
+          // Convert phone number format (remove +82 and replace with 0)
+          const recipientNo = phoneNumber
+            .replace(/^\+82/, "0")
+            .replace(/\D/g, "");
+
+          // Validate phone number format
+          if (recipientNo.startsWith("010") && recipientNo.length >= 10) {
+            recipientList.push({
+              recipientNo: recipientNo,
+              templateParameter: templateParams,
+            });
+            logger.info(
+              `Added participant ${participantUid} with phone ${recipientNo} to recipient list`
+            );
           } else {
             logger.warn(
-              `No phone number found for participant ${participantUid}`
+              `Invalid phone number format for participant ${participantUid}: ${recipientNo}`
             );
           }
-        } catch (authError) {
-          logger.error(
-            `Error fetching user ${participantUid} from Auth:`,
-            authError
+        } else {
+          logger.warn(
+            `No phone number found for participant ${participantUid}`
           );
         }
       }
@@ -1675,20 +1707,20 @@ export const listGdgMembers = onCall(
         hasActiveSubscription?: boolean;
       }> = [];
 
+      // Resolve all Auth records in batched getUsers calls instead of
+      // one serial getUser per member.
+      const authRecords = await getAuthRecordsMap(snap.docs.map((d) => d.id));
+
       for (const doc of snap.docs) {
         const uid = doc.id;
         const data = doc.data() || {} as any;
-        let displayName = "";
-        let phoneNumber = "";
+        const userRecord = authRecords.get(uid);
 
-        try {
-          const userRecord = await admin.auth().getUser(uid);
-          displayName = userRecord.displayName || "";
-          phoneNumber = userRecord.phoneNumber || "";
-        } catch (err) {
-          // If user is missing in Auth, fall back to Firestore name field
-          displayName = data.displayName || data.name || "";
-        }
+        // If user is missing in Auth, fall back to Firestore name field.
+        const displayName = userRecord
+          ? userRecord.displayName || ""
+          : data.displayName || data.name || "";
+        const phoneNumber = userRecord?.phoneNumber || "";
 
         const phoneLast4 = phoneNumber.replace(/\D/g, "").slice(-4) || "";
 
