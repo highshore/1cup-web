@@ -148,12 +148,15 @@ const COMMUNITY_LEADERS = [
   },
 ] as const;
 
+// Pentagon of speakers around the cup. One leader (top) stands out; the four
+// members are speech bubbles whose tails point inward toward the cup. Tail
+// geometry is precomputed so each notch sits on the edge nearest the centre.
 const DISCUSSION_SEATS = [
-  { id: "lead", top: "19%", left: "50%", accent: "#5a321f", delay: "0s", leader: true },
-  { id: "member-a", top: "48%", left: "79%", accent: "#ef8a42", delay: "0.35s", leader: false },
-  { id: "member-b", top: "81%", left: "68%", accent: "#a79880", delay: "0.7s", leader: false },
-  { id: "member-c", top: "81%", left: "32%", accent: "#d6b995", delay: "1.05s", leader: false },
-  { id: "member-d", top: "48%", left: "21%", accent: "#83906f", delay: "1.4s", leader: false },
+  { id: "lead", top: "18%", left: "50%", accent: "#c0703f", delay: "0s", leader: true, tailTop: "", tailLeft: "", tailRotate: "" },
+  { id: "member-a", top: "47%", left: "80%", accent: "#2f3e50", delay: "0.55s", leader: false, tailTop: "53%", tailLeft: "0%", tailRotate: "266deg" },
+  { id: "member-b", top: "81%", left: "68%", accent: "#c79a4e", delay: "1.1s", leader: false, tailTop: "7%", tailLeft: "25%", tailRotate: "330deg" },
+  { id: "member-c", top: "81%", left: "32%", accent: "#e3d9c6", delay: "1.65s", leader: false, tailTop: "7%", tailLeft: "75%", tailRotate: "30deg" },
+  { id: "member-d", top: "47%", left: "20%", accent: "#83906f", delay: "2.2s", leader: false, tailTop: "53%", tailLeft: "100%", tailRotate: "94deg" },
 ] as const;
 
 const NETWORKING_IMAGES = [
@@ -719,108 +722,163 @@ const LeaderDiagramPanel = styled.div<{ $location: LeaderLocation }>`
   align-self: center;
   overflow: visible;
   border: 0;
-  border-radius: 0;
   background: transparent;
-  box-shadow: none;
 
+  /* soft warm halo behind the whole scene */
   &::before {
     position: absolute;
-    z-index: 1;
+    z-index: 0;
     top: 50%;
     left: 50%;
-    width: 78%;
-    height: 78%;
-    border: 1px solid rgba(255, 255, 255, 0.72);
-    border-radius: 47% 53% 49% 51% / 56% 55% 45% 44%;
-    background:
-      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.36), transparent 28%),
-      linear-gradient(135deg, rgba(255, 246, 232, 0.98), rgba(245, 213, 174, 0.78));
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.64),
-      0 18px 44px rgba(58, 33, 17, 0.08);
+    width: 98%;
+    height: 98%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 50% 46%,
+      rgba(255, 248, 238, 0.95),
+      rgba(245, 234, 220, 0.45) 52%,
+      transparent 70%
+    );
     transform: translate(-50%, -50%);
     content: "";
   }
-
-  &::after {
-    position: absolute;
-    z-index: 0;
-    right: 5%;
-    bottom: 8%;
-    left: 5%;
-    height: 42%;
-    border-radius: 0 0 26% 26%;
-    background: ${({ $location }) =>
-      $location === "anam"
-        ? `
-          linear-gradient(90deg, transparent 0 6%, rgba(128, 0, 33, 0.12) 6% 8%, transparent 8% 12%),
-          linear-gradient(90deg, transparent 0 16%, rgba(128, 0, 33, 0.12) 16% 19%, transparent 19% 24%),
-          linear-gradient(90deg, transparent 0 30%, rgba(128, 0, 33, 0.11) 30% 33%, transparent 33% 38%),
-          linear-gradient(90deg, transparent 0 46%, rgba(128, 0, 33, 0.12) 46% 50%, transparent 50% 56%),
-          linear-gradient(90deg, transparent 0 64%, rgba(128, 0, 33, 0.11) 64% 67%, transparent 67% 72%),
-          linear-gradient(90deg, transparent 0 82%, rgba(128, 0, 33, 0.12) 82% 85%, transparent 85% 100%),
-          linear-gradient(to top, rgba(128, 0, 33, 0.11), rgba(128, 0, 33, 0.03) 58%, transparent 59%)
-        `
-        : `
-          linear-gradient(90deg, transparent 0 8%, rgba(15, 23, 42, 0.11) 8% 13%, transparent 13% 18%),
-          linear-gradient(90deg, transparent 0 23%, rgba(15, 23, 42, 0.1) 23% 27%, transparent 27% 34%),
-          linear-gradient(90deg, transparent 0 42%, rgba(15, 23, 42, 0.12) 42% 47%, transparent 47% 54%),
-          linear-gradient(90deg, transparent 0 60%, rgba(15, 23, 42, 0.1) 60% 64%, transparent 64% 70%),
-          linear-gradient(90deg, transparent 0 78%, rgba(15, 23, 42, 0.11) 78% 84%, transparent 84% 100%),
-          linear-gradient(to top, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.03) 58%, transparent 59%)
-        `};
-    opacity: 0.9;
-    filter: blur(0.2px);
-    content: "";
-  }
 `;
 
-const leaderChatPulse = keyframes`
-  0%, 44%, 100% {
-    opacity: 0.36;
-    transform: translate(-50%, -50%) translateY(0) scale(0.96);
-  }
-  12%, 30% {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateY(-4px) scale(1);
-  }
-`;
-
-const LeaderDiagramTable = styled.div`
+// Dashed ring threading the five speakers together, like a conversation loop.
+const LeaderDiagramRing = styled.div`
   position: absolute;
-  top: 51%;
+  z-index: 1;
+  top: 50%;
   left: 50%;
-  z-index: 4;
-  width: 17%;
-  aspect-ratio: 1.16 / 1;
-  border-radius: 0.2rem 0.18rem 42% 42%;
-  background: #4b2a1b;
+  width: 64%;
+  height: 64%;
+  border: 2px dashed rgba(124, 113, 97, 0.4);
+  border-radius: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 8px 16px rgba(58, 33, 17, 0.13);
+`;
+
+// Concentric cream discs that frame the cup at the centre.
+const LeaderCenterDisc = styled.div`
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #fbf3e8, #f0e1ce);
+  box-shadow: 0 18px 40px rgba(58, 33, 17, 0.1);
+  transform: translate(-50%, -50%);
 
   &::before {
     position: absolute;
-    top: 18%;
-    right: -34%;
-    width: 38%;
-    height: 50%;
-    border: 0.3rem solid #4b2a1b;
-    border-left: 0;
-    border-radius: 0 999px 999px 0;
-    background: transparent;
+    inset: 17%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #fffdf9, #f6ecdc);
+    content: "";
+  }
+`;
+
+const leaderSteamRise = keyframes`
+  0% { opacity: 0; transform: translateY(0) scaleY(0.7); }
+  25% { opacity: 0.7; }
+  70% { opacity: 0.35; }
+  100% { opacity: 0; transform: translateY(-1.4rem) scaleY(1.3); }
+`;
+
+// Three steam wisps drifting up from the cup.
+const LeaderSteam = styled.div`
+  position: absolute;
+  z-index: 4;
+  top: 37%;
+  left: 50%;
+  display: flex;
+  gap: 0.42rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  span {
+    display: block;
+    width: 0.3rem;
+    height: 1.1rem;
+    border-radius: 999px;
+    background: linear-gradient(to top, rgba(120, 86, 58, 0.65), rgba(120, 86, 58, 0));
+    transform-origin: bottom center;
+    animation: ${leaderSteamRise} 2.8s ease-in-out infinite;
+  }
+
+  span:nth-child(2) {
+    height: 1.35rem;
+    animation-delay: 0.55s;
+  }
+
+  span:nth-child(3) {
+    animation-delay: 1.1s;
+  }
+`;
+
+// The coffee cup itself: body, dark surface, handle and saucer.
+const LeaderCup = styled.div`
+  position: absolute;
+  z-index: 3;
+  top: 51%;
+  left: 50%;
+  width: 15%;
+  aspect-ratio: 1.15 / 1;
+  border-radius: 0.18rem 0.18rem 44% 44%;
+  background: linear-gradient(180deg, #6f4329 0%, #4b2a1b 62%);
+  box-shadow: 0 8px 16px rgba(58, 33, 17, 0.18);
+  transform: translate(-50%, -50%);
+
+  /* coffee surface */
+  &::before {
+    position: absolute;
+    top: 8%;
+    right: 9%;
+    left: 9%;
+    height: 24%;
+    border-radius: 50%;
+    background: #36200f;
     content: "";
   }
 
+  /* handle */
   &::after {
     position: absolute;
-    right: 10%;
-    bottom: -9%;
-    left: 10%;
-    height: 12%;
-    border-radius: 999px;
-    background: #4b2a1b;
+    top: 22%;
+    right: -32%;
+    width: 34%;
+    height: 48%;
+    border: 0.26rem solid #4b2a1b;
+    border-left: 0;
+    border-radius: 0 999px 999px 0;
     content: "";
   }
+`;
+
+const LeaderSaucer = styled.div`
+  position: absolute;
+  z-index: 2;
+  top: 60%;
+  left: 50%;
+  width: 24%;
+  height: 5.5%;
+  border-radius: 50%;
+  background: #4b2a1b;
+  box-shadow: 0 6px 12px rgba(58, 33, 17, 0.16);
+  transform: translate(-50%, -50%);
+`;
+
+// Speech bubbles pop in on a stagger, then breathe gently — a live chat feel.
+const leaderBubblePop = keyframes`
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+`;
+
+const leaderBubbleBob = keyframes`
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50% { transform: translate(-50%, -50%) translateY(-6px); }
 `;
 
 const LeaderDiagramSeat = styled.div<{
@@ -829,45 +887,71 @@ const LeaderDiagramSeat = styled.div<{
   $accent: string;
   $delay: string;
   $leader: boolean;
+  $tailTop: string;
+  $tailLeft: string;
+  $tailRotate: string;
 }>`
   position: absolute;
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
-  z-index: ${({ $leader }) => ($leader ? 5 : 4)};
-  width: ${({ $leader }) => ($leader ? "clamp(4.55rem, 8.6vw, 5.35rem)" : "clamp(3.65rem, 7vw, 4.35rem)")};
+  z-index: ${({ $leader }) => ($leader ? 6 : 5)};
+  width: ${({ $leader }) => ($leader ? "clamp(4.6rem, 9vw, 5.4rem)" : "clamp(3.7rem, 7.2vw, 4.4rem)")};
   aspect-ratio: 1;
   border: 5px solid #ffffff;
-  border-radius: 999px;
+  border-radius: 50%;
   background:
-    radial-gradient(circle at 38% 28%, rgba(255, 255, 255, 0.26), transparent 26%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(5, 5, 5, 0.12)),
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.3), transparent 42%),
     ${({ $accent }) => $accent};
-  opacity: 1;
-  box-shadow: 0 11px 26px rgba(58, 33, 17, 0.16);
+  box-shadow: 0 12px 26px rgba(58, 33, 17, 0.18);
   transform: translate(-50%, -50%);
+  animation:
+    ${leaderBubblePop} 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    ${leaderBubbleBob} 4.4s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => `${$delay}, calc(${$delay} + 0.7s)`};
 
+  /* leader → halo ring; member → speech-bubble tail pointing at the cup */
   &::before {
-    position: absolute;
-    inset: -0.34rem;
-    border: 1px solid rgba(58, 33, 17, 0.08);
-    border-radius: inherit;
     content: "";
+    position: absolute;
+    ${({ $leader, $accent, $tailTop, $tailLeft, $tailRotate }) =>
+      $leader
+        ? css`
+            top: 50%;
+            left: 50%;
+            width: 134%;
+            height: 134%;
+            border: 2px solid rgba(192, 112, 63, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+          `
+        : css`
+            top: ${$tailTop};
+            left: ${$tailLeft};
+            width: 0;
+            height: 0;
+            border-left: 0.58rem solid transparent;
+            border-right: 0.58rem solid transparent;
+            border-bottom: 0.92rem solid ${$accent};
+            transform: translate(-50%, -50%) rotate(${$tailRotate});
+          `}
   }
 
+  /* short rays crowning the leader */
   &::after {
     ${({ $leader }) =>
       $leader
         ? css`
+            content: "";
             position: absolute;
-            top: -1.45rem;
+            top: -1.55rem;
             left: 50%;
-            width: 0.32rem;
-            height: 0.9rem;
+            width: 0.34rem;
+            height: 0.95rem;
             border-radius: 999px;
-            background: #8a5a36;
+            background: #c0703f;
             box-shadow:
-              -1rem 0.28rem 0 #8a5a36,
-              1rem 0.28rem 0 #8a5a36;
+              -1.05rem 0.3rem 0 #c0703f,
+              1.05rem 0.3rem 0 #c0703f;
             transform: translateX(-50%);
             content: "";
           `
@@ -877,35 +961,16 @@ const LeaderDiagramSeat = styled.div<{
   }
 `;
 
-const LeaderChatBubble = styled.div<{
-  $top: string;
-  $left: string;
-  $leader?: boolean;
-  $delay: string;
-}>`
+// Small inner highlight dot inside each bubble.
+const LeaderSeatDot = styled.span`
   position: absolute;
-  top: ${({ $top }) => $top};
-  left: ${({ $left }) => $left};
-  z-index: 3;
-  display: flex;
-  gap: 0.28rem;
-  align-items: center;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-  animation: ${leaderChatPulse} 4.8s ease-in-out infinite;
-  animation-delay: ${({ $delay }) => $delay};
+  top: 56%;
+  left: 50%;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
   transform: translate(-50%, -50%);
-  pointer-events: none;
-
-  span {
-    width: ${({ $leader }) => ($leader ? "0.34rem" : "0.31rem")};
-    height: ${({ $leader }) => ($leader ? "0.34rem" : "0.31rem")};
-    border-radius: 999px;
-    background: ${({ $leader }) => ($leader ? "#8a5a36" : "#4b2a1b")};
-    box-shadow: 0 1px 3px rgba(58, 33, 17, 0.16);
-  }
 `;
 
 const LeaderAccordionColumn = styled.div`
@@ -3695,7 +3760,15 @@ export default function NewHomeClient({
                       aria-hidden="true"
                       $location={selectedLeaderLocation}
                     >
-                      <LeaderDiagramTable />
+                      <LeaderDiagramRing />
+                      <LeaderCenterDisc />
+                      <LeaderSaucer />
+                      <LeaderCup />
+                      <LeaderSteam>
+                        <span />
+                        <span />
+                        <span />
+                      </LeaderSteam>
                       {DISCUSSION_SEATS.map((seat) => (
                         <LeaderDiagramSeat
                           key={seat.id}
@@ -3704,28 +3777,13 @@ export default function NewHomeClient({
                           $accent={seat.accent}
                           $delay={seat.delay}
                           $leader={seat.leader}
-                        />
+                          $tailTop={seat.tailTop}
+                          $tailLeft={seat.tailLeft}
+                          $tailRotate={seat.tailRotate}
+                        >
+                          <LeaderSeatDot />
+                        </LeaderDiagramSeat>
                       ))}
-                      <LeaderChatBubble $top="39%" $left="39%" $leader $delay="0s">
-                        <span />
-                        <span />
-                        <span />
-                      </LeaderChatBubble>
-                      <LeaderChatBubble $top="39%" $left="62%" $delay="1.2s">
-                        <span />
-                        <span />
-                        <span />
-                      </LeaderChatBubble>
-                      <LeaderChatBubble $top="63%" $left="39%" $delay="2.4s">
-                        <span />
-                        <span />
-                        <span />
-                      </LeaderChatBubble>
-                      <LeaderChatBubble $top="63%" $left="62%" $delay="3.2s">
-                        <span />
-                        <span />
-                        <span />
-                      </LeaderChatBubble>
                     </LeaderDiagramPanel>
 
                     <LeaderAccordionColumn>
