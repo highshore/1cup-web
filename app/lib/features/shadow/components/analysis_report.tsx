@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import styled, { keyframes } from "styled-components";
-import Lottie from "lottie-react";
+// Lazy-load lottie-react so it ships in its own chunk (matches the
+// dynamic-import pattern used by the loading screens).
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import {
   SentenceForAssessment,
   AzureWordPronunciationResult,

@@ -1,21 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { styled } from "styled-components";
 import { colors as brandColors } from "../lib/features/shadow/styles/shadow_styles";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title as ChartTitle,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from "chart.js";
-import { Line, Bar, Doughnut } from "react-chartjs-2";
 import {
   FiTrendingUp,
   FiClock,
@@ -26,17 +14,17 @@ import {
   FiActivity,
 } from "react-icons/fi";
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ChartTitle,
-  Tooltip,
-  Legend,
-  ArcElement
+// chart.js is heavy and only needed once charts render — load it (and the
+// Chart.js registration side-effect) from a separate chunk on demand.
+const Line = dynamic(() => import("./ReportCharts").then((m) => m.Line), {
+  ssr: false,
+});
+const Bar = dynamic(() => import("./ReportCharts").then((m) => m.Bar), {
+  ssr: false,
+});
+const Doughnut = dynamic(
+  () => import("./ReportCharts").then((m) => m.Doughnut),
+  { ssr: false }
 );
 
 // Types
