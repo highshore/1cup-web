@@ -236,7 +236,7 @@ const MemberBackgroundTitle = styled.h2`
   margin: 0;
   color: #ffffff;
   font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
   font-weight: 900;
   line-height: 1.2;
   letter-spacing: 0;
@@ -556,7 +556,7 @@ const TopicVideoTitle = styled.h2`
   margin: 0;
   color: #0f172a;
   font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
@@ -687,7 +687,7 @@ const LeaderMethodTitle = styled.h2`
   margin: 0;
   color: #0f172a;
   font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
@@ -1235,7 +1235,7 @@ const NetworkingMethodTitle = styled.h2`
   margin: 0;
   color: #0f172a;
   font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
+  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
@@ -1657,7 +1657,7 @@ const HeroLeft = styled.div`
 `;
 
 const HeroTitle = styled.h1`
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(1.9rem, 3.4vw, 3rem);
   font-weight: 800;
   line-height: 1.2;
   color: white;
