@@ -56,7 +56,9 @@
     "globals": "^15.15.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vercel": "^49.1.2"
+    "vercel": "^54.14.2"
   },
-  "overrides": {}
+  "overrides": {
+    "undici": ">=6.27.0"
+  }
 }
