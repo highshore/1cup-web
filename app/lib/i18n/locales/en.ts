@@ -375,6 +375,14 @@ const en = {
       meetupCount: "{count} meetups",
       meetupCountSingular: "1 meetup",
       monthlyAverageCount: "{count}/month",
+      celebration: {
+        title: "Member Celebrations",
+        subtitle: "Celebrating the proud achievements of our members",
+        empty: "No celebrations yet",
+        addButton: "Add",
+        edit: "Edit",
+        delete: "Delete",
+      },
     },
   },
 };

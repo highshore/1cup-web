@@ -14,6 +14,16 @@ service cloud.firestore {
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
     }
     
+    // Member celebrations (leaderboard celebration wall)
+    match /celebrations/{celebrationId} {
+      // Anyone can read celebrations
+      allow read: if true;
+
+      // Only admins can create/update/delete celebrations
+      allow write: if request.auth != null &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+
     // Default rule for other collections (you should customize this)
     match /{document=**} {
       allow read, write: if true;

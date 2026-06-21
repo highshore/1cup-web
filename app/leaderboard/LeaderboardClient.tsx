@@ -11,6 +11,15 @@ import { fetchMeetupLeaderboards } from "../lib/features/meetup/services/meetup_
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { appLayout } from "../lib/constants/app_layout";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import { useAuth } from "../lib/contexts/auth_context";
+import { Celebration } from "../lib/features/celebration/types/celebration_types";
+import {
+  fetchCelebrations,
+  createCelebration,
+  updateCelebration,
+  deleteCelebration,
+} from "../lib/features/celebration/services/celebration_service";
+import CelebrationEditor from "../lib/features/celebration/components/CelebrationEditor";
 
 const PageShell = styled.div`
   width: 100%;
@@ -156,13 +165,158 @@ const ErrorState = styled.div`
   font-weight: 700;
 `;
 
+const CelebrationSection = styled.section`
+  margin-top: clamp(1.5rem, 4vw, 2.25rem);
+`;
+
+const CelebrationHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
+`;
+
+const CelebrationSubtitle = styled.p`
+  margin: 0 0 0.9rem;
+  color: rgba(5, 5, 5, 0.6);
+  font-size: clamp(0.82rem, 1.6vw, 0.9rem);
+  font-weight: 600;
+  word-break: keep-all;
+`;
+
+const AddCelebrationButton = styled.button`
+  flex-shrink: 0;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.34rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #f47a4a;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #f47a4a;
+  }
+`;
+
+const CelebrationScroller = styled.div`
+  display: flex;
+  gap: clamp(0.75rem, 2vw, 1rem);
+  overflow-x: auto;
+  padding: 0.4rem 0.25rem 1.1rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(5, 5, 5, 0.22);
+  }
+`;
+
+const CelebrationCard = styled.article`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: clamp(13rem, 60vw, 15rem);
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1.1rem 1rem 1rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+`;
+
+const CelebrationLogo = styled.div`
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 72px;
+  margin-bottom: 0.85rem;
+
+  img {
+    max-width: 80%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+`;
+
+const CelebrationMember = styled.span`
+  color: rgba(5, 5, 5, 0.6);
+  font-size: 0.82rem;
+  font-weight: 750;
+`;
+
+const CelebrationHeadline = styled.strong`
+  display: block;
+  margin: 0.18rem 0 0.4rem;
+  color: #050505;
+  font-size: clamp(1rem, 2.4vw, 1.12rem);
+  font-weight: 950;
+  line-height: 1.3;
+  word-break: keep-all;
+`;
+
+const CelebrationDesc = styled.p`
+  margin: 0;
+  color: rgba(5, 5, 5, 0.68);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: keep-all;
+`;
+
+const CelebrationDate = styled.span`
+  margin-top: 0.7rem;
+  color: rgba(5, 5, 5, 0.48);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+`;
+
+const CelebrationEditButton = styled.button`
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.2rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:hover {
+    background: #f47a4a;
+  }
+`;
+
 export default function LeaderboardClient() {
   const { locale, t } = useI18n();
+  const { accountStatus } = useAuth();
+  const isAdmin = accountStatus === "admin";
+
   const [leaderboards, setLeaderboards] = useState<MeetupLeaderboards | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [celebrations, setCelebrations] = useState<Celebration[]>([]);
+  const [editingCelebration, setEditingCelebration] =
+    useState<Celebration | null>(null);
+  const [showCelebrationEditor, setShowCelebrationEditor] = useState(false);
 
   const interpolate = (template: string, values: Record<string, string>) => {
     return Object.entries(values).reduce(
@@ -192,6 +346,54 @@ export default function LeaderboardClient() {
   useEffect(() => {
     loadLeaderboards();
   }, [loadLeaderboards]);
+
+  const loadCelebrations = useCallback(async () => {
+    try {
+      const data = await fetchCelebrations();
+      setCelebrations(data);
+    } catch {
+      // Non-fatal: the rest of the leaderboard still renders.
+      setCelebrations([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCelebrations();
+  }, [loadCelebrations]);
+
+  const handleCreateCelebration = () => {
+    setEditingCelebration(null);
+    setShowCelebrationEditor(true);
+  };
+
+  const handleEditCelebration = (celebration: Celebration) => {
+    setEditingCelebration(celebration);
+    setShowCelebrationEditor(true);
+  };
+
+  const handleSaveCelebration = async (data: Partial<Celebration>) => {
+    if (editingCelebration) {
+      await updateCelebration(editingCelebration.id, data);
+    } else {
+      await createCelebration(data);
+    }
+    await loadCelebrations();
+  };
+
+  const handleDeleteCelebration = async (id: string) => {
+    await deleteCelebration(id);
+    await loadCelebrations();
+  };
+
+  const formatAchievedAt = (achievedAt?: string | null) => {
+    if (!achievedAt) return "";
+    const date = new Date(achievedAt);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
+      year: "numeric",
+      month: "long",
+    }).format(date);
+  };
 
   const formatMeetupCount = (count: number) => {
     if (count === 1) return t.meetup.leaderboards.meetupCountSingular;
@@ -322,7 +524,81 @@ export default function LeaderboardClient() {
             )}
           </LeaderboardsGrid>
         )}
+
+        {!loading && !error && (celebrations.length > 0 || isAdmin) && (
+          <CelebrationSection aria-label={t.meetup.leaderboards.celebration.title}>
+            <CelebrationHeader>
+              <LeaderboardTitle as="h2">
+                {t.meetup.leaderboards.celebration.title}
+              </LeaderboardTitle>
+              {isAdmin && (
+                <AddCelebrationButton
+                  type="button"
+                  onClick={handleCreateCelebration}
+                >
+                  + {t.meetup.leaderboards.celebration.addButton}
+                </AddCelebrationButton>
+              )}
+            </CelebrationHeader>
+            <CelebrationSubtitle>
+              {t.meetup.leaderboards.celebration.subtitle}
+            </CelebrationSubtitle>
+
+            {celebrations.length > 0 ? (
+              <CelebrationScroller>
+                {celebrations.map((celebration) => (
+                  <CelebrationCard key={celebration.id}>
+                    {isAdmin && (
+                      <CelebrationEditButton
+                        type="button"
+                        onClick={() => handleEditCelebration(celebration)}
+                      >
+                        {t.meetup.leaderboards.celebration.edit}
+                      </CelebrationEditButton>
+                    )}
+                    {celebration.logoUrl && (
+                      <CelebrationLogo>
+                        <img
+                          src={celebration.logoUrl}
+                          alt={celebration.headline}
+                          referrerPolicy="no-referrer"
+                        />
+                      </CelebrationLogo>
+                    )}
+                    <CelebrationMember>
+                      {celebration.memberName}
+                    </CelebrationMember>
+                    <CelebrationHeadline>
+                      {celebration.headline}
+                    </CelebrationHeadline>
+                    {celebration.description && (
+                      <CelebrationDesc>
+                        {celebration.description}
+                      </CelebrationDesc>
+                    )}
+                    {celebration.achievedAt && (
+                      <CelebrationDate>
+                        {formatAchievedAt(celebration.achievedAt)}
+                      </CelebrationDate>
+                    )}
+                  </CelebrationCard>
+                ))}
+              </CelebrationScroller>
+            ) : (
+              <EmptyState>{t.meetup.leaderboards.celebration.empty}</EmptyState>
+            )}
+          </CelebrationSection>
+        )}
       </Content>
+
+      {showCelebrationEditor && (
+        <CelebrationEditor
+          celebration={editingCelebration}
+          onSave={handleSaveCelebration}
+          onClose={() => setShowCelebrationEditor(false)}
+          onDelete={editingCelebration ? handleDeleteCelebration : undefined}
+        />
+      )}
     </PageShell>
   );
 }

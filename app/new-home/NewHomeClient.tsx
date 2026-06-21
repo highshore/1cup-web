@@ -75,7 +75,6 @@ const GlobalStyle = createGlobalStyle<{ $machineMode: boolean }>`
 
 const MOBILE_NAV_GUTTER = "1rem";
 const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
-const JOB_CELEBRATION_STORAGE_KEY = "one-cup-sk-hynix-celebration-dismissed";
 
 const MEMBER_COMPANY_LOGOS = [
   { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", width: 260, height: 129, scale: 1.04 },
@@ -2738,163 +2737,6 @@ const FloatingSupportText = styled.span`
   }
 `;
 
-const jobCelebrationBurst = keyframes`
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.25);
-  }
-  35% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.85);
-  }
-`;
-
-const JobCelebrationPopup = styled.aside`
-  position: fixed;
-  right: clamp(1rem, 3vw, 1.5rem);
-  bottom: calc(5.6rem + env(safe-area-inset-bottom));
-  z-index: 62;
-  width: min(380px, calc(100vw - 2rem));
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #050505;
-  box-shadow: 5px 5px 0 #f47a4a;
-  overflow: hidden;
-
-  @media (max-width: 620px) {
-    top: calc(4.8rem + env(safe-area-inset-top));
-    right: 0.9rem;
-    bottom: auto;
-    left: 0.9rem;
-    width: auto;
-    border-radius: 14px;
-    box-shadow: 4px 4px 0 #f47a4a;
-  }
-`;
-
-const JobCelebrationInner = styled.div`
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.8rem;
-  align-items: start;
-  padding: 1rem;
-
-  @media (max-width: 620px) {
-    gap: 0.68rem;
-    padding: 0.9rem;
-  }
-`;
-
-const JobCelebrationIcon = styled.span`
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #ffffff;
-
-  svg {
-    width: 20px;
-    height: 20px;
-    stroke-width: 2.5;
-  }
-`;
-
-const JobCelebrationCopy = styled.div`
-  min-width: 0;
-
-  strong {
-    display: block;
-    margin: 0 0 0.28rem;
-    font-size: 0.98rem;
-    line-height: 1.25;
-    font-weight: 950;
-  }
-
-  p {
-    margin: 0;
-    color: rgba(5, 5, 5, 0.68);
-    font-size: 0.84rem;
-    line-height: 1.48;
-    font-weight: 650;
-  }
-`;
-
-const JobCelebrationClose = styled.button<{ $bursting: boolean }>`
-  position: relative;
-  grid-column: 1 / -1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  width: 100%;
-  margin-top: 0.12rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  cursor: pointer;
-  overflow: visible;
-  box-shadow: 3px 3px 0 #050505;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease,
-    box-shadow 160ms ease;
-
-  &::before,
-  &::after {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 94px;
-    height: 94px;
-    border-radius: 999px;
-    background:
-      radial-gradient(circle, #f47a4a 0 3px, transparent 3.5px) 50% 0 / 12px 12px no-repeat,
-      radial-gradient(circle, #050505 0 2.5px, transparent 3px) 100% 50% / 12px 12px no-repeat,
-      radial-gradient(circle, #f47a4a 0 3px, transparent 3.5px) 50% 100% / 12px 12px no-repeat,
-      radial-gradient(circle, #050505 0 2.5px, transparent 3px) 0 50% / 12px 12px no-repeat,
-      radial-gradient(circle, #f47a4a 0 2.5px, transparent 3px) 18% 18% / 12px 12px no-repeat,
-      radial-gradient(circle, #050505 0 2px, transparent 2.5px) 82% 82% / 12px 12px no-repeat;
-    content: "";
-    opacity: 0;
-    pointer-events: none;
-    transform: translate(-50%, -50%) scale(0.25);
-  }
-
-  &::after {
-    width: 70px;
-    height: 70px;
-    transform: translate(-50%, -50%) rotate(24deg) scale(0.2);
-  }
-
-  &:hover {
-    background: #050505;
-    color: #ffffff;
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #f47a4a;
-  }
-
-  ${({ $bursting }) =>
-    $bursting &&
-    css`
-      &::before {
-        animation: ${jobCelebrationBurst} 560ms ease-out forwards;
-      }
-
-      &::after {
-        animation: ${jobCelebrationBurst} 560ms 90ms ease-out forwards;
-      }
-    `}
-`;
-
 const MachineMarkdownView = styled.main`
   min-height: 100vh;
   background: #000000;
@@ -3126,9 +2968,6 @@ export default function NewHomeClient({
   const [selectedLeaderLocation, setSelectedLeaderLocation] =
     useState<LeaderLocation>("yeouido");
   const [activeLeaderId, setActiveLeaderId] = useState<string>("");
-  const [showJobCelebration, setShowJobCelebration] = useState(false);
-  const [isJobCelebrationBursting, setIsJobCelebrationBursting] = useState(false);
-  const jobCelebrationCloseTimerRef = useRef<number | null>(null);
 
   const localizedLeaders = useMemo(
     () =>
@@ -3179,54 +3018,10 @@ export default function NewHomeClient({
     setActiveLeaderId("");
   }, []);
 
-  const handleCloseJobCelebration = useCallback(() => {
-    if (isJobCelebrationBursting) return;
-
-    setIsJobCelebrationBursting(true);
-
-    try {
-      window.sessionStorage.setItem(JOB_CELEBRATION_STORAGE_KEY, "true");
-    } catch {
-      // Ignore storage failures; the close action should still work.
-    }
-
-    jobCelebrationCloseTimerRef.current = window.setTimeout(() => {
-      setShowJobCelebration(false);
-      setIsJobCelebrationBursting(false);
-      jobCelebrationCloseTimerRef.current = null;
-    }, 620);
-  }, [isJobCelebrationBursting]);
-
-  useEffect(() => {
-    let showTimer: number | null = null;
-
-    try {
-      if (window.sessionStorage.getItem(JOB_CELEBRATION_STORAGE_KEY) === "true") {
-        return undefined;
-      }
-    } catch {
-      // Continue without persistence when sessionStorage is unavailable.
-    }
-
-    showTimer = window.setTimeout(() => {
-      setShowJobCelebration(true);
-    }, 900);
-
-    return () => {
-      if (showTimer !== null) {
-        window.clearTimeout(showTimer);
-      }
-    };
-  }, []);
-
   useEffect(() => {
     return () => {
       if (modeTransitionTimeoutRef.current !== null) {
         window.clearTimeout(modeTransitionTimeoutRef.current);
-      }
-
-      if (jobCelebrationCloseTimerRef.current !== null) {
-        window.clearTimeout(jobCelebrationCloseTimerRef.current);
       }
     };
   }, []);
@@ -3967,30 +3762,6 @@ export default function NewHomeClient({
           </FloatingSupportIcon>
           <FloatingSupportText>{t.home.support.label}</FloatingSupportText>
         </FloatingSupportLink>
-      )}
-      {displayMode === "human" && showJobCelebration && (
-        <JobCelebrationPopup
-          role="status"
-          aria-label={t.home.jobCelebration.ariaLabel}
-        >
-          <JobCelebrationInner>
-            <JobCelebrationIcon aria-hidden="true">
-              <SparklesIcon />
-            </JobCelebrationIcon>
-            <JobCelebrationCopy>
-              <strong>{t.home.jobCelebration.title}</strong>
-              <p>{t.home.jobCelebration.description}</p>
-            </JobCelebrationCopy>
-            <JobCelebrationClose
-              type="button"
-              aria-label={t.home.jobCelebration.close}
-              onClick={handleCloseJobCelebration}
-              $bursting={isJobCelebrationBursting}
-            >
-              {t.home.jobCelebration.close}
-            </JobCelebrationClose>
-          </JobCelebrationInner>
-        </JobCelebrationPopup>
       )}
       <FloatingModeToggle
         aria-label={t.home.renderMode.ariaLabel}

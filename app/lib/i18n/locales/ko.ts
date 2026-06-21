@@ -375,6 +375,14 @@ const ko = {
       meetupCount: "{count}회",
       meetupCountSingular: "1회",
       monthlyAverageCount: "월 {count}회",
+      celebration: {
+        title: "멤버 축하",
+        subtitle: "영어 한잔 멤버들의 값진 성취를 함께 축하합니다",
+        empty: "아직 축하 소식이 없습니다",
+        addButton: "축하 추가",
+        edit: "수정",
+        delete: "삭제",
+      },
     },
   },
 };
