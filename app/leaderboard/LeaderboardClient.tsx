@@ -18,6 +18,7 @@ import {
   createCelebration,
   updateCelebration,
   deleteCelebration,
+  reorderCelebrations,
 } from "../lib/features/celebration/services/celebration_service";
 import CelebrationEditor from "../lib/features/celebration/components/CelebrationEditor";
 
@@ -241,9 +242,8 @@ const CelebrationLogo = styled.div`
   aspect-ratio: 16 / 9;
   margin-bottom: 0.85rem;
   overflow: hidden;
-  border: 2px solid #050505;
   border-radius: 10px;
-  background: #f3f3f1;
+  background: transparent;
 
   img {
     display: block;
@@ -302,6 +302,40 @@ const CelebrationEditButton = styled.button`
 
   &:hover {
     background: #f47a4a;
+  }
+`;
+
+const CelebrationReorder = styled.div`
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  display: flex;
+  gap: 0.3rem;
+  z-index: 1;
+`;
+
+const CelebrationReorderButton = styled.button`
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: #f47a4a;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 `;
 
@@ -386,6 +420,25 @@ export default function LeaderboardClient() {
   const handleDeleteCelebration = async (id: string) => {
     await deleteCelebration(id);
     await loadCelebrations();
+  };
+
+  // Move a celebration one slot earlier (-1) or later (+1) and persist.
+  const handleMoveCelebration = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= celebrations.length) return;
+
+    const reordered = [...celebrations];
+    [reordered[index], reordered[target]] = [
+      reordered[target],
+      reordered[index],
+    ];
+
+    setCelebrations(reordered); // optimistic
+    try {
+      await reorderCelebrations(reordered.map((c) => c.id));
+    } catch {
+      await loadCelebrations(); // revert to server truth on failure
+    }
   };
 
   const formatAchievedAt = (achievedAt?: string | null) => {
@@ -518,15 +571,35 @@ export default function LeaderboardClient() {
 
             {celebrations.length > 0 ? (
               <CelebrationScroller>
-                {celebrations.map((celebration) => (
+                {celebrations.map((celebration, index) => (
                   <CelebrationCard key={celebration.id}>
                     {isAdmin && (
-                      <CelebrationEditButton
-                        type="button"
-                        onClick={() => handleEditCelebration(celebration)}
-                      >
-                        {t.meetup.leaderboards.celebration.edit}
-                      </CelebrationEditButton>
+                      <>
+                        <CelebrationReorder>
+                          <CelebrationReorderButton
+                            type="button"
+                            aria-label="앞으로 이동"
+                            disabled={index === 0}
+                            onClick={() => handleMoveCelebration(index, -1)}
+                          >
+                            ‹
+                          </CelebrationReorderButton>
+                          <CelebrationReorderButton
+                            type="button"
+                            aria-label="뒤로 이동"
+                            disabled={index === celebrations.length - 1}
+                            onClick={() => handleMoveCelebration(index, 1)}
+                          >
+                            ›
+                          </CelebrationReorderButton>
+                        </CelebrationReorder>
+                        <CelebrationEditButton
+                          type="button"
+                          onClick={() => handleEditCelebration(celebration)}
+                        >
+                          {t.meetup.leaderboards.celebration.edit}
+                        </CelebrationEditButton>
+                      </>
                     )}
                     {celebration.logoUrl && (
                       <CelebrationLogo>

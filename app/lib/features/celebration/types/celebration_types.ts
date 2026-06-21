@@ -7,6 +7,7 @@ export interface Celebration {
   description?: string; // optional supporting detail
   logoUrl?: string; // optional company / achievement logo
   achievedAt?: string | null; // ISO date string for when it happened
+  order?: number | null; // admin-defined display order (ascending); null = unset
   createdAt: Date;
   updatedAt: Date;
 }

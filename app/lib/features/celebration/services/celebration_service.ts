@@ -5,6 +5,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase";
@@ -26,13 +27,19 @@ const docToCelebration = (doc: any): Celebration => {
         ? data.achievedAt.toDate().toISOString()
         : String(data.achievedAt)
       : null,
+    order: typeof data.order === "number" ? data.order : null,
     createdAt: data.createdAt?.toDate() || new Date(),
     updatedAt: data.updatedAt?.toDate() || new Date(),
   };
 };
 
-// Sort: most recent achievement first, falling back to most recently created.
+// Sort: admin-defined `order` first (ascending); items without an explicit
+// order fall back to most-recent achievement, then most recently created.
 const sortCelebrations = (a: Celebration, b: Celebration): number => {
+  const ao = typeof a.order === "number" ? a.order : Number.POSITIVE_INFINITY;
+  const bo = typeof b.order === "number" ? b.order : Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+
   const aTime = a.achievedAt ? new Date(a.achievedAt).getTime() : 0;
   const bTime = b.achievedAt ? new Date(b.achievedAt).getTime() : 0;
   if (bTime !== aTime) return bTime - aTime;
@@ -121,5 +128,26 @@ export const deleteCelebration = async (id: string): Promise<void> => {
   } catch (error) {
     console.error("Error deleting celebration:", error);
     throw new Error("Failed to delete celebration");
+  }
+};
+
+// Persist a new display order (admin only). Writes `order` = position index for
+// each id in a single batch, so the whole list gets explicit, stable ordering.
+export const reorderCelebrations = async (
+  orderedIds: string[]
+): Promise<void> => {
+  try {
+    const batch = writeBatch(db);
+    const now = Timestamp.fromDate(new Date());
+    orderedIds.forEach((id, index) => {
+      batch.update(doc(db, COLLECTION_NAME, id), {
+        order: index,
+        updatedAt: now,
+      });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Error reordering celebrations:", error);
+    throw new Error("Failed to reorder celebrations");
   }
 };
