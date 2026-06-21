@@ -237,16 +237,19 @@ const CelebrationCard = styled.article`
 `;
 
 const CelebrationLogo = styled.div`
-  display: grid;
-  place-items: center;
   width: 100%;
-  height: 72px;
+  aspect-ratio: 16 / 9;
   margin-bottom: 0.85rem;
+  overflow: hidden;
+  border: 2px solid #050505;
+  border-radius: 10px;
+  background: #f3f3f1;
 
   img {
-    max-width: 80%;
-    max-height: 100%;
-    object-fit: contain;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 `;
 

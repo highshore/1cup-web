@@ -153,11 +153,11 @@ const COMMUNITY_LEADERS = [
 // members are speech bubbles whose tails point inward toward the cup. Tail
 // geometry is precomputed so each notch sits on the edge nearest the centre.
 const DISCUSSION_SEATS = [
-  { id: "lead", top: "17%", left: "50%", accent: "#050505", delay: "0s", leader: true, tailTop: "", tailLeft: "", tailRotate: "" },
-  { id: "member-a", top: "47%", left: "81%", accent: "#2f3e50", delay: "0.55s", leader: false, tailTop: "50%", tailLeft: "2%", tailRotate: "266deg" },
-  { id: "member-b", top: "80%", left: "68%", accent: "#e0992b", delay: "1.1s", leader: false, tailTop: "9%", tailLeft: "26%", tailRotate: "330deg" },
-  { id: "member-c", top: "80%", left: "32%", accent: "#2f8f86", delay: "1.65s", leader: false, tailTop: "9%", tailLeft: "74%", tailRotate: "30deg" },
-  { id: "member-d", top: "47%", left: "19%", accent: "#7d9b4e", delay: "2.2s", leader: false, tailTop: "50%", tailLeft: "98%", tailRotate: "94deg" },
+  { id: "lead", top: "17%", left: "50%", accent: "#050505", delay: "0s", leader: true },
+  { id: "member-a", top: "47%", left: "81%", accent: "#2f3e50", delay: "0.55s", leader: false },
+  { id: "member-b", top: "80%", left: "68%", accent: "#e0992b", delay: "1.1s", leader: false },
+  { id: "member-c", top: "80%", left: "32%", accent: "#2f8f86", delay: "1.65s", leader: false },
+  { id: "member-d", top: "47%", left: "19%", accent: "#7d9b4e", delay: "2.2s", leader: false },
 ] as const;
 
 const NETWORKING_IMAGES = [
@@ -746,14 +746,15 @@ const LeaderDiagramWeb = styled.svg`
   }
 `;
 
+// Abstract steam: wavy strokes that fade and drift upward.
 const leaderSteamRise = keyframes`
-  0% { opacity: 0; transform: translateY(0) scaleY(0.7); }
-  25% { opacity: 0.85; }
-  70% { opacity: 0.4; }
-  100% { opacity: 0; transform: translateY(-1.3rem) scaleY(1.3); }
+  0% { opacity: 0; transform: translateY(2px) scaleY(0.75); }
+  30% { opacity: 0.95; }
+  70% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-5px) scaleY(1.2); }
 `;
 
-// Coffee-cup hub: a bold outlined disc with a flat cup icon inside.
+// Coffee-cup hub: a bold outlined disc with an abstract cup + steam mark.
 const LeaderCupBadge = styled.div`
   position: absolute;
   z-index: 3;
@@ -770,40 +771,21 @@ const LeaderCupBadge = styled.div`
   transform: translate(-50%, -50%);
 
   svg {
-    width: 70%;
-    height: 70%;
+    width: 74%;
+    height: 74%;
     overflow: visible;
   }
-`;
 
-// Three steam wisps drifting up over the cup.
-const LeaderSteam = styled.div`
-  position: absolute;
-  z-index: 4;
-  top: 42%;
-  left: 50%;
-  display: flex;
-  gap: 0.4rem;
-  transform: translateX(-50%);
-  pointer-events: none;
-
-  span {
-    display: block;
-    width: 0.32rem;
-    height: 1.05rem;
-    border-radius: 999px;
-    background: linear-gradient(to top, rgba(244, 122, 74, 0.9), rgba(244, 122, 74, 0));
-    transform-origin: bottom center;
-    animation: ${leaderSteamRise} 2.6s ease-in-out infinite;
+  .steam {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: ${leaderSteamRise} 2.8s ease-in-out infinite;
   }
-
-  span:nth-child(2) {
-    height: 1.3rem;
-    animation-delay: 0.5s;
+  .steam-2 {
+    animation-delay: 0.55s;
   }
-
-  span:nth-child(3) {
-    animation-delay: 1s;
+  .steam-3 {
+    animation-delay: 1.1s;
   }
 `;
 
@@ -825,9 +807,6 @@ const LeaderDiagramSeat = styled.div<{
   $accent: string;
   $delay: string;
   $leader: boolean;
-  $tailTop: string;
-  $tailLeft: string;
-  $tailRotate: string;
 }>`
   position: absolute;
   top: ${({ $top }) => $top};
@@ -848,24 +827,6 @@ const LeaderDiagramSeat = styled.div<{
     ${leaderBubblePop} 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
     ${leaderBubbleBob} 4.4s ease-in-out infinite;
   animation-delay: ${({ $delay }) => `${$delay}, calc(${$delay} + 0.7s)`};
-
-  /* member → outlined speech-bubble tail pointing at the cup (behind bubble) */
-  ${({ $leader, $tailTop, $tailLeft, $tailRotate }) =>
-    !$leader &&
-    css`
-      &::before {
-        content: "";
-        position: absolute;
-        z-index: -1;
-        top: ${$tailTop};
-        left: ${$tailLeft};
-        width: 0.72rem;
-        height: 0.72rem;
-        background: #ffffff;
-        border: 2.5px solid #050505;
-        transform: translate(-50%, -50%) rotate(calc(${$tailRotate} - 135deg));
-      }
-    `}
 `;
 
 // Crown marking the leader at the top.
@@ -3508,38 +3469,44 @@ export default function NewHomeClient({
                         ))}
                       </LeaderDiagramWeb>
                       <LeaderCupBadge>
-                        <svg viewBox="0 0 64 56" fill="none">
-                          <ellipse
-                            cx="30"
-                            cy="50"
-                            rx="22"
-                            ry="3.4"
-                            fill="#ffffff"
-                            stroke="#050505"
-                            strokeWidth="3"
+                        <svg viewBox="0 0 64 64" fill="none">
+                          <path
+                            className="steam steam-1"
+                            d="M24 26 C21 22 27 20 24 16 C22 13 26 11 24 8"
+                            stroke="#f47a4a"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
                           />
                           <path
-                            d="M16 26 H42 L39.5 46 Q31 49.5 18.5 46 Z"
+                            className="steam steam-2"
+                            d="M31 27 C28 22 34 20 31 15 C29 11 33 9 31 6"
+                            stroke="#f47a4a"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            className="steam steam-3"
+                            d="M38 26 C35 22 41 20 38 16 C36 13 40 11 38 8"
+                            stroke="#f47a4a"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M15 32 H45 L40 52 Q30.5 56 21 52 Z"
                             fill="#ffffff"
                             stroke="#050505"
-                            strokeWidth="3"
+                            strokeWidth="3.4"
                             strokeLinejoin="round"
                           />
                           <path
-                            d="M42 30 C50 30 50 41 41 41"
+                            d="M45 36 C54 36 54 48 43 48"
                             fill="none"
                             stroke="#050505"
-                            strokeWidth="3"
+                            strokeWidth="3.4"
                             strokeLinecap="round"
                           />
-                          <ellipse cx="29.2" cy="26.5" rx="12" ry="2.4" fill="#3a2113" />
                         </svg>
                       </LeaderCupBadge>
-                      <LeaderSteam>
-                        <span />
-                        <span />
-                        <span />
-                      </LeaderSteam>
                       {DISCUSSION_SEATS.map((seat) => (
                         <LeaderDiagramSeat
                           key={seat.id}
@@ -3548,9 +3515,6 @@ export default function NewHomeClient({
                           $accent={seat.accent}
                           $delay={seat.delay}
                           $leader={seat.leader}
-                          $tailTop={seat.tailTop}
-                          $tailLeft={seat.tailLeft}
-                          $tailRotate={seat.tailRotate}
                         >
                           {seat.leader && (
                             <LeaderCrown>
