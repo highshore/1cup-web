@@ -37,6 +37,7 @@ import {
   CancelIcon,
 } from "../../lib/features/meetup/components/meetup_icons";
 import { appLayout } from "../../lib/constants/app_layout";
+import { naverMapsScriptSrc } from "../../lib/constants/naver_maps";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase/firebase";
 import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
@@ -1299,8 +1300,7 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
       // Create and inject script tag
       const script = document.createElement("script");
       script.type = "text/javascript";
-      script.src =
-        "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=3cyz9x5q6l&submodules=geocoder&callback=initNaverMaps";
+      script.src = naverMapsScriptSrc("initNaverMaps");
       script.async = true;
       script.defer = true;
 

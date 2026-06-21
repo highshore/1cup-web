@@ -1,5 +1,7 @@
 // Geocoding service for resolving coordinates from location data
 
+import { naverMapsScriptSrc } from "../../../constants/naver_maps";
+
 interface GeocodeResult {
   latitude: number;
   longitude: number;
@@ -45,7 +47,7 @@ const loadNaverMapsAPI = (): Promise<void> => {
     // Create and inject script tag
     const script = document.createElement('script');
     script.type = 'text/javascript';
-    script.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=3cyz9x5q6l&submodules=geocoder&callback=initNaverMapsGeocode';
+    script.src = naverMapsScriptSrc('initNaverMapsGeocode');
     script.async = true;
     script.defer = true;
     
