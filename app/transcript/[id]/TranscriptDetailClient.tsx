@@ -295,9 +295,9 @@ const Content = styled.div`
 const SessionInfo = styled.div`
   padding: 1.5rem;
   background: #ffffff;
-  border-radius: 14px;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+  border-radius: 16px;
+  border: 3px solid #050505;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
   margin-bottom: 2rem;
   height: 100%;
 `;
@@ -317,9 +317,9 @@ const SessionInfoGrid = styled.div`
 const ChartPanel = styled.div`
   padding: 1.5rem;
   background: #ffffff;
-  border-radius: 14px;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+  border-radius: 16px;
+  border: 3px solid #050505;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
   height: 100%;
 `;
 

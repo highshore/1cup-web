@@ -447,13 +447,13 @@ const NewNavbar: React.FC = () => {
   const avatarSrc = currentUser?.photoURL || "/images/logos/1cup_logo_new.svg";
   const avatarInitial =
     currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
-  const avatarVariant: AvatarVariant = isGdgMember
-    ? "gdg"
-    : hasActiveSubscription === true
-    ? "active"
-    : currentUser
-    ? "inactive"
-    : "default";
+  // GDG ring disabled — fall through to subscription-based variants.
+  const avatarVariant: AvatarVariant =
+    hasActiveSubscription === true
+      ? "active"
+      : currentUser
+      ? "inactive"
+      : "default";
 
   useEffect(() => {
     const handleScroll = () => {

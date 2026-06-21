@@ -358,6 +358,11 @@ const ko = {
       loadMore: "더 보기",
       loadingMore: "로딩 중...",
     },
+    filter: {
+      all: "전체",
+      yeouido: "여의도",
+      anam: "안암",
+    },
     status: {
       ended: "종료",
       joinable: "참가 가능",

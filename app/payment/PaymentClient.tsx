@@ -98,13 +98,14 @@ const MainCard = styled.div`
 `;
 
 const PricingCard = styled.div`
-  border: 2px solid #000;
-  border-radius: 8px;
+  border: 3px solid #050505;
+  border-radius: 16px;
   padding: 2rem;
   margin-bottom: 2rem;
   background: #fff;
   position: relative;
   overflow: hidden;
+  box-shadow: 6px 6px 0 #050505;
 
   &::before {
     content: "";
@@ -112,12 +113,13 @@ const PricingCard = styled.div`
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: #990033;
+    height: 7px;
+    background: #f47a4a;
   }
 
   @media (max-width: 768px) {
     padding: 1.5rem;
+    box-shadow: 5px 5px 0 #050505;
   }
 `;
 
@@ -128,15 +130,15 @@ const PricingHeader = styled.div`
 
 const PricingTitle = styled.h2`
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #000;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.5rem;
 `;
 
 const PricingAmount = styled.div`
   font-size: 3rem;
-  font-weight: 700;
-  color: #000;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
 
@@ -176,43 +178,47 @@ const FeatureItem = styled.div`
 const ActionButton = styled.button<{ $variant?: "primary" | "secondary" }>`
   width: 100%;
   padding: 1rem 2rem;
-  border: none;
-  border-radius: 20px;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   position: relative;
   letter-spacing: -0.01em;
+  box-shadow: 4px 4px 0 #050505;
 
   ${(props) =>
     props.$variant === "secondary"
       ? `
     background: #fff;
-    color: #000;
-    border: 1px solid #d1d5db;
-    
+    color: #050505;
+
     &:hover:not(:disabled) {
-      background: #f9fafb;
-      border-color: #9ca3af;
+      background: #f3f3f1;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 #050505;
     }
   `
       : `
-    background: #000;
-    color: #fff;
-    
+    background: #f47a4a;
+    color: #050505;
+
     &:hover:not(:disabled) {
-      background: #1f2937;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 #050505;
     }
-    
+
     &:active:not(:disabled) {
-      transform: translateY(1px);
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 #050505;
     }
   `}
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
   }
 
   @media (max-width: 768px) {
@@ -244,11 +250,12 @@ const CheckboxInput = styled.input`
 `;
 
 const PolicyCard = styled.div`
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1.5rem;
   margin-top: 2rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
 
   @media (max-width: 768px) {
     padding: 1rem;
@@ -395,64 +402,66 @@ const InputGroup = styled.div`
 const Input = styled.input`
   flex: 1;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 10px;
   font-size: 1rem;
-  transition: all 0.2s;
+  transition: box-shadow 0.16s ease;
 
   &:focus {
     outline: none;
-    border-color: #000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 
   &:disabled {
-    background: #f9fafb;
+    background: #f3f3f1;
     color: #9ca3af;
   }
 `;
 
 const VerifyButton = styled.button`
   padding: 0 1.25rem;
-  background: #000;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: 600;
+  background: #f47a4a;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  color: #050505;
+  font-weight: 800;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 
   &:hover:not(:disabled) {
-    background: #1f2937;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background: #e5e7eb;
-    color: #9ca3af;
+    opacity: 0.5;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;
 
 const ClearButton = styled.button`
   padding: 0 1.25rem;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #374151;
-  font-weight: 600;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  color: #050505;
+  font-weight: 800;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 
   &:hover:not(:disabled) {
-    background: #e5e7eb;
-    border-color: #d1d5db;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background: #f9fafb;
-    color: #9ca3af;
+    opacity: 0.5;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;

@@ -27,25 +27,13 @@ const AvatarContainer = styled.div<{
   width: ${(props) => props.$size}px;
   height: ${(props) => props.$size}px;
   border-radius: 50%;
-  ${(props) =>
-    props.$isGdgMember
-      ? `
-    background: conic-gradient(from 90deg,
-      #1a73e8 0deg 45deg,
-      #ea4335 45deg 150deg,
-      #fbbc05 150deg 210deg,
-      #34a853 210deg 315deg,
-      #1a73e8 315deg 360deg
-    );
-    padding: 2px;
-  `
-      : `background-color: ${props.$bgColor || "#e0e0e0"};`}
+  /* GDG ring disabled: always render a plain avatar regardless of membership. */
+  background-color: ${(props) => props.$bgColor || "#e0e0e0"};
   position: ${(props) =>
     props.$index !== undefined ? "absolute" : "relative"};
   left: ${(props) =>
     props.$index !== undefined ? props.$index * (props.$size * 0.6) : 0}px;
-  ${(props) =>
-    props.$isGdgMember ? "border: none;" : "border: 2px solid white;"}
+  border: 2px solid white;
   display: flex;
   align-items: center;
   justify-content: center;

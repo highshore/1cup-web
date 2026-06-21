@@ -272,6 +272,37 @@ const SectionTitle = styled.h2`
   }
 `;
 
+const FilterBar = styled.div`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.35rem;
+  margin: 0.5rem 0 0.25rem;
+  box-shadow: 3px 3px 0 #f47a4a;
+`;
+
+const FilterButton = styled.button<{ $active: boolean }>`
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: ${({ $active }) => ($active ? "#050505" : "transparent")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#475569")};
+  padding: 0.4rem 0.95rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+
+  &:hover {
+    color: ${({ $active }) => ($active ? "#ffffff" : "#050505")};
+    transform: translateY(-1px);
+  }
+`;
+
 const EventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
   background-color: #ffffff;
   border-radius: 14px;
@@ -553,7 +584,21 @@ const MeetupClient: React.FC = () => {
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [locationFilter, setLocationFilter] = useState<
+    "all" | "yeouido" | "anam"
+  >("all");
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Infer an event's region from its location text (no explicit region field).
+  const eventRegion = (event: MeetupEvent): "yeouido" | "anam" | "other" => {
+    const s = `${event.location_name || ""} ${event.location_address || ""}`;
+    if (s.includes("여의도") || /yeouido/i.test(s)) return "yeouido";
+    if (s.includes("안암") || /anam/i.test(s)) return "anam";
+    return "other";
+  };
+
+  const matchesFilter = (event: MeetupEvent): boolean =>
+    locationFilter === "all" || eventRegion(event) === locationFilter;
 
   // Helper function to convert MeetupEvent date and time to Date object
   const getEventDateTime = (event: MeetupEvent): Date => {
@@ -847,25 +892,52 @@ const MeetupClient: React.FC = () => {
 
         {!loading && !error && (
           <>
-            {/* Upcoming Events Section */}
-            {upcomingEvents.length > 0 && (
-              <>
-                <SectionTitle>{t.meetup.sections.upcoming}</SectionTitle>
-                {upcomingEvents.map((meetup, index) =>
-                  renderEventCard(meetup, false, index === 0)
-                )}
-              </>
-            )}
+            {/* Location filter */}
+            <FilterBar role="group" aria-label={t.meetup.sections.upcoming}>
+              {(["all", "yeouido", "anam"] as const).map((loc) => (
+                <FilterButton
+                  key={loc}
+                  type="button"
+                  $active={locationFilter === loc}
+                  onClick={() => setLocationFilter(loc)}
+                >
+                  {t.meetup.filter[loc]}
+                </FilterButton>
+              ))}
+            </FilterBar>
 
-            {/* Past Events Section */}
-            {pastEvents.length > 0 && (
-              <>
-                <SectionTitle>{t.meetup.sections.past}</SectionTitle>
-                {pastEvents.map((meetup) =>
-                  renderEventCard(meetup, true, false)
-                )}
-              </>
-            )}
+            {(() => {
+              const visibleUpcoming = upcomingEvents.filter(matchesFilter);
+              const visiblePast = pastEvents.filter(matchesFilter);
+              return (
+                <>
+                  {/* Upcoming Events Section */}
+                  {visibleUpcoming.length > 0 && (
+                    <>
+                      <SectionTitle>{t.meetup.sections.upcoming}</SectionTitle>
+                      {visibleUpcoming.map((meetup, index) =>
+                        renderEventCard(meetup, false, index === 0)
+                      )}
+                    </>
+                  )}
+
+                  {/* Past Events Section */}
+                  {visiblePast.length > 0 && (
+                    <>
+                      <SectionTitle>{t.meetup.sections.past}</SectionTitle>
+                      {visiblePast.map((meetup) =>
+                        renderEventCard(meetup, true, false)
+                      )}
+                    </>
+                  )}
+
+                  {visibleUpcoming.length === 0 &&
+                    visiblePast.length === 0 && (
+                      <EmptyState>{t.meetup.sections.noEvents}</EmptyState>
+                    )}
+                </>
+              );
+            })()}
 
             {/* Load More Button */}
             {hasMore && (
@@ -879,11 +951,6 @@ const MeetupClient: React.FC = () => {
                   : t.meetup.sections.loadMore}
               </LoadMoreButton>
             )}
-
-            {/* No Events Message */}
-            {upcomingEvents.length === 0 &&
-              pastEvents.length === 0 &&
-              !loading && <EmptyState>{t.meetup.sections.noEvents}</EmptyState>}
           </>
         )}
       </MeetupContent>

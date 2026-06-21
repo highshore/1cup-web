@@ -358,6 +358,11 @@ const en = {
       loadMore: "Load more",
       loadingMore: "Loading...",
     },
+    filter: {
+      all: "All",
+      yeouido: "Yeouido",
+      anam: "Anam",
+    },
     status: {
       ended: "Ended",
       joinable: "Open",

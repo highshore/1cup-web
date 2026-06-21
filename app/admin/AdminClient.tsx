@@ -78,15 +78,15 @@ const StatsGrid = styled.div`
 
 const StatCard = styled.div`
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-  border: 2px solid #050505;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+  border: 3px solid #050505;
   transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
     transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.88);
+    box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
@@ -142,10 +142,10 @@ const Tab = styled.button<{ active: boolean }>`
 
 const ContentSection = styled.div`
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-  border: 2px solid #050505;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+  border: 3px solid #050505;
 `;
 
 const SectionTitle = styled.h2`
