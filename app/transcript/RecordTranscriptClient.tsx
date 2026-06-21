@@ -304,6 +304,118 @@ const EmptyState = styled.div`
   border: 1px solid #e2e8f0;
 `;
 
+// --- Decibel monitor (live mic level + per-speaker loudness) ---
+const DecibelPanel = styled.section`
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 4px 4px 0 #050505;
+`;
+
+const DecibelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+`;
+
+const DecibelTitle = styled.h3`
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.26rem 0.62rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+`;
+
+const DecibelReadout = styled.span<{ $active: boolean }>`
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: ${({ $active }) => ($active ? "#050505" : "rgba(5,5,5,0.4)")};
+`;
+
+const Meter = styled.div`
+  position: relative;
+  height: 18px;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f3f3f1;
+  overflow: hidden;
+`;
+
+const MeterFill = styled.div<{ $level: number }>`
+  height: 100%;
+  width: ${({ $level }) => Math.max(0, Math.min(100, $level))}%;
+  background: linear-gradient(
+    90deg,
+    #2f8f86 0%,
+    #2f8f86 55%,
+    #e0992b 78%,
+    #d64545 100%
+  );
+  transition: width 70ms linear;
+`;
+
+const MeterPeak = styled.div<{ $peak: number }>`
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: ${({ $peak }) => Math.max(0, Math.min(100, $peak))}%;
+  width: 2px;
+  background: #050505;
+`;
+
+const SpeakerLoudList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1rem;
+`;
+
+const SpeakerLoudRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+`;
+
+const SpeakerDot = styled.span<{ $color: string }>`
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #050505;
+  border-radius: 50%;
+  background: ${({ $color }) => $color};
+`;
+
+const SpeakerBarTrack = styled.div`
+  height: 10px;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #f3f3f1;
+  overflow: hidden;
+`;
+
+const SpeakerBarFill = styled.div<{ $level: number; $color: string }>`
+  height: 100%;
+  width: ${({ $level }) => Math.max(0, Math.min(100, $level))}%;
+  background: ${({ $color }) => $color};
+`;
+
+const SpeakerLoudValue = styled.span`
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(5, 5, 5, 0.6);
+  white-space: nowrap;
+`;
+
 const CopilotPanel = styled.section`
   background: #ffffff;
   border: 1px solid #dbeafe;
@@ -573,7 +685,22 @@ export default function RecordTranscriptClient() {
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const lastAudioSentAtRef = useRef<number>(0);
   const keepAliveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
+
+  // Decibel monitoring (live meter + per-speaker loudness)
+  const [liveLevel, setLiveLevel] = useState<number>(0); // 0..100 meter fill
+  const [liveDb, setLiveDb] = useState<number>(-100); // dBFS
+  const [peakLevel, setPeakLevel] = useState<number>(0); // 0..100 session peak
+  const [speakerLoudness, setSpeakerLoudness] = useState<
+    Record<string, { avg: number; peak: number }>
+  >({});
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
+  const dbRafRef = useRef<number | null>(null);
+  const peakLevelRef = useRef<number>(0);
+  const currentSpeakerRef = useRef<string>("UU");
+  const speakerAccumRef = useRef<
+    Record<string, { sum: number; count: number; peak: number }>
+  >({});
+
   // Soniox hook
   const {
     sonioxResults: { activePartialSegment: sonioxPartial, finalTranscript: sonioxFinal },
@@ -606,6 +733,22 @@ export default function RecordTranscriptClient() {
       .catch(() => setHasPermission(false));
   }, []);
 
+  // Track the active speaker so the decibel meter can attribute loudness.
+  useEffect(() => {
+    const latest =
+      activePartialSegment[activePartialSegment.length - 1] ||
+      finalTranscript[finalTranscript.length - 1];
+    const sp = latest?.alternatives?.[0]?.speaker;
+    if (sp) currentSpeakerRef.current = sp.startsWith("S") ? sp : `S${sp}`;
+  }, [activePartialSegment, finalTranscript]);
+
+  // Stop the decibel loop if the component unmounts mid-recording.
+  useEffect(() => {
+    return () => {
+      if (dbRafRef.current !== null) cancelAnimationFrame(dbRafRef.current);
+    };
+  }, []);
+
   // Set up audio processing and recording
   const setupAudioProcessing = useCallback(async () => {
     try {
@@ -635,6 +778,55 @@ export default function RecordTranscriptClient() {
       };
 
       source.connect(workletNode);
+
+      // Decibel meter: tap the same stream with an analyser (no output connection).
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.6;
+      source.connect(analyser);
+      analyserNodeRef.current = analyser;
+
+      const buf = new Float32Array(analyser.fftSize);
+      peakLevelRef.current = 0;
+      speakerAccumRef.current = {};
+      let lastUi = 0;
+      const tick = () => {
+        const a = analyserNodeRef.current;
+        if (!a) return;
+        a.getFloatTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+        const rms = Math.sqrt(sum / buf.length);
+        const db = rms > 0 ? 20 * Math.log10(rms) : -100; // dBFS
+        const level = Math.max(0, Math.min(100, ((db + 60) / 60) * 100)); // map -60..0 → 0..100
+
+        if (db > -100) {
+          const sp = currentSpeakerRef.current || "UU";
+          const acc = speakerAccumRef.current;
+          const e = acc[sp] || (acc[sp] = { sum: 0, count: 0, peak: -100 });
+          e.sum += db;
+          e.count += 1;
+          if (db > e.peak) e.peak = db;
+        }
+        if (level > peakLevelRef.current) peakLevelRef.current = level;
+
+        const now = performance.now();
+        if (now - lastUi > 60) {
+          lastUi = now;
+          setLiveLevel(level);
+          setLiveDb(db);
+          setPeakLevel(peakLevelRef.current);
+          const acc = speakerAccumRef.current;
+          const snap: Record<string, { avg: number; peak: number }> = {};
+          for (const k in acc) {
+            const e = acc[k];
+            snap[k] = { avg: e.sum / Math.max(1, e.count), peak: e.peak };
+          }
+          setSpeakerLoudness(snap);
+        }
+        dbRafRef.current = requestAnimationFrame(tick);
+      };
+      dbRafRef.current = requestAnimationFrame(tick);
 
       // Reacquire mic if track ends (e.g., device switch)
       const [track] = stream.getAudioTracks();
@@ -759,6 +951,17 @@ export default function RecordTranscriptClient() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
+
+      if (dbRafRef.current !== null) {
+        cancelAnimationFrame(dbRafRef.current);
+        dbRafRef.current = null;
+      }
+      if (analyserNodeRef.current) {
+        analyserNodeRef.current.disconnect();
+        analyserNodeRef.current = null;
+      }
+      setLiveLevel(0);
+      setLiveDb(-100);
 
       if (workletNodeRef.current) {
         workletNodeRef.current.disconnect();
@@ -1149,6 +1352,45 @@ export default function RecordTranscriptClient() {
                 </ConfidenceNote>
               </LegendContent>
             </AppSpeechDetails>
+
+            <DecibelPanel>
+              <DecibelHeader>
+                <DecibelTitle>데시벨 모니터</DecibelTitle>
+                <DecibelReadout $active={isRecording}>
+                  {isRecording
+                    ? `${liveDb <= -100 ? "-∞" : liveDb.toFixed(0)} dBFS`
+                    : "대기 중"}
+                </DecibelReadout>
+              </DecibelHeader>
+              <Meter>
+                <MeterFill $level={liveLevel} />
+                <MeterPeak $peak={peakLevel} />
+              </Meter>
+              {Object.keys(speakerLoudness).length > 0 && (
+                <SpeakerLoudList>
+                  {Object.entries(speakerLoudness)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([sp, v]) => {
+                      const c = getSpeakerColor(sp);
+                      const lvl = Math.max(
+                        0,
+                        Math.min(100, ((v.avg + 60) / 60) * 100)
+                      );
+                      return (
+                        <SpeakerLoudRow key={sp}>
+                          <SpeakerDot $color={c.avatar} />
+                          <SpeakerBarTrack>
+                            <SpeakerBarFill $level={lvl} $color={c.avatar} />
+                          </SpeakerBarTrack>
+                          <SpeakerLoudValue>
+                            avg {v.avg.toFixed(0)} · peak {v.peak.toFixed(0)} dB
+                          </SpeakerLoudValue>
+                        </SpeakerLoudRow>
+                      );
+                    })}
+                </SpeakerLoudList>
+              )}
+            </DecibelPanel>
 
             {/* Render combined transcript snippets */}
             {conversationItems.map((item) => {

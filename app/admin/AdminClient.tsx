@@ -39,30 +39,32 @@ const Header = styled.div`
 
 const Title = styled.h1`
   font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
+  font-weight: 900;
+  color: #050505;
   margin: 0;
 `;
 
 const RefreshButton = styled.button`
-  background-color: #2c1810;
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
+  background: #ffffff;
+  color: #050505;
+  padding: 11px 20px;
+  border: 2px solid #050505;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 #f47a4a;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
-    background-color: #4a2d1d;
-    transform: translateY(-1px);
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #f47a4a;
   }
 
   &:disabled {
-    background-color: #9ca3af;
+    opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
     transform: none;
   }
 `;
@@ -75,23 +77,23 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+  border: 2px solid #050505;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
-    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.88);
   }
 `;
 
 const StatNumber = styled.div`
   font-size: 32px;
-  font-weight: 700;
-  color: #1f2937;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 8px;
 `;
 
@@ -110,41 +112,52 @@ const StatSubtext = styled.div`
 `;
 
 const TabContainer = styled.div`
-  display: flex;
-  border-bottom: 2px solid #e5e7eb;
-  margin-bottom: 20px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.35rem;
+  margin-bottom: 24px;
+  box-shadow: 3px 3px 0 #f47a4a;
 `;
 
 const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 24px;
-  background: none;
-  border: none;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
-  color: ${(props) => (props.active ? "#2c1810" : "#6b7280")};
-  border-bottom: 3px solid
-    ${(props) => (props.active ? "#2c1810" : "transparent")};
-  transition: all 0.2s ease;
+  background: ${(props) => (props.active ? "#050505" : "transparent")};
+  color: ${(props) => (props.active ? "#ffffff" : "#475569")};
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 
   &:hover {
-    color: #2c1810;
-    background-color: #f9fafb;
+    color: ${(props) => (props.active ? "#ffffff" : "#050505")};
+    transform: translateY(-1px);
   }
 `;
 
 const ContentSection = styled.div`
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
+  border: 2px solid #050505;
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2937;
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.3rem 0.7rem;
+  font-size: 16px;
+  font-weight: 900;
   margin-bottom: 20px;
 `;
 
@@ -159,13 +172,13 @@ const UserCard = styled.div`
   justify-content: between;
   align-items: center;
   padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border: 1.5px solid #050505;
+  border-radius: 10px;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
-    background-color: #f9fafb;
-    border-color: #d1d5db;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
   }
 `;
 
@@ -222,14 +235,14 @@ const FeedbackList = styled.div`
 `;
 
 const FeedbackCard = styled.div`
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1.5px solid #050505;
+  border-radius: 10px;
   padding: 20px;
-  transition: all 0.2s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
   }
 `;
 
@@ -371,22 +384,18 @@ const ArticleActionButton = styled.button<{ $variant?: "danger" }>`
   gap: 6px;
   padding: 8px 14px;
   border-radius: 999px;
-  border: 1px solid #0f172a;
-  background: ${(props) =>
-    props.$variant === "danger"
-      ? "linear-gradient(135deg, #111827, #1f2937)"
-      : "linear-gradient(135deg, #1f2937, #111827)"};
-  color: #f9fafb;
+  border: 2px solid #050505;
+  background: ${(props) => (props.$variant === "danger" ? "#fee2e2" : "#ffffff")};
+  color: ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 10px 24px -16px rgba(17, 24, 39, 0.8);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: 2px 2px 0 ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 32px -18px rgba(17, 24, 39, 0.85);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
   }
 
   &:disabled {
@@ -416,19 +425,18 @@ const MembersActionButton = styled.button`
   gap: 10px;
   padding: 12px 22px;
   border-radius: 999px;
-  border: 2px solid rgba(17, 24, 39, 0.8);
-  background: linear-gradient(135deg, #0f172a, #1f2937);
-  color: #f3f4f6;
+  border: 2px solid #050505;
+  background: #f47a4a;
+  color: #050505;
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 16px 30px -18px rgba(17, 24, 39, 0.75);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: 3px 3px 0 #050505;
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 22px 38px -20px rgba(17, 24, 39, 0.88);
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
   }
 
   &:disabled {
