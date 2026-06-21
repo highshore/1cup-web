@@ -61,11 +61,11 @@ const AppSpeechDetails = styled.section`
 
 const SectionHeader = styled.h2`
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #050505;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -78,12 +78,13 @@ const KeywordsContainer = styled.div`
 `;
 
 const KeywordTag = styled.span`
-  background-color: #f1f5f9;
-  color: #475569;
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
   padding: 0.25rem 0.75rem;
-  border-radius: 16px;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 700;
 `;
 
 // Removed ProviderSelector (Soniox-only)
@@ -231,17 +232,20 @@ const Controls = styled.div`
 
 const BackButton = styled.button`
   padding: 0.5rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background-color: #ffffff;
-  color: #475569;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover {
-    background-color: #f8fafc;
-    border-color: #d1d5db;
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 `;
 
@@ -249,33 +253,34 @@ const RecordButton = styled.button<{ $isRecording: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 25px;
+  padding: 0.7rem 1.4rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 3px 3px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   ${(props) =>
     props.$isRecording
       ? `
-    background: #990033;
-    color: white;
-    &:hover {
-      background: #c00044;
-    }
+    background: #d64545;
+    color: #ffffff;
   `
       : `
-    background: #000000;
-    color: white;
-    &:hover {
-      background: #424242;
-    }
+    background: #f47a4a;
+    color: #050505;
   `}
 
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
+  }
+
   &:disabled {
-    background: #9ca3af;
+    opacity: 0.5;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;
@@ -290,8 +295,9 @@ const Content = styled.div`
 const SessionInfo = styled.div`
   padding: 1.5rem;
   background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
   margin-bottom: 2rem;
   height: 100%;
 `;
@@ -311,22 +317,23 @@ const SessionInfoGrid = styled.div`
 const ChartPanel = styled.div`
   padding: 1.5rem;
   background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
   height: 100%;
 `;
 
 const ChartTitle = styled.h3`
   margin: 0 0 1rem 0;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
 `;
 
 const SessionTitle = styled.h2`
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
 `;
 
@@ -351,13 +358,13 @@ const ParticipantChip = styled.div<{ $isLeader?: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
+  padding: 0.375rem 0.8rem;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 500;
-  background-color: ${(props) => (props.$isLeader ? "#dbeafe" : "#f1f5f9")};
-  color: ${(props) => (props.$isLeader ? "#1e40af" : "#475569")};
-  border: 1px solid ${(props) => (props.$isLeader ? "#93c5fd" : "#e2e8f0")};
+  font-weight: 800;
+  background: ${(props) => (props.$isLeader ? "#f47a4a" : "#ffffff")};
+  color: #050505;
+  border: 2px solid #050505;
   transition: all 0.2s ease;
 
   &:hover {

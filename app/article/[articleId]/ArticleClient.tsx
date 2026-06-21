@@ -105,8 +105,8 @@ const ArticleContainer = styled.div`
 const Title = styled.h1`
   font-size: 2rem;
   margin: 0 0 0.5rem 0;
-  color: ${colors.text.dark};
-  font-weight: 700;
+  color: #050505;
+  font-weight: 900;
   line-height: 1.2;
   cursor: pointer;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -117,7 +117,7 @@ const Title = styled.h1`
   }
 
   &:hover {
-    color: ${colors.primary};
+    color: #f47a4a;
   }
 `;
 
@@ -154,22 +154,18 @@ const TitleTextGroup = styled.div`
 `;
 
 const CalloutBox = styled.div`
-  background: linear-gradient(
-    135deg,
-    ${colors.primaryPale} 0%,
-    ${colors.primaryBg} 100%
-  );
+  background: #ffffff;
   padding: 1rem 1.2rem;
-  border-radius: 20px;
+  border-radius: 14px;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
-  color: ${colors.text.medium};
-  border: 1px solid ${colors.primaryPale};
+  color: rgba(5, 5, 5, 0.72);
+  border: 2px solid #050505;
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
   line-height: 1.5;
 
   @media (max-width: 768px) {
@@ -179,27 +175,18 @@ const CalloutBox = styled.div`
   }
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
   }
 
   &::before {
     content: "";
-    width: 0.55rem;
-    height: 0.55rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    flex: 0 0 auto;
     border-radius: 999px;
-    background: ${colors.accent};
-    padding: 0.4rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-
-    @media (max-width: 768px) {
-      width: 0.48rem;
-      height: 0.48rem;
-      padding: 0.28rem;
-    }
+    border: 2px solid #050505;
+    background: #f47a4a;
   }
 `;
 
@@ -207,11 +194,13 @@ const ReadingTime = styled.div`
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: ${colors.text.medium};
+  color: #050505;
+  font-weight: 700;
   font-size: 0.85rem;
   padding: 0.4rem 0.8rem;
-  background: ${colors.primaryPale};
-  border-radius: 16px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 999px;
   height: 2rem;
   box-sizing: border-box;
 
@@ -231,23 +220,25 @@ const SourceTab = styled.div`
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: ${colors.text.medium};
+  color: #050505;
+  font-weight: 700;
   font-size: 0.85rem;
   padding: 0.4rem 0.8rem;
-  background: ${colors.primaryPale};
-  border-radius: 16px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 999px;
   height: 2rem;
   box-sizing: border-box;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.16s ease;
 
   &::before {
     font-size: 1rem;
   }
 
   &:hover {
-    background: ${colors.accent};
-    color: white;
+    background: #f47a4a;
+    color: #050505;
     transform: translateY(-1px);
   }
 
@@ -259,15 +250,20 @@ const SourceTab = styled.div`
 `;
 
 const SectionTitle = styled.h3`
-  font-size: 1.3rem;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 1.2rem;
-  color: ${colors.primary};
-  font-weight: 600;
-  padding-bottom: 0.4rem;
-  border-bottom: 2px solid ${colors.primaryPale};
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.3rem 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 900;
+  word-break: keep-all;
 
   @media (max-width: 768px) {
-    font-size: 1.2rem;
+    font-size: 1rem;
     margin-bottom: 1rem;
   }
 `;
@@ -302,15 +298,15 @@ const KoreanParagraph = styled.p<{ isVisible: boolean }>`
   margin-bottom: ${(props) => (props.isVisible ? "0.5rem" : "0")};
   color: ${colors.text.dark};
   font-weight: 400;
-  background: ${colors.primaryPale};
+  background: #fff6f0;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 10px;
   max-height: ${(props) => (props.isVisible ? "auto" : "0")};
   opacity: ${(props) => (props.isVisible ? 1 : 0)};
   overflow-y: ${(props) => (props.isVisible ? "auto" : "hidden")};
   transition: all 0.3s ease;
   margin-top: ${(props) => (props.isVisible ? "0.15rem" : "0")};
-  border-left: 3px solid ${colors.accent};
+  border-left: 4px solid #f47a4a;
 
   @media (max-width: 768px) {
     font-size: 1rem;
@@ -392,12 +388,12 @@ const KeywordCard = styled.div`
   flex: 0 0 240px;
   background: #fff;
   border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
   padding: 1rem;
-  margin-right: 0.4rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid ${colors.primaryPale};
-  border-left: 3px solid ${colors.accent};
+  margin-right: 0.6rem;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  border: 2px solid #050505;
+  border-left: 5px solid #f47a4a;
   box-sizing: border-box;
   cursor: pointer;
 
@@ -411,15 +407,15 @@ const KeywordCard = styled.div`
   }
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
   }
 `;
 
 const Word = styled.h4`
   font-size: 1.2rem;
-  font-weight: 700;
-  color: ${colors.primary};
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.5rem;
 `;
 
@@ -439,11 +435,12 @@ const Synonyms = styled.div`
 
 const Synonym = styled.span`
   font-size: 0.7rem;
-  background: ${colors.primaryPale};
-  color: ${colors.primaryDark};
-  padding: 0.2rem 0.5rem;
-  border-radius: 30px;
-  font-weight: 500;
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
 `;
 
 const Example = styled.div`
@@ -459,34 +456,34 @@ const SliderButton = styled.button`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: white;
-  color: ${colors.primary};
-  border: 1px solid ${colors.primaryPale};
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  color: #050505;
+  border: 2px solid #050505;
+  box-shadow: 2px 2px 0 #050505;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 20;
-  transition: all 0.2s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   @media (max-width: 768px) {
-    width: 28px;
-    height: 32px;
+    width: 30px;
+    height: 34px;
   }
 
   &:hover {
-    background: white;
-    color: ${colors.primaryLight};
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    color: ${colors.text.light};
-    border-color: #e0e0e0;
+    opacity: 0.4;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;
@@ -543,15 +540,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 const ModalContent = styled.div`
   background: ${colors.primaryBg};
   border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 6px 6px 0 #050505;
   padding: 2rem;
   max-width: 90%;
   width: 500px;
   position: relative;
   transform: scale(1);
   transition: transform 0.3s ease;
-  border-left: 5px solid ${colors.accent};
-  border: 1px solid ${colors.primaryPale};
+  border: 2px solid #050505;
+  border-left: 6px solid #f47a4a;
   overflow-y: auto; /* Allow scrolling within modal if content is too tall */
   max-height: 90vh; /* Limit height on small screens */
 
@@ -572,18 +569,19 @@ const CloseButton = styled.button`
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: ${colors.text.medium};
+  background: #ffffff;
+  border: 2px solid #050505;
+  font-size: 1.25rem;
+  color: #050505;
   cursor: pointer;
-  padding: 0.3rem;
+  width: 2rem;
+  height: 2rem;
   line-height: 1;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, transform 0.16s ease;
 
   @media (max-width: 768px) {
     top: 0.8rem;
@@ -591,8 +589,8 @@ const CloseButton = styled.button`
   }
 
   &:hover {
-    color: ${colors.primary};
-    background: ${colors.primaryPale};
+    background: #f47a4a;
+    transform: translateY(-1px);
   }
 `;
 
@@ -731,40 +729,39 @@ const Categories = styled.div`
 
 const Category = styled.span`
   font-size: 0.65rem;
-  background: ${colors.accent};
-  color: white;
-  padding: 0.1rem 0.4rem;
-  border-radius: 30px;
-  font-weight: 500;
+  background: #f47a4a;
+  color: #050505;
+  border: 1.5px solid #050505;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-weight: 800;
 `;
 
 const SaveButton = styled.button`
-  border: none;
-  background-color: ${colors.primaryDark};
-  color: white;
+  border: 2px solid #050505;
+  background: #f47a4a;
+  color: #050505;
   font-size: 0.9rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
   margin-left: 1rem;
-  font-weight: 500;
+  font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background-color: ${colors.primary};
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background-color: #cccccc;
+    opacity: 0.5;
     cursor: default;
     transform: none;
     box-shadow: none;
-    opacity: 0.7;
   }
 
   @media (max-width: 768px) {

@@ -28,11 +28,11 @@ const AppSpeechDetails = styled.section`
 
 const SectionHeader = styled.h2`
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #050505;
 `;
 
 const KeywordsContainer = styled.div`
@@ -42,12 +42,13 @@ const KeywordsContainer = styled.div`
 `;
 
 const KeywordTag = styled.span`
-  background-color: #f1f5f9;
-  color: #475569;
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
   padding: 0.25rem 0.75rem;
-  border-radius: 16px;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 700;
 `;
 
 const SpeakersContainer = styled.div`
@@ -213,30 +214,31 @@ const RecordButton = styled.button<{ $isRecording: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 25px;
+  padding: 0.7rem 1.4rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
-  
+  box-shadow: 3px 3px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+
   ${props => props.$isRecording ? `
-    background: #ef4444;
-    color: white;
-    &:hover {
-      background: #dc2626;
-    }
+    background: #d64545;
+    color: #ffffff;
   ` : `
-    background: ${colors.primary};
-    color: white;
-    &:hover {
-      background: ${colors.primaryLight};
-    }
+    background: #f47a4a;
+    color: #050505;
   `}
-  
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
+  }
+
   &:disabled {
-    background: #9ca3af;
+    opacity: 0.5;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;
