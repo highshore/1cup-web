@@ -78,13 +78,13 @@ const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
 
 const MEMBER_COMPANY_LOGOS = [
   { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", width: 260, height: 129, scale: 1.04 },
+  { label: "PwC", src: "/assets/homepage/logos/pwc.webp", width: 600, height: 455, scale: 0.9 },
   { label: "쿠팡", src: "/assets/homepage/logos/coupang.webp", width: 320, height: 73, scale: 1.02 },
   { label: "SAP", src: "/assets/homepage/logos/sap.webp", width: 220, height: 109, scale: 0.94 },
   { label: "네슬레", src: "/assets/homepage/logos/nestle.webp", width: 165, height: 170, scale: 0.92 },
+  { label: "고려대학교 의과대학", src: "/assets/homepage/logos/ku_medicine.webp", width: 680, height: 128, scale: 1 },
   { label: "고려대학교", src: "/assets/homepage/logos/korea-university.webp", width: 280, height: 93, scale: 1 },
   { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", width: 280, height: 86, scale: 1 },
-  { label: "PwC", src: "/assets/homepage/logos/pwc.webp", width: 600, height: 455, scale: 0.9 },
-  { label: "고려대학교 의과대학", src: "/assets/homepage/logos/ku_medicine.webp", width: 680, height: 128, scale: 1 },
 ] as const;
 
 const MEMBER_LOGO_GRID_LIMIT = 8;
@@ -153,11 +153,11 @@ const COMMUNITY_LEADERS = [
 // members are speech bubbles whose tails point inward toward the cup. Tail
 // geometry is precomputed so each notch sits on the edge nearest the centre.
 const DISCUSSION_SEATS = [
-  { id: "lead", top: "18%", left: "50%", accent: "#c0703f", delay: "0s", leader: true, tailTop: "", tailLeft: "", tailRotate: "" },
-  { id: "member-a", top: "47%", left: "80%", accent: "#2f3e50", delay: "0.55s", leader: false, tailTop: "53%", tailLeft: "0%", tailRotate: "266deg" },
-  { id: "member-b", top: "81%", left: "68%", accent: "#c79a4e", delay: "1.1s", leader: false, tailTop: "7%", tailLeft: "25%", tailRotate: "330deg" },
-  { id: "member-c", top: "81%", left: "32%", accent: "#e3d9c6", delay: "1.65s", leader: false, tailTop: "7%", tailLeft: "75%", tailRotate: "30deg" },
-  { id: "member-d", top: "47%", left: "20%", accent: "#83906f", delay: "2.2s", leader: false, tailTop: "53%", tailLeft: "100%", tailRotate: "94deg" },
+  { id: "lead", top: "17%", left: "50%", accent: "#050505", delay: "0s", leader: true, tailTop: "", tailLeft: "", tailRotate: "" },
+  { id: "member-a", top: "47%", left: "81%", accent: "#2f3e50", delay: "0.55s", leader: false, tailTop: "50%", tailLeft: "2%", tailRotate: "266deg" },
+  { id: "member-b", top: "80%", left: "68%", accent: "#e0992b", delay: "1.1s", leader: false, tailTop: "9%", tailLeft: "26%", tailRotate: "330deg" },
+  { id: "member-c", top: "80%", left: "32%", accent: "#2f8f86", delay: "1.65s", leader: false, tailTop: "9%", tailLeft: "74%", tailRotate: "30deg" },
+  { id: "member-d", top: "47%", left: "19%", accent: "#7d9b4e", delay: "2.2s", leader: false, tailTop: "50%", tailLeft: "98%", tailRotate: "94deg" },
 ] as const;
 
 const NETWORKING_IMAGES = [
@@ -715,159 +715,96 @@ const LeaderMethodContent = styled.div`
   }
 `;
 
-const LeaderDiagramPanel = styled.div<{ $location: LeaderLocation }>`
+// === 모임 진행 방식 #2 — conversation diagram (bold / flat, page-native) ===
+// Coffee-cup hub at the centre, five speech bubbles wired to it by dashed
+// spokes; the leader sits crowned at the top. Black outlines + hard offset
+// shadows + #f47a4a to match the rest of the page.
+const LeaderDiagramPanel = styled.div`
   position: relative;
   width: min(100%, 420px, 72vw);
   aspect-ratio: 1 / 1;
   justify-self: center;
   align-self: center;
   overflow: visible;
-  border: 0;
-  background: transparent;
-
-  /* soft warm halo behind the whole scene */
-  &::before {
-    position: absolute;
-    z-index: 0;
-    top: 50%;
-    left: 50%;
-    width: 98%;
-    height: 98%;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle at 50% 46%,
-      rgba(255, 248, 238, 0.95),
-      rgba(245, 234, 220, 0.45) 52%,
-      transparent 70%
-    );
-    transform: translate(-50%, -50%);
-    content: "";
-  }
 `;
 
-// Dashed ring threading the five speakers together, like a conversation loop.
-const LeaderDiagramRing = styled.div`
+// Dashed spokes connecting the cup to each speaker (drawn behind everything).
+const LeaderDiagramWeb = styled.svg`
   position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 50%;
-  width: 64%;
-  height: 64%;
-  border: 2px dashed rgba(124, 113, 97, 0.4);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-`;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 
-// Concentric cream discs that frame the cup at the centre.
-const LeaderCenterDisc = styled.div`
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  left: 50%;
-  width: 46%;
-  height: 46%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 42%, #fbf3e8, #f0e1ce);
-  box-shadow: 0 18px 40px rgba(58, 33, 17, 0.1);
-  transform: translate(-50%, -50%);
-
-  &::before {
-    position: absolute;
-    inset: 17%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 40%, #fffdf9, #f6ecdc);
-    content: "";
+  line {
+    stroke: #050505;
+    stroke-width: 0.9;
+    stroke-dasharray: 2.4 2.6;
+    stroke-linecap: round;
+    opacity: 0.5;
   }
 `;
 
 const leaderSteamRise = keyframes`
   0% { opacity: 0; transform: translateY(0) scaleY(0.7); }
-  25% { opacity: 0.7; }
-  70% { opacity: 0.35; }
-  100% { opacity: 0; transform: translateY(-1.4rem) scaleY(1.3); }
+  25% { opacity: 0.85; }
+  70% { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-1.3rem) scaleY(1.3); }
 `;
 
-// Three steam wisps drifting up from the cup.
+// Coffee-cup hub: a bold outlined disc with a flat cup icon inside.
+const LeaderCupBadge = styled.div`
+  position: absolute;
+  z-index: 3;
+  top: 52%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 33%;
+  height: 33%;
+  border: 3px solid #050505;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 5px 5px 0 #f47a4a;
+  transform: translate(-50%, -50%);
+
+  svg {
+    width: 70%;
+    height: 70%;
+    overflow: visible;
+  }
+`;
+
+// Three steam wisps drifting up over the cup.
 const LeaderSteam = styled.div`
   position: absolute;
   z-index: 4;
-  top: 37%;
+  top: 42%;
   left: 50%;
   display: flex;
-  gap: 0.42rem;
+  gap: 0.4rem;
   transform: translateX(-50%);
   pointer-events: none;
 
   span {
     display: block;
-    width: 0.3rem;
-    height: 1.1rem;
+    width: 0.32rem;
+    height: 1.05rem;
     border-radius: 999px;
-    background: linear-gradient(to top, rgba(120, 86, 58, 0.65), rgba(120, 86, 58, 0));
+    background: linear-gradient(to top, rgba(244, 122, 74, 0.9), rgba(244, 122, 74, 0));
     transform-origin: bottom center;
-    animation: ${leaderSteamRise} 2.8s ease-in-out infinite;
+    animation: ${leaderSteamRise} 2.6s ease-in-out infinite;
   }
 
   span:nth-child(2) {
-    height: 1.35rem;
-    animation-delay: 0.55s;
+    height: 1.3rem;
+    animation-delay: 0.5s;
   }
 
   span:nth-child(3) {
-    animation-delay: 1.1s;
+    animation-delay: 1s;
   }
-`;
-
-// The coffee cup itself: body, dark surface, handle and saucer.
-const LeaderCup = styled.div`
-  position: absolute;
-  z-index: 3;
-  top: 51%;
-  left: 50%;
-  width: 15%;
-  aspect-ratio: 1.15 / 1;
-  border-radius: 0.18rem 0.18rem 44% 44%;
-  background: linear-gradient(180deg, #6f4329 0%, #4b2a1b 62%);
-  box-shadow: 0 8px 16px rgba(58, 33, 17, 0.18);
-  transform: translate(-50%, -50%);
-
-  /* coffee surface */
-  &::before {
-    position: absolute;
-    top: 8%;
-    right: 9%;
-    left: 9%;
-    height: 24%;
-    border-radius: 50%;
-    background: #36200f;
-    content: "";
-  }
-
-  /* handle */
-  &::after {
-    position: absolute;
-    top: 22%;
-    right: -32%;
-    width: 34%;
-    height: 48%;
-    border: 0.26rem solid #4b2a1b;
-    border-left: 0;
-    border-radius: 0 999px 999px 0;
-    content: "";
-  }
-`;
-
-const LeaderSaucer = styled.div`
-  position: absolute;
-  z-index: 2;
-  top: 60%;
-  left: 50%;
-  width: 24%;
-  height: 5.5%;
-  border-radius: 50%;
-  background: #4b2a1b;
-  box-shadow: 0 6px 12px rgba(58, 33, 17, 0.16);
-  transform: translate(-50%, -50%);
 `;
 
 // Speech bubbles pop in on a stagger, then breathe gently — a live chat feel.
@@ -896,82 +833,84 @@ const LeaderDiagramSeat = styled.div<{
   top: ${({ $top }) => $top};
   left: ${({ $left }) => $left};
   z-index: ${({ $leader }) => ($leader ? 6 : 5)};
-  width: ${({ $leader }) => ($leader ? "clamp(4.6rem, 9vw, 5.4rem)" : "clamp(3.7rem, 7.2vw, 4.4rem)")};
+  display: grid;
+  place-items: center;
+  width: ${({ $leader }) =>
+    $leader ? "clamp(4.7rem, 9.4vw, 5.5rem)" : "clamp(3.9rem, 7.6vw, 4.6rem)"};
   aspect-ratio: 1;
-  border: 5px solid #ffffff;
+  border: ${({ $leader }) => ($leader ? "3px" : "2.5px")} solid #050505;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.3), transparent 42%),
-    ${({ $accent }) => $accent};
-  box-shadow: 0 12px 26px rgba(58, 33, 17, 0.18);
+  background: ${({ $leader }) => ($leader ? "#f47a4a" : "#ffffff")};
+  box-shadow: ${({ $leader }) =>
+    $leader ? "4px 4px 0 #050505" : "3px 3px 0 #050505"};
   transform: translate(-50%, -50%);
   animation:
     ${leaderBubblePop} 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
     ${leaderBubbleBob} 4.4s ease-in-out infinite;
   animation-delay: ${({ $delay }) => `${$delay}, calc(${$delay} + 0.7s)`};
 
-  /* leader → halo ring; member → speech-bubble tail pointing at the cup */
-  &::before {
-    content: "";
-    position: absolute;
-    ${({ $leader, $accent, $tailTop, $tailLeft, $tailRotate }) =>
-      $leader
-        ? css`
-            top: 50%;
-            left: 50%;
-            width: 134%;
-            height: 134%;
-            border: 2px solid rgba(192, 112, 63, 0.5);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-          `
-        : css`
-            top: ${$tailTop};
-            left: ${$tailLeft};
-            width: 0;
-            height: 0;
-            border-left: 0.58rem solid transparent;
-            border-right: 0.58rem solid transparent;
-            border-bottom: 0.92rem solid ${$accent};
-            transform: translate(-50%, -50%) rotate(${$tailRotate});
-          `}
-  }
+  /* member → outlined speech-bubble tail pointing at the cup (behind bubble) */
+  ${({ $leader, $tailTop, $tailLeft, $tailRotate }) =>
+    !$leader &&
+    css`
+      &::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        top: ${$tailTop};
+        left: ${$tailLeft};
+        width: 0.72rem;
+        height: 0.72rem;
+        background: #ffffff;
+        border: 2.5px solid #050505;
+        transform: translate(-50%, -50%) rotate(calc(${$tailRotate} - 135deg));
+      }
+    `}
+`;
 
-  /* short rays crowning the leader */
-  &::after {
-    ${({ $leader }) =>
-      $leader
-        ? css`
-            content: "";
-            position: absolute;
-            top: -1.55rem;
-            left: 50%;
-            width: 0.34rem;
-            height: 0.95rem;
-            border-radius: 999px;
-            background: #c0703f;
-            box-shadow:
-              -1.05rem 0.3rem 0 #c0703f,
-              1.05rem 0.3rem 0 #c0703f;
-            transform: translateX(-50%);
-            content: "";
-          `
-        : css`
-            display: none;
-          `}
+// Crown marking the leader at the top.
+const LeaderCrown = styled.span`
+  position: absolute;
+  z-index: 7;
+  top: -44%;
+  left: 50%;
+  width: 60%;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 `;
 
-// Small inner highlight dot inside each bubble.
-const LeaderSeatDot = styled.span`
-  position: absolute;
-  top: 56%;
-  left: 50%;
-  width: 22%;
-  height: 22%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  transform: translate(-50%, -50%);
+const leaderTypingBounce = keyframes`
+  0%, 70%, 100% { transform: translateY(0); opacity: 0.4; }
+  35% { transform: translateY(-0.26rem); opacity: 1; }
+`;
+
+// Animated "typing" dots inside each bubble — the conversation in motion.
+const LeaderTypingDots = styled.span<{ $leader: boolean; $accent: string }>`
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+
+  span {
+    width: ${({ $leader }) => ($leader ? "0.36rem" : "0.3rem")};
+    height: ${({ $leader }) => ($leader ? "0.36rem" : "0.3rem")};
+    border-radius: 50%;
+    background: ${({ $leader, $accent }) => ($leader ? "#ffffff" : $accent)};
+    animation: ${leaderTypingBounce} 1.4s ease-in-out infinite;
+  }
+
+  span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
 `;
 
 const LeaderAccordionColumn = styled.div`
@@ -3553,14 +3492,49 @@ export default function NewHomeClient({
                   </LeaderMethodHeader>
 
                   <LeaderMethodContent>
-                    <LeaderDiagramPanel
-                      aria-hidden="true"
-                      $location={selectedLeaderLocation}
-                    >
-                      <LeaderDiagramRing />
-                      <LeaderCenterDisc />
-                      <LeaderSaucer />
-                      <LeaderCup />
+                    <LeaderDiagramPanel aria-hidden="true">
+                      <LeaderDiagramWeb
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        {DISCUSSION_SEATS.map((seat) => (
+                          <line
+                            key={seat.id}
+                            x1="50"
+                            y1="52"
+                            x2={parseFloat(seat.left)}
+                            y2={parseFloat(seat.top)}
+                          />
+                        ))}
+                      </LeaderDiagramWeb>
+                      <LeaderCupBadge>
+                        <svg viewBox="0 0 64 56" fill="none">
+                          <ellipse
+                            cx="30"
+                            cy="50"
+                            rx="22"
+                            ry="3.4"
+                            fill="#ffffff"
+                            stroke="#050505"
+                            strokeWidth="3"
+                          />
+                          <path
+                            d="M16 26 H42 L39.5 46 Q31 49.5 18.5 46 Z"
+                            fill="#ffffff"
+                            stroke="#050505"
+                            strokeWidth="3"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M42 30 C50 30 50 41 41 41"
+                            fill="none"
+                            stroke="#050505"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                          />
+                          <ellipse cx="29.2" cy="26.5" rx="12" ry="2.4" fill="#3a2113" />
+                        </svg>
+                      </LeaderCupBadge>
                       <LeaderSteam>
                         <span />
                         <span />
@@ -3578,7 +3552,24 @@ export default function NewHomeClient({
                           $tailLeft={seat.tailLeft}
                           $tailRotate={seat.tailRotate}
                         >
-                          <LeaderSeatDot />
+                          {seat.leader && (
+                            <LeaderCrown>
+                              <svg viewBox="0 0 28 18" fill="none">
+                                <path
+                                  d="M3 16 L3 6 L9 11 L14 2 L19 11 L25 6 L25 16 Z"
+                                  fill="#f47a4a"
+                                  stroke="#050505"
+                                  strokeWidth="2.2"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </LeaderCrown>
+                          )}
+                          <LeaderTypingDots $leader={seat.leader} $accent={seat.accent}>
+                            <span />
+                            <span />
+                            <span />
+                          </LeaderTypingDots>
                         </LeaderDiagramSeat>
                       ))}
                     </LeaderDiagramPanel>

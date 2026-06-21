@@ -34,35 +34,64 @@ const db = getFirestore();
 
 const COLLECTION = "celebrations";
 
-const SEED = {
-  memberName: "남OO",
-  headline: "SK하이닉스 합격",
-  description:
-    "국내 대표 반도체 기업에서 새 커리어를 시작하게 된 멤버의 성장을 함께 축하합니다.",
-  logoUrl: "/assets/homepage/logos/sk-hynix.webp",
-};
+// achievedAt is an ISO date string (or null). Idempotent on (memberName, headline).
+const SEED = [
+  {
+    memberName: "남OO",
+    headline: "SK하이닉스 합격",
+    description:
+      "국내 대표 반도체 기업에서 새 커리어를 시작하게 된 멤버의 성장을 함께 축하합니다.",
+    logoUrl: "/assets/homepage/logos/sk-hynix.webp",
+    achievedAt: "2026-06-21",
+  },
+  {
+    memberName: "김OO",
+    headline: "SAP 인턴 합격",
+    achievedAt: "2026-06-01",
+  },
+  {
+    memberName: "김OO",
+    headline: "AWS 인턴 합격",
+    achievedAt: "2026-06-01",
+  },
+  {
+    memberName: "최OO",
+    headline: "Penn State 박사 합격",
+    achievedAt: "2026-04-01",
+  },
+];
 
 async function main() {
-  const existing = await db
-    .collection(COLLECTION)
-    .where("headline", "==", SEED.headline)
-    .where("memberName", "==", SEED.memberName)
-    .get();
+  for (const entry of SEED) {
+    const existing = await db
+      .collection(COLLECTION)
+      .where("headline", "==", entry.headline)
+      .where("memberName", "==", entry.memberName)
+      .get();
 
-  if (!existing.empty) {
-    console.log(`Already seeded (${existing.size} match). Skipping.`);
-    return;
+    if (!existing.empty) {
+      console.log(
+        `Skip (exists): ${entry.memberName} — ${entry.headline}`
+      );
+      continue;
+    }
+
+    const now = Timestamp.now();
+    const doc = {
+      memberName: entry.memberName,
+      headline: entry.headline,
+      createdAt: now,
+      updatedAt: now,
+    };
+    if (entry.description) doc.description = entry.description;
+    if (entry.logoUrl) doc.logoUrl = entry.logoUrl;
+    doc.achievedAt = entry.achievedAt
+      ? Timestamp.fromDate(new Date(entry.achievedAt))
+      : now;
+
+    const ref = await db.collection(COLLECTION).add(doc);
+    console.log(`Seeded: ${entry.memberName} — ${entry.headline} (${ref.id})`);
   }
-
-  const now = Timestamp.now();
-  const ref = await db.collection(COLLECTION).add({
-    ...SEED,
-    achievedAt: now,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  console.log(`Seeded SK하이닉스 celebration with id: ${ref.id}`);
 }
 
 main()

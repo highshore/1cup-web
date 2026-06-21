@@ -31,13 +31,13 @@ const en = {
       additionalAria: "Additional member backgrounds",
       items: [
         "SK hynix",
+        "PwC",
         "Coupang",
         "SAP",
         "Nestle",
+        "Korea University Medicine",
         "Korea University",
         "Yonsei MBA",
-        "PwC",
-        "Korea University Medicine",
       ],
     },
     topicVideo: {
