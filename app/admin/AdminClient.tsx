@@ -28,6 +28,7 @@ const Wrapper = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   gap: 30px;
+  background: #faf8f4;
 `;
 
 const Header = styled.div`
@@ -99,15 +100,15 @@ const StatNumber = styled.div`
 
 const StatLabel = styled.div`
   font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const StatSubtext = styled.div`
   font-size: 12px;
-  color: #9ca3af;
+  color: rgba(5, 5, 5, 0.6);
   margin-top: 4px;
 `;
 
@@ -191,40 +192,42 @@ const UserInfo = styled.div`
 `;
 
 const UserName = styled.div`
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 800;
+  color: #050505;
   font-size: 14px;
 `;
 
 const UserEmail = styled.div`
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
   font-size: 13px;
 `;
 
 const UserStatus = styled.div<{ active: boolean }>`
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 800;
   background-color: ${(props) => (props.active ? "#dcfce7" : "#fee2e2")};
-  color: ${(props) => (props.active ? "#166534" : "#dc2626")};
+  color: #050505;
 `;
 
 const GdgStatus = styled.div<{ $isMember: boolean }>`
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 500;
-  background-color: ${(props) => (props.$isMember ? "#e0f2fe" : "#f3f4f6")};
-  color: ${(props) => (props.$isMember ? "#1d4ed8" : "#4b5563")};
+  font-weight: 800;
+  background-color: ${(props) => (props.$isMember ? "#f47a4a" : "#ffffff")};
+  color: #050505;
 `;
 
 const UserDate = styled.div`
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
   font-size: 12px;
 `;
 
@@ -257,25 +260,25 @@ const FeedbackCategory = styled.div<{ category: string }>`
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
-  border-radius: 6px;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   background-color: ${(props) =>
-    props.category === "cancellation" ? "#fef3c7" : "#dbeafe"};
-  color: ${(props) =>
-    props.category === "cancellation" ? "#92400e" : "#1e40af"};
+    props.category === "cancellation" ? "#fef3c7" : "#f47a4a"};
+  color: #050505;
 `;
 
 const FeedbackDate = styled.div`
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
   font-size: 12px;
 `;
 
 const FeedbackUser = styled.div`
-  color: #374151;
-  font-weight: 500;
+  color: #050505;
+  font-weight: 800;
   font-size: 14px;
   margin-bottom: 8px;
 `;
@@ -292,24 +295,26 @@ const ReasonsList = styled.ul`
 
 const ReasonItem = styled.li`
   padding: 4px 0;
-  color: #4b5563;
+  color: rgba(5, 5, 5, 0.72);
   font-size: 14px;
 
   &:before {
     content: "•";
-    color: #9ca3af;
+    color: #f47a4a;
+    font-weight: 900;
     margin-right: 8px;
   }
 `;
 
 const FeedbackOther = styled.div`
-  background-color: #f9fafb;
-  border-left: 3px solid #e5e7eb;
+  background-color: #faf8f4;
+  border: 1.5px solid #050505;
+  border-left: 4px solid #f47a4a;
   padding: 12px;
   margin-top: 8px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-style: italic;
-  color: #4b5563;
+  color: rgba(5, 5, 5, 0.72);
 `;
 
 const ArticlesList = styled.div`
@@ -325,23 +330,22 @@ const ArticleCard = styled.button`
   gap: 10px;
   padding: 18px 20px;
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #ffffff, #f3f4f6);
-  color: #111827;
-  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.08);
-  transition: all 0.2s ease;
+  border: 2px solid #050505;
+  background: #ffffff;
+  color: #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
   cursor: pointer;
   text-align: left;
 
   &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 12px 28px -12px rgba(17, 24, 39, 0.5);
-    transform: translateY(-1px);
+    box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+    transform: translate(-2px, -2px);
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(17, 24, 39, 0.4);
-    outline-offset: 3px;
+    outline: none;
+    box-shadow: 4px 4px 0 #f47a4a;
   }
 `;
 
@@ -354,13 +358,13 @@ const ArticleHeader = styled.div`
 
 const ArticleTitle = styled.div`
   font-size: 16px;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 800;
+  color: #050505;
 `;
 
 const ArticleSubtitle = styled.div`
   font-size: 14px;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const ArticleMeta = styled.div`
@@ -368,7 +372,7 @@ const ArticleMeta = styled.div`
   flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const ArticleActions = styled.div`
@@ -457,13 +461,15 @@ const LoadingSpinner = styled.div`
   justify-content: center;
   align-items: center;
   padding: 40px;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 40px;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
 `;
 
 // Interfaces

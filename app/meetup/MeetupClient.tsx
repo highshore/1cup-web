@@ -272,34 +272,47 @@ const SectionTitle = styled.h2`
   }
 `;
 
+const FilterRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin: 0.25rem 0 0.75rem;
+
+  @media (max-width: 768px) {
+    justify-content: space-between;
+  }
+`;
+
+const FilterLabel = styled.span`
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #9ca3af;
+`;
+
 const FilterBar = styled.div`
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  border: 2px solid #050505;
+  gap: 2px;
+  border: 1.5px solid #d1d5db;
   border-radius: 999px;
   background: #ffffff;
-  padding: 0.35rem;
-  margin: 0.5rem 0 0.25rem;
-  box-shadow: 3px 3px 0 #f47a4a;
+  padding: 3px;
 `;
 
 const FilterButton = styled.button<{ $active: boolean }>`
-  min-height: 34px;
   border: 0;
   border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#050505" : "transparent")};
-  color: ${({ $active }) => ($active ? "#ffffff" : "#475569")};
-  padding: 0.4rem 0.95rem;
+  background: ${({ $active }) => ($active ? "#111111" : "transparent")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#4b5563")};
+  padding: 0.42rem 0.95rem;
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: 0.84rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+  transition: background 150ms ease, color 150ms ease;
 
   &:hover {
-    color: ${({ $active }) => ($active ? "#ffffff" : "#050505")};
-    transform: translateY(-1px);
+    color: ${({ $active }) => ($active ? "#ffffff" : "#111111")};
   }
 `;
 
@@ -893,18 +906,21 @@ const MeetupClient: React.FC = () => {
         {!loading && !error && (
           <>
             {/* Location filter */}
-            <FilterBar role="group" aria-label={t.meetup.sections.upcoming}>
-              {(["all", "yeouido", "anam"] as const).map((loc) => (
-                <FilterButton
-                  key={loc}
-                  type="button"
-                  $active={locationFilter === loc}
-                  onClick={() => setLocationFilter(loc)}
-                >
-                  {t.meetup.filter[loc]}
-                </FilterButton>
-              ))}
-            </FilterBar>
+            <FilterRow>
+              <FilterLabel>{t.meetup.filter.label}</FilterLabel>
+              <FilterBar role="group" aria-label={t.meetup.filter.label}>
+                {(["all", "yeouido", "anam"] as const).map((loc) => (
+                  <FilterButton
+                    key={loc}
+                    type="button"
+                    $active={locationFilter === loc}
+                    onClick={() => setLocationFilter(loc)}
+                  >
+                    {t.meetup.filter[loc]}
+                  </FilterButton>
+                ))}
+              </FilterBar>
+            </FilterRow>
 
             {(() => {
               const visibleUpcoming = upcomingEvents.filter(matchesFilter);

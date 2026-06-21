@@ -26,13 +26,19 @@ const Button = styled.button`
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  background: #f47a4a;
+  border: 2px solid #050505;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
   cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+  }
 `;
 
 export default function FloatingControls({

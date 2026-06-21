@@ -83,6 +83,7 @@ const ArticleContainer = styled.div`
   padding: clamp(1.5rem, 2.8vw, 2.25rem) ${NAVBAR_PADDING_DESKTOP}
     clamp(2rem, 3vw, 2.75rem);
   min-height: 100vh;
+  background: #faf8f4;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Helvetica Neue", Arial, sans-serif;
   position: relative;
@@ -124,8 +125,8 @@ const Title = styled.h1`
 const Subtitle = styled.h2<{ isVisible: boolean }>`
   font-size: 1.6rem;
   margin-bottom: 1.5rem;
-  color: ${colors.text.medium};
-  font-weight: 500;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 600;
   line-height: 1.3;
   max-height: ${(props) => (props.isVisible ? "200px" : "0")};
   overflow: hidden;
@@ -271,13 +272,13 @@ const SectionTitle = styled.h3`
 const ContentSection = styled.div`
   margin-bottom: 1.5rem;
   width: 100%;
-  background: ${colors.primaryBg};
+  background: transparent;
 `;
 
 const Paragraph = styled.p`
   font-size: 1.1rem;
   line-height: 1.7;
-  color: ${colors.text.dark};
+  color: #050505;
   font-weight: 400;
   cursor: pointer;
   margin-bottom: 0;
@@ -288,7 +289,7 @@ const Paragraph = styled.p`
   }
 
   &:hover {
-    color: ${colors.primary};
+    color: #f47a4a;
   }
 `;
 
@@ -296,7 +297,7 @@ const KoreanParagraph = styled.p<{ isVisible: boolean }>`
   font-size: 1.05rem;
   line-height: 1.7;
   margin-bottom: ${(props) => (props.isVisible ? "0.5rem" : "0")};
-  color: ${colors.text.dark};
+  color: #050505;
   font-weight: 400;
   background: #fff6f0;
   padding: 1rem;
@@ -322,8 +323,9 @@ const LoadingContainer = styled.div`
   align-items: center;
   min-height: 100vh;
   font-size: 1.2rem;
-  color: ${colors.text.medium};
-  background: ${colors.primaryBg};
+  font-weight: 700;
+  color: rgba(5, 5, 5, 0.6);
+  background: #faf8f4;
 `;
 
 const ErrorContainer = styled.div`
@@ -332,8 +334,9 @@ const ErrorContainer = styled.div`
   align-items: center;
   min-height: 100vh;
   font-size: 1.2rem;
-  color: ${colors.primary};
-  background: ${colors.primaryBg};
+  font-weight: 800;
+  color: #050505;
+  background: #faf8f4;
 `;
 
 const KeywordsSection = styled.div`
@@ -421,7 +424,7 @@ const Word = styled.h4`
 
 const Meaning = styled.p`
   font-size: 0.8rem;
-  color: ${colors.text.dark};
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
   margin-bottom: 0.8rem;
 `;
@@ -446,10 +449,10 @@ const Synonym = styled.span`
 const Example = styled.div`
   font-size: 0.8rem;
   font-style: italic;
-  color: ${colors.text.medium};
+  color: rgba(5, 5, 5, 0.6);
   line-height: 1.5;
   padding-top: 0.6rem;
-  border-top: 1px dashed ${colors.primaryPale};
+  border-top: 1.5px dashed #050505;
 `;
 
 const SliderButton = styled.button`
@@ -538,8 +541,8 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContent = styled.div`
-  background: ${colors.primaryBg};
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 16px;
   box-shadow: 6px 6px 0 #050505;
   padding: 2rem;
   max-width: 90%;
@@ -605,9 +608,9 @@ const ModalSection = styled.div`
 
 const ModalSectionTitle = styled.div`
   font-size: 0.85rem;
-  color: ${colors.text.light};
+  color: #f47a4a;
   margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -620,7 +623,7 @@ const DualText = styled.div`
 
 const KoreanText = styled.div`
   font-size: 0.95rem;
-  color: ${colors.text.medium};
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
   position: relative;
   padding-left: 0.8rem;
@@ -632,8 +635,8 @@ const KoreanText = styled.div`
     left: 0;
     top: 0;
     bottom: 0;
-    width: 2px;
-    background: ${colors.accent};
+    width: 3px;
+    background: #f47a4a;
     border-radius: 2px;
   }
 
@@ -658,11 +661,12 @@ const ModalSynonyms = styled.div`
 
 const ModalSynonym = styled.span`
   font-size: 0.9rem;
-  background: ${colors.primaryPale};
-  color: ${colors.primaryDark};
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
   padding: 0.3rem 0.8rem;
-  border-radius: 30px;
-  font-weight: 500;
+  border-radius: 999px;
+  font-weight: 700;
 
   @media (max-width: 768px) {
     font-size: 0.8rem;
@@ -673,8 +677,8 @@ const ModalSynonym = styled.span`
 // Update the ModalWord component for better styling
 const ModalWord = styled.h3`
   font-size: 2rem;
-  font-weight: 700;
-  color: ${colors.primary};
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.3rem;
 
   @media (max-width: 768px) {
@@ -685,7 +689,7 @@ const ModalWord = styled.h3`
 // Update the ModalMeaning component
 const ModalMeaning = styled.p`
   font-size: 1.1rem;
-  color: ${colors.text.dark};
+  color: #050505;
   line-height: 1.6;
 
   @media (max-width: 768px) {
@@ -697,7 +701,7 @@ const ModalMeaning = styled.p`
 const ModalExample = styled.div`
   font-size: 1rem;
   font-style: italic;
-  color: ${colors.text.medium};
+  color: rgba(5, 5, 5, 0.6);
   line-height: 1.6;
 
   @media (max-width: 768px) {
@@ -778,10 +782,10 @@ const SaveButton = styled.button`
 const SavedIndicator = styled.div`
   display: inline-flex;
   align-items: center;
-  color: ${colors.accent};
+  color: #16a34a;
   font-size: 0.9rem;
   margin-left: 1rem;
-  font-weight: 500;
+  font-weight: 700;
 
   &::before {
     content: "✓";
@@ -1001,7 +1005,7 @@ const extractFullWordFromBionicText = (
 
 const ArticlePageWrapper = styled.div`
   min-height: 100vh;
-  background-color: ${colors.primaryBg};
+  background-color: #faf8f4;
   width: 100%;
   padding-bottom: clamp(2rem, 4vw, 3rem);
   margin-top: -${NAVBAR_OFFSET_DESKTOP}px;
@@ -1024,44 +1028,45 @@ const ParagraphContainer = styled.div`
 
 // Add a styled component for the translation toggle button
 const TranslationToggleButton = styled.button`
-  background: ${colors.primaryBg};
-  color: ${colors.text.medium};
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 14px;
-  padding: 0.25rem 0.6rem;
+  background: #ffffff;
+  color: #050505;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
   font-size: 0.7rem;
+  font-weight: 700;
   cursor: pointer;
   margin-top: 0.6rem;
   margin-bottom: 0.2rem;
   display: flex;
   align-items: center;
-  transition: all 0.2s ease;
-  box-shadow: none;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background: ${colors.primaryPale};
-    color: ${colors.primary};
-    border-color: ${colors.accent};
+    background: #f47a4a;
+    color: #050505;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &::before {
     content: "KO";
     margin-right: 3px;
     font-size: 0.66rem;
-    font-weight: 700;
+    font-weight: 800;
   }
 
   &.active {
-    background: ${colors.primaryPale};
-    color: ${colors.primary};
-    border-color: ${colors.accent};
+    background: #f47a4a;
+    color: #050505;
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    border-color: ${colors.primaryPale};
-    color: ${colors.text.light};
+    box-shadow: none;
+    transform: none;
     pointer-events: none;
   }
 `;
@@ -1083,16 +1088,16 @@ const DefinitionModalContent = styled(ModalContent)`
 
 // Update the word definition displays for the modal
 const WordDefinitionTitle = styled.div`
-  font-weight: bold;
-  color: ${colors.primary};
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 1rem;
   font-size: 1.5rem;
   padding-bottom: 0.7rem;
-  border-bottom: 1px solid ${colors.primaryPale};
+  border-bottom: 2px solid #050505;
 `;
 
 const WordDefinitionContent = styled.div`
-  color: ${colors.text.medium};
+  color: rgba(5, 5, 5, 0.72);
   font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   line-height: 1.6;
   white-space: pre-line;
@@ -1100,7 +1105,7 @@ const WordDefinitionContent = styled.div`
 `;
 
 const LoadingDefinitionContent = styled.div`
-  color: ${colors.text.light};
+  color: rgba(5, 5, 5, 0.6);
   font-style: italic;
   padding: 1rem 0;
   display: flex;
@@ -1184,9 +1189,10 @@ const getWordDefinition = async (
 const ArticleImage = styled.img`
   width: 100%;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 16px;
   margin: 1.5rem 0 0.5rem 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #050505;
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
     margin: 1rem 0 0.5rem 0;
@@ -1196,10 +1202,10 @@ const ArticleImage = styled.img`
 const YouTubeIframe = styled.iframe`
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: 16px;
   margin: 1.5rem 0 1.5rem 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: none;
+  border: 2px solid #050505;
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
     margin: 1rem 0 1rem 0;
@@ -1208,7 +1214,7 @@ const YouTubeIframe = styled.iframe`
 
 const ImageCaption = styled.p`
   font-size: 0.8rem;
-  color: ${colors.text.light};
+  color: rgba(5, 5, 5, 0.6);
   text-align: left;
   margin: 0 0 1.5rem 0;
 
@@ -1234,14 +1240,15 @@ const DiscussionTopicsList = styled.ul`
   padding: 0;
   margin: 0;
   background: #ffffff;
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.2rem;
-  border: 1px solid ${colors.primaryPale};
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const DiscussionTopicItem = styled.li`
   font-size: 1.1rem;
-  color: ${colors.text.dark};
+  color: #050505;
   line-height: 1.6;
   margin-bottom: 0.6rem;
   padding-left: 1rem;
@@ -1255,7 +1262,7 @@ const DiscussionTopicItem = styled.li`
 
   &::before {
     content: "•";
-    color: ${colors.accent};
+    color: #f47a4a;
     font-weight: bold;
     position: absolute;
     left: 0;
@@ -1263,7 +1270,7 @@ const DiscussionTopicItem = styled.li`
   }
 
   &:hover {
-    color: ${colors.primary};
+    color: #f47a4a;
   }
 
   @media (max-width: 768px) {
@@ -1289,25 +1296,27 @@ const AdminButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  background: ${colors.primary};
-  color: white;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 12px;
+  background: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background: ${colors.primaryLight};
-    transform: translateY(-1px);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background: ${colors.text.light};
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 
   @media (max-width: 768px) {
@@ -1324,17 +1333,17 @@ const AdminButton = styled.button`
 const EditableTopicInput = styled.input`
   width: 100%;
   padding: 0.6rem;
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 10px;
   font-size: 0.95rem;
-  color: ${colors.text.dark};
+  color: #050505;
   background: white;
   margin-bottom: 0.5rem;
-  transition: border-color 0.2s ease;
+  transition: box-shadow 0.16s ease;
 
   &:focus {
     outline: none;
-    border-color: ${colors.accent};
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 
   @media (max-width: 768px) {
@@ -1349,9 +1358,9 @@ const EditableTopicContainer = styled.div`
   gap: 0.5rem;
   margin-bottom: 0.6rem;
   padding: 0.6rem;
-  background: ${colors.primaryBg};
-  border-radius: 8px;
-  border: 1px solid ${colors.primaryPale};
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1.5px solid #050505;
 
   @media (max-width: 768px) {
     gap: 0.4rem;
@@ -1360,9 +1369,9 @@ const EditableTopicContainer = styled.div`
 `;
 
 const RemoveTopicButton = styled.button`
-  background: ${colors.text.light};
-  color: white;
-  border: none;
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -1371,11 +1380,12 @@ const RemoveTopicButton = styled.button`
   justify-content: center;
   cursor: pointer;
   font-size: 0.8rem;
-  transition: all 0.2s ease;
+  transition: background 0.16s ease, color 0.16s ease;
   flex-shrink: 0;
 
   &:hover {
     background: #e74c3c;
+    color: #ffffff;
   }
 
   @media (max-width: 768px) {
@@ -1400,16 +1410,16 @@ const NewTopicContainer = styled.div`
 const NewTopicInput = styled.input`
   flex: 1;
   padding: 0.6rem;
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 10px;
   font-size: 0.9rem;
-  color: ${colors.text.dark};
+  color: #050505;
   background: white;
-  transition: border-color 0.2s ease;
+  transition: box-shadow 0.16s ease;
 
   &:focus {
     outline: none;
-    border-color: ${colors.accent};
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 
   @media (max-width: 768px) {
@@ -1420,26 +1430,28 @@ const NewTopicInput = styled.input`
 `;
 
 const AddTopicButton = styled.button`
-  background: ${colors.accent};
-  color: white;
-  border: none;
+  background: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
   padding: 0.6rem 1rem;
-  border-radius: 8px;
+  border-radius: 999px;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  font-weight: 800;
   white-space: nowrap;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background: ${colors.primary};
-    transform: translateY(-1px);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background: ${colors.text.light};
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 
   @media (max-width: 768px) {
@@ -1476,40 +1488,40 @@ const AdminActionButton = styled.button<{ variant?: "primary" | "ghost" }>`
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 12px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
   font-size: 0.8rem;
-  font-weight: 500;
-  border: ${(props) =>
-    props.variant === "ghost" ? `1px solid ${colors.primary}` : "none"};
+  font-weight: 800;
+  border: 2px solid #050505;
   background: ${(props) =>
-    props.variant === "ghost" ? "transparent" : colors.primary};
-  color: ${(props) =>
-    props.variant === "ghost" ? colors.primaryDark : "white"};
+    props.variant === "ghost" ? "#ffffff" : "#f47a4a"};
+  color: #050505;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover:not(:disabled) {
     background: ${(props) =>
-      props.variant === "ghost" ? colors.primaryPale : colors.primaryLight};
-    color: ${(props) =>
-      props.variant === "ghost" ? colors.primary : "white"};
-    transform: translateY(-1px);
+      props.variant === "ghost" ? "#f47a4a" : "#f47a4a"};
+    color: #050505;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 `;
 
 const AdminEditCard = styled.div`
-  border: 1px solid ${colors.primaryPale};
+  border: 2px solid #050505;
   border-radius: 16px;
   padding: 1.2rem;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   margin-bottom: 1.5rem;
 `;
 
@@ -1517,46 +1529,45 @@ const AdminEditTitle = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
+  font-weight: 800;
+  color: #050505;
   margin-bottom: 0.9rem;
 `;
 
 const AdminFieldLabel = styled.label`
   display: block;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: ${colors.text.medium};
+  font-weight: 700;
+  color: rgba(5, 5, 5, 0.72);
   margin-bottom: 0.4rem;
 `;
 
 const AdminInput = styled.input`
   width: 100%;
   border-radius: 10px;
-  border: 1px solid ${colors.primaryPale};
+  border: 2px solid #050505;
   padding: 0.55rem 0.75rem;
   font-size: 0.95rem;
-  color: ${colors.text.dark};
-  background: ${colors.primaryBg};
-  transition: border 0.2s ease;
+  color: #050505;
+  background: #ffffff;
+  transition: box-shadow 0.16s ease;
   margin-bottom: 1rem;
 
   &:focus {
     outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 2px rgba(52, 120, 246, 0.15);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
 const AdminTextArea = styled.textarea`
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid ${colors.primaryPale};
+  border-radius: 10px;
+  border: 2px solid #050505;
   padding: 0.75rem 0.85rem;
   font-size: 0.95rem;
-  color: ${colors.text.dark};
-  background: ${colors.primaryBg};
-  transition: border 0.2s ease;
+  color: #050505;
+  background: #ffffff;
+  transition: box-shadow 0.16s ease;
   min-height: 120px;
   resize: vertical;
   margin-bottom: 0.8rem;
@@ -1564,8 +1575,7 @@ const AdminTextArea = styled.textarea`
 
   &:focus {
     outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 2px rgba(52, 120, 246, 0.1);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
@@ -1576,11 +1586,11 @@ const ParagraphEditorWrapper = styled.div`
 `;
 
 const ParagraphEditorCard = styled.div`
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 16px;
+  border: 2px solid #050505;
+  border-radius: 14px;
   padding: 1rem;
   background: white;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const ParagraphEditorHeader = styled.div`
@@ -1593,9 +1603,10 @@ const ParagraphEditorHeader = styled.div`
 
 const ParagraphBadge = styled.span`
   font-size: 0.8rem;
-  font-weight: 600;
-  color: ${colors.primaryDark};
-  background: ${colors.primaryPale};
+  font-weight: 800;
+  color: #050505;
+  background: #f47a4a;
+  border: 1.5px solid #050505;
   border-radius: 999px;
   padding: 0.2rem 0.8rem;
 `;
@@ -1607,40 +1618,46 @@ const IconCircleButton = styled.button`
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1px solid ${colors.primaryPale};
+  border: 2px solid #050505;
   background: white;
-  color: ${colors.text.medium};
+  color: #050505;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover {
-    background: ${colors.primaryPale};
-    color: ${colors.primary};
+    background: #f47a4a;
+    color: #050505;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 `;
 
 const AddParagraphButton = styled.button`
   width: 100%;
-  border-radius: 14px;
-  border: 1px dashed ${colors.primary};
+  border-radius: 12px;
+  border: 2px dashed #050505;
   padding: 0.7rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  background: ${colors.primaryBg};
-  color: ${colors.primary};
-  font-weight: 600;
+  background: #ffffff;
+  color: #050505;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.16s ease, color 0.16s ease;
 
   &:hover {
-    background: ${colors.primaryPale};
+    background: #f47a4a;
+    color: #050505;
   }
 `;
 
@@ -1648,8 +1665,9 @@ const MediaPreview = styled.div`
   width: 100%;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid ${colors.primaryPale};
-  background: ${colors.primaryBg};
+  border: 2px solid #050505;
+  background: #ffffff;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   margin-bottom: 1rem;
 `;
 
@@ -1661,16 +1679,16 @@ const MediaPreviewImage = styled.img`
 
 const EditorHint = styled.p`
   font-size: 0.85rem;
-  color: ${colors.text.light};
+  color: rgba(5, 5, 5, 0.6);
   margin-bottom: 0.8rem;
 `;
 
 const EmptyMediaState = styled.div`
-  border: 1px dashed ${colors.primaryPale};
+  border: 2px dashed #050505;
   border-radius: 12px;
   padding: 1rem;
   text-align: center;
-  color: ${colors.text.light};
+  color: rgba(5, 5, 5, 0.6);
   font-size: 0.9rem;
 `;
 
@@ -1688,10 +1706,11 @@ const HiddenFileInput = styled.input`
 
 const UploadStatus = styled.div<{ variant?: "error" | "success" }>`
   font-size: 0.85rem;
-  color: ${(props) =>
-    props.variant === "error" ? "#ff5c5c" : colors.primaryDark};
+  font-weight: 700;
+  color: #050505;
+  border: 1.5px solid #050505;
   background: ${(props) =>
-    props.variant === "error" ? "#ffecec" : colors.primaryPale};
+    props.variant === "error" ? "#ffd9d9" : "#fff0e8"};
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.8rem;
@@ -1703,15 +1722,12 @@ const PaywallNotice = styled.div`
   gap: 0.8rem;
   padding: 1rem 1.2rem;
   border-radius: 16px;
-  border: 1px solid ${colors.primaryPale};
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.9),
-    rgba(30, 41, 59, 0.95)
-  );
-  color: white;
+  border: 2px solid #050505;
+  border-left: 6px solid #f47a4a;
+  background: #ffffff;
+  color: #050505;
   margin-bottom: 1.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const PaywallText = styled.div`
@@ -1721,7 +1737,7 @@ const PaywallText = styled.div`
 `;
 
 const PaywallTitle = styled.div`
-  font-weight: 600;
+  font-weight: 800;
   font-size: 1rem;
 `;
 
@@ -1729,7 +1745,7 @@ const PaywallDescription = styled.p`
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(5, 5, 5, 0.72);
 `;
 
 const GUEST_PARAGRAPH_LIMIT = 2;
@@ -3167,13 +3183,13 @@ const Article = () => {
               accountStatus === "admin" && (
                 <div
                   style={{
-                    color: colors.text.light,
+                    color: "rgba(5, 5, 5, 0.6)",
                     fontStyle: "italic",
                     textAlign: "center",
                     padding: "2rem",
-                    background: colors.primaryBg,
-                    borderRadius: "8px",
-                    border: `1px dashed ${colors.primaryPale}`,
+                    background: "#ffffff",
+                    borderRadius: "12px",
+                    border: "2px dashed #050505",
                   }}
                 >
                   토론 주제가 없습니다. 편집 버튼을 눌러 추가해보세요.
@@ -3459,11 +3475,12 @@ const Article = () => {
                             key={idx}
                             style={{
                               fontSize: "0.8rem",
-                              color: colors.accent,
-                              backgroundColor: colors.primaryPale,
+                              color: "#050505",
+                              backgroundColor: "#f47a4a",
+                              border: "1.5px solid #050505",
                               padding: "0.2rem 0.6rem",
-                              borderRadius: "4px",
-                              fontStyle: "italic",
+                              borderRadius: "999px",
+                              fontWeight: 800,
                             }}
                           >
                             {category}
@@ -3544,7 +3561,7 @@ const Article = () => {
                                   idx <
                                   selectedWordData.examples[0].english.length -
                                     1
-                                    ? `1px solid ${colors.primaryPale}`
+                                    ? `1.5px solid #050505`
                                     : "none",
                               }}
                             >
@@ -3573,8 +3590,8 @@ const Article = () => {
                           <div key={idx} style={{ marginBottom: "1.2rem" }}>
                             <div
                               style={{
-                                fontWeight: "bold",
-                                color: colors.primaryDark,
+                                fontWeight: 900,
+                                color: "#050505",
                                 marginBottom: "0.5rem",
                                 fontSize: "1rem",
                                 textTransform: "capitalize",
@@ -3601,7 +3618,7 @@ const Article = () => {
                                         style={{
                                           marginBottom: "0.6rem",
                                           fontSize: "0.95rem",
-                                          color: colors.text.dark,
+                                          color: "#050505",
                                           lineHeight: "1.5",
                                         }}
                                       >
@@ -3610,7 +3627,7 @@ const Article = () => {
                                           <div
                                             style={{
                                               fontStyle: "italic",
-                                              color: colors.text.light,
+                                              color: "rgba(5, 5, 5, 0.6)",
                                               marginTop: "0.3rem",
                                               fontSize: "0.9rem",
                                               lineHeight: "1.4",
@@ -3624,7 +3641,7 @@ const Article = () => {
                                             <div
                                               style={{
                                                 fontSize: "0.85rem",
-                                                color: colors.text.medium,
+                                                color: "rgba(5, 5, 5, 0.72)",
                                                 marginTop: "0.25rem",
                                                 lineHeight: "1.4",
                                               }}
@@ -3638,7 +3655,7 @@ const Article = () => {
                                             <div
                                               style={{
                                                 fontSize: "0.85rem",
-                                                color: colors.text.medium,
+                                                color: "rgba(5, 5, 5, 0.72)",
                                                 marginTop: "0.25rem",
                                                 lineHeight: "1.4",
                                               }}
@@ -3658,7 +3675,7 @@ const Article = () => {
                                 <div
                                   style={{
                                     fontSize: "0.85rem",
-                                    color: colors.text.medium,
+                                    color: "rgba(5, 5, 5, 0.72)",
                                     marginTop: "0.3rem",
                                     lineHeight: "1.4",
                                   }}
@@ -3674,7 +3691,7 @@ const Article = () => {
                                 <div
                                   style={{
                                     fontSize: "0.85rem",
-                                    color: colors.text.medium,
+                                    color: "rgba(5, 5, 5, 0.72)",
                                     marginTop: "0.3rem",
                                     lineHeight: "1.4",
                                   }}
@@ -3694,7 +3711,7 @@ const Article = () => {
                 <div
                   style={{
                     fontSize: "1.2rem",
-                    color: colors.text.medium,
+                    color: "rgba(5, 5, 5, 0.72)",
                     marginBottom: "0.5rem",
                   }}
                 >
@@ -3705,8 +3722,8 @@ const Article = () => {
                     width: "40px",
                     height: "40px",
                     margin: "1rem auto",
-                    border: `3px solid ${colors.primaryPale}`,
-                    borderTop: `3px solid ${colors.accent}`,
+                    border: `3px solid rgba(5, 5, 5, 0.15)`,
+                    borderTop: `3px solid #f47a4a`,
                     borderRadius: "50%",
                     animation: "spin 1s linear infinite",
                   }}
@@ -3770,8 +3787,8 @@ const Article = () => {
                       <div key={idx} style={{ marginBottom: "1.2rem" }}>
                         <div
                           style={{
-                            fontWeight: "bold",
-                            color: colors.primaryDark,
+                            fontWeight: 900,
+                            color: "#050505",
                             marginBottom: "0.5rem",
                             fontSize: "1rem",
                             textTransform: "capitalize",
@@ -3798,7 +3815,7 @@ const Article = () => {
                                     style={{
                                       marginBottom: "0.6rem",
                                       fontSize: "0.95rem",
-                                      color: colors.text.dark,
+                                      color: "#050505",
                                       lineHeight: "1.5",
                                     }}
                                   >
@@ -3807,7 +3824,7 @@ const Article = () => {
                                       <div
                                         style={{
                                           fontStyle: "italic",
-                                          color: colors.text.light,
+                                          color: "rgba(5, 5, 5, 0.6)",
                                           marginTop: "0.3rem",
                                           fontSize: "0.9rem",
                                           lineHeight: "1.4",
@@ -3821,7 +3838,7 @@ const Article = () => {
                                         <div
                                           style={{
                                             fontSize: "0.85rem",
-                                            color: colors.text.medium,
+                                            color: "rgba(5, 5, 5, 0.72)",
                                             marginTop: "0.25rem",
                                             lineHeight: "1.4",
                                           }}
@@ -3835,7 +3852,7 @@ const Article = () => {
                                         <div
                                           style={{
                                             fontSize: "0.85rem",
-                                            color: colors.text.medium,
+                                            color: "rgba(5, 5, 5, 0.72)",
                                             marginTop: "0.25rem",
                                             lineHeight: "1.4",
                                           }}
@@ -3854,7 +3871,7 @@ const Article = () => {
                           <div
                             style={{
                               fontSize: "0.85rem",
-                              color: colors.text.medium,
+                              color: "rgba(5, 5, 5, 0.72)",
                               marginTop: "0.3rem",
                               lineHeight: "1.4",
                             }}
@@ -3869,7 +3886,7 @@ const Article = () => {
                           <div
                             style={{
                               fontSize: "0.85rem",
-                              color: colors.text.medium,
+                              color: "rgba(5, 5, 5, 0.72)",
                               marginTop: "0.3rem",
                               lineHeight: "1.4",
                             }}

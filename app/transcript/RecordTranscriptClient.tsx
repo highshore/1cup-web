@@ -60,7 +60,7 @@ const SpeakersContainer = styled.div`
 
 const SpeakerInfo = styled.div`
   font-size: 0.875rem;
-  color: #475569;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const TranscriptSnippet = styled.div`
@@ -76,19 +76,25 @@ const SpeakerAvatar = styled.button<{ $bgColor?: string; $textColor?: string }>`
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: none;
+  border: 2px solid #050505;
   background-color: ${props => props.$bgColor || '#e5e7eb'};
   color: ${props => props.$textColor || '#4b5563'};
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  }
 
   &:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #f47a4a;
     outline-offset: 2px;
   }
 `;
@@ -108,19 +114,19 @@ const TranscriptHeadRow = styled.div`
 `;
 
 const SpeakerName = styled.span<{ $color?: string }>`
-  font-weight: 600;
+  font-weight: 800;
   font-size: 1rem;
-  color: ${props => props.$color || '#1e293b'};
+  color: ${props => props.$color || '#050505'};
 `;
 
 const Timestamp = styled.span`
   font-size: 0.875rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const TranscriptBody = styled.div`
   line-height: 1.7;
-  color: #334155;
+  color: #050505;
   cursor: default;
   background: transparent;
   border: none;
@@ -136,28 +142,29 @@ const TranscriptBody = styled.div`
 const WordSpan = styled.span<{ $lowConfidence?: boolean; $isPartial?: boolean }>`
   color: ${props => {
     if (props.$lowConfidence) return '#b91c1c';
-    if (props.$isPartial) return '#64748b';
+    if (props.$isPartial) return 'rgba(5, 5, 5, 0.55)';
     return 'inherit';
   }};
-  font-weight: ${props => props.$lowConfidence ? '600' : 'normal'};
+  font-weight: ${props => props.$lowConfidence ? '700' : 'normal'};
   font-style: ${props => props.$isPartial ? 'italic' : 'normal'};
   text-decoration: ${props => props.$lowConfidence ? 'underline' : 'none'};
   text-decoration-color: #fecaca;
   text-underline-offset: 2px;
   transition: background-color 0.2s ease;
-  border-radius: 3px;
+  border-radius: 4px;
   margin-right: 0; /* spacing handled programmatically to avoid gaps before punctuation */
   word-break: break-word;
   opacity: ${props => props.$isPartial ? '0.7' : '1'};
-  
+
   &:hover {
-    background-color: #eff6ff;
+    background-color: rgba(244, 122, 74, 0.18);
   }
 `;
 
 const Container = styled.div`
   min-height: 100vh;
-  color: #334155;
+  color: #050505;
+  background: #faf8f4;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   padding-bottom: 80px; /* Add space for audio player */
 `;
@@ -166,8 +173,8 @@ const Container = styled.div`
 
 const Title = styled.h1`
   font-size: 1.75rem;
-  font-weight: 700;
-  color: ${colors.text.dark};
+  font-weight: 900;
+  color: #050505;
   margin: 0;
 `;
 
@@ -182,7 +189,7 @@ const Controls = styled.div`
 const StatusAndLegendSection = styled.div`
   padding: 1rem 2rem;
   background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #050505;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -194,18 +201,20 @@ const StatusIndicator = styled.div<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 20px;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 500;
-  background: transparent;
+  font-weight: 800;
+  background: #ffffff;
   color: ${props => props.$isActive ? '#166534' : '#991b1b'};
-  border: 1px solid ${props => props.$isActive ? '#bbf7d0' : '#fecaca'};
+  border: 1.5px solid #050505;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const StatusDot = styled.div<{ $isActive: boolean }>`
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid #050505;
   border-radius: 50%;
   background-color: ${props => props.$isActive ? '#22c55e' : '#ef4444'};
 `;
@@ -257,9 +266,11 @@ const ErrorMessage = styled.div`
   padding: 1rem 1.5rem;
   background: #fef2f2;
   color: #991b1b;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
+  border-radius: 12px;
+  border: 2px solid #d64545;
+  box-shadow: 4px 4px 0 rgba(214, 69, 69, 0.4);
   font-size: 0.875rem;
+  font-weight: 700;
 `;
 
 const LegendContent = styled.div`
@@ -279,31 +290,35 @@ const LegendItem = styled.div`
   display: flex;
   align-items: center;
   font-size: 0.75rem;
-  color: #64748b;
+  font-weight: 700;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const LegendColor = styled.div<{ $color: string }>`
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background-color: ${props => props.$color};
+  border: 1.5px solid #050505;
   border-radius: 50%;
   margin-right: 0.375rem;
 `;
 
 const ConfidenceNote = styled.div`
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.55);
 `;
 
 const EmptyState = styled.div`
   text-align: center;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   font-style: italic;
+  font-weight: 700;
   padding: 4rem 2rem;
   font-size: 1rem;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 // --- Decibel monitor (live mic level + per-speaker loudness) ---
@@ -420,8 +435,9 @@ const SpeakerLoudValue = styled.span`
 
 const CopilotPanel = styled.section`
   background: #ffffff;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   padding: 1rem;
 `;
 
@@ -434,31 +450,40 @@ const CopilotHeader = styled.div`
 `;
 
 const CopilotTitle = styled.h3`
-  color: #1e3a8a;
+  color: #050505;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 900;
   margin: 0;
 `;
 
 const CopilotRefreshButton = styled.button`
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 2px solid #050505;
+  background: #ffffff;
+  color: #050505;
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+
+  &:hover {
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
+  }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: 0.5;
+    box-shadow: none;
   }
 `;
 
 const CopilotSummary = styled.p`
   margin: 0 0 0.75rem 0;
-  color: #334155;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
 `;
 
@@ -474,8 +499,8 @@ const CopilotGrid = styled.div`
 
 const CopilotColumnTitle = styled.div`
   font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 700;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 800;
   margin-bottom: 0.35rem;
   text-transform: uppercase;
 `;
@@ -483,7 +508,7 @@ const CopilotColumnTitle = styled.div`
 const CopilotList = styled.ul`
   margin: 0;
   padding-left: 1rem;
-  color: #334155;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.55;
   font-size: 0.875rem;
 `;
@@ -506,13 +531,13 @@ const PulseIcon = () => (
 const AudioPlayer = styled.audio`
   width: 100%;
   margin-top: 1rem;
-  border-radius: 8px;
+  border-radius: 10px;
 `;
 
 const PlayButton = styled.button<{ $isPlaying: boolean }>`
   background: ${props => props.$isPlaying ? '#ef4444' : '#22c55e'};
   color: white;
-  border: none;
+  border: 2px solid #050505;
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -522,6 +547,7 @@ const PlayButton = styled.button<{ $isPlaying: boolean }>`
   cursor: pointer;
   font-size: 0.75rem;
   margin-left: 0.5rem;
+  box-shadow: 1.5px 1.5px 0 #050505;
   transition: all 0.2s ease;
 
   &:hover {
@@ -537,17 +563,19 @@ const AudioPlayerContainer = styled.div<{ $isVisible: boolean }>`
   transform: translateX(-50%) translateY(${props => props.$isVisible ? '0' : '100%'});
   width: 100%;
   max-width: 850px;
-  background: ${colors.primaryDark};
-  color: white;
+  background: #ffffff;
+  color: #050505;
   padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  border: 3px solid #050505;
+  border-bottom: none;
+  box-shadow: 0 -6px 0 rgba(5, 5, 5, 0.9);
   transition: transform 0.3s ease;
   z-index: 100;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
   box-sizing: border-box;
 
   @media (max-width: 768px) {
@@ -570,25 +598,28 @@ const AudioControls = styled.div`
 `;
 
 const AudioButton = styled.button`
-  background: transparent;
-  color: white;
-  border: none;
+  background: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
   font-size: 1.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:active {
-    background: rgba(255, 255, 255, 0.2);
+    transform: translate(0, 0);
+    box-shadow: 1px 1px 0 #050505;
   }
 
   @media (max-width: 768px) {
@@ -600,9 +631,10 @@ const AudioButton = styled.button`
 
 const AudioProgress = styled.div`
   flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  height: 10px;
+  background: #f3f3f1;
+  border: 2px solid #050505;
+  border-radius: 999px;
   overflow: hidden;
   position: relative;
   margin: 0 1rem;
@@ -619,13 +651,15 @@ const AudioProgressFill = styled.div<{ $progress: number }>`
   left: 0;
   height: 100%;
   width: ${props => props.$progress}%;
-  background: ${colors.accent};
-  border-radius: 3px;
+  background: #f47a4a;
+  border-radius: 999px;
 `;
 
 const AudioTime = styled.div`
   font-size: 0.9rem;
-  color: white;
+  color: #050505;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   margin: 0 0.5rem;
   min-width: 50px;
   text-align: center;
@@ -637,21 +671,26 @@ const AudioTime = styled.div`
 `;
 
 const SpeedButton = styled.button<{ $active: boolean }>`
-  background: ${props => props.$active ? '#3b82f6' : 'transparent'};
-  color: white;
-  border: 1px solid #3b82f6;
-  border-radius: 20px;
+  background: ${props => props.$active ? '#f47a4a' : '#ffffff'};
+  color: #050505;
+  border: 2px solid #050505;
+  border-radius: 999px;
   padding: 0.3rem 0.6rem;
   font-size: 0.85rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover {
-    background: #3b82f6;
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: translate(0, 0);
+    box-shadow: 1px 1px 0 #050505;
   }
 
   @media (max-width: 768px) {

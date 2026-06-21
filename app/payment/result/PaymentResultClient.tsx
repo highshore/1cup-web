@@ -9,7 +9,7 @@ import { functions } from "../../lib/firebase/firebase";
 // Styled components
 const Container = styled.div`
   min-height: 100vh;
-  background: #fff;
+  background: #faf8f4;
   padding: 2rem 1rem;
   display: flex;
   align-items: center;
@@ -24,12 +24,13 @@ const MaxWidthWrapper = styled.div`
 
 const ResultCard = styled.div<{ success: boolean }>`
   background: #fff;
-  border: 2px solid #000;
-  border-radius: 8px;
+  border: 3px solid #050505;
+  border-radius: 16px;
   padding: 3rem 2rem;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
 
   &::before {
     content: "";
@@ -37,15 +38,13 @@ const ResultCard = styled.div<{ success: boolean }>`
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: ${(props) =>
-      props.success
-        ? "linear-gradient(90deg, #16a34a, #22c55e)"
-        : "linear-gradient(90deg, #dc2626, #ef4444)"};
+    height: 7px;
+    background: ${(props) => (props.success ? "#16a34a" : "#dc2626")};
   }
 
   @media (max-width: 768px) {
     padding: 2rem 1.5rem;
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
@@ -53,14 +52,16 @@ const StatusIcon = styled.div<{ success: boolean }>`
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: ${(props) => (props.success ? "#16a34a" : "#dc2626")};
+  border: 2px solid #050505;
+  background: ${(props) => (props.success ? "#dcfce7" : "#fee2e2")};
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 2rem;
   font-size: 2.5rem;
-  color: white;
-  font-weight: 700;
+  color: #050505;
+  font-weight: 900;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
     width: 64px;
@@ -71,8 +72,8 @@ const StatusIcon = styled.div<{ success: boolean }>`
 
 const Title = styled.h1`
   font-size: 2.25rem;
-  font-weight: 700;
-  color: #000;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
 
@@ -83,7 +84,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 1.125rem;
-  color: #666;
+  color: rgba(5, 5, 5, 0.6);
   margin-bottom: 2rem;
   line-height: 1.5;
 
@@ -93,12 +94,13 @@ const Subtitle = styled.p`
 `;
 
 const ResultDetails = styled.div`
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  background: #faf8f4;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1.5rem;
   margin: 2rem 0;
   text-align: left;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
     padding: 1rem;
@@ -110,7 +112,7 @@ const DetailRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1.5px solid #050505;
 
   &:last-child {
     border-bottom: none;
@@ -125,27 +127,28 @@ const DetailRow = styled.div`
 
 const DetailLabel = styled.span`
   font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
 `;
 
 const DetailValue = styled.span`
   font-size: 0.875rem;
-  color: #000;
-  font-weight: 600;
+  color: #050505;
+  font-weight: 800;
 `;
 
 const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
   width: 100%;
   padding: 1rem 2rem;
-  border: none;
-  border-radius: 6px;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   letter-spacing: -0.01em;
   margin-bottom: 1rem;
+  box-shadow: 4px 4px 0 #050505;
 
   &:last-child {
     margin-bottom: 0;
@@ -155,30 +158,33 @@ const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
     props.variant === "secondary"
       ? `
     background: #fff;
-    color: #000;
-    border: 1px solid #d1d5db;
-    
+    color: #050505;
+
     &:hover:not(:disabled) {
-      background: #f9fafb;
-      border-color: #9ca3af;
+      background: #f3f3f1;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 #050505;
     }
   `
       : `
-    background: #000;
-    color: #fff;
-    
+    background: #f47a4a;
+    color: #050505;
+
     &:hover:not(:disabled) {
-      background: #1f2937;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 #050505;
     }
-    
+
     &:active:not(:disabled) {
-      transform: translateY(1px);
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 #050505;
     }
   `}
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
   }
 
   @media (max-width: 768px) {
@@ -188,12 +194,13 @@ const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
 `;
 
 const ErrorDetails = styled.div`
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
+  background: #fee2e2;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1.5rem;
   margin: 2rem 0;
   text-align: left;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
     padding: 1rem;
@@ -202,14 +209,14 @@ const ErrorDetails = styled.div`
 
 const ErrorTitle = styled.h3`
   font-size: 1rem;
-  font-weight: 600;
-  color: #dc2626;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 1rem;
 `;
 
 const ErrorText = styled.p`
   font-size: 0.875rem;
-  color: #7f1d1d;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
   margin-bottom: 0.5rem;
 
@@ -220,12 +227,13 @@ const ErrorText = styled.p`
 
 const LoadingCard = styled.div`
   background: #fff;
-  border: 2px solid #000;
-  border-radius: 8px;
+  border: 3px solid #050505;
+  border-radius: 16px;
   padding: 3rem 2rem;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
 
   &::before {
     content: "";
@@ -233,18 +241,19 @@ const LoadingCard = styled.div`
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #ff6b35, #f7931e);
+    height: 7px;
+    background: #f47a4a;
   }
 
   @media (max-width: 768px) {
     padding: 2rem 1.5rem;
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
 const LoadingSpinner = styled.div`
-  border: 3px solid #f3f4f6;
-  border-left-color: #000;
+  border: 3px solid #faf8f4;
+  border-left-color: #f47a4a;
   border-radius: 50%;
   width: 48px;
   height: 48px;
@@ -260,8 +269,8 @@ const LoadingSpinner = styled.div`
 
 const LoadingText = styled.p`
   font-size: 1.125rem;
-  color: #666;
-  font-weight: 500;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
 `;
 
 interface PaymentResult {

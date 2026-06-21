@@ -359,6 +359,7 @@ const en = {
       loadingMore: "Loading...",
     },
     filter: {
+      label: "Location",
       all: "All",
       yeouido: "Yeouido",
       anam: "Anam",

@@ -2675,7 +2675,7 @@ export default function ProfileClient() {
                     </StatCell>
                   </StatsStrip>
 
-                  {(userData?.hasActiveSubscription || userData?.gdg_member || userData?.account_status) && (
+                  {(userData?.hasActiveSubscription || userData?.account_status) && (
                     <BadgeList>
                       {userData?.hasActiveSubscription && (
                         <BadgeItem>
@@ -2683,15 +2683,6 @@ export default function ProfileClient() {
                           <BadgeItemText>
                             <BadgeItemTitle>Active Member</BadgeItemTitle>
                             <BadgeItemSub>영어 한잔 구독 멤버십 이용 중</BadgeItemSub>
-                          </BadgeItemText>
-                        </BadgeItem>
-                      )}
-                      {userData?.gdg_member && (
-                        <BadgeItem>
-                          <SparklesIcon />
-                          <BadgeItemText>
-                            <BadgeItemTitle>GDG Member</BadgeItemTitle>
-                            <BadgeItemSub>Google Developer Groups 멤버</BadgeItemSub>
                           </BadgeItemText>
                         </BadgeItem>
                       )}
@@ -2980,7 +2971,6 @@ export default function ProfileClient() {
                       {userData?.location || "서울"}에서 활동 중
                     </PreviewMeta>
                     <ProfileBadgeStrip>
-                      {userData?.gdg_member && <GdgChip>GDG member</GdgChip>}
                       {userData?.account_status && (
                         <ProfileChip>
                           <UserCircleIcon /> {userData.account_status}

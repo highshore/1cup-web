@@ -85,15 +85,15 @@ if (typeof window !== "undefined") {
 }
 
 const MainCard = styled.div`
-  background: white;
-  border-radius: 8px;
+  background: #faf8f4;
+  border-radius: 12px;
   width: 100%;
   min-height: 100vh;
   padding: 2rem 0rem;
 
   @media (max-width: 768px) {
     padding: 2rem 0rem;
-    border-radius: 6px;
+    border-radius: 12px;
   }
 `;
 
@@ -149,8 +149,8 @@ const PricingAmount = styled.div`
 
 const PricingPeriod = styled.span`
   font-size: 1.125rem;
-  color: #666;
-  font-weight: 400;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 600;
 `;
 
 const FeaturesList = styled.div`
@@ -162,13 +162,13 @@ const FeatureItem = styled.div`
   align-items: flex-start;
   padding: 0.75rem 0;
   font-size: 1rem;
-  color: #333;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.2;
 
   &::before {
     content: "✓";
-    color: #16a34a;
-    font-weight: 700;
+    color: #050505;
+    font-weight: 900;
     margin-right: 1rem;
     margin-top: 0.125rem;
     flex-shrink: 0;
@@ -236,7 +236,7 @@ const CheckboxLabel = styled.label`
   align-items: flex-start;
   cursor: pointer;
   font-size: 1rem;
-  color: #333;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
   gap: 0.75rem;
 `;
@@ -245,7 +245,7 @@ const CheckboxInput = styled.input`
   width: 18px;
   height: 18px;
   margin-top: 0.125rem;
-  accent-color: #000;
+  accent-color: #f47a4a;
   flex-shrink: 0;
 `;
 
@@ -264,8 +264,8 @@ const PolicyCard = styled.div`
 
 const PolicyTitle = styled.h3`
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #000;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 1rem;
 `;
 
@@ -279,14 +279,14 @@ const PolicySection = styled.div`
 
 const PolicySubtitle = styled.h4`
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 800;
+  color: #050505;
   margin-bottom: 0.5rem;
 `;
 
 const PolicyText = styled.p`
   font-size: 0.875rem;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.6);
   line-height: 1.5;
   margin-bottom: 0.5rem;
 
@@ -295,31 +295,32 @@ const PolicyText = styled.p`
   }
 
   strong {
-    color: #374151;
-    font-weight: 600;
+    color: #050505;
+    font-weight: 800;
   }
 
   a {
-    color: #000;
+    color: #f47a4a;
     text-decoration: underline;
-    font-weight: 500;
+    font-weight: 800;
 
     &:hover {
-      color: #374151;
+      color: #050505;
     }
   }
 `;
 
 const ErrorMessage = styled.div`
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
+  background: #fee2e2;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1rem;
   margin-top: 1rem;
-  color: #dc2626;
-  font-weight: 500;
+  color: #050505;
+  font-weight: 800;
   text-align: center;
   font-size: 0.875rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const LoadingSpinner = styled.div`
@@ -339,41 +340,44 @@ const LoadingSpinner = styled.div`
 `;
 
 const AlreadySubscribedCard = styled.div`
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 3px solid #050505;
+  border-radius: 16px;
   padding: 2rem;
   text-align: center;
   margin-top: 1rem;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const AlreadySubscribedIcon = styled.div`
   font-size: 2.5rem;
   margin-bottom: 1rem;
+  color: #050505;
 `;
 
 const AlreadySubscribedTitle = styled.h3`
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #0369a1;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.5rem;
 `;
 
 const AlreadySubscribedText = styled.p`
   font-size: 1rem;
-  color: #0284c7;
+  color: rgba(5, 5, 5, 0.72);
   margin-bottom: 1.5rem;
   line-height: 1.5;
 `;
 
 const Badge = styled.span`
   display: inline-block;
-  background: #fef3c7;
-  color: #92400e;
+  background: #f47a4a;
+  color: #050505;
+  border: 1.5px solid #050505;
   padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -382,14 +386,14 @@ const Badge = styled.span`
 const ReferralSection = styled.div`
   margin: 2rem 0;
   padding-top: 2rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 2px solid #050505;
 `;
 
 const ReferralLabel = styled.label`
   display: block;
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 800;
+  color: #050505;
   margin-bottom: 0.75rem;
 `;
 
@@ -414,7 +418,7 @@ const Input = styled.input`
 
   &:disabled {
     background: #f3f3f1;
-    color: #9ca3af;
+    color: rgba(5, 5, 5, 0.4);
   }
 `;
 

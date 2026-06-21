@@ -46,11 +46,11 @@ const WarningOverlay = styled.div<{ isVisible: boolean }>`
 `;
 
 const WarningContainer = styled.div<{ isVisible: boolean; isExiting: boolean }>`
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  background: #ef4444;
   color: white;
   padding: 2rem 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
   display: flex;
   align-items: center;
   gap: 1.2rem;
@@ -60,7 +60,7 @@ const WarningContainer = styled.div<{ isVisible: boolean; isExiting: boolean }>`
   transform: scale(1);
   transition: transform 0.3s ease;
   animation: ${(props) => (props.isExiting ? slideOut : slideIn)} 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid #050505;
 
   @media (max-width: 768px) {
     padding: 1.5rem 2rem;

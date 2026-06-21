@@ -359,6 +359,7 @@ const ko = {
       loadingMore: "로딩 중...",
     },
     filter: {
+      label: "지역",
       all: "전체",
       yeouido: "여의도",
       anam: "안암",

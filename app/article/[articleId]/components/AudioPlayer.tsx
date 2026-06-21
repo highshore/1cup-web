@@ -21,7 +21,8 @@ const Container = styled.div<{ $isVisible: boolean }>`
   right: 0;
   background: white;
   padding: 1rem;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  border-top: 2px solid #050505;
+  box-shadow: 0 -4px 0 rgba(5, 5, 5, 0.9);
   transform: translateY(${props => props.$isVisible ? '0' : '100%'});
   transition: transform 0.3s ease;
   z-index: 100;

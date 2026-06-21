@@ -98,7 +98,7 @@ const SpeakersContainer = styled.div`
 
 const SpeakerInfo = styled.div`
   font-size: 0.875rem;
-  color: #475569;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const TranscriptSnippet = styled.div`
@@ -115,19 +115,25 @@ const SpeakerAvatar = styled.button<{ $bgColor?: string; $textColor?: string }>`
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: none;
+  border: 2px solid #050505;
   background-color: ${(props) => props.$bgColor || "#e5e7eb"};
   color: ${(props) => props.$textColor || "#4b5563"};
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  }
 
   &:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #f47a4a;
     outline-offset: 2px;
   }
 `;
@@ -147,19 +153,19 @@ const TranscriptHeadRow = styled.div`
 `;
 
 const SpeakerName = styled.span<{ $color?: string }>`
-  font-weight: 600;
+  font-weight: 800;
   font-size: 1rem;
-  color: ${(props) => props.$color || "#1e293b"};
+  color: ${(props) => props.$color || "#050505"};
 `;
 
 const Timestamp = styled.span`
   font-size: 0.875rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const TranscriptBody = styled.div`
   line-height: 1.7;
-  color: #334155;
+  color: #050505;
   cursor: default;
   background: transparent;
   border: none;
@@ -184,18 +190,18 @@ const WordSpan = styled.span<{
   $isPunctuation?: boolean;
 }>`
   color: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "#ffffff";
+    if (props.$isCurrentlyPlaying) return "#050505";
     if (props.$lowConfidence) return "#b91c1c";
-    if (props.$isPartial) return "#64748b";
+    if (props.$isPartial) return "rgba(5, 5, 5, 0.55)";
     return "inherit";
   }};
   background-color: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "#3b82f6";
+    if (props.$isCurrentlyPlaying) return "#f47a4a";
     return "transparent";
   }};
   font-weight: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "600";
-    if (props.$lowConfidence) return "600";
+    if (props.$isCurrentlyPlaying) return "800";
+    if (props.$lowConfidence) return "700";
     return "normal";
   }};
   font-style: ${(props) => (props.$isPartial ? "italic" : "normal")};
@@ -203,7 +209,7 @@ const WordSpan = styled.span<{
   text-decoration-color: #fecaca;
   text-underline-offset: 2px;
   transition: all 0.2s ease;
-  border-radius: 3px;
+  border-radius: 4px;
   word-break: break-word;
   opacity: ${(props) => (props.$isPartial ? "0.7" : "1")};
   padding: ${(props) => (props.$isCurrentlyPlaying ? "0.125rem 0.25rem" : "0")};
@@ -211,13 +217,14 @@ const WordSpan = styled.span<{
 
   &:hover {
     background-color: ${(props) =>
-      props.$isCurrentlyPlaying ? "#2563eb" : "#eff6ff"};
+      props.$isCurrentlyPlaying ? "#f47a4a" : "rgba(244, 122, 74, 0.18)"};
   }
 `;
 
 const Container = styled.div`
   min-height: 100vh;
-  color: #334155;
+  color: #050505;
+  background: #faf8f4;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   padding-bottom: 80px;
 `;
@@ -340,10 +347,11 @@ const SessionTitle = styled.h2`
 const SessionDetail = styled.div`
   margin-bottom: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: rgba(5, 5, 5, 0.6);
 
   strong {
-    color: #1e293b;
+    color: #050505;
+    font-weight: 800;
   }
 `;
 
@@ -368,7 +376,7 @@ const ParticipantChip = styled.div<{ $isLeader?: boolean }>`
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: ${(props) => (props.$isLeader ? "#bfdbfe" : "#e2e8f0")};
+    transform: translate(-1px, -1px);
   }
 `;
 
@@ -377,11 +385,13 @@ const LoadingMessage = styled.div`
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
   font-size: 1rem;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const ErrorMessage = styled.div`
@@ -389,26 +399,31 @@ const ErrorMessage = styled.div`
   padding: 1rem 1.5rem;
   background: #fef2f2;
   color: #991b1b;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
+  border-radius: 12px;
+  border: 2px solid #d64545;
+  box-shadow: 4px 4px 0 rgba(214, 69, 69, 0.4);
   font-size: 0.875rem;
+  font-weight: 700;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   font-style: italic;
+  font-weight: 700;
   padding: 4rem 2rem;
   font-size: 1rem;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const CopilotPanel = styled.section`
   background: #ffffff;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   padding: 1rem;
 `;
 
@@ -421,31 +436,40 @@ const CopilotHeader = styled.div`
 `;
 
 const CopilotTitle = styled.h3`
-  color: #1e3a8a;
+  color: #050505;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 900;
   margin: 0;
 `;
 
 const CopilotRefreshButton = styled.button`
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 2px solid #050505;
+  background: #ffffff;
+  color: #050505;
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+
+  &:hover {
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
+  }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: 0.5;
+    box-shadow: none;
   }
 `;
 
 const CopilotSummary = styled.p`
   margin: 0 0 0.75rem 0;
-  color: #334155;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
 `;
 
@@ -461,8 +485,8 @@ const CopilotGrid = styled.div`
 
 const CopilotColumnTitle = styled.div`
   font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 700;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 800;
   margin-bottom: 0.35rem;
   text-transform: uppercase;
 `;
@@ -470,31 +494,33 @@ const CopilotColumnTitle = styled.div`
 const CopilotList = styled.ul`
   margin: 0;
   padding-left: 1rem;
-  color: #334155;
+  color: rgba(5, 5, 5, 0.72);
   line-height: 1.55;
   font-size: 0.875rem;
 `;
 
 const SavedDataIndicator = styled.div`
-  background: #f0f9ff;
-  border: 1px solid #0ea5e9;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   padding: 1rem;
   margin-bottom: 1.5rem;
-  color: #0369a1;
+  color: #050505;
   font-size: 0.875rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 
   .indicator-icon {
-    color: #0ea5e9;
+    color: #f47a4a;
     font-size: 1rem;
   }
 
   .metadata {
     font-size: 0.75rem;
-    color: #0284c7;
+    color: rgba(5, 5, 5, 0.6);
     margin-top: 0.25rem;
   }
 `;
@@ -516,20 +542,22 @@ const LegendItem = styled.div`
   display: flex;
   align-items: center;
   font-size: 0.75rem;
-  color: #64748b;
+  font-weight: 700;
+  color: rgba(5, 5, 5, 0.6);
 `;
 
 const LegendColor = styled.div<{ $color: string }>`
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background-color: ${(props) => props.$color};
+  border: 1.5px solid #050505;
   border-radius: 50%;
   margin-right: 0.375rem;
 `;
 
 const ConfidenceNote = styled.div`
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.55);
 `;
 
 // Audio Player Components
@@ -541,17 +569,19 @@ const AudioPlayerContainer = styled.div<{ $isVisible: boolean }>`
     translateY(${(props) => (props.$isVisible ? "0" : "100%")});
   width: 100%;
   max-width: 850px;
-  background: #1e293b;
-  color: white;
+  background: #ffffff;
+  color: #050505;
   padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  border: 3px solid #050505;
+  border-bottom: none;
+  box-shadow: 0 -6px 0 rgba(5, 5, 5, 0.9);
   transition: transform 0.3s ease;
   z-index: 100;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
   box-sizing: border-box;
 
   @media (max-width: 768px) {
@@ -574,25 +604,28 @@ const AudioControls = styled.div`
 `;
 
 const AudioButton = styled.button`
-  background: transparent;
-  color: white;
-  border: none;
+  background: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
   font-size: 1.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  box-shadow: 2px 2px 0 #050505;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:active {
-    background: rgba(255, 255, 255, 0.2);
+    transform: translate(0, 0);
+    box-shadow: 1px 1px 0 #050505;
   }
 
   @media (max-width: 768px) {
@@ -604,9 +637,10 @@ const AudioButton = styled.button`
 
 const AudioProgress = styled.div`
   flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  height: 10px;
+  background: #f3f3f1;
+  border: 2px solid #050505;
+  border-radius: 999px;
   overflow: hidden;
   position: relative;
   margin: 0 1rem;
@@ -623,13 +657,15 @@ const AudioProgressFill = styled.div<{ $progress: number }>`
   left: 0;
   height: 100%;
   width: ${(props) => props.$progress}%;
-  background: #3b82f6;
-  border-radius: 3px;
+  background: #f47a4a;
+  border-radius: 999px;
 `;
 
 const AudioTime = styled.div`
   font-size: 0.9rem;
-  color: white;
+  color: #050505;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   margin: 0 0.5rem;
   min-width: 50px;
   text-align: center;
@@ -641,21 +677,26 @@ const AudioTime = styled.div`
 `;
 
 const SpeedButton = styled.button<{ $active: boolean }>`
-  background: ${(props) => (props.$active ? "#3b82f6" : "transparent")};
-  color: white;
-  border: 1px solid #3b82f6;
-  border-radius: 20px;
+  background: ${(props) => (props.$active ? "#f47a4a" : "#ffffff")};
+  color: #050505;
+  border: 2px solid #050505;
+  border-radius: 999px;
   padding: 0.3rem 0.6rem;
   font-size: 0.85rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover {
-    background: #3b82f6;
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: translate(0, 0);
+    box-shadow: 1px 1px 0 #050505;
   }
 
   @media (max-width: 768px) {
@@ -677,34 +718,39 @@ const KeywordInputContainer = styled.div`
 
 const KeywordInput = styled.input`
   flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #050505;
+  border-radius: 10px;
   font-size: 0.875rem;
+  font-weight: 600;
+  color: #050505;
 
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
 const AddKeywordButton = styled.button`
-  padding: 0.5rem 1rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  background: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 0.875rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   &:hover {
-    background: #2563eb;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
   }
 
   &:disabled {
-    background: #9ca3af;
+    opacity: 0.5;
+    box-shadow: none;
     cursor: not-allowed;
   }
 `;
@@ -720,17 +766,18 @@ const KeywordChip = styled.div`
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
-  background: #f1f5f9;
-  color: #475569;
-  border-radius: 20px;
+  background: #ffffff;
+  color: #050505;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 700;
 `;
 
 const RemoveKeywordButton = styled.button`
   background: none;
   border: none;
-  color: #ef4444;
+  color: #d64545;
   cursor: pointer;
   padding: 0;
   width: 16px;
@@ -739,20 +786,24 @@ const RemoveKeywordButton = styled.button`
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  font-weight: 800;
   transition: background 0.2s ease;
 
   &:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(214, 69, 69, 0.15);
   }
 `;
 
 const ArticleLink = styled.a`
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
+  color: #050505;
+  text-decoration: underline;
+  text-decoration-color: #f47a4a;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  font-weight: 800;
 
   &:hover {
-    text-decoration: underline;
+    color: #f47a4a;
   }
 `;
 
@@ -779,20 +830,20 @@ const ModalContainer = styled.div`
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 3px solid #050505;
+  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const ModalTitle = styled.h3`
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
   text-align: center;
 `;
 
 const ModalSubtitle = styled.p`
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   margin: 0 0 2rem 0;
   text-align: center;
   font-size: 0.875rem;
@@ -809,23 +860,24 @@ const ParticipantOption = styled.button`
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #050505;
   border-radius: 12px;
   background: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
   text-align: left;
   width: 100%;
 
   &:hover {
-    border-color: #3b82f6;
-    background: #f8fafc;
+    background: #faf8f4;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   }
 
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 4px 4px 0 #f47a4a;
   }
 `;
 
@@ -836,16 +888,16 @@ const ParticipantInfo = styled.div`
 `;
 
 const ParticipantName = styled.div`
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 800;
+  color: #050505;
   font-size: 1rem;
 `;
 
 const ParticipantRole = styled.div`
   font-size: 0.75rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   text-transform: uppercase;
-  font-weight: 500;
+  font-weight: 700;
 `;
 
 const ModalActions = styled.div`
@@ -856,62 +908,67 @@ const ModalActions = styled.div`
 
 const ModalButton = styled.button<{ $variant?: "primary" | "secondary" }>`
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 999px;
+  font-weight: 800;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
+  border: 2px solid #050505;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   ${(props) =>
     props.$variant === "primary"
       ? `
-    background: #3b82f6;
-    color: white;
-    &:hover {
-      background: #2563eb;
-    }
+    background: #f47a4a;
+    color: #050505;
   `
       : `
-    background: #f1f5f9;
-    color: #475569;
-    &:hover {
-      background: #e2e8f0;
-    }
+    background: #ffffff;
+    color: #050505;
   `}
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
+    background: #f47a4a;
+  }
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
 const ToggleButton = styled.button<{ $active: boolean }>`
   padding: 0.5rem 0.9rem;
-  border-radius: 9999px;
+  border-radius: 999px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid ${props => (props.$active ? 'rgba(0,0,0,0.08)' : '#e5e7eb')};
+  border: 2px solid #050505;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
   ${props =>
     props.$active
       ? `
-    background: linear-gradient(180deg, #1f2937 0%, #0b0f14 100%);
-    color: #ffffff;
-    box-shadow: 0 6px 18px rgba(2, 6, 12, 0.25), inset 0 1px rgba(255, 255, 255, 0.06);
-    &:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    background: #f47a4a;
+    color: #050505;
   `
       : `
-    background: #f4f6f8;
-    color: #111827;
-    &:hover { background: #eef2f6; transform: translateY(-1px); }
+    background: #ffffff;
+    color: #050505;
   `}
+
+  &:hover {
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
+  }
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
@@ -922,19 +979,25 @@ const RecordButtonContainer = styled.div`
 
 const SplitRecordButton = styled.div<{ $isRecording: boolean }>`
   display: flex;
-  border-radius: 9999px;
+  border-radius: 999px;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12), inset 0 1px rgba(255,255,255,0.06);
+  border: 2px solid #050505;
+  box-shadow: 3px 3px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 
   ${(props) =>
     props.$isRecording
       ? `
-    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    background: #d64545;
   `
       : `
-    background: linear-gradient(180deg, #111827 0%, #0b0f14 100%);
+    background: #f47a4a;
   `}
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
+  }
 `;
 
 const RecordButtonMain = styled.button<{ $isRecording: boolean }>`
@@ -944,10 +1007,10 @@ const RecordButtonMain = styled.button<{ $isRecording: boolean }>`
   padding: 0.75rem 1.5rem;
   border: none;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: white;
+  color: ${(props) => (props.$isRecording ? "#ffffff" : "#050505")};
   background: transparent;
 
   &:disabled {
@@ -962,16 +1025,16 @@ const RecordButtonDropdown = styled.button<{ $isRecording: boolean }>`
   justify-content: center;
   padding: 0.75rem 0.75rem;
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 2px solid #050505;
   background: transparent;
-  color: white;
+  color: ${(props) => (props.$isRecording ? "#ffffff" : "#050505")};
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.75rem;
   min-width: 40px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(5, 5, 5, 0.12);
   }
 
   &:disabled {
@@ -986,27 +1049,24 @@ const DropdownMenu = styled.div<{ $isOpen: boolean }>`
   right: 0;
   margin-top: 0.75rem;
   background: #ffffff;
-  border: 1px solid rgba(2,6,12,0.08);
+  border: 2px solid #050505;
   border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(2,6,12,0.14);
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   z-index: 1000;
   min-width: 180px;
   display: ${(props) => (props.$isOpen ? "block" : "none")};
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 
   &::before {
     content: "";
     position: absolute;
-    top: -8px;
+    top: -10px;
     right: 20px;
     width: 0;
     height: 0;
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-bottom: 8px solid #ffffff;
-    filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.05));
+    border-bottom: 8px solid #050505;
   }
 `;
 
@@ -1020,7 +1080,7 @@ const DropdownItem = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 800;
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -1047,9 +1107,10 @@ const DropdownItem = styled.button`
 
 // Speaking Metrics styled components
 const MetricsContainer = styled.div`
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border: 2px solid #050505;
   border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   margin-bottom: 2rem;
   overflow: hidden;
 `;
@@ -1057,7 +1118,7 @@ const MetricsContainer = styled.div`
 const MetricsHeader = styled.div`
   padding: 1rem 1.5rem;
   background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #050505;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1065,15 +1126,15 @@ const MetricsHeader = styled.div`
   transition: background-color 0.2s ease;
 
   &:hover {
-    background: #f8fafc;
+    background: #faf8f4;
   }
 `;
 
 const MetricsTitle = styled.h3`
   margin: 0;
   font-size: 1.1rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1081,7 +1142,7 @@ const MetricsTitle = styled.h3`
 
 const MetricsToggle = styled.span<{ $isOpen: boolean }>`
   font-size: 1.2rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   transform: ${(props) => (props.$isOpen ? "rotate(180deg)" : "rotate(0deg)")};
   transition: transform 0.2s ease;
 `;
@@ -1097,22 +1158,22 @@ const MetricsContent = styled.div<{ $isVisible: boolean }>`
   }
 
   &::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: #f3f3f1;
     border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #050505;
     border-radius: 4px;
 
     &:hover {
-      background: #94a3b8;
+      background: #f47a4a;
     }
   }
 
   /* Firefox scrollbar styling */
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-color: #050505 #f3f3f1;
 `;
 
 const MetricsGrid = styled.div`
@@ -1123,10 +1184,10 @@ const MetricsGrid = styled.div`
 
 const SpeakerMetricsCard = styled.div`
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const SpeakerMetricsHeader = styled.div`
@@ -1135,13 +1196,13 @@ const SpeakerMetricsHeader = styled.div`
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 2px solid #050505;
 `;
 
 const MetricsSpeakerName = styled.div`
-  font-weight: 600;
+  font-weight: 800;
   font-size: 1rem;
-  color: #1e293b;
+  color: #050505;
 `;
 
 const MetricsRow = styled.div`
@@ -1159,19 +1220,19 @@ const MetricItem = styled.div`
 
 const MetricLabel = styled.span`
   font-size: 0.875rem;
-  color: #64748b;
-  font-weight: 500;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
 `;
 
 const MetricValue = styled.span`
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 800;
+  color: #050505;
 `;
 
 const MetricUnit = styled.span`
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.55);
   margin-left: 0.25rem;
 `;
 
@@ -1179,13 +1240,13 @@ const MetricUnit = styled.span`
 const QualitativeSection = styled.div`
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 2px solid #050505;
 `;
 
 const QualitativeSectionTitle = styled.h4`
   font-size: 1rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
@@ -1199,15 +1260,16 @@ const QualitativeGrid = styled.div`
 `;
 
 const QualitativeCard = styled.div`
-  background: #fafbfc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 12px;
   padding: 1rem;
-  transition: all 0.2s ease;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 
   &:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
@@ -1220,8 +1282,8 @@ const QualitativeHeader = styled.div`
 
 const QualitativeTitle = styled.h5`
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 800;
+  color: #050505;
   margin: 0;
 `;
 
@@ -1237,28 +1299,29 @@ const QualitativeLevel = styled.span<{ $level: string }>`
     return "#dc2626";
   }};
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 `;
 
 const QualitativeScore = styled.div`
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin-bottom: 0.5rem;
 `;
 
 const QualitativeDescription = styled.p`
   font-size: 0.8rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   line-height: 1.4;
   margin: 0 0 0.75rem 0;
 `;
 
 const QualitativeDetails = styled.div`
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: rgba(5, 5, 5, 0.55);
   line-height: 1.3;
 `;
 
@@ -1285,20 +1348,20 @@ const ReportDialogContainer = styled.div`
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 3px solid #050505;
+  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const ReportDialogTitle = styled.h3`
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
   text-align: center;
 `;
 
 const ReportDialogContent = styled.div`
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   margin: 0 0 2rem 0;
   text-align: center;
   line-height: 1.6;
@@ -1314,12 +1377,13 @@ const ReportDialogButton = styled.button<{
   $variant?: "primary" | "secondary";
 }>`
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 999px;
+  font-weight: 800;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
+  border: 2px solid #050505;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1327,27 +1391,31 @@ const ReportDialogButton = styled.button<{
   ${(props) =>
     props.$variant === "primary"
       ? `
-    background: #3b82f6;
-    color: white;
+    background: #f47a4a;
+    color: #050505;
     &:hover {
-      background: #2563eb;
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 #050505;
     }
     &:disabled {
-      background: #9ca3af;
+      opacity: 0.5;
+      box-shadow: none;
       cursor: not-allowed;
     }
   `
       : `
-    background: #f1f5f9;
-    color: #475569;
+    background: #ffffff;
+    color: #050505;
     &:hover {
-      background: #e2e8f0;
+      background: #f47a4a;
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 #050505;
     }
   `}
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 2px 2px 0 #f47a4a;
   }
 `;
 
@@ -1355,9 +1423,10 @@ const ReportDialogButton = styled.button<{
 const ReportsSection = styled.div`
   margin: 2rem 0;
   padding: 1.5rem;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 3px solid #050505;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const ReportCard = styled.div`
@@ -1365,13 +1434,14 @@ const ReportCard = styled.div`
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+    transform: translate(-1px, -1px);
   }
 
   &:last-child {
@@ -1388,8 +1458,8 @@ const ReportHeader = styled.div`
 
 const ReportUserName = styled.h4`
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 800;
+  color: #050505;
   margin: 0;
   display: flex;
   align-items: center;
@@ -1419,20 +1489,20 @@ const ReportMetric = styled.div`
 
 const ReportMetricValue = styled.div`
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 800;
+  color: #050505;
 `;
 
 const ReportMetricLabel = styled.div`
   font-size: 0.75rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   text-transform: uppercase;
-  font-weight: 500;
+  font-weight: 700;
 `;
 
 const ReportPreview = styled.div`
   font-size: 0.875rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   line-height: 1.5;
 `;
 
@@ -1459,14 +1529,14 @@ const DetailedReportContainer = styled.div`
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 3px solid #050505;
+  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const DetailedReportTitle = styled.h2`
   font-size: 1.75rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 2rem 0;
   text-align: center;
 `;
@@ -1479,16 +1549,18 @@ const ScoreGrid = styled.div`
 `;
 
 const ScoreCard = styled.div`
-  background: #f8fafc;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
   padding: 1rem;
   text-align: center;
 `;
 
 const ScoreTitle = styled.h4`
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #64748b;
+  font-weight: 800;
+  color: rgba(5, 5, 5, 0.6);
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
 `;
@@ -1506,7 +1578,7 @@ const ScoreValue = styled.div<{ $score: number }>`
 
 const ScoreFeedback = styled.p`
   font-size: 0.875rem;
-  color: #64748b;
+  color: rgba(5, 5, 5, 0.6);
   margin: 0;
   line-height: 1.4;
 `;
@@ -1517,8 +1589,8 @@ const FeedbackSection = styled.div`
 
 const FeedbackTitle = styled.h3`
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
 `;
 
@@ -1531,12 +1603,13 @@ const FeedbackList = styled.ul`
 const FeedbackItem = styled.li`
   padding: 0.75rem;
   margin-bottom: 0.5rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  border-left: 4px solid #3b82f6;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1.5px solid #050505;
+  border-left: 5px solid #f47a4a;
   font-size: 0.875rem;
   line-height: 1.5;
-  color: #475569;
+  color: rgba(5, 5, 5, 0.72);
 
   &:last-child {
     margin-bottom: 0;
@@ -1546,7 +1619,7 @@ const FeedbackItem = styled.li`
 const TranscriptSection = styled.div`
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 2px solid #050505;
 `;
 
 const TranscriptTitle = styled.h3`
@@ -1554,8 +1627,8 @@ const TranscriptTitle = styled.h3`
   align-items: center;
   gap: 0.5rem;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 900;
+  color: #050505;
   margin: 0 0 1rem 0;
 
   svg {
@@ -1565,16 +1638,16 @@ const TranscriptTitle = styled.h3`
 `;
 
 const TranscriptText = styled.div`
-  background: #f8fafc;
-  border-radius: 8px;
+  background: #ffffff;
+  border-radius: 10px;
   padding: 1rem;
   font-family: "Courier New", monospace;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #475569;
+  color: rgba(5, 5, 5, 0.72);
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #050505;
 `;
 
 // Icon components
