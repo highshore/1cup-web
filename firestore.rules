@@ -24,6 +24,29 @@ service cloud.firestore {
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
     }
 
+    // Growth / marketing agent — admin-only from the client.
+    // The agent itself runs on Cloud Run via the Admin SDK, which bypasses rules.
+    match /growth_posts/{postId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+    match /growth_iterations/{iterationId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+    match /growth_config/{docId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+
+    // Referral tracking for attributed signups. Public read; writes happen
+    // server-side via the Admin SDK (the /r/<code> redirect + the agent).
+    match /referrals/{code} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+
     // Default rule for other collections (you should customize this)
     match /{document=**} {
       allow read, write: if true;

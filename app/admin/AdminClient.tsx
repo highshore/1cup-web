@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
 import { CalendarDaysIcon, TrashIcon } from "@heroicons/react/24/outline";
+import GrowthDashboard from "../lib/features/growth/components/GrowthDashboard";
 
 const Wrapper = styled.div`
   display: flex;
@@ -500,7 +501,7 @@ export default function AdminClient() {
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "members" | "feedback" | "articles"
+    "dashboard" | "members" | "feedback" | "articles" | "growth"
   >("dashboard");
   const [users, setUsers] = useState<UserData[]>([]);
   const [feedback, setFeedback] = useState<FeedbackData[]>([]);
@@ -1153,12 +1154,19 @@ export default function AdminClient() {
         >
           Articles
         </Tab>
+        <Tab
+          active={activeTab === "growth"}
+          onClick={() => setActiveTab("growth")}
+        >
+          Growth
+        </Tab>
       </TabContainer>
 
       {activeTab === "dashboard" && renderDashboard()}
       {activeTab === "members" && renderMembers()}
       {activeTab === "feedback" && renderFeedback()}
       {activeTab === "articles" && renderArticles()}
+      {activeTab === "growth" && <GrowthDashboard />}
     </Wrapper>
   );
 }
