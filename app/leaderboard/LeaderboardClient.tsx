@@ -166,7 +166,7 @@ const ErrorState = styled.div`
 `;
 
 const CelebrationSection = styled.section`
-  margin-top: clamp(1.5rem, 4vw, 2.25rem);
+  margin-bottom: clamp(1.5rem, 4vw, 2.25rem);
 `;
 
 const CelebrationHeader = styled.div`
@@ -494,37 +494,6 @@ export default function LeaderboardClient() {
         {loading && <GlobalLoadingScreen />}
         {error && <ErrorState>{error}</ErrorState>}
 
-        {!loading && !error && leaderboards && (
-          <LeaderboardsGrid>
-            {renderLeaderboardCard(
-              t.meetup.leaderboards.totalParticipation,
-              leaderboards.totalParticipation,
-              t.meetup.leaderboards.noParticipation,
-              (entry) => formatMeetupCount(entry.value)
-            )}
-            {renderLeaderboardCard(
-              interpolate(t.meetup.leaderboards.monthlyParticipation, {
-                month: monthLabel,
-              }),
-              leaderboards.monthlyParticipation,
-              t.meetup.leaderboards.noMonthlyParticipation,
-              (entry) => formatMeetupCount(entry.value)
-            )}
-            {renderLeaderboardCard(
-              t.meetup.leaderboards.monthlyAverageParticipation,
-              leaderboards.participationRate,
-              t.meetup.leaderboards.noMonthlyAverageParticipation,
-              (entry) => formatMonthlyRate(entry.value)
-            )}
-            {renderLeaderboardCard(
-              t.meetup.leaderboards.newMembers,
-              leaderboards.newMembers,
-              t.meetup.leaderboards.noNewMembers,
-              (entry) => formatJoinedAt(entry.joinedAt)
-            )}
-          </LeaderboardsGrid>
-        )}
-
         {!loading && !error && (celebrations.length > 0 || isAdmin) && (
           <CelebrationSection aria-label={t.meetup.leaderboards.celebration.title}>
             <CelebrationHeader>
@@ -588,6 +557,37 @@ export default function LeaderboardClient() {
               <EmptyState>{t.meetup.leaderboards.celebration.empty}</EmptyState>
             )}
           </CelebrationSection>
+        )}
+
+        {!loading && !error && leaderboards && (
+          <LeaderboardsGrid>
+            {renderLeaderboardCard(
+              t.meetup.leaderboards.totalParticipation,
+              leaderboards.totalParticipation,
+              t.meetup.leaderboards.noParticipation,
+              (entry) => formatMeetupCount(entry.value)
+            )}
+            {renderLeaderboardCard(
+              interpolate(t.meetup.leaderboards.monthlyParticipation, {
+                month: monthLabel,
+              }),
+              leaderboards.monthlyParticipation,
+              t.meetup.leaderboards.noMonthlyParticipation,
+              (entry) => formatMeetupCount(entry.value)
+            )}
+            {renderLeaderboardCard(
+              t.meetup.leaderboards.monthlyAverageParticipation,
+              leaderboards.participationRate,
+              t.meetup.leaderboards.noMonthlyAverageParticipation,
+              (entry) => formatMonthlyRate(entry.value)
+            )}
+            {renderLeaderboardCard(
+              t.meetup.leaderboards.newMembers,
+              leaderboards.newMembers,
+              t.meetup.leaderboards.noNewMembers,
+              (entry) => formatJoinedAt(entry.joinedAt)
+            )}
+          </LeaderboardsGrid>
         )}
       </Content>
 

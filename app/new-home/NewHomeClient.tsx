@@ -83,6 +83,8 @@ const MEMBER_COMPANY_LOGOS = [
   { label: "네슬레", src: "/assets/homepage/logos/nestle.webp", width: 165, height: 170, scale: 0.92 },
   { label: "고려대학교", src: "/assets/homepage/logos/korea-university.webp", width: 280, height: 93, scale: 1 },
   { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", width: 280, height: 86, scale: 1 },
+  { label: "PwC", src: "/assets/homepage/logos/pwc.webp", width: 600, height: 455, scale: 0.9 },
+  { label: "고려대학교 의과대학", src: "/assets/homepage/logos/ku_medicine.webp", width: 680, height: 128, scale: 1 },
 ] as const;
 
 const MEMBER_LOGO_GRID_LIMIT = 8;

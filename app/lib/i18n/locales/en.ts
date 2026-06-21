@@ -36,6 +36,8 @@ const en = {
         "Nestle",
         "Korea University",
         "Yonsei MBA",
+        "PwC",
+        "Korea University Medicine",
       ],
     },
     topicVideo: {
@@ -376,7 +378,7 @@ const en = {
       meetupCountSingular: "1 meetup",
       monthlyAverageCount: "{count}/month",
       celebration: {
-        title: "Member Celebrations",
+        title: "Member Achievements",
         subtitle: "Celebrating the proud achievements of our members",
         empty: "No celebrations yet",
         addButton: "Add",
