@@ -5,9 +5,6 @@ import styled from "styled-components";
 import {
   AcademicCapIcon,
   BriefcaseIcon,
-  CalendarDaysIcon,
-  ChartBarIcon,
-  CheckBadgeIcon,
   MapPinIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
@@ -36,210 +33,299 @@ interface PublicProfile {
 
 const Page = styled.main`
   width: 100%;
-  max-width: 680px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 2.5rem 1.25rem 4rem;
+  background: #faf8f4;
 
   @media (max-width: 640px) {
-    padding: 1.25rem 1rem 3rem;
+    padding: 1.5rem 1rem 3rem;
   }
 `;
 
-const ProfileCard = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 24px;
-  background: #ffffff;
-  padding: 2rem;
-  text-align: center;
-
-  @media (max-width: 560px) {
-    padding: 1.5rem 1.25rem;
-    border-radius: 20px;
-  }
-`;
-
-const AvatarWrap = styled.div`
+const Hero = styled.section`
   display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
+  align-items: center;
+  gap: 1.75rem;
+  margin-bottom: 1.25rem;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
 `;
 
 const Avatar = styled.img`
-  width: 100px;
-  height: 100px;
+  width: 132px;
+  height: 132px;
+  flex: 0 0 auto;
   border-radius: 50%;
   object-fit: cover;
-  background: #f7f7f5;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  background: #f3f3f1;
+  border: 3px solid #050505;
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+
+  @media (max-width: 640px) {
+    width: 110px;
+    height: 110px;
+  }
+`;
+
+const HeroText = styled.div`
+  min-width: 0;
+`;
+
+const BadgeRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+
+  @media (max-width: 640px) {
+    justify-content: center;
+  }
+`;
+
+const Pill = styled.span<{ $variant?: "orange" | "dark" | "plain" }>`
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: ${({ $variant }) =>
+    $variant === "dark" ? "#050505" : $variant === "orange" ? "#f47a4a" : "#ffffff"};
+  color: ${({ $variant }) => ($variant === "dark" ? "#ffffff" : "#050505")};
 `;
 
 const Name = styled.h1`
   margin: 0;
-  color: #222222;
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  color: #050505;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.1;
+
+  @media (max-width: 640px) {
+    font-size: 1.7rem;
+  }
 `;
 
-const SubTitle = styled.p`
-  margin: 0.35rem 0 0;
-  color: #717171;
-  font-size: 0.875rem;
+const Tagline = styled.p`
+  margin: 0.4rem 0 0;
+  color: rgba(5, 5, 5, 0.6);
+  font-size: 1rem;
+  font-style: italic;
   line-height: 1.4;
 `;
 
-const Bio = styled.p`
-  margin: 0.85rem auto 0;
-  color: #484848;
-  font-size: 0.95rem;
-  line-height: 1.65;
-  max-width: 480px;
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 `;
 
-const StatsStrip = styled.div`
-  display: flex;
-  justify-content: center;
-  border-top: 1px solid #eeeeec;
-  border-bottom: 1px solid #eeeeec;
-  margin: 1.25rem 0;
-`;
-
-const StatCell = styled.div`
-  padding: 0.85rem 1.5rem;
-  min-width: 90px;
-
-  & + & {
-    border-left: 1px solid #dddddd;
-  }
-
-  @media (max-width: 420px) {
-    padding: 0.7rem 1rem;
-    min-width: 70px;
-  }
+const StatCard = styled.div`
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1rem 0.9rem;
+  text-align: center;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const StatValue = styled.div`
-  color: #222222;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.2;
+  color: #050505;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.1;
 `;
 
 const StatLabel = styled.div`
-  color: #717171;
-  font-size: 0.72rem;
-  margin-top: 0.2rem;
-  white-space: nowrap;
+  color: rgba(5, 5, 5, 0.55);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
 `;
 
-const BadgeList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  text-align: left;
-  border-top: 1px solid #eeeeec;
-  padding-top: 1rem;
-`;
-
-const BadgeItem = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-
-  svg {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-    color: #717171;
-    margin-top: 1px;
-  }
-`;
-
-const BadgeItemTitle = styled.div`
-  color: #222222;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.3;
-`;
-
-const BadgeItemSub = styled.div`
-  color: #717171;
-  font-size: 0.78rem;
-  margin-top: 0.1rem;
-`;
-
-const TileGrid = styled.div`
+const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 0.85rem;
+  align-items: start;
 
-  @media (max-width: 560px) {
+  @media (max-width: 720px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const Tile = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: 1.25rem;
+const Col = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 `;
 
-const TileTitle = styled.h2`
+const Card = styled.section<{ $tint?: boolean }>`
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: ${({ $tint }) => ($tint ? "#fff0e8" : "#ffffff")};
+  padding: 1.15rem 1.2rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+`;
+
+const CardLabel = styled.h2`
+  margin: 0 0 0.7rem;
+  color: rgba(5, 5, 5, 0.55);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+`;
+
+const CardHeading = styled.h2`
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.75rem;
-  color: #717171;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0 0 0.7rem;
+  color: #050505;
+  font-size: 1.05rem;
+  font-weight: 900;
 
   svg {
-    width: 15px;
-    height: 15px;
+    width: 18px;
+    height: 18px;
+    color: #f47a4a;
   }
+`;
+
+const BodyText = styled.p`
+  margin: 0;
+  color: rgba(5, 5, 5, 0.78);
+  font-size: 0.92rem;
+  line-height: 1.65;
+`;
+
+const QuoteText = styled.p`
+  margin: 0;
+  color: rgba(5, 5, 5, 0.72);
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.55;
+`;
+
+const ChipGroupLabel = styled.div`
+  margin: 0.9rem 0 0.5rem;
+  color: #050505;
+  font-size: 0.82rem;
+  font-weight: 800;
+
+  &:first-child {
+    margin-top: 0;
+  }
+`;
+
+const Chips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+`;
+
+const Chip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #050505;
 `;
 
 const Detail = styled.div`
   display: flex;
   gap: 0.5rem;
-  align-items: flex-start;
-  color: #222222;
-  font-size: 0.875rem;
-  line-height: 1.45;
-  margin-top: 0.6rem;
+  align-items: center;
+  color: #050505;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.55rem;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
 
   svg {
     width: 18px;
     height: 18px;
-    color: #717171;
+    color: #f47a4a;
     flex: 0 0 auto;
-    margin-top: 1px;
   }
 `;
 
-const StatRow = styled.div`
+const InfoCard = styled.section`
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #102733;
+  color: #ffffff;
+  padding: 1.15rem 1.2rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+`;
+
+const InfoLabel = styled.div`
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+`;
+
+const InfoTitle = styled.div`
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 0.65rem;
-  margin-top: 0.65rem;
-  color: #717171;
-  font-size: 0.85rem;
-
-  strong {
-    color: #222222;
-    font-size: 1.1rem;
-    font-weight: 700;
-  }
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 900;
 `;
+
+const Dot = styled.span`
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #34d27b;
+  box-shadow: 0 0 0 3px rgba(52, 210, 123, 0.25);
+`;
+
+const InfoSub = styled.div`
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.85rem;
+  line-height: 1.5;
+`;
+
+const Centered = styled.div`
+  text-align: center;
+  padding: 4rem 1rem;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 700;
+`;
+
+const toChips = (value?: string): string[] =>
+  (value || "")
+    .split(/[,/·|]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 export default function PublicProfileClient({ uid }: { uid: string }) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -250,21 +336,20 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
 
     const loadProfile = async () => {
       try {
-        const response = await fetch(`/api/public-profile/${encodeURIComponent(uid)}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/public-profile/${encodeURIComponent(uid)}`,
+          { cache: "no-store" }
+        );
         const payload = await response.json();
-
         if (!response.ok) {
           throw new Error(payload?.error || "프로필을 불러오지 못했습니다.");
         }
-
-        if (!ignore) {
-          setProfile(payload);
-        }
+        if (!ignore) setProfile(payload);
       } catch (err) {
         if (!ignore) {
-          setError(err instanceof Error ? err.message : "프로필을 불러오지 못했습니다.");
+          setError(
+            err instanceof Error ? err.message : "프로필을 불러오지 못했습니다."
+          );
         }
       }
     };
@@ -275,129 +360,128 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
     };
   }, [uid]);
 
-  if (error) {
-    return <Page>{error}</Page>;
-  }
+  if (error) return <Centered>{error}</Centered>;
+  if (!profile) return <Centered>프로필을 불러오는 중...</Centered>;
 
-  if (!profile) {
-    return <Page>프로필을 불러오는 중...</Page>;
-  }
-
-  const hasBadges =
-    profile.badges.activeMember || profile.badges.gdgMember || profile.badges.role;
+  const interestChips = toChips(profile.interests);
+  const memberSinceLabel = profile.memberSince
+    ? new Date(profile.memberSince).toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "short",
+      })
+    : "—";
+  const hasAbout = profile.work || profile.school || profile.location;
 
   return (
     <Page>
-      <ProfileCard>
-        <AvatarWrap>
-          <Avatar
-            src={profile.photoURL || "/images/default_user.jpg"}
-            alt={profile.displayName}
-          />
-        </AvatarWrap>
-
-        <Name>{profile.displayName}</Name>
-        <SubTitle>
-          {profile.location ? `${profile.location}에서 활동 중` : "영어 한잔 멤버"}
-        </SubTitle>
-        <Bio>{profile.bio || "영어 한잔에서 꾸준히 영어 루틴을 쌓고 있습니다."}</Bio>
-
-        <StatsStrip>
-          <StatCell>
-            <StatValue>{profile.stats.meetupCount}</StatValue>
-            <StatLabel>참여 밋업</StatLabel>
-          </StatCell>
-          <StatCell>
-            <StatValue>
-              {profile.stats.averageSpeakingScore != null
-                ? `★${profile.stats.averageSpeakingScore.toFixed(1)}`
-                : "-"}
-            </StatValue>
-            <StatLabel>평균 점수</StatLabel>
-          </StatCell>
-          <StatCell>
-            <StatValue>{profile.stats.speakingReports}</StatValue>
-            <StatLabel>스피킹 리포트</StatLabel>
-          </StatCell>
-        </StatsStrip>
-
-        {hasBadges && (
-          <BadgeList>
+      <Hero>
+        <Avatar
+          src={profile.photoURL || "/images/default_user.jpg"}
+          alt={profile.displayName}
+        />
+        <HeroText>
+          <BadgeRow>
+            {(profile.badges.activeMember || profile.badges.role) && (
+              <Pill $variant="orange">Verified</Pill>
+            )}
             {profile.badges.activeMember && (
-              <BadgeItem>
-                <CheckBadgeIcon />
-                <div>
-                  <BadgeItemTitle>Active Member</BadgeItemTitle>
-                  <BadgeItemSub>영어 한잔 구독 멤버십 이용 중</BadgeItemSub>
-                </div>
-              </BadgeItem>
+              <Pill $variant="dark">Active Member</Pill>
             )}
-            {profile.badges.gdgMember && (
-              <BadgeItem>
-                <SparklesIcon />
-                <div>
-                  <BadgeItemTitle>GDG Member</BadgeItemTitle>
-                  <BadgeItemSub>Google Developer Groups 멤버</BadgeItemSub>
-                </div>
-              </BadgeItem>
-            )}
-            {profile.badges.role && (
-              <BadgeItem>
-                <CheckBadgeIcon />
-                <div>
-                  <BadgeItemTitle>{profile.badges.role}</BadgeItemTitle>
-                  <BadgeItemSub>영어 한잔 멤버 역할</BadgeItemSub>
-                </div>
-              </BadgeItem>
-            )}
-          </BadgeList>
-        )}
-      </ProfileCard>
+            {profile.badges.role && <Pill>{profile.badges.role}</Pill>}
+          </BadgeRow>
+          <Name>{profile.displayName}</Name>
+          <Tagline>
+            {profile.bio
+              ? `“${profile.bio.split(/(?<=[.!?。])\s/)[0]}”`
+              : "“커피 한 잔과 함께 영어로 이야기 나눠요”"}
+          </Tagline>
+        </HeroText>
+      </Hero>
 
-      <TileGrid>
-        <Tile>
-          <TileTitle><SparklesIcon /> About</TileTitle>
-          {profile.work && (
-            <Detail><BriefcaseIcon /><span>{profile.work}</span></Detail>
-          )}
-          {profile.school && (
-            <Detail><AcademicCapIcon /><span>{profile.school}</span></Detail>
-          )}
-          {profile.location && (
-            <Detail><MapPinIcon /><span>{profile.location}</span></Detail>
-          )}
-          {!profile.work && !profile.school && !profile.location && (
-            <Detail><SparklesIcon /><span style={{ color: "#717171" }}>아직 정보가 없습니다</span></Detail>
-          )}
-        </Tile>
+      <StatsGrid>
+        <StatCard>
+          <StatValue>{profile.stats.meetupCount}</StatValue>
+          <StatLabel>Meetups Completed</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatValue>
+            {profile.stats.averageSpeakingScore != null
+              ? profile.stats.averageSpeakingScore.toFixed(1)
+              : "—"}
+          </StatValue>
+          <StatLabel>Avg Spark Score</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatValue>{profile.stats.speakingReports}</StatValue>
+          <StatLabel>Speaking Reports</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatValue style={{ fontSize: "1rem" }}>{memberSinceLabel}</StatValue>
+          <StatLabel>Member Since</StatLabel>
+        </StatCard>
+      </StatsGrid>
 
-        <Tile>
-          <TileTitle><ChartBarIcon /> Insights</TileTitle>
-          <StatRow>
-            <span>참여 밋업</span>
-            <strong>{profile.stats.meetupCount}</strong>
-          </StatRow>
-          <StatRow>
-            <span>스피킹 리포트</span>
-            <strong>{profile.stats.speakingReports}</strong>
-          </StatRow>
-          <StatRow>
-            <span>평균 점수</span>
-            <strong>{profile.stats.averageSpeakingScore ?? "-"}</strong>
-          </StatRow>
-          <StatRow>
-            <span>가입일</span>
-            <strong>
-              {profile.memberSince
-                ? new Date(profile.memberSince).toLocaleDateString("ko-KR", {
-                    year: "numeric",
-                    month: "short",
-                  })
-                : "-"}
-            </strong>
-          </StatRow>
-        </Tile>
-      </TileGrid>
+      <Grid>
+        <Col>
+          <Card>
+            <CardHeading>
+              <SparklesIcon /> My Story
+            </CardHeading>
+            <BodyText>
+              {profile.bio ||
+                "영어 한잔에서 꾸준히 영어 루틴을 쌓아가고 있는 멤버입니다."}
+            </BodyText>
+          </Card>
+
+          {hasAbout && (
+            <Card>
+              <CardLabel>About</CardLabel>
+              {profile.work && (
+                <Detail>
+                  <BriefcaseIcon />
+                  <span>{profile.work}</span>
+                </Detail>
+              )}
+              {profile.school && (
+                <Detail>
+                  <AcademicCapIcon />
+                  <span>{profile.school}</span>
+                </Detail>
+              )}
+              {profile.location && (
+                <Detail>
+                  <MapPinIcon />
+                  <span>{profile.location}</span>
+                </Detail>
+              )}
+            </Card>
+          )}
+        </Col>
+
+        <Col>
+          {interestChips.length > 0 && (
+            <Card>
+              <CardLabel>Interests &amp; Topics</CardLabel>
+              <ChipGroupLabel>Passions</ChipGroupLabel>
+              <Chips>
+                {interestChips.map((chip) => (
+                  <Chip key={chip}>{chip}</Chip>
+                ))}
+              </Chips>
+            </Card>
+          )}
+
+          <InfoCard>
+            <InfoLabel>Status</InfoLabel>
+            <InfoTitle>
+              <Dot /> ONE CUP 멤버
+            </InfoTitle>
+            <InfoSub>
+              {memberSinceLabel}부터 영어 한잔과 함께하고 있어요.
+            </InfoSub>
+          </InfoCard>
+        </Col>
+      </Grid>
     </Page>
   );
 }

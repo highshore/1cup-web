@@ -1849,6 +1849,572 @@ const PreviewBio = styled.p`
   line-height: 1.6;
 `;
 
+/* ------------------------------------------------------------------ */
+/* Neo-brutalist private profile layout                                */
+/* ------------------------------------------------------------------ */
+
+const NbPageBackground = styled.div`
+  width: 100%;
+  background: #faf8f4;
+`;
+
+const NbShell = styled.main`
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem 4rem;
+  display: grid;
+  gap: 1.25rem;
+  color: #050505;
+
+  @media (max-width: 600px) {
+    padding: 1.25rem 1rem 3rem;
+    gap: 1rem;
+  }
+`;
+
+const NbCard = styled.section`
+  background: #ffffff;
+  border: 2px solid #050505;
+  border-radius: 16px;
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+  padding: 1.75rem;
+
+  @media (max-width: 600px) {
+    padding: 1.25rem;
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+  }
+`;
+
+const NbProfileCard = styled(NbCard)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.85rem;
+`;
+
+const NbAvatarFrame = styled.div`
+  position: relative;
+  width: fit-content;
+`;
+
+const NbAvatarUpload = styled(AvatarUpload)`
+  width: 132px;
+  height: 132px;
+  border: 2px solid #050505;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+
+  @media (max-width: 600px) {
+    width: 112px;
+    height: 112px;
+  }
+`;
+
+const NbAvatarEditButton = styled.button`
+  position: absolute;
+  right: -4px;
+  bottom: 4px;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.12s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const NbAvatarDeleteButton = styled.button`
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  cursor: pointer;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const NbNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+`;
+
+const NbName = styled.h1`
+  margin: 0;
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #050505;
+`;
+
+const NbPencilButton = styled.button`
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const NbMetaLine = styled.p`
+  margin: 0;
+  color: rgba(5, 5, 5, 0.62);
+  font-size: 0.92rem;
+  font-weight: 600;
+`;
+
+const NbStatsRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  margin-top: 0.4rem;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  overflow: hidden;
+`;
+
+const NbStatCell = styled.div`
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+
+  & + & {
+    border-left: 2px solid #050505;
+  }
+`;
+
+const NbStatValue = styled.div`
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #050505;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const NbStatLabel = styled.div`
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(5, 5, 5, 0.55);
+`;
+
+const NbBadgeRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+`;
+
+const NbActiveBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const NbRoleBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #050505;
+  color: #ffffff;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const NbPillRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+`;
+
+const NbPillButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.6rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.12s ease;
+
+  &:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const NbGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+`;
+
+const NbSectionLabel = styled.h2`
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(5, 5, 5, 0.55);
+`;
+
+const NbBioText = styled.p`
+  margin: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: #050505;
+`;
+
+const NbChipWrap = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const NbChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const NbLookingCard = styled(NbCard)`
+  background: #fff0e8;
+`;
+
+const NbAboutRow = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.6rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+
+  & + & {
+    margin-top: 0.5rem;
+  }
+
+  &:hover {
+    transform: translate(-1px, -1px);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+`;
+
+const NbManageTitle = styled.h2`
+  margin: 0 0 0.3rem;
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #050505;
+`;
+
+const NbManageSub = styled.p`
+  margin: 0 0 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(5, 5, 5, 0.6);
+`;
+
+const NbManageRow = styled.button`
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto 18px;
+  gap: 0.7rem;
+  align-items: center;
+  border: 0;
+  border-top: 2px solid rgba(5, 5, 5, 0.1);
+  background: transparent;
+  padding: 0.95rem 0;
+  color: #050505;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+
+  &:hover {
+    opacity: 0.65;
+  }
+
+  & > svg:first-child {
+    width: 21px;
+    height: 21px;
+    color: #050505;
+  }
+
+  & > svg:last-child {
+    width: 18px;
+    height: 18px;
+    color: rgba(5, 5, 5, 0.45);
+  }
+
+  .nb-row-label {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .nb-row-value {
+    min-width: 0;
+    color: rgba(5, 5, 5, 0.55);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const NbStatusPill = styled.span.withConfig({
+  shouldForwardProp: (prop) => prop !== "active",
+})<{ active?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: ${(props) => (props.active ? "#f47a4a" : "#ffffff")};
+  color: #050505;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+`;
+
+const NbCancelFooter = styled.button`
+  width: 100%;
+  margin-top: 1rem;
+  border: 0;
+  background: transparent;
+  color: rgba(5, 5, 5, 0.45);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: #c0392b;
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const NbPrimaryButton = styled.button`
+  width: 100%;
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #050505;
+  color: #ffffff;
+  padding: 1rem 1.25rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+  transition: transform 0.12s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+  }
+`;
+
+const NbInlineEditCard = styled(NbCard)`
+  display: grid;
+  gap: 0.7rem;
+`;
+
+const NbInput = styled.input`
+  width: 100%;
+  border: 2px solid #050505;
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #050505;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  }
+`;
+
+const NbTextArea = styled.textarea`
+  width: 100%;
+  min-height: 84px;
+  border: 2px solid #050505;
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #050505;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  }
+`;
+
+const NbEditActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const NbSaveButton = styled.button`
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #050505;
+  color: #ffffff;
+  padding: 0.6rem 1.2rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+const NbCancelButton = styled.button`
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.6rem 1.2rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+`;
+
 export default function ProfileClient() {
   const user = auth.currentUser;
   const [avatar, setAvatar] = useState(user?.photoURL || "");
@@ -2504,6 +3070,16 @@ export default function ProfileClient() {
   const daysWithOneCup = userData?.createdAt
     ? Math.max(1, Math.ceil((Date.now() - userData.createdAt.getTime()) / 86400000))
     : "-";
+  const membershipYear = userData?.createdAt
+    ? userData.createdAt.getFullYear()
+    : null;
+  const roleBadgeLabel =
+    userData?.account_status === "admin"
+      ? "ADMIN"
+      : userData?.account_status === "leader"
+        ? "LEADER"
+        : null;
+  const lookingForChips = ["비즈니스 영어 루틴", "깊이 있는 토론", "스피킹 자신감"];
   const profileBio =
     userData?.bio || "영어 한잔에서 비즈니스 영어와 좋은 대화를 꾸준히 쌓고 있습니다.";
   const membershipStatus =
@@ -2562,8 +3138,8 @@ export default function ProfileClient() {
     <>
       {isLoading && <GlobalLoadingScreen />}
       <Wrapper>
-        <ProfileRouteShell>
-          <ProfileStack>
+        <NbPageBackground>
+          <NbShell>
             {error && (
               <AlertCard type="error">
                 <p>{error}</p>
@@ -2574,309 +3150,263 @@ export default function ProfileClient() {
                 <p>{successMessage}</p>
               </AlertCard>
             )}
-            <ProfileHeroPanel>
-              <ProfileIdentity>
-                <ProfileAvatarFrame>
-                  <LargeAvatarUpload as="div">
-                    <AvatarImg
-                      src={avatar || defaultUserImage}
-                      alt="Profile"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = defaultUserImage;
-                      }}
-                    />
-                  </LargeAvatarUpload>
-                  <AvatarEditButton
-                    type="button"
-                    aria-label="프로필 사진 변경"
-                    onClick={() => document.getElementById("avatar")?.click()}
-                  >
-                    <CameraIcon />
-                  </AvatarEditButton>
-                  {avatar && (
-                    <AvatarDeleteButton
-                      type="button"
-                      aria-label="프로필 사진 삭제"
-                      onClick={deleteAvatar}
-                    >
-                      <TrashIcon />
-                    </AvatarDeleteButton>
-                  )}
-                  <AvatarInput
-                    onChange={onAvatarChange}
-                    id="avatar"
-                    type="file"
-                    accept="image/*"
+
+            {/* 1. PROFILE CARD */}
+            <NbProfileCard>
+              <NbAvatarFrame>
+                <NbAvatarUpload as="div">
+                  <AvatarImg
+                    src={avatar || defaultUserImage}
+                    alt="Profile"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = defaultUserImage;
+                    }}
                   />
-                </ProfileAvatarFrame>
+                </NbAvatarUpload>
+                <NbAvatarEditButton
+                  type="button"
+                  aria-label="프로필 사진 변경"
+                  onClick={() => document.getElementById("avatar")?.click()}
+                >
+                  <CameraIcon />
+                </NbAvatarEditButton>
+                {avatar && (
+                  <NbAvatarDeleteButton
+                    type="button"
+                    aria-label="프로필 사진 삭제"
+                    onClick={deleteAvatar}
+                  >
+                    <TrashIcon />
+                  </NbAvatarDeleteButton>
+                )}
+                <AvatarInput
+                  onChange={onAvatarChange}
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                />
+              </NbAvatarFrame>
 
-                <ProfileNameBlock>
-                  {isEditingName ? (
-                    <EditGrid>
-                      <NameInput
-                        type="text"
-                        value={displayName}
-                        onChange={handleNameChange}
-                        placeholder="이름 입력"
-                        autoFocus
-                        onKeyDown={handleKeyPress}
-                      />
-                      <ActionRow>
-                        <PrimaryAction type="button" onClick={saveDisplayName}>
-                          저장
-                        </PrimaryAction>
-                        <SecondaryAction
-                          type="button"
-                          onClick={() => {
-                            setDisplayName(user?.displayName || "");
-                            setIsEditingName(false);
-                          }}
-                        >
-                          취소
-                        </SecondaryAction>
-                      </ActionRow>
-                    </EditGrid>
-                  ) : (
-                    <ProfileNameRow>
-                      <ProfileDisplayName>
-                        {user?.displayName || "이름 없는 멤버"}
-                      </ProfileDisplayName>
-                      <NameIconButton
-                        type="button"
-                        aria-label="이름 수정"
-                        onClick={() => setIsEditingName(true)}
-                      >
-                        <PencilSquareIcon />
-                      </NameIconButton>
-                    </ProfileNameRow>
-                  )}
-                  <ProfileMetaLine>
-                    {userData?.location || "서울"}에서 영어 루틴을 쌓는 멤버
-                  </ProfileMetaLine>
-
-                  <StatsStrip>
-                    <StatCell>
-                      <StatValue>{daysWithOneCup}일</StatValue>
-                      <StatLabel>함께한 기간</StatLabel>
-                    </StatCell>
-                    <StatCell>
-                      <StatValue>{membershipStatus}</StatValue>
-                      <StatLabel>멤버십 상태</StatLabel>
-                    </StatCell>
-                    <StatCell>
-                      <StatValue>
-                        {subscriptionData.startDate
-                          ? format(subscriptionData.startDate, "MM/dd", { locale: ko })
-                          : "-"}
-                      </StatValue>
-                      <StatLabel>최근 결제일</StatLabel>
-                    </StatCell>
-                  </StatsStrip>
-
-                  {(userData?.hasActiveSubscription || userData?.account_status) && (
-                    <BadgeList>
-                      {userData?.hasActiveSubscription && (
-                        <BadgeItem>
-                          <CheckBadgeIcon />
-                          <BadgeItemText>
-                            <BadgeItemTitle>Active Member</BadgeItemTitle>
-                            <BadgeItemSub>영어 한잔 구독 멤버십 이용 중</BadgeItemSub>
-                          </BadgeItemText>
-                        </BadgeItem>
-                      )}
-                      {userData?.account_status && (
-                        <BadgeItem>
-                          <UserCircleIcon />
-                          <BadgeItemText>
-                            <BadgeItemTitle>{userData.account_status}</BadgeItemTitle>
-                            <BadgeItemSub>영어 한잔 멤버 역할</BadgeItemSub>
-                          </BadgeItemText>
-                        </BadgeItem>
-                      )}
-                    </BadgeList>
-                  )}
-
-                  <SummaryActions>
-                    <SummaryActionButton
+              {isEditingName ? (
+                <EditGrid style={{ width: "100%", maxWidth: "320px" }}>
+                  <NbInput
+                    type="text"
+                    value={displayName}
+                    onChange={handleNameChange}
+                    placeholder="이름 입력"
+                    autoFocus
+                    onKeyDown={handleKeyPress}
+                  />
+                  <NbEditActions style={{ justifyContent: "center" }}>
+                    <NbSaveButton type="button" onClick={saveDisplayName}>
+                      저장
+                    </NbSaveButton>
+                    <NbCancelButton
                       type="button"
-                      onClick={() => setShowPublicPreview(true)}
+                      onClick={() => {
+                        setDisplayName(user?.displayName || "");
+                        setIsEditingName(false);
+                      }}
                     >
-                      <EyeIcon />
-                      공개 프로필 보기
-                    </SummaryActionButton>
-                    <SummaryActionButton
-                      type="button"
-                      onClick={userData?.referralCode ? handleShareReferral : handleGenerateReferral}
-                      disabled={referralGenerating}
-                    >
-                      <ShareIcon />
-                      {userData?.referralCode
-                        ? "추천 코드 공유"
-                        : referralGenerating
-                          ? "생성 중"
-                          : "추천 코드 생성"}
-                    </SummaryActionButton>
-                  </SummaryActions>
-                </ProfileNameBlock>
-              </ProfileIdentity>
-            </ProfileHeroPanel>
+                      취소
+                    </NbCancelButton>
+                  </NbEditActions>
+                </EditGrid>
+              ) : (
+                <NbNameRow>
+                  <NbName>{user?.displayName || "이름 없는 멤버"}</NbName>
+                  <NbPencilButton
+                    type="button"
+                    aria-label="이름 수정"
+                    onClick={() => setIsEditingName(true)}
+                  >
+                    <PencilSquareIcon />
+                  </NbPencilButton>
+                </NbNameRow>
+              )}
 
-            <ProfilePanel>
-              <ProfileSectionLabel>My bio</ProfileSectionLabel>
-              <ProfileBioText>{profileBio}</ProfileBioText>
+              <NbMetaLine>
+                📍 {userData?.location || "위치 미설정"}
+                {membershipYear ? ` · Membership since ${membershipYear}` : ""}
+              </NbMetaLine>
 
-              <ProfileSubsection>
-                <ProfileSectionLabel>About me</ProfileSectionLabel>
-                <ChipCloud>
-                  <ProfileChip>
-                    <BriefcaseIcon /> {userData?.work || "직업/소속 추가"}
-                  </ProfileChip>
-                  <ProfileChip>
-                    <AcademicCapIcon /> {userData?.school || "학교/전공 추가"}
-                  </ProfileChip>
-                  <ProfileChip>
-                    <MapPinIcon /> {userData?.location || "지역 추가"}
-                  </ProfileChip>
-                  <ProfileChip>
-                    <PhoneIcon /> {user?.phoneNumber || "전화번호 없음"}
-                  </ProfileChip>
-                </ChipCloud>
-              </ProfileSubsection>
+              <NbStatsRow>
+                <NbStatCell>
+                  <NbStatValue>{daysWithOneCup}</NbStatValue>
+                  <NbStatLabel>Days Active</NbStatLabel>
+                </NbStatCell>
+                <NbStatCell>
+                  <NbStatValue>{membershipStatus}</NbStatValue>
+                  <NbStatLabel>Actv Status</NbStatLabel>
+                </NbStatCell>
+                <NbStatCell>
+                  <NbStatValue>
+                    {isManagedMembership
+                      ? "—"
+                      : subscriptionData.startDate
+                        ? format(subscriptionData.startDate, "MM/dd", {
+                            locale: ko,
+                          })
+                        : "—"}
+                  </NbStatValue>
+                  <NbStatLabel>Last Pay</NbStatLabel>
+                </NbStatCell>
+              </NbStatsRow>
 
-              <ProfileSubsection>
-                <ProfileSectionLabel>I&apos;m looking for</ProfileSectionLabel>
-                <SoftChipBox>
-                  <ProfileChip>
-                    <BookOpenIcon /> 비즈니스 영어 루틴
-                  </ProfileChip>
-                  <ProfileChip>깊이 있는 토론</ProfileChip>
-                  <ProfileChip>좋은 사람들과의 네트워크</ProfileChip>
-                  <ProfileChip>스피킹 자신감</ProfileChip>
-                </SoftChipBox>
-              </ProfileSubsection>
+              {(userData?.hasActiveSubscription || roleBadgeLabel) && (
+                <NbBadgeRow>
+                  {userData?.hasActiveSubscription && (
+                    <NbActiveBadge>
+                      <CheckBadgeIcon />
+                      Active Member
+                    </NbActiveBadge>
+                  )}
+                  {roleBadgeLabel && (
+                    <NbRoleBadge>
+                      <UserCircleIcon />
+                      {roleBadgeLabel}
+                    </NbRoleBadge>
+                  )}
+                </NbBadgeRow>
+              )}
 
-              <ProfileSubsection>
-                <ProfileSectionLabel>My interests</ProfileSectionLabel>
-                <ChipCloud>
+              <NbPillRow>
+                <NbPillButton
+                  type="button"
+                  onClick={() => user && router.push(`/profile/${user.uid}`)}
+                >
+                  <EyeIcon />
+                  View Public Profile
+                </NbPillButton>
+                <NbPillButton
+                  type="button"
+                  onClick={
+                    userData?.referralCode
+                      ? handleShareReferral
+                      : handleGenerateReferral
+                  }
+                  disabled={referralGenerating}
+                >
+                  <ShareIcon />
+                  {userData?.referralCode
+                    ? "Share Referral Code"
+                    : referralGenerating
+                      ? "생성 중"
+                      : "Generate Referral Code"}
+                </NbPillButton>
+              </NbPillRow>
+            </NbProfileCard>
+
+            {/* 2. BIO + INTERESTS */}
+            <NbGrid>
+              <NbCard>
+                <NbSectionLabel>My Bio</NbSectionLabel>
+                <NbBioText>{profileBio}</NbBioText>
+              </NbCard>
+              <NbCard>
+                <NbSectionLabel>Interests</NbSectionLabel>
+                <NbChipWrap>
                   {(profileInterests.length
                     ? profileInterests
                     : ["Business news", "Speaking practice", "Networking"]
                   ).map((interest) => (
-                    <ProfileChip key={interest}>
+                    <NbChip key={interest}>
                       <SparklesIcon /> {interest}
-                    </ProfileChip>
+                    </NbChip>
                   ))}
-                </ChipCloud>
-              </ProfileSubsection>
-            </ProfilePanel>
+                </NbChipWrap>
+              </NbCard>
+            </NbGrid>
 
-            <SubscriptionManagementPanel>
-              <div>
-                <ProfileSectionLabel>Membership</ProfileSectionLabel>
-                <EditSectionHeading>멤버십 관리</EditSectionHeading>
-                <EditSectionDescription>
-                  현재 멤버십 상태와 다음 결제 일정을 확인하고 결제를 관리합니다.
-                </EditSectionDescription>
-              </div>
+            {/* 3. LOOKING FOR + ABOUT ME */}
+            <NbGrid>
+              <NbLookingCard>
+                <NbSectionLabel>I&apos;m Looking For</NbSectionLabel>
+                <NbChipWrap>
+                  {lookingForChips.map((chip) => (
+                    <NbChip key={chip}>
+                      <BookOpenIcon /> {chip}
+                    </NbChip>
+                  ))}
+                </NbChipWrap>
+              </NbLookingCard>
+              <NbCard>
+                <NbSectionLabel>About Me</NbSectionLabel>
+                <NbAboutRow
+                  type="button"
+                  onClick={() => setIsEditingDetails(true)}
+                >
+                  <BriefcaseIcon />
+                  {userData?.work || "Add work history"}
+                </NbAboutRow>
+                <NbAboutRow
+                  type="button"
+                  onClick={() => setIsEditingDetails(true)}
+                >
+                  <AcademicCapIcon />
+                  {userData?.school || "Add education"}
+                </NbAboutRow>
+              </NbCard>
+            </NbGrid>
 
-              <SubscriptionDetailGrid>
-                <SubscriptionDetailItem>
-                  <span>상태</span>
-                  <strong>{membershipStatus}</strong>
-                </SubscriptionDetailItem>
-                <SubscriptionDetailItem>
-                  <span>최근 결제일</span>
-                  <strong>{recentPaymentLabel}</strong>
-                </SubscriptionDetailItem>
-                <SubscriptionDetailItem>
-                  <span>다음 결제일</span>
-                  <strong>{nextBillingLabel}</strong>
-                </SubscriptionDetailItem>
-                <SubscriptionDetailItem>
-                  <span>결제 수단</span>
-                  <strong>
-                    {isManagedMembership
-                      ? "해당 없음"
-                      : subscriptionData.paymentMethod || "카드"}
-                  </strong>
-                </SubscriptionDetailItem>
-              </SubscriptionDetailGrid>
-
-              <SubscriptionActionNote>
-                {subscriptionActionNote}
-              </SubscriptionActionNote>
-
-              {!isManagedMembership && (
-                <ActionRow>
-                  {subscriptionData.status === "active" &&
-                  !subscriptionData.billingCancelled ? (
-                    <SecondaryAction
-                      type="button"
-                      onClick={() => setShowCancellationOptions(true)}
-                    >
-                      멤버십 중지하기
-                    </SecondaryAction>
-                  ) : (
-                    <PrimaryAction
-                      type="button"
-                      onClick={handleSubscriptionAction}
-                      disabled={isLoading}
-                    >
-                      {subscriptionActionLabel}
-                    </PrimaryAction>
-                  )}
-                </ActionRow>
-              )}
-            </SubscriptionManagementPanel>
-
+            {/* Inline profile edit form */}
             {isEditingDetails && (
-              <ProfileFormPanel>
-                <EditSectionHeading>프로필 편집</EditSectionHeading>
-                <EditSectionDescription>
+              <NbInlineEditCard>
+                <NbManageTitle>프로필 편집</NbManageTitle>
+                <NbManageSub>
                   공개 프로필에 보여줄 소개와 기본 정보를 정리해 주세요.
-                </EditSectionDescription>
-                <EditTextArea
+                </NbManageSub>
+                <NbTextArea
                   value={profileForm.bio}
                   onChange={(e) =>
                     setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
                   }
                   placeholder="짧은 자기소개"
                 />
-                <EditInput
+                <NbInput
                   value={profileForm.work}
                   onChange={(e) =>
                     setProfileForm((prev) => ({ ...prev, work: e.target.value }))
                   }
                   placeholder="직업/소속"
                 />
-                <EditInput
+                <NbInput
                   value={profileForm.school}
                   onChange={(e) =>
-                    setProfileForm((prev) => ({ ...prev, school: e.target.value }))
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      school: e.target.value,
+                    }))
                   }
                   placeholder="학교/전공"
                 />
-                <EditInput
+                <NbInput
                   value={profileForm.location}
                   onChange={(e) =>
-                    setProfileForm((prev) => ({ ...prev, location: e.target.value }))
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      location: e.target.value,
+                    }))
                   }
                   placeholder="지역"
                 />
-                <EditInput
+                <NbInput
                   value={profileForm.interests}
                   onChange={(e) =>
-                    setProfileForm((prev) => ({ ...prev, interests: e.target.value }))
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      interests: e.target.value,
+                    }))
                   }
                   placeholder="관심사, 쉼표로 구분"
                 />
-                <ActionRow>
-                  <PrimaryAction type="button" onClick={saveProfileDetails}>
+                <NbEditActions>
+                  <NbSaveButton type="button" onClick={saveProfileDetails}>
                     저장
-                  </PrimaryAction>
-                  <SecondaryAction
+                  </NbSaveButton>
+                  <NbCancelButton
                     type="button"
                     onClick={() => {
                       setProfileForm({
@@ -2890,56 +3420,87 @@ export default function ProfileClient() {
                     }}
                   >
                     취소
-                  </SecondaryAction>
-                </ActionRow>
-              </ProfileFormPanel>
+                  </NbCancelButton>
+                </NbEditActions>
+              </NbInlineEditCard>
             )}
 
-            <EditRowsPanel>
-              <EditSectionHeading>About you</EditSectionHeading>
-              <EditSectionDescription>
-                프로필, 멤버십, 학습 기록을 한 곳에서 관리합니다.
-              </EditSectionDescription>
-              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+            {/* 4. ABOUT YOU MANAGEMENT CARD */}
+            <NbCard>
+              <NbManageTitle>About You</NbManageTitle>
+              <NbManageSub>
+                Manage your profile, membership, and learning history in one
+                place.
+              </NbManageSub>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
                 <BriefcaseIcon />
-                <span>Work</span>
-                <strong>{userData?.work || "Add"}</strong>
+                <span className="nb-row-label">Work</span>
+                <span className="nb-row-value">{userData?.work || "Add"}</span>
                 <ChevronRightIcon />
-              </ProfileEditRow>
-              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+              </NbManageRow>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
                 <AcademicCapIcon />
-                <span>Education</span>
-                <strong>{userData?.school || "Add"}</strong>
+                <span className="nb-row-label">Education</span>
+                <span className="nb-row-value">
+                  {userData?.school || "Add"}
+                </span>
                 <ChevronRightIcon />
-              </ProfileEditRow>
-              <ProfileEditRow type="button" onClick={() => setIsEditingDetails(true)}>
+              </NbManageRow>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
                 <MapPinIcon />
-                <span>Location</span>
-                <strong>{userData?.location || "Add"}</strong>
+                <span className="nb-row-label">Location</span>
+                <span className="nb-row-value">
+                  {userData?.location || "Add"}
+                </span>
                 <ChevronRightIcon />
-              </ProfileEditRow>
-              <ProfileEditRow type="button" onClick={handleSubscriptionAction}>
+              </NbManageRow>
+              <NbManageRow type="button" onClick={handleSubscriptionAction}>
                 <CreditCardIcon />
-                <span>Subscription</span>
-                <strong>{subscriptionActionLabel}</strong>
+                <span className="nb-row-label">Subscription</span>
+                <span className="nb-row-value">
+                  <NbStatusPill active={subscriptionData.status === "active"}>
+                    {membershipStatus}
+                  </NbStatusPill>
+                </span>
                 <ChevronRightIcon />
-              </ProfileEditRow>
-              <ProfileEditRow type="button" onClick={handleLogout}>
+              </NbManageRow>
+              <NbManageRow type="button" onClick={handleLogout}>
                 <UserCircleIcon />
-                <span>Account</span>
-                <strong>로그아웃</strong>
+                <span className="nb-row-label">Account</span>
+                <span className="nb-row-value">Settings</span>
                 <ChevronRightIcon />
-              </ProfileEditRow>
-            </EditRowsPanel>
+              </NbManageRow>
 
-            <FloatingEditButton
+              {!isManagedMembership &&
+                subscriptionData.status === "active" &&
+                !subscriptionData.billingCancelled && (
+                  <NbCancelFooter
+                    type="button"
+                    onClick={() => setShowCancellationOptions(true)}
+                  >
+                    구독 취소 (SUBSCRIPTION CANCELLATION)
+                  </NbCancelFooter>
+                )}
+            </NbCard>
+
+            {/* 5. PRIMARY EDIT PROFILE BUTTON */}
+            <NbPrimaryButton
               type="button"
               onClick={() => setIsEditingDetails((value) => !value)}
             >
               {isEditingDetails ? "편집 닫기" : "Edit profile"}
-            </FloatingEditButton>
-          </ProfileStack>
-        </ProfileRouteShell>
+            </NbPrimaryButton>
+          </NbShell>
+        </NbPageBackground>
 
         {showPublicPreview && (
           <ConfirmationOverlay onClick={() => setShowPublicPreview(false)}>
