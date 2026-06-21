@@ -239,17 +239,15 @@ const CelebrationCard = styled.article`
 
 const CelebrationLogo = styled.div`
   width: 100%;
-  aspect-ratio: 16 / 9;
   margin-bottom: 0.85rem;
-  overflow: hidden;
   border-radius: 10px;
   background: transparent;
 
   img {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
   }
 `;
 
