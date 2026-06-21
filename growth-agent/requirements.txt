@@ -1,0 +1,9 @@
+anthropic>=0.49.0
+firebase-admin>=6.5.0
+selenium>=4.20.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+pytz>=2024.1
+flask>=3.0.0
+gunicorn>=22.0.0
+python-dotenv>=1.0.0
