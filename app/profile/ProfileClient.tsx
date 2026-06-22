@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
 import { httpsCallable } from "firebase/functions";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
+import { useI18n } from "../lib/i18n/I18nProvider";
 import { saveFeedback } from "../lib/services/feedback_service";
 import { appLayout } from "../lib/constants/app_layout";
 import {
@@ -2416,6 +2417,7 @@ const NbCancelButton = styled.button`
 `;
 
 export default function ProfileClient() {
+  const { locale, t } = useI18n();
   const user = auth.currentUser;
   const [avatar, setAvatar] = useState(user?.photoURL || "");
   const [error, setError] = useState("");
@@ -3079,9 +3081,8 @@ export default function ProfileClient() {
       : userData?.account_status === "leader"
         ? "LEADER"
         : null;
-  const lookingForChips = ["비즈니스 영어 루틴", "깊이 있는 토론", "스피킹 자신감"];
-  const profileBio =
-    userData?.bio || "영어 한잔에서 비즈니스 영어와 좋은 대화를 꾸준히 쌓고 있습니다.";
+  const lookingForChips = t.profile.lookingForDefaults;
+  const profileBio = userData?.bio || t.profile.bioFallback;
   const membershipStatus =
     subscriptionData.status === "active"
       ? subscriptionData.billingCancelled
@@ -3228,18 +3229,23 @@ export default function ProfileClient() {
               )}
 
               <NbMetaLine>
-                📍 {userData?.location || "위치 미설정"}
-                {membershipYear ? ` · Membership since ${membershipYear}` : ""}
+                📍 {userData?.location || t.profile.locationUnset}
+                {membershipYear
+                  ? ` · ${t.profile.membershipSince.replace(
+                      "{year}",
+                      String(membershipYear)
+                    )}`
+                  : ""}
               </NbMetaLine>
 
               <NbStatsRow>
                 <NbStatCell>
                   <NbStatValue>{daysWithOneCup}</NbStatValue>
-                  <NbStatLabel>Days Active</NbStatLabel>
+                  <NbStatLabel>{t.profile.daysActive}</NbStatLabel>
                 </NbStatCell>
                 <NbStatCell>
                   <NbStatValue>{membershipStatus}</NbStatValue>
-                  <NbStatLabel>Actv Status</NbStatLabel>
+                  <NbStatLabel>{t.profile.actvStatus}</NbStatLabel>
                 </NbStatCell>
                 <NbStatCell>
                   <NbStatValue>
@@ -3251,7 +3257,7 @@ export default function ProfileClient() {
                           })
                         : "—"}
                   </NbStatValue>
-                  <NbStatLabel>Last Pay</NbStatLabel>
+                  <NbStatLabel>{t.profile.lastPay}</NbStatLabel>
                 </NbStatCell>
               </NbStatsRow>
 
@@ -3260,7 +3266,7 @@ export default function ProfileClient() {
                   {userData?.hasActiveSubscription && (
                     <NbActiveBadge>
                       <CheckBadgeIcon />
-                      Active Member
+                      {t.profile.activeMember}
                     </NbActiveBadge>
                   )}
                   {roleBadgeLabel && (
@@ -3278,7 +3284,7 @@ export default function ProfileClient() {
                   onClick={() => user && router.push(`/profile/${user.uid}`)}
                 >
                   <EyeIcon />
-                  View Public Profile
+                  {t.profile.viewPublicProfile}
                 </NbPillButton>
                 <NbPillButton
                   type="button"
@@ -3291,10 +3297,10 @@ export default function ProfileClient() {
                 >
                   <ShareIcon />
                   {userData?.referralCode
-                    ? "Share Referral Code"
+                    ? t.profile.shareReferral
                     : referralGenerating
-                      ? "생성 중"
-                      : "Generate Referral Code"}
+                      ? t.profile.generating
+                      : t.profile.generateReferral}
                 </NbPillButton>
               </NbPillRow>
             </NbProfileCard>
@@ -3302,15 +3308,15 @@ export default function ProfileClient() {
             {/* 2. BIO + INTERESTS */}
             <NbGrid>
               <NbCard>
-                <NbSectionLabel>My Bio</NbSectionLabel>
+                <NbSectionLabel>{t.profile.myBio}</NbSectionLabel>
                 <NbBioText>{profileBio}</NbBioText>
               </NbCard>
               <NbCard>
-                <NbSectionLabel>Interests</NbSectionLabel>
+                <NbSectionLabel>{t.profile.interests}</NbSectionLabel>
                 <NbChipWrap>
                   {(profileInterests.length
                     ? profileInterests
-                    : ["Business news", "Speaking practice", "Networking"]
+                    : t.profile.interestDefaults
                   ).map((interest) => (
                     <NbChip key={interest}>
                       <SparklesIcon /> {interest}
@@ -3323,7 +3329,7 @@ export default function ProfileClient() {
             {/* 3. LOOKING FOR + ABOUT ME */}
             <NbGrid>
               <NbLookingCard>
-                <NbSectionLabel>I&apos;m Looking For</NbSectionLabel>
+                <NbSectionLabel>{t.profile.lookingFor}</NbSectionLabel>
                 <NbChipWrap>
                   {lookingForChips.map((chip) => (
                     <NbChip key={chip}>
@@ -3333,20 +3339,20 @@ export default function ProfileClient() {
                 </NbChipWrap>
               </NbLookingCard>
               <NbCard>
-                <NbSectionLabel>About Me</NbSectionLabel>
+                <NbSectionLabel>{t.profile.aboutMe}</NbSectionLabel>
                 <NbAboutRow
                   type="button"
                   onClick={() => setIsEditingDetails(true)}
                 >
                   <BriefcaseIcon />
-                  {userData?.work || "Add work history"}
+                  {userData?.work || t.profile.addWork}
                 </NbAboutRow>
                 <NbAboutRow
                   type="button"
                   onClick={() => setIsEditingDetails(true)}
                 >
                   <AcademicCapIcon />
-                  {userData?.school || "Add education"}
+                  {userData?.school || t.profile.addEducation}
                 </NbAboutRow>
               </NbCard>
             </NbGrid>
@@ -3354,23 +3360,21 @@ export default function ProfileClient() {
             {/* Inline profile edit form */}
             {isEditingDetails && (
               <NbInlineEditCard>
-                <NbManageTitle>프로필 편집</NbManageTitle>
-                <NbManageSub>
-                  공개 프로필에 보여줄 소개와 기본 정보를 정리해 주세요.
-                </NbManageSub>
+                <NbManageTitle>{t.profile.editTitle}</NbManageTitle>
+                <NbManageSub>{t.profile.editSub}</NbManageSub>
                 <NbTextArea
                   value={profileForm.bio}
                   onChange={(e) =>
                     setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
                   }
-                  placeholder="짧은 자기소개"
+                  placeholder={t.profile.bioPlaceholder}
                 />
                 <NbInput
                   value={profileForm.work}
                   onChange={(e) =>
                     setProfileForm((prev) => ({ ...prev, work: e.target.value }))
                   }
-                  placeholder="직업/소속"
+                  placeholder={t.profile.workPlaceholder}
                 />
                 <NbInput
                   value={profileForm.school}
@@ -3380,7 +3384,7 @@ export default function ProfileClient() {
                       school: e.target.value,
                     }))
                   }
-                  placeholder="학교/전공"
+                  placeholder={t.profile.schoolPlaceholder}
                 />
                 <NbInput
                   value={profileForm.location}
@@ -3390,7 +3394,7 @@ export default function ProfileClient() {
                       location: e.target.value,
                     }))
                   }
-                  placeholder="지역"
+                  placeholder={t.profile.locationPlaceholder}
                 />
                 <NbInput
                   value={profileForm.interests}
@@ -3400,11 +3404,11 @@ export default function ProfileClient() {
                       interests: e.target.value,
                     }))
                   }
-                  placeholder="관심사, 쉼표로 구분"
+                  placeholder={t.profile.interestsPlaceholder}
                 />
                 <NbEditActions>
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
-                    저장
+                    {t.profile.save}
                   </NbSaveButton>
                   <NbCancelButton
                     type="button"
@@ -3419,7 +3423,7 @@ export default function ProfileClient() {
                       setIsEditingDetails(false);
                     }}
                   >
-                    취소
+                    {t.profile.cancel}
                   </NbCancelButton>
                 </NbEditActions>
               </NbInlineEditCard>
@@ -3427,18 +3431,17 @@ export default function ProfileClient() {
 
             {/* 4. ABOUT YOU MANAGEMENT CARD */}
             <NbCard>
-              <NbManageTitle>About You</NbManageTitle>
-              <NbManageSub>
-                Manage your profile, membership, and learning history in one
-                place.
-              </NbManageSub>
+              <NbManageTitle>{t.profile.aboutYou}</NbManageTitle>
+              <NbManageSub>{t.profile.manageSub}</NbManageSub>
               <NbManageRow
                 type="button"
                 onClick={() => setIsEditingDetails(true)}
               >
                 <BriefcaseIcon />
-                <span className="nb-row-label">Work</span>
-                <span className="nb-row-value">{userData?.work || "Add"}</span>
+                <span className="nb-row-label">{t.profile.work}</span>
+                <span className="nb-row-value">
+                  {userData?.work || t.profile.add}
+                </span>
                 <ChevronRightIcon />
               </NbManageRow>
               <NbManageRow
@@ -3446,9 +3449,9 @@ export default function ProfileClient() {
                 onClick={() => setIsEditingDetails(true)}
               >
                 <AcademicCapIcon />
-                <span className="nb-row-label">Education</span>
+                <span className="nb-row-label">{t.profile.education}</span>
                 <span className="nb-row-value">
-                  {userData?.school || "Add"}
+                  {userData?.school || t.profile.add}
                 </span>
                 <ChevronRightIcon />
               </NbManageRow>
@@ -3457,15 +3460,15 @@ export default function ProfileClient() {
                 onClick={() => setIsEditingDetails(true)}
               >
                 <MapPinIcon />
-                <span className="nb-row-label">Location</span>
+                <span className="nb-row-label">{t.profile.location}</span>
                 <span className="nb-row-value">
-                  {userData?.location || "Add"}
+                  {userData?.location || t.profile.add}
                 </span>
                 <ChevronRightIcon />
               </NbManageRow>
               <NbManageRow type="button" onClick={handleSubscriptionAction}>
                 <CreditCardIcon />
-                <span className="nb-row-label">Subscription</span>
+                <span className="nb-row-label">{t.profile.subscription}</span>
                 <span className="nb-row-value">
                   <NbStatusPill active={subscriptionData.status === "active"}>
                     {membershipStatus}
@@ -3475,8 +3478,8 @@ export default function ProfileClient() {
               </NbManageRow>
               <NbManageRow type="button" onClick={handleLogout}>
                 <UserCircleIcon />
-                <span className="nb-row-label">Account</span>
-                <span className="nb-row-value">Settings</span>
+                <span className="nb-row-label">{t.profile.account}</span>
+                <span className="nb-row-value">{t.profile.settings}</span>
                 <ChevronRightIcon />
               </NbManageRow>
 
@@ -3487,7 +3490,7 @@ export default function ProfileClient() {
                     type="button"
                     onClick={() => setShowCancellationOptions(true)}
                   >
-                    구독 취소 (SUBSCRIPTION CANCELLATION)
+                    {t.profile.subscriptionCancellation}
                   </NbCancelFooter>
                 )}
             </NbCard>
@@ -3497,7 +3500,7 @@ export default function ProfileClient() {
               type="button"
               onClick={() => setIsEditingDetails((value) => !value)}
             >
-              {isEditingDetails ? "편집 닫기" : "Edit profile"}
+              {isEditingDetails ? t.profile.cancel : t.profile.editProfile}
             </NbPrimaryButton>
           </NbShell>
         </NbPageBackground>

@@ -8,6 +8,7 @@ import {
   MapPinIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { useI18n } from "../../lib/i18n/I18nProvider";
 
 interface PublicProfile {
   uid: string;
@@ -328,6 +329,7 @@ const toChips = (value?: string): string[] =>
     .filter(Boolean);
 
 export default function PublicProfileClient({ uid }: { uid: string }) {
+  const { locale, t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState("");
 
@@ -361,14 +363,14 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
   }, [uid]);
 
   if (error) return <Centered>{error}</Centered>;
-  if (!profile) return <Centered>프로필을 불러오는 중...</Centered>;
+  if (!profile) return <Centered>{t.profile.loading}</Centered>;
 
   const interestChips = toChips(profile.interests);
   const memberSinceLabel = profile.memberSince
-    ? new Date(profile.memberSince).toLocaleDateString("ko-KR", {
-        year: "numeric",
-        month: "short",
-      })
+    ? new Date(profile.memberSince).toLocaleDateString(
+        locale === "ko" ? "ko-KR" : "en-US",
+        { year: "numeric", month: "short" }
+      )
     : "—";
   const hasAbout = profile.work || profile.school || profile.location;
 
@@ -382,10 +384,10 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
         <HeroText>
           <BadgeRow>
             {(profile.badges.activeMember || profile.badges.role) && (
-              <Pill $variant="orange">Verified</Pill>
+              <Pill $variant="orange">{t.profile.verified}</Pill>
             )}
             {profile.badges.activeMember && (
-              <Pill $variant="dark">Active Member</Pill>
+              <Pill $variant="dark">{t.profile.activeMember}</Pill>
             )}
             {profile.badges.role && <Pill>{profile.badges.role}</Pill>}
           </BadgeRow>
@@ -393,7 +395,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           <Tagline>
             {profile.bio
               ? `“${profile.bio.split(/(?<=[.!?。])\s/)[0]}”`
-              : "“커피 한 잔과 함께 영어로 이야기 나눠요”"}
+              : `“${t.profile.taglineDefault}”`}
           </Tagline>
         </HeroText>
       </Hero>
@@ -401,7 +403,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
       <StatsGrid>
         <StatCard>
           <StatValue>{profile.stats.meetupCount}</StatValue>
-          <StatLabel>Meetups Completed</StatLabel>
+          <StatLabel>{t.profile.meetupsCompleted}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>
@@ -409,15 +411,15 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
               ? profile.stats.averageSpeakingScore.toFixed(1)
               : "—"}
           </StatValue>
-          <StatLabel>Avg Spark Score</StatLabel>
+          <StatLabel>{t.profile.avgSparkScore}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>{profile.stats.speakingReports}</StatValue>
-          <StatLabel>Speaking Reports</StatLabel>
+          <StatLabel>{t.profile.speakingReports}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue style={{ fontSize: "1rem" }}>{memberSinceLabel}</StatValue>
-          <StatLabel>Member Since</StatLabel>
+          <StatLabel>{t.profile.memberSince}</StatLabel>
         </StatCard>
       </StatsGrid>
 
@@ -425,17 +427,14 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
         <Col>
           <Card>
             <CardHeading>
-              <SparklesIcon /> My Story
+              <SparklesIcon /> {t.profile.myStory}
             </CardHeading>
-            <BodyText>
-              {profile.bio ||
-                "영어 한잔에서 꾸준히 영어 루틴을 쌓아가고 있는 멤버입니다."}
-            </BodyText>
+            <BodyText>{profile.bio || t.profile.storyDefault}</BodyText>
           </Card>
 
           {hasAbout && (
             <Card>
-              <CardLabel>About</CardLabel>
+              <CardLabel>{t.profile.about}</CardLabel>
               {profile.work && (
                 <Detail>
                   <BriefcaseIcon />
@@ -461,8 +460,8 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
         <Col>
           {interestChips.length > 0 && (
             <Card>
-              <CardLabel>Interests &amp; Topics</CardLabel>
-              <ChipGroupLabel>Passions</ChipGroupLabel>
+              <CardLabel>{t.profile.interestsTopics}</CardLabel>
+              <ChipGroupLabel>{t.profile.passions}</ChipGroupLabel>
               <Chips>
                 {interestChips.map((chip) => (
                   <Chip key={chip}>{chip}</Chip>
@@ -472,12 +471,12 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           )}
 
           <InfoCard>
-            <InfoLabel>Status</InfoLabel>
+            <InfoLabel>{t.profile.status}</InfoLabel>
             <InfoTitle>
-              <Dot /> ONE CUP 멤버
+              <Dot /> {t.profile.statusMember}
             </InfoTitle>
             <InfoSub>
-              {memberSinceLabel}부터 영어 한잔과 함께하고 있어요.
+              {t.profile.statusSince.replace("{date}", memberSinceLabel)}
             </InfoSub>
           </InfoCard>
         </Col>
