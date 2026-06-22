@@ -26,14 +26,14 @@ const blog = {
 } as const;
 
 const BlogContainer = styled.div`
-  padding: clamp(2rem, 5vw, 3rem) 0 clamp(3rem, 6vw, 4rem);
+  padding: 0 0 clamp(3rem, 6vw, 4rem);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   background: transparent;
   min-height: 100vh;
 
   @media (max-width: 768px) {
-    padding: 1.5rem 0;
+    padding: 0 0 1.5rem;
   }
 `;
 
@@ -168,25 +168,26 @@ const SectionDivider = styled.div`
 const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   width: 100%;
-  font-size: clamp(1.2rem, 2.2vw, 1.45rem);
-  font-weight: 900;
-  color: ${blog.text.dark};
-  margin: 0 0 1.1rem 0;
-  letter-spacing: 0;
-  line-height: 1.25;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.2;
 
-  &::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: rgba(5, 5, 5, 0.14);
+  /* the label text -> bold orange pill badge (no divider lines) */
+  > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    border: 2px solid #050505;
+    border-radius: 999px;
+    background: #f47a4a;
+    color: #050505;
+    padding: 0.3rem 0.9rem;
+    font-size: clamp(1rem, 2vw, 1.18rem);
+    font-weight: 900;
+    word-break: keep-all;
   }
 
   @media (max-width: 768px) {
-    gap: 0.55rem;
-    font-size: 1.18rem;
     margin: 0 0 0.9rem 0;
   }
 `;
@@ -195,13 +196,14 @@ const SectionCount = styled.span`
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  color: ${blog.accent};
-  font-size: 0.78rem;
-  font-weight: 900;
-
-  @media (max-width: 768px) {
-    font-size: 0.72rem;
-  }
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 `;
 
 const ScrollerWrapper = styled.div`
@@ -847,8 +849,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         </SectionRow>
       )}
 
-      {!loading && blogPosts.length > 0 && <SectionDivider />}
-
       {!loading && announcements.length > 0 && (
         <SectionRow>
           <SectionTitle>
@@ -915,9 +915,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         </SectionRow>
       )}
 
-      {!loading && announcements.length > 0 && information.length > 0 && (
-        <SectionDivider />
-      )}
 
       {!loading && information.length > 0 && (
         <SectionRow>
@@ -985,9 +982,6 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
         </SectionRow>
       )}
 
-      {!loading && information.length > 0 && reviews.length > 0 && (
-        <SectionDivider />
-      )}
 
       {!loading && reviews.length > 0 && (
         <SectionRow>

@@ -25,7 +25,7 @@ import CelebrationEditor from "../lib/features/celebration/components/Celebratio
 const PageShell = styled.div`
   width: 100%;
   min-height: 100vh;
-  padding: clamp(2rem, 5vw, 3rem) 0 clamp(3rem, 6vw, 4rem);
+  padding: 0 0 clamp(3rem, 6vw, 4rem);
   background: transparent;
   color: #050505;
 `;

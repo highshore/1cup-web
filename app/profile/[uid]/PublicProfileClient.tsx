@@ -36,11 +36,11 @@ const Page = styled.main`
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
-  background: #faf8f4;
+  padding: 0 1.25rem 4rem;
+  background: transparent;
 
   @media (max-width: 640px) {
-    padding: 1.5rem 1rem 3rem;
+    padding: 0 1rem 3rem;
   }
 `;
 

@@ -224,7 +224,7 @@ const WordSpan = styled.span<{
 const Container = styled.div`
   min-height: 100vh;
   color: #050505;
-  background: #faf8f4;
+  background: transparent;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   padding-bottom: 80px;
 `;
@@ -293,7 +293,7 @@ const RecordButton = styled.button<{ $isRecording: boolean }>`
 `;
 
 const Content = styled.div`
-  padding: 2rem 0;
+  padding: 0 0 2rem;
   max-width: 900px;
   margin: 0 auto;
   background: transparent;

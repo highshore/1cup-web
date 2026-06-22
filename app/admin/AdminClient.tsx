@@ -24,11 +24,11 @@ import GrowthDashboard from "../lib/features/growth/components/GrowthDashboard";
 const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 0 20px 20px;
   max-width: 1400px;
   margin: 0 auto;
   gap: 30px;
-  background: #faf8f4;
+  background: transparent;
 `;
 
 const Header = styled.div`

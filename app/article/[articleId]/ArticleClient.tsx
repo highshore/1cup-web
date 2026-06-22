@@ -80,26 +80,23 @@ const ArticleContainer = styled.div`
   width: 100%;
   max-width: ${NAVBAR_MAX_WIDTH}px;
   margin: 0 auto;
-  padding: clamp(1.5rem, 2.8vw, 2.25rem) ${NAVBAR_PADDING_DESKTOP}
-    clamp(2rem, 3vw, 2.75rem);
+  padding: 0 ${NAVBAR_PADDING_DESKTOP} clamp(2rem, 3vw, 2.75rem);
   min-height: 100vh;
-  background: #faf8f4;
+  background: transparent;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Helvetica Neue", Arial, sans-serif;
   position: relative;
-  padding-top: ${DESKTOP_PAGE_TOP_PADDING};
+  padding-top: 0;
 
   @media (max-width: 768px) {
-    padding: 1.25rem ${NAVBAR_PADDING_MOBILE} 1.75rem;
-    padding-top: 1.25rem;
+    padding: 0 ${NAVBAR_PADDING_MOBILE} 1.75rem;
     width: 100%;
     min-height: auto;
     overflow-x: hidden;
   }
 
   @media (max-width: 480px) {
-    padding: 1rem ${NAVBAR_PADDING_MOBILE} 1rem;
-    padding-top: 1rem;
+    padding: 0 ${NAVBAR_PADDING_MOBILE} 1rem;
   }
 `;
 
@@ -325,7 +322,7 @@ const LoadingContainer = styled.div`
   font-size: 1.2rem;
   font-weight: 700;
   color: rgba(5, 5, 5, 0.6);
-  background: #faf8f4;
+  background: transparent;
 `;
 
 const ErrorContainer = styled.div`
@@ -336,7 +333,7 @@ const ErrorContainer = styled.div`
   font-size: 1.2rem;
   font-weight: 800;
   color: #050505;
-  background: #faf8f4;
+  background: transparent;
 `;
 
 const KeywordsSection = styled.div`

@@ -1856,20 +1856,20 @@ const PreviewBio = styled.p`
 
 const NbPageBackground = styled.div`
   width: 100%;
-  background: #faf8f4;
+  background: transparent;
 `;
 
 const NbShell = styled.main`
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 1.75rem 1.25rem 4rem;
+  padding: 0 1.25rem 4rem;
   display: grid;
   gap: 1.25rem;
   color: #050505;
 
   @media (max-width: 600px) {
-    padding: 1.25rem 1rem 3rem;
+    padding: 0 1rem 3rem;
     gap: 1rem;
   }
 `;
