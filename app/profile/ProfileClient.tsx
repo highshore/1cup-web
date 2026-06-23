@@ -1863,29 +1863,28 @@ const NbPageBackground = styled.div`
 
 const NbShell = styled.main`
   width: 100%;
-  max-width: 720px;
+  max-width: 560px;
   margin: 0 auto;
-  padding: 0 1.25rem 4rem;
+  padding: 1.25rem 1.25rem 3.5rem;
   display: grid;
-  gap: 1.25rem;
+  gap: 0.85rem;
   color: #050505;
 
   @media (max-width: 600px) {
-    padding: 0 1rem 3rem;
-    gap: 1rem;
+    padding: 1rem 1rem 2.5rem;
+    gap: 0.75rem;
   }
 `;
 
 const NbCard = styled.section`
   background: #ffffff;
   border: 2px solid #050505;
-  border-radius: 16px;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-  padding: 1.75rem;
+  border-radius: 14px;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  padding: 1.25rem 1.35rem;
 
   @media (max-width: 600px) {
-    padding: 1.25rem;
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+    padding: 1.1rem;
   }
 `;
 
@@ -1894,7 +1893,7 @@ const NbProfileCard = styled(NbCard)`
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.85rem;
+  gap: 0.6rem;
 `;
 
 const NbAvatarFrame = styled.div`
@@ -1903,24 +1902,24 @@ const NbAvatarFrame = styled.div`
 `;
 
 const NbAvatarUpload = styled(AvatarUpload)`
-  width: 132px;
-  height: 132px;
+  width: 96px;
+  height: 96px;
   border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 600px) {
-    width: 112px;
-    height: 112px;
+    width: 84px;
+    height: 84px;
   }
 `;
 
 const NbAvatarEditButton = styled.button`
   position: absolute;
   right: -4px;
-  bottom: 4px;
+  bottom: 0;
   display: inline-flex;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border: 2px solid #050505;
@@ -1971,9 +1970,9 @@ const NbNameRow = styled.div`
 
 const NbName = styled.h1`
   margin: 0;
-  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  font-size: clamp(1.4rem, 4.5vw, 1.75rem);
   font-weight: 900;
-  line-height: 1.05;
+  line-height: 1.1;
   letter-spacing: -0.02em;
   color: #050505;
 `;
@@ -2003,9 +2002,9 @@ const NbPencilButton = styled.button`
 `;
 
 const NbMetaLine = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.92rem;
+  margin: -0.15rem 0 0.1rem;
+  color: rgba(5, 5, 5, 0.55);
+  font-size: 0.8rem;
   font-weight: 600;
 `;
 
@@ -2063,8 +2062,8 @@ const NbActiveBadge = styled.span`
   border-radius: 999px;
   background: #f47a4a;
   color: #050505;
-  padding: 0.32rem 0.7rem;
-  font-size: 0.7rem;
+  padding: 0.26rem 0.6rem;
+  font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2083,8 +2082,8 @@ const NbRoleBadge = styled.span`
   border-radius: 999px;
   background: #050505;
   color: #ffffff;
-  padding: 0.32rem 0.7rem;
-  font-size: 0.7rem;
+  padding: 0.26rem 0.6rem;
+  font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2111,9 +2110,9 @@ const NbPillButton = styled.button`
   border-radius: 999px;
   background: #ffffff;
   color: #050505;
-  padding: 0.6rem 1.1rem;
+  padding: 0.46rem 0.9rem;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
@@ -2129,8 +2128,8 @@ const NbPillButton = styled.button`
   }
 
   svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
   }
 `;
 
@@ -2224,8 +2223,8 @@ const NbAboutRow = styled.button`
 `;
 
 const NbManageTitle = styled.h2`
-  margin: 0 0 0.3rem;
-  font-size: 1.25rem;
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
   font-weight: 900;
   letter-spacing: -0.01em;
   color: #050505;
@@ -2245,22 +2244,26 @@ const NbManageRow = styled.button`
   gap: 0.7rem;
   align-items: center;
   border: 0;
-  border-top: 2px solid rgba(5, 5, 5, 0.1);
+  border-top: 1.5px solid rgba(5, 5, 5, 0.12);
   background: transparent;
-  padding: 0.95rem 0;
+  padding: 0.7rem 0;
   color: #050505;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
   transition: opacity 0.12s ease;
 
+  &:first-of-type {
+    border-top: 0;
+  }
+
   &:hover {
     opacity: 0.65;
   }
 
   & > svg:first-child {
-    width: 21px;
-    height: 21px;
+    width: 18px;
+    height: 18px;
     color: #050505;
   }
 
@@ -2328,15 +2331,15 @@ const NbCancelFooter = styled.button`
 const NbPrimaryButton = styled.button`
   width: 100%;
   border: 2px solid #050505;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #050505;
   color: #ffffff;
-  padding: 1rem 1.25rem;
+  padding: 0.8rem 1.25rem;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
   transition: transform 0.12s ease;
 
   &:hover {
@@ -2439,6 +2442,7 @@ export default function ProfileClient() {
     work: "",
     school: "",
     nationality: "",
+    interests: "",
   });
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCancellationOptions, setShowCancellationOptions] = useState(false);
@@ -2529,6 +2533,7 @@ export default function ProfileClient() {
             work: userDataObj.work || "",
             school: userDataObj.school || "",
             nationality: userDataObj.nationality || "",
+            interests: userDataObj.interests || "",
           });
 
           // Set subscription data
@@ -3229,6 +3234,15 @@ export default function ProfileClient() {
                 </NbNameRow>
               )}
 
+              {membershipYear && (
+                <NbMetaLine>
+                  {t.profile.membershipSince.replace(
+                    "{year}",
+                    String(membershipYear)
+                  )}
+                </NbMetaLine>
+              )}
+
               <NbBadgeRow>
                 <NbActiveBadge>
                   <CheckBadgeIcon />
@@ -3311,6 +3325,17 @@ export default function ProfileClient() {
                 </span>
                 <ChevronRightIcon />
               </NbManageRow>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
+                <SparklesIcon />
+                <span className="nb-row-label">{t.profile.interests}</span>
+                <span className="nb-row-value">
+                  {userData?.interests || t.profile.notSet}
+                </span>
+                <ChevronRightIcon />
+              </NbManageRow>
             </NbCard>
 
             {/* Inline profile edit form */}
@@ -3352,6 +3377,16 @@ export default function ProfileClient() {
                   }
                   placeholder={t.profile.nationalityPlaceholder}
                 />
+                <NbInput
+                  value={profileForm.interests}
+                  onChange={(e) =>
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      interests: e.target.value,
+                    }))
+                  }
+                  placeholder={t.profile.interestsPlaceholder}
+                />
                 <NbEditActions>
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
                     {t.profile.save}
@@ -3364,6 +3399,7 @@ export default function ProfileClient() {
                         work: userData?.work || "",
                         school: userData?.school || "",
                         nationality: userData?.nationality || "",
+                        interests: userData?.interests || "",
                       });
                       setIsEditingDetails(false);
                     }}
@@ -3386,6 +3422,11 @@ export default function ProfileClient() {
                 <CreditCardIcon />
                 <span className="nb-row-label">{t.profile.lastPay}</span>
                 <span className="nb-row-value">{recentPaymentLabel}</span>
+              </NbManageRow>
+              <NbManageRow as="div">
+                <CreditCardIcon />
+                <span className="nb-row-label">{t.profile.nextBilling}</span>
+                <span className="nb-row-value">{nextBillingLabel}</span>
               </NbManageRow>
               <NbManageRow as="div">
                 <CreditCardIcon />

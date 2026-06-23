@@ -465,6 +465,7 @@ const ko = {
     roleLeader: "리더",
     roleAdmin: "관리자",
     notSet: "미입력",
+    nextBilling: "다음 결제",
   },
 };
 

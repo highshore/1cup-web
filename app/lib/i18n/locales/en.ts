@@ -465,6 +465,7 @@ const en = {
     roleLeader: "Leader",
     roleAdmin: "Admin",
     notSet: "Not set",
+    nextBilling: "Next Payment",
   },
 };
 
