@@ -50,6 +50,17 @@ interface ArticleData {
   image_url?: string; // Added new optional field
   discussion_topics?: string[]; // Added new optional field
   source_url?: string; // Added new optional field
+  figures?: ArticleFigure[]; // Inline figures/charts from the OCR pipeline
+}
+
+interface ArticleFigure {
+  kind?: string; // "photo" | "chart" | "table" | "illustration" | ...
+  caption?: { english?: string; korean?: string };
+  display_url?: string | null; // generated image for photos, original crop for charts
+  original_url?: string | null;
+  generated_url?: string | null;
+  bbox?: number[];
+  is_hero?: boolean;
 }
 
 interface WordData {
@@ -1219,6 +1230,60 @@ const ImageCaption = styled.p`
     font-size: 0.7rem;
     margin: 0 0 1rem 0;
   }
+`;
+
+// Inline article figures (photos recreated by AI; charts kept original)
+const FiguresSection = styled.div`
+  margin-top: 2rem;
+`;
+
+const FiguresGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+`;
+
+const FigureCard = styled.figure`
+  margin: 0;
+`;
+
+const FigureCaptionEn = styled.figcaption`
+  font-size: 0.9rem;
+  color: #050505;
+  line-height: 1.5;
+  margin-top: 0.6rem;
+`;
+
+const FigureCaptionKo = styled.span`
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(5, 5, 5, 0.55);
+  line-height: 1.5;
+  margin-top: 0.2rem;
+`;
+
+// Chart image: plain, no boxed/bordered container.
+const ChartImage = styled.img`
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 1.5rem 0 0.5rem 0;
+
+  @media (max-width: 768px) {
+    margin: 1rem 0 0.5rem 0;
+  }
+`;
+
+const FigureKindTag = styled.span`
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(5, 5, 5, 0.5);
+  margin-top: 0.25rem;
 `;
 
 // Discussion topics components
@@ -2952,15 +3017,14 @@ const Article = () => {
           )}
         </InfoContainer>
 
-        <SectionHeaderRow>
-          <SectionTitle style={{ marginBottom: 0 }}>Article Visual</SectionTitle>
-          {isAdmin && !isEditingMedia && (
+        {isAdmin && !isEditingMedia && (
+          <SectionHeaderRow style={{ justifyContent: "flex-end" }}>
             <AdminActionButton type="button" onClick={startEditingMedia}>
               <PencilSquareIcon width={18} height={18} />
               이미지 편집
             </AdminActionButton>
-          )}
-        </SectionHeaderRow>
+          </SectionHeaderRow>
+        )}
 
         {isEditingMedia ? (
           <AdminEditCard>
@@ -3341,6 +3405,44 @@ const Article = () => {
             )}
           </ContentSection>
         )}
+
+        {(() => {
+          // Only charts/tables render inline; photos are represented solely by
+          // the hero image above.
+          const charts = (article.figures || []).filter(
+            (f) =>
+              f.display_url &&
+              !f.is_hero &&
+              (f.kind === "chart" || f.kind === "table")
+          );
+          if (charts.length === 0) return null;
+          return (
+            <FiguresSection>
+              <FiguresGrid>
+                {charts.map((fig, index) => (
+                  <FigureCard key={index}>
+                    <ChartImage
+                      src={fig.display_url as string}
+                      alt={fig.caption?.english || "Article chart"}
+                      loading="lazy"
+                    />
+                    <FigureKindTag>원본 차트 · Original chart</FigureKindTag>
+                    {(fig.caption?.english || fig.caption?.korean) && (
+                      <FigureCaptionEn>
+                        {fig.caption?.english}
+                        {fig.caption?.korean && (
+                          <FigureCaptionKo>
+                            {fig.caption.korean}
+                          </FigureCaptionKo>
+                        )}
+                      </FigureCaptionEn>
+                    )}
+                  </FigureCard>
+                ))}
+              </FiguresGrid>
+            </FiguresSection>
+          );
+        })()}
 
         {keywords && keywords.length > 0 && (
           <KeywordsSection>

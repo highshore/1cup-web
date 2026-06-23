@@ -29,6 +29,7 @@ import {
   CheckBadgeIcon,
   CreditCardIcon,
   EyeIcon,
+  GlobeAltIcon,
   MapPinIcon,
   PencilSquareIcon,
   PhoneIcon,
@@ -534,6 +535,7 @@ interface UserData {
   work?: string;
   school?: string;
   location?: string;
+  nationality?: string;
   interests?: string;
   profilePublic?: boolean;
 }
@@ -2436,8 +2438,7 @@ export default function ProfileClient() {
     bio: "",
     work: "",
     school: "",
-    location: "",
-    interests: "",
+    nationality: "",
   });
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCancellationOptions, setShowCancellationOptions] = useState(false);
@@ -2517,6 +2518,7 @@ export default function ProfileClient() {
             work: data.work || "",
             school: data.school || "",
             location: data.location || "",
+            nationality: data.nationality || "",
             interests: data.interests || "",
             profilePublic: data.profilePublic !== false,
           };
@@ -2526,8 +2528,7 @@ export default function ProfileClient() {
             bio: userDataObj.bio || "",
             work: userDataObj.work || "",
             school: userDataObj.school || "",
-            location: userDataObj.location || "",
-            interests: userDataObj.interests || "",
+            nationality: userDataObj.nationality || "",
           });
 
           // Set subscription data
@@ -3228,55 +3229,22 @@ export default function ProfileClient() {
                 </NbNameRow>
               )}
 
-              <NbMetaLine>
-                📍 {userData?.location || t.profile.locationUnset}
-                {membershipYear
-                  ? ` · ${t.profile.membershipSince.replace(
-                      "{year}",
-                      String(membershipYear)
-                    )}`
-                  : ""}
-              </NbMetaLine>
-
-              <NbStatsRow>
-                <NbStatCell>
-                  <NbStatValue>{daysWithOneCup}</NbStatValue>
-                  <NbStatLabel>{t.profile.daysActive}</NbStatLabel>
-                </NbStatCell>
-                <NbStatCell>
-                  <NbStatValue>{membershipStatus}</NbStatValue>
-                  <NbStatLabel>{t.profile.actvStatus}</NbStatLabel>
-                </NbStatCell>
-                <NbStatCell>
-                  <NbStatValue>
-                    {isManagedMembership
-                      ? "—"
-                      : subscriptionData.startDate
-                        ? format(subscriptionData.startDate, "MM/dd", {
-                            locale: ko,
-                          })
-                        : "—"}
-                  </NbStatValue>
-                  <NbStatLabel>{t.profile.lastPay}</NbStatLabel>
-                </NbStatCell>
-              </NbStatsRow>
-
-              {(userData?.hasActiveSubscription || roleBadgeLabel) && (
-                <NbBadgeRow>
-                  {userData?.hasActiveSubscription && (
-                    <NbActiveBadge>
-                      <CheckBadgeIcon />
-                      {t.profile.activeMember}
-                    </NbActiveBadge>
-                  )}
-                  {roleBadgeLabel && (
-                    <NbRoleBadge>
-                      <UserCircleIcon />
-                      {roleBadgeLabel}
-                    </NbRoleBadge>
-                  )}
-                </NbBadgeRow>
-              )}
+              <NbBadgeRow>
+                <NbActiveBadge>
+                  <CheckBadgeIcon />
+                  {userData?.hasActiveSubscription
+                    ? t.profile.subscribed
+                    : t.profile.notSubscribed}
+                </NbActiveBadge>
+                <NbRoleBadge>
+                  <UserCircleIcon />
+                  {userData?.account_status === "admin"
+                    ? t.profile.roleAdmin
+                    : userData?.account_status === "leader"
+                      ? t.profile.roleLeader
+                      : t.profile.roleMember}
+                </NbRoleBadge>
+              </NbBadgeRow>
 
               <NbPillRow>
                 <NbPillButton
@@ -3305,57 +3273,45 @@ export default function ProfileClient() {
               </NbPillRow>
             </NbProfileCard>
 
-            {/* 2. BIO + INTERESTS */}
-            <NbGrid>
-              <NbCard>
-                <NbSectionLabel>{t.profile.myBio}</NbSectionLabel>
-                <NbBioText>{profileBio}</NbBioText>
-              </NbCard>
-              <NbCard>
-                <NbSectionLabel>{t.profile.interests}</NbSectionLabel>
-                <NbChipWrap>
-                  {(profileInterests.length
-                    ? profileInterests
-                    : t.profile.interestDefaults
-                  ).map((interest) => (
-                    <NbChip key={interest}>
-                      <SparklesIcon /> {interest}
-                    </NbChip>
-                  ))}
-                </NbChipWrap>
-              </NbCard>
-            </NbGrid>
-
-            {/* 3. LOOKING FOR + ABOUT ME */}
-            <NbGrid>
-              <NbLookingCard>
-                <NbSectionLabel>{t.profile.lookingFor}</NbSectionLabel>
-                <NbChipWrap>
-                  {lookingForChips.map((chip) => (
-                    <NbChip key={chip}>
-                      <BookOpenIcon /> {chip}
-                    </NbChip>
-                  ))}
-                </NbChipWrap>
-              </NbLookingCard>
-              <NbCard>
-                <NbSectionLabel>{t.profile.aboutMe}</NbSectionLabel>
-                <NbAboutRow
-                  type="button"
-                  onClick={() => setIsEditingDetails(true)}
-                >
-                  <BriefcaseIcon />
-                  {userData?.work || t.profile.addWork}
-                </NbAboutRow>
-                <NbAboutRow
-                  type="button"
-                  onClick={() => setIsEditingDetails(true)}
-                >
-                  <AcademicCapIcon />
-                  {userData?.school || t.profile.addEducation}
-                </NbAboutRow>
-              </NbCard>
-            </NbGrid>
+            {/* 2. MY INFO */}
+            <NbCard>
+              <NbManageTitle>{t.profile.myInfo}</NbManageTitle>
+              <NbSectionLabel>{t.profile.bio}</NbSectionLabel>
+              <NbBioText>{userData?.bio || t.profile.notSet}</NbBioText>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
+                <BriefcaseIcon />
+                <span className="nb-row-label">{t.profile.work}</span>
+                <span className="nb-row-value">
+                  {userData?.work || t.profile.notSet}
+                </span>
+                <ChevronRightIcon />
+              </NbManageRow>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
+                <AcademicCapIcon />
+                <span className="nb-row-label">{t.profile.school}</span>
+                <span className="nb-row-value">
+                  {userData?.school || t.profile.notSet}
+                </span>
+                <ChevronRightIcon />
+              </NbManageRow>
+              <NbManageRow
+                type="button"
+                onClick={() => setIsEditingDetails(true)}
+              >
+                <GlobeAltIcon />
+                <span className="nb-row-label">{t.profile.nationality}</span>
+                <span className="nb-row-value">
+                  {userData?.nationality || t.profile.notSet}
+                </span>
+                <ChevronRightIcon />
+              </NbManageRow>
+            </NbCard>
 
             {/* Inline profile edit form */}
             {isEditingDetails && (
@@ -3387,24 +3343,14 @@ export default function ProfileClient() {
                   placeholder={t.profile.schoolPlaceholder}
                 />
                 <NbInput
-                  value={profileForm.location}
+                  value={profileForm.nationality}
                   onChange={(e) =>
                     setProfileForm((prev) => ({
                       ...prev,
-                      location: e.target.value,
+                      nationality: e.target.value,
                     }))
                   }
-                  placeholder={t.profile.locationPlaceholder}
-                />
-                <NbInput
-                  value={profileForm.interests}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({
-                      ...prev,
-                      interests: e.target.value,
-                    }))
-                  }
-                  placeholder={t.profile.interestsPlaceholder}
+                  placeholder={t.profile.nationalityPlaceholder}
                 />
                 <NbEditActions>
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
@@ -3417,8 +3363,7 @@ export default function ProfileClient() {
                         bio: userData?.bio || "",
                         work: userData?.work || "",
                         school: userData?.school || "",
-                        location: userData?.location || "",
-                        interests: userData?.interests || "",
+                        nationality: userData?.nationality || "",
                       });
                       setIsEditingDetails(false);
                     }}
@@ -3429,70 +3374,49 @@ export default function ProfileClient() {
               </NbInlineEditCard>
             )}
 
-            {/* 4. ABOUT YOU MANAGEMENT CARD */}
+            {/* 4. SUBSCRIPTION INFO */}
             <NbCard>
-              <NbManageTitle>{t.profile.aboutYou}</NbManageTitle>
-              <NbManageSub>{t.profile.manageSub}</NbManageSub>
-              <NbManageRow
-                type="button"
-                onClick={() => setIsEditingDetails(true)}
-              >
-                <BriefcaseIcon />
-                <span className="nb-row-label">{t.profile.work}</span>
-                <span className="nb-row-value">
-                  {userData?.work || t.profile.add}
-                </span>
-                <ChevronRightIcon />
+              <NbManageTitle>{t.profile.subscriptionInfo}</NbManageTitle>
+              <NbManageRow as="div">
+                <CheckBadgeIcon />
+                <span className="nb-row-label">{t.profile.memberStatus}</span>
+                <span className="nb-row-value">{membershipStatus}</span>
               </NbManageRow>
-              <NbManageRow
-                type="button"
-                onClick={() => setIsEditingDetails(true)}
-              >
-                <AcademicCapIcon />
-                <span className="nb-row-label">{t.profile.education}</span>
-                <span className="nb-row-value">
-                  {userData?.school || t.profile.add}
-                </span>
-                <ChevronRightIcon />
-              </NbManageRow>
-              <NbManageRow
-                type="button"
-                onClick={() => setIsEditingDetails(true)}
-              >
-                <MapPinIcon />
-                <span className="nb-row-label">{t.profile.location}</span>
-                <span className="nb-row-value">
-                  {userData?.location || t.profile.add}
-                </span>
-                <ChevronRightIcon />
-              </NbManageRow>
-              <NbManageRow type="button" onClick={handleSubscriptionAction}>
+              <NbManageRow as="div">
                 <CreditCardIcon />
-                <span className="nb-row-label">{t.profile.subscription}</span>
+                <span className="nb-row-label">{t.profile.lastPay}</span>
+                <span className="nb-row-value">{recentPaymentLabel}</span>
+              </NbManageRow>
+              <NbManageRow as="div">
+                <CreditCardIcon />
+                <span className="nb-row-label">{t.profile.subscribed}</span>
                 <span className="nb-row-value">
                   <NbStatusPill active={subscriptionData.status === "active"}>
-                    {membershipStatus}
+                    {userData?.hasActiveSubscription
+                      ? t.profile.subscribed
+                      : t.profile.notSubscribed}
                   </NbStatusPill>
                 </span>
-                <ChevronRightIcon />
-              </NbManageRow>
-              <NbManageRow type="button" onClick={handleLogout}>
-                <UserCircleIcon />
-                <span className="nb-row-label">{t.profile.account}</span>
-                <span className="nb-row-value">{t.profile.settings}</span>
-                <ChevronRightIcon />
               </NbManageRow>
 
-              {!isManagedMembership &&
-                subscriptionData.status === "active" &&
-                !subscriptionData.billingCancelled && (
-                  <NbCancelFooter
-                    type="button"
-                    onClick={() => setShowCancellationOptions(true)}
-                  >
-                    {t.profile.subscriptionCancellation}
-                  </NbCancelFooter>
-                )}
+              {isManagedMembership ? null : subscriptionData.status ===
+                  "active" && !subscriptionData.billingCancelled ? (
+                <NbCancelFooter
+                  type="button"
+                  onClick={() => setShowCancellationOptions(true)}
+                >
+                  {t.profile.subscriptionCancellation}
+                </NbCancelFooter>
+              ) : (
+                <NbManageRow type="button" onClick={handleSubscriptionAction}>
+                  <CreditCardIcon />
+                  <span className="nb-row-label">
+                    {t.profile.subscriptionStatus}
+                  </span>
+                  <span className="nb-row-value">{subscriptionActionLabel}</span>
+                  <ChevronRightIcon />
+                </NbManageRow>
+              )}
             </NbCard>
 
             {/* 5. PRIMARY EDIT PROFILE BUTTON */}
