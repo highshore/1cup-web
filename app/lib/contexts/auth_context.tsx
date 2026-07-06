@@ -7,12 +7,21 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from "../firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "../supabase/client";
+
+// Firebase-User-compatible shape so existing components (currentUser.uid /
+// .displayName / .email / .phoneNumber / .photoURL) keep working unchanged.
+export interface AppUser {
+  uid: string;            // public.users.uid (Firebase uid for migrated users, auth uuid for new)
+  authId: string;         // auth.users.id
+  email: string | null;
+  displayName: string | null;
+  phoneNumber: string | null;
+  photoURL: string | null;
+}
 
 interface AuthContextProps {
-  currentUser: User | null;
+  currentUser: AppUser | null;
   isLoading: boolean;
   hasActiveSubscription: boolean | null;
   accountStatus: string | null;
@@ -31,67 +40,67 @@ const AuthContext = createContext<AuthContextProps>({
 
 export const useAuth = () => useContext(AuthContext);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState<
-    boolean | null
-  >(null);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [isGdgMember, setIsGdgMember] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setHasActiveSubscription(userData.hasActiveSubscription || false);
-            setAccountStatus(userData.account_status || "user");
-            setIsGdgMember(userData.gdg_member === true);
-          } else {
-            setHasActiveSubscription(false);
-            setAccountStatus("user");
-            setIsGdgMember(false);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setHasActiveSubscription(false);
-          setAccountStatus("user");
-          setIsGdgMember(false);
-        }
-      } else {
+    let active = true;
+
+    async function hydrate(authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null) {
+      if (!authUser) {
+        if (!active) return;
+        setCurrentUser(null);
         setHasActiveSubscription(null);
         setAccountStatus(null);
         setIsGdgMember(null);
+        setIsLoading(false);
+        return;
       }
+      // Resolve the public.users row linked via auth_id (created/linked by the
+      // handle_new_user trigger). This is the app-level identity.
+      const { data: row } = await supabase
+        .from("users")
+        .select("uid, email, display_name, phone, photo_url, has_active_subscription, account_status, gdg_member")
+        .eq("auth_id", authUser.id)
+        .maybeSingle();
+      if (!active) return;
+
+      const meta = authUser.user_metadata ?? {};
+      setCurrentUser({
+        uid: row?.uid ?? authUser.id,
+        authId: authUser.id,
+        email: row?.email ?? authUser.email ?? null,
+        displayName: row?.display_name ?? (meta.name as string) ?? (meta.full_name as string) ?? null,
+        phoneNumber: row?.phone ?? null,
+        photoURL: row?.photo_url ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
+      });
+      setHasActiveSubscription(row?.has_active_subscription ?? false);
+      setAccountStatus(row?.account_status ?? "user");
+      setIsGdgMember(row?.gdg_member === true);
       setIsLoading(false);
+    }
+
+    supabase.auth.getSession().then(({ data }) => hydrate(data.session?.user ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      hydrate(session?.user ?? null);
     });
 
-    return unsubscribe;
+    return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  const logout = async () => {
-    await signOut(auth);
-  };
+  const logout = async () => { await supabase.auth.signOut(); };
 
-  const value = {
-    currentUser,
-    isLoading,
-    hasActiveSubscription,
-    accountStatus,
-    isGdgMember,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ currentUser, isLoading, hasActiveSubscription, accountStatus, isGdgMember, logout }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthProvider;
