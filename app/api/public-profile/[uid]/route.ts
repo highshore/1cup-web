@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "../../../lib/firebase/firebaseAdmin";
+import { admin } from "../../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,21 +10,12 @@ type RouteContext = {
 
 const toIso = (value: any) => {
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
-  return null;
-};
-
-const countArrayContains = async (collectionName: string, field: string, uid: string) => {
-  try {
-    const snapshot = await db
-      .collection(collectionName)
-      .where(field, "array-contains", uid)
-      .get();
-    return snapshot.size;
-  } catch {
-    return 0;
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
   }
+  return null;
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
@@ -35,47 +26,58 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const userDoc = await db.collection("users").doc(uid).get();
+    const sb = admin();
 
-    if (!userDoc.exists) {
+    const { data, error: userError } = await sb
+      .from("users")
+      .select(
+        "uid, display_name, photo_url, bio, work, school, location, interests, profile_public, gdg_member, has_active_subscription, account_status, created_at"
+      )
+      .eq("uid", uid)
+      .maybeSingle();
+
+    if (userError) throw userError;
+
+    if (!data) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const data = userDoc.data() || {};
-    const publicProfileDisabled = data.profilePublic === false;
+    const publicProfileDisabled = data.profile_public === false;
 
     if (publicProfileDisabled) {
       return NextResponse.json({ error: "Profile is private" }, { status: 403 });
     }
 
-    const reportsSnapshot = await db
-      .collection("users")
-      .doc(uid)
-      .collection("speaking_reports")
-      .get();
+    // The users/{uid}/speaking_reports subcollection is now a top-level table keyed by user_id.
+    const { data: reports } = await sb
+      .from("speaking_reports")
+      .select("*")
+      .eq("user_id", uid);
+    const reportRows = reports ?? [];
 
     let scoreTotal = 0;
     let scoreCount = 0;
-    reportsSnapshot.forEach((doc) => {
-      const score = Number(doc.data()?.analysis?.overallScore);
+    reportRows.forEach((row: any) => {
+      const score = Number(row?.overall_score ?? row?.analysis?.overallScore);
       if (Number.isFinite(score)) {
         scoreTotal += score;
         scoreCount += 1;
       }
     });
 
-    const [meetupParticipantCount, meetupLeaderCount, eventsParticipantCount, eventsLeaderCount] =
-      await Promise.all([
-        countArrayContains("meetup", "participants", uid),
-        countArrayContains("meetup", "leaders", uid),
-        countArrayContains("events", "participants", uid),
-        countArrayContains("events", "leaders", uid),
-      ]);
+    // The old code counted meetup participants + leaders across the old "meetup" and "events"
+    // collections (four array-contains queries summed). Those collections merged into the
+    // single `meetups` table; participation (both roles) now lives in `meetup_participants`.
+    const { data: participations } = await sb
+      .from("meetup_participants")
+      .select("meetup_id")
+      .eq("user_id", uid);
+    const meetupCount = participations?.length ?? 0;
 
     const publicProfile = {
       uid,
-      displayName: data.displayName || data.name || `Member ${uid.slice(0, 6)}`,
-      photoURL: data.photoURL || data.avatar || null,
+      displayName: data.display_name || `Member ${uid.slice(0, 6)}`,
+      photoURL: data.photo_url || null,
       bio: data.bio || "",
       work: data.work || "",
       school: data.school || "",
@@ -83,23 +85,19 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       interests: data.interests || "",
       badges: {
         gdgMember: data.gdg_member === true,
-        activeMember: data.hasActiveSubscription === true,
+        activeMember: data.has_active_subscription === true,
         role:
           data.account_status === "admin" || data.account_status === "leader"
             ? data.account_status
             : null,
       },
       stats: {
-        meetupCount:
-          meetupParticipantCount +
-          meetupLeaderCount +
-          eventsParticipantCount +
-          eventsLeaderCount,
-        speakingReports: reportsSnapshot.size,
+        meetupCount,
+        speakingReports: reportRows.length,
         averageSpeakingScore:
           scoreCount > 0 ? Math.round((scoreTotal / scoreCount) * 10) / 10 : null,
       },
-      memberSince: toIso(data.createdAt),
+      memberSince: toIso(data.created_at),
     };
 
     return NextResponse.json(publicProfile, {
