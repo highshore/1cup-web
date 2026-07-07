@@ -1,6 +1,4 @@
-import { db } from "../firebase/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { auth } from "../firebase/firebase";
+import { supabase } from "../supabase/client";
 
 export interface FeedbackData {
   userId: string;
@@ -15,25 +13,38 @@ export const saveFeedback = async (
   reasons: string[],
   otherReason?: string
 ): Promise<void> => {
-  const user = auth.currentUser;
+  // Resolve the current auth user, then the linked public.users.uid.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     throw new Error("User not authenticated");
   }
 
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("uid")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+  const userId = userRow?.uid ?? user.id;
+
   const feedbackData: any = {
-    userId: user.uid,
+    id: crypto.randomUUID(),
+    kind: category, // survey | cancellation | refund
+    user_id: userId,
     category,
     reasons,
-    timestamp: serverTimestamp(),
+    created_at: new Date().toISOString(),
   };
 
-  // Only add otherReason if it exists and is not empty
+  // Only add other_reason if it exists and is not empty
   if (otherReason && otherReason.trim() !== "") {
-    feedbackData.otherReason = otherReason.trim();
+    feedbackData.other_reason = otherReason.trim();
   }
 
   try {
-    await addDoc(collection(db, "feedback"), feedbackData);
+    const { error } = await supabase.from("feedback").insert(feedbackData);
+    if (error) throw error;
     console.log("Feedback saved successfully");
   } catch (error) {
     console.error("Error saving feedback:", error);

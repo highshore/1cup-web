@@ -3,8 +3,7 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { useSearchParams } from "next/navigation";
-import { Timestamp, addDoc, collection } from "firebase/firestore";
-import { db } from "../lib/firebase/firebase";
+import { supabase } from "../lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { colors } from "../lib/constants/colors";
 
@@ -293,15 +292,20 @@ export default function FeedbackClient({ uid }: { uid: string }) {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "feedback"), {
-        uid,
-        q1_meetup_participation: q1,
-        q2_recommendation: q2,
-        q3_disappointment: q3,
-        q4_speaking_difficulty: q4,
-        q5_improvement_suggestions: q5,
-        createdAt: Timestamp.now(),
+      const { error } = await supabase.from("feedback").insert({
+        id: crypto.randomUUID(),
+        kind: "survey",
+        user_id: uid,
+        survey: {
+          q1_meetup_participation: q1,
+          q2_recommendation: q2,
+          q3_disappointment: q3,
+          q4_speaking_difficulty: q4,
+          q5_improvement_suggestions: q5,
+        },
+        created_at: new Date().toISOString(),
       });
+      if (error) throw error;
       alert("소중한 의견 감사합니다!");
       router.push("/");
     } catch (error) {

@@ -1,19 +1,7 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 import { BlogPost } from "../types/blog_types";
 
-const COLLECTION_NAME = "blog_posts";
+const TABLE_NAME = "blog_posts";
 
 // Create a slug from title
 const createSlug = (title: string): string => {
@@ -24,42 +12,44 @@ const createSlug = (title: string): string => {
     .trim();
 };
 
-// Convert Firestore document to BlogPost
-const docToBlogPost = (doc: any): BlogPost => {
-  const data = doc.data();
+// Convert a Supabase row (snake_case) to a BlogPost.
+const rowToBlogPost = (data: any): BlogPost => {
   return {
-    id: doc.id,
+    id: data.id,
     title: data.title || "",
     content: data.content || "",
     excerpt: data.excerpt || "",
-    createdAt: data.createdAt?.toDate() || new Date(),
-    updatedAt: data.updatedAt?.toDate() || new Date(),
-    publishedAt: data.publishedAt?.toDate() || null,
+    createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+    updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
+    publishedAt: data.published_at ? new Date(data.published_at) : null,
     status: data.status || "draft",
     slug: data.slug || "",
-    featuredImage: data.featuredImage || "",
+    featuredImage: data.featured_image || "",
     tags: data.tags || [],
     featured: data.featured ?? false,
     category: data.category || undefined,
     views: data.views || 0,
     likes: data.likes || 0,
-    likedBy: data.likedBy || [],
+    // likedBy is no longer stored inline; the junction table blog_post_likes
+    // holds likes. Kept here (empty) so the BlogPost shape is unchanged.
+    likedBy: [],
   };
 };
 
 // Fetch all published blog posts (for public view)
 export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
   try {
-    const blogRef = collection(db, COLLECTION_NAME);
-    const publishedPostsQuery = query(blogRef, where("status", "==", "published"));
-    const querySnapshot = await getDocs(publishedPostsQuery);
-    const posts = querySnapshot.docs
-      .map(docToBlogPost)
-      .sort((a, b) => {
-        const dateA = a.publishedAt || a.createdAt;
-        const dateB = b.publishedAt || b.createdAt;
-        return dateB.getTime() - dateA.getTime();
-      });
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("status", "published");
+    if (error) throw error;
+
+    const posts = (data || []).map(rowToBlogPost).sort((a, b) => {
+      const dateA = a.publishedAt || a.createdAt;
+      const dateB = b.publishedAt || b.createdAt;
+      return dateB.getTime() - dateA.getTime();
+    });
 
     return posts;
   } catch (error) {
@@ -72,12 +62,12 @@ export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
 // Fetch all blog posts (for admin view)
 export const fetchAllBlogPosts = async (): Promise<BlogPost[]> => {
   try {
-    const blogRef = collection(db, COLLECTION_NAME);
+    // Get all rows and sort in memory to match previous behaviour.
+    const { data, error } = await supabase.from(TABLE_NAME).select("*");
+    if (error) throw error;
 
-    // Get all documents and sort in memory to avoid index issues
-    const querySnapshot = await getDocs(blogRef);
-    const posts = querySnapshot.docs
-      .map(docToBlogPost)
+    const posts = (data || [])
+      .map(rowToBlogPost)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     return posts;
@@ -91,14 +81,14 @@ export const fetchAllBlogPosts = async (): Promise<BlogPost[]> => {
 // Fetch a single blog post by ID (for admin use - returns any status)
 export const fetchBlogPost = async (id: string): Promise<BlogPost | null> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const docSnap = await getDoc(docRef);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
 
-    if (docSnap.exists()) {
-      return docToBlogPost(docSnap);
-    } else {
-      return null;
-    }
+    return data ? rowToBlogPost(data) : null;
   } catch (error) {
     console.error("Error fetching blog post:", error);
     throw new Error("Failed to fetch blog post");
@@ -110,20 +100,22 @@ export const fetchPublishedBlogPost = async (
   id: string
 ): Promise<BlogPost | null> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const docSnap = await getDoc(docRef);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
 
-    if (docSnap.exists()) {
-      const post = docToBlogPost(docSnap);
+    if (data) {
+      const post = rowToBlogPost(data);
       // Only return if the post is published
       if (post.status === "published") {
         return post;
-      } else {
-        return null; // Post exists but is not published
       }
-    } else {
-      return null;
+      return null; // Post exists but is not published
     }
+    return null;
   } catch (error) {
     console.error("Error fetching published blog post:", error);
     throw new Error("Failed to fetch blog post");
@@ -135,14 +127,14 @@ export const fetchBlogPostBySlug = async (
   slug: string
 ): Promise<BlogPost | null> => {
   try {
-    const blogRef = collection(db, COLLECTION_NAME);
-    const querySnapshot = await getDocs(blogRef);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw error;
 
-    const post = querySnapshot.docs
-      .map(docToBlogPost)
-      .find((post) => post.slug === slug);
-
-    return post || null;
+    return data ? rowToBlogPost(data) : null;
   } catch (error) {
     console.error("Error fetching blog post by slug:", error);
     throw new Error("Failed to fetch blog post");
@@ -154,14 +146,15 @@ export const fetchPublishedBlogPostBySlug = async (
   slug: string
 ): Promise<BlogPost | null> => {
   try {
-    const blogRef = collection(db, COLLECTION_NAME);
-    const querySnapshot = await getDocs(blogRef);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("slug", slug)
+      .eq("status", "published")
+      .maybeSingle();
+    if (error) throw error;
 
-    const post = querySnapshot.docs
-      .map(docToBlogPost)
-      .find((post) => post.slug === slug && post.status === "published");
-
-    return post || null;
+    return data ? rowToBlogPost(data) : null;
   } catch (error) {
     console.error("Error fetching published blog post by slug:", error);
     throw new Error("Failed to fetch blog post");
@@ -175,18 +168,34 @@ export const createBlogPost = async (
   try {
     console.log("Creating blog post with data:", postData);
 
-    const now = new Date();
-    const slug = createSlug(postData.title || "");
+    const now = new Date().toISOString();
+    // blog_posts.id is TEXT (was a Firestore doc id) — generate one.
+    const id = crypto.randomUUID();
+    let slug = createSlug(postData.title || "");
+    // slug is UNIQUE in Postgres. A blank slug (e.g. title with no ascii chars)
+    // or a collision would violate the constraint, so make it unique/non-empty.
+    if (!slug) {
+      slug = id;
+    } else {
+      const { data: existing } = await supabase
+        .from(TABLE_NAME)
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (existing) {
+        slug = `${slug}-${id.slice(0, 8)}`;
+      }
+    }
 
     const blogPost: any = {
+      id,
       title: postData.title || "",
       content: postData.content || "",
-      createdAt: Timestamp.fromDate(now),
-      updatedAt: Timestamp.fromDate(now),
-      publishedAt:
-        postData.status === "published" ? Timestamp.fromDate(now) : null,
+      created_at: now,
+      updated_at: now,
+      published_at: postData.status === "published" ? now : null,
       status: postData.status || "draft",
-      slug: slug,
+      slug,
     };
 
     // Only include optional fields if they have values
@@ -195,7 +204,7 @@ export const createBlogPost = async (
     }
 
     if (postData.featuredImage) {
-      blogPost.featuredImage = postData.featuredImage;
+      blogPost.featured_image = postData.featuredImage;
     }
 
     if (postData.tags && postData.tags.length > 0) {
@@ -212,11 +221,15 @@ export const createBlogPost = async (
 
     console.log("Final blog post object:", blogPost);
 
-    const blogRef = collection(db, COLLECTION_NAME);
-    const docRef = await addDoc(blogRef, blogPost);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .insert(blogPost)
+      .select()
+      .single();
+    if (error) throw error;
 
-    console.log("Blog post created successfully with ID:", docRef.id);
-    return docRef.id;
+    console.log("Blog post created successfully with ID:", data.id);
+    return data.id;
   } catch (error) {
     console.error("Error creating blog post:", error);
     console.error(
@@ -238,12 +251,11 @@ export const updateBlogPost = async (
   try {
     console.log("Updating blog post ID:", id, "with data:", postData);
 
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const now = new Date();
+    const now = new Date().toISOString();
 
     // Build update data without undefined values
     const updateData: any = {
-      updatedAt: Timestamp.fromDate(now),
+      updated_at: now,
     };
 
     // Only include fields that have values to avoid undefined errors
@@ -265,7 +277,7 @@ export const updateBlogPost = async (
     }
 
     if (postData.featuredImage !== undefined) {
-      updateData.featuredImage = postData.featuredImage;
+      updateData.featured_image = postData.featuredImage;
     }
 
     if (postData.tags !== undefined) {
@@ -280,18 +292,25 @@ export const updateBlogPost = async (
       updateData.category = postData.category;
     }
 
-    // If publishing for the first time, set publishedAt
+    // If publishing for the first time, set published_at
     if (postData.status === "published") {
-      const currentDoc = await getDoc(docRef);
-      const currentData = currentDoc.data();
+      const { data: current } = await supabase
+        .from(TABLE_NAME)
+        .select("published_at")
+        .eq("id", id)
+        .maybeSingle();
 
-      if (!currentData?.publishedAt) {
-        updateData.publishedAt = Timestamp.fromDate(now);
+      if (!current?.published_at) {
+        updateData.published_at = now;
       }
     }
 
     console.log("Final update data:", updateData);
-    await updateDoc(docRef, updateData);
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update(updateData)
+      .eq("id", id);
+    if (error) throw error;
     console.log("Blog post updated successfully");
   } catch (error) {
     console.error("Error updating blog post:", error);
@@ -309,8 +328,8 @@ export const updateBlogPost = async (
 // Delete a blog post
 export const deleteBlogPost = async (id: string): Promise<void> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    await deleteDoc(docRef);
+    const { error } = await supabase.from(TABLE_NAME).delete().eq("id", id);
+    if (error) throw error;
   } catch (error) {
     console.error("Error deleting blog post:", error);
     throw new Error("Failed to delete blog post");
@@ -321,15 +340,16 @@ export const deleteBlogPost = async (id: string): Promise<void> => {
 export const fixMissingSlugs = async (): Promise<void> => {
   try {
     console.log("Checking for blog posts with missing slugs...");
-    const blogRef = collection(db, COLLECTION_NAME);
-    const querySnapshot = await getDocs(blogRef);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("id, title, slug");
+    if (error) throw error;
 
     const postsToUpdate: { id: string; title: string }[] = [];
 
-    querySnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      if (!data.slug && data.title) {
-        postsToUpdate.push({ id: doc.id, title: data.title });
+    (data || []).forEach((row: any) => {
+      if (!row.slug && row.title) {
+        postsToUpdate.push({ id: row.id, title: row.title });
       }
     });
 
@@ -344,8 +364,11 @@ export const fixMissingSlugs = async (): Promise<void> => {
 
     for (const post of postsToUpdate) {
       const slug = createSlug(post.title);
-      const docRef = doc(db, COLLECTION_NAME, post.id);
-      await updateDoc(docRef, { slug });
+      const { error: updateError } = await supabase
+        .from(TABLE_NAME)
+        .update({ slug })
+        .eq("id", post.id);
+      if (updateError) throw updateError;
       console.log(`Updated post "${post.title}" with slug: ${slug}`);
     }
 
@@ -353,5 +376,77 @@ export const fixMissingSlugs = async (): Promise<void> => {
   } catch (error) {
     console.error("Error fixing missing slugs:", error);
     throw new Error("Failed to fix missing slugs");
+  }
+};
+
+// --- Blog likes (junction table blog_post_likes) ------------------------------
+// The old inline `likedBy[]` array is replaced by the blog_post_likes junction.
+
+// Whether the given user has liked the given post.
+export const hasLikedBlogPost = async (
+  postId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from("blog_post_likes")
+      .select("user_id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error("Error checking blog post like:", error);
+    return false;
+  }
+};
+
+// Number of likes for a post (counted from the junction table).
+export const getBlogPostLikeCount = async (postId: string): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from("blog_post_likes")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", postId);
+    if (error) throw error;
+    return count || 0;
+  } catch (error) {
+    console.error("Error counting blog post likes:", error);
+    return 0;
+  }
+};
+
+// Like a post: insert a junction row (idempotent via upsert).
+export const likeBlogPost = async (
+  postId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from("blog_post_likes")
+      .upsert({ post_id: postId, user_id: userId });
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error liking blog post:", error);
+    throw new Error("Failed to like blog post");
+  }
+};
+
+// Unlike a post: delete the junction row.
+export const unlikeBlogPost = async (
+  postId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from("blog_post_likes")
+      .delete()
+      .eq("post_id", postId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error unliking blog post:", error);
+    throw new Error("Failed to unlike blog post");
   }
 };
