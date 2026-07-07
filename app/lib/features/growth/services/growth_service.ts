@@ -1,18 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  setDoc,
-  query,
-  orderBy,
-  limit as fbLimit,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 import {
   GrowthPost,
   GrowthIteration,
@@ -26,25 +12,22 @@ const ITERATIONS = "growth_iterations";
 const CONFIG = "growth_config";
 const CONFIG_DOC = "settings";
 
-const toDate = (v: any): Date =>
-  v?.toDate ? v.toDate() : v ? new Date(v) : new Date();
+const toDate = (v: any): Date => (v ? new Date(v) : new Date());
 
-const toIso = (v: any): string | null =>
-  v?.toDate ? v.toDate().toISOString() : v ? String(v) : null;
+const toIso = (v: any): string | null => (v ? new Date(v).toISOString() : null);
 
-const docToPost = (d: any): GrowthPost => {
-  const data = d.data();
+const rowToPost = (data: any): GrowthPost => {
   return {
-    id: d.id,
+    id: data.id,
     channel: data.channel || "koreapas",
     title: data.title || "",
     content: data.content || "",
-    imageUrl: data.imageUrl || "",
+    imageUrl: data.image_url || "",
     variant: data.variant || {},
-    trackingCode: data.trackingCode || "",
+    trackingCode: data.tracking_code || "",
     status: (data.status as GrowthPostStatus) || "draft",
-    externalUrl: data.externalUrl || "",
-    iterationId: data.iterationId || "",
+    externalUrl: data.external_url || "",
+    iterationId: data.iteration_id || "",
     metrics: {
       impressions: data.metrics?.impressions ?? 0,
       clicks: data.metrics?.clicks ?? 0,
@@ -52,26 +35,25 @@ const docToPost = (d: any): GrowthPost => {
       likes: data.metrics?.likes ?? 0,
       comments: data.metrics?.comments ?? 0,
     },
-    scheduledFor: toIso(data.scheduledFor),
-    postedAt: toIso(data.postedAt),
-    createdAt: toDate(data.createdAt),
-    updatedAt: toDate(data.updatedAt),
+    scheduledFor: toIso(data.scheduled_for),
+    postedAt: toIso(data.posted_at),
+    createdAt: toDate(data.created_at),
+    updatedAt: toDate(data.updated_at),
   };
 };
 
-const docToIteration = (d: any): GrowthIteration => {
-  const data = d.data();
+const rowToIteration = (data: any): GrowthIteration => {
   return {
-    id: d.id,
-    runAt: toDate(data.runAt),
+    id: data.id,
+    runAt: toDate(data.run_at),
     channel: data.channel || "koreapas",
     observation: data.observation || "",
     decision: data.decision || "",
-    strategyChange: data.strategyChange || "",
+    strategyChange: data.strategy_change || "",
     variant: data.variant || {},
-    postId: data.postId || "",
+    postId: data.post_id || "",
     model: data.model || "",
-    tokensUsed: data.tokensUsed ?? 0,
+    tokensUsed: data.tokens_used ?? 0,
   };
 };
 
@@ -81,10 +63,12 @@ const generateTrackingCode = (): string =>
 
 export const fetchGrowthPosts = async (): Promise<GrowthPost[]> => {
   try {
-    const snap = await getDocs(
-      query(collection(db, POSTS), orderBy("createdAt", "desc"))
-    );
-    return snap.docs.map(docToPost);
+    const { data, error } = await supabase
+      .from(POSTS)
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(rowToPost);
   } catch (error) {
     console.error("Error fetching growth posts:", error);
     return [];
@@ -95,10 +79,13 @@ export const fetchGrowthIterations = async (
   max = 50
 ): Promise<GrowthIteration[]> => {
   try {
-    const snap = await getDocs(
-      query(collection(db, ITERATIONS), orderBy("runAt", "desc"), fbLimit(max))
-    );
-    return snap.docs.map(docToIteration);
+    const { data, error } = await supabase
+      .from(ITERATIONS)
+      .select("*")
+      .order("run_at", { ascending: false })
+      .limit(max);
+    if (error) throw error;
+    return (data || []).map(rowToIteration);
   } catch (error) {
     console.error("Error fetching growth iterations:", error);
     return [];
@@ -107,14 +94,17 @@ export const fetchGrowthIterations = async (
 
 export const fetchGrowthConfig = async (): Promise<GrowthConfig> => {
   try {
-    const ref = doc(db, CONFIG, CONFIG_DOC);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return { ...DEFAULT_GROWTH_CONFIG };
-    const data = snap.data();
+    const { data, error } = await supabase
+      .from(CONFIG)
+      .select("*")
+      .eq("id", CONFIG_DOC)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return { ...DEFAULT_GROWTH_CONFIG };
     return {
-      agentActive: !!data.agentActive,
-      approveFirst: data.approveFirst ?? true,
-      updatedAt: toDate(data.updatedAt),
+      agentActive: !!data.agent_active,
+      approveFirst: data.approve_first ?? true,
+      updatedAt: toDate(data.updated_at),
     };
   } catch (error) {
     console.error("Error fetching growth config:", error);
@@ -125,34 +115,39 @@ export const fetchGrowthConfig = async (): Promise<GrowthConfig> => {
 export const updateGrowthConfig = async (
   partial: Partial<GrowthConfig>
 ): Promise<void> => {
-  const ref = doc(db, CONFIG, CONFIG_DOC);
-  await setDoc(
-    ref,
-    { ...partial, updatedAt: Timestamp.fromDate(new Date()) },
-    { merge: true }
-  );
+  const update: any = { id: CONFIG_DOC, updated_at: new Date().toISOString() };
+  if (partial.agentActive !== undefined) update.agent_active = partial.agentActive;
+  if (partial.approveFirst !== undefined) update.approve_first = partial.approveFirst;
+  const { error } = await supabase.from(CONFIG).upsert(update);
+  if (error) throw error;
 };
 
 export const createGrowthPost = async (
   data: Partial<GrowthPost>
 ): Promise<string> => {
-  const now = Timestamp.fromDate(new Date());
+  const now = new Date().toISOString();
   const post: any = {
+    id: crypto.randomUUID(),
     channel: data.channel || "koreapas",
     title: data.title || "",
     content: data.content || "",
-    imageUrl: data.imageUrl || "",
+    image_url: data.imageUrl || "",
     variant: data.variant || {},
-    trackingCode: data.trackingCode || generateTrackingCode(),
+    tracking_code: data.trackingCode || generateTrackingCode(),
     status: data.status || "draft",
-    externalUrl: data.externalUrl || "",
-    iterationId: data.iterationId || "",
+    external_url: data.externalUrl || "",
+    iteration_id: data.iterationId || "",
     metrics: { clicks: 0, signups: 0 },
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
   };
-  const ref = await addDoc(collection(db, POSTS), post);
-  return ref.id;
+  const { data: inserted, error } = await supabase
+    .from(POSTS)
+    .insert(post)
+    .select()
+    .single();
+  if (error) throw error;
+  return inserted.id;
 };
 
 export const updateGrowthPostStatus = async (
@@ -160,16 +155,17 @@ export const updateGrowthPostStatus = async (
   status: GrowthPostStatus,
   extra?: { externalUrl?: string }
 ): Promise<void> => {
-  const ref = doc(db, POSTS, id);
   const update: any = {
     status,
-    updatedAt: Timestamp.fromDate(new Date()),
+    updated_at: new Date().toISOString(),
   };
-  if (status === "posted") update.postedAt = Timestamp.fromDate(new Date());
-  if (extra?.externalUrl !== undefined) update.externalUrl = extra.externalUrl;
-  await updateDoc(ref, update);
+  if (status === "posted") update.posted_at = new Date().toISOString();
+  if (extra?.externalUrl !== undefined) update.external_url = extra.externalUrl;
+  const { error } = await supabase.from(POSTS).update(update).eq("id", id);
+  if (error) throw error;
 };
 
 export const deleteGrowthPost = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, POSTS, id));
+  const { error } = await supabase.from(POSTS).delete().eq("id", id);
+  if (error) throw error;
 };

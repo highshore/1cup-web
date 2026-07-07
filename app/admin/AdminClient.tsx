@@ -2,19 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { auth, db } from "../lib/firebase/firebase";
-import {
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  deleteDoc,
-  query,
-  orderBy,
-  Timestamp,
-  getCountFromServer,
-  writeBatch,
-} from "firebase/firestore";
+import { supabase, invokeFunction } from "../lib/supabase/client";
+import { useAuth } from "../lib/contexts/auth_context";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
@@ -477,11 +466,11 @@ interface UserData {
   id: string;
   email?: string;
   displayName?: string;
-  createdAt?: Timestamp | Date | string;
+  createdAt?: Date | string;
   hasActiveSubscription?: boolean;
   billingCancelled?: boolean;
-  subscriptionStartDate?: Timestamp | Date | string;
-  subscriptionEndDate?: Timestamp | Date | string;
+  subscriptionStartDate?: Date | string;
+  subscriptionEndDate?: Date | string;
   account_status?: string;
   gdg_member?: boolean;
 }
@@ -492,7 +481,7 @@ interface FeedbackData {
   category: "cancellation" | "refund";
   reasons: string[];
   otherReason?: string;
-  timestamp: Timestamp;
+  timestamp: Date | string;
 }
 
 interface DashboardStats {
@@ -533,6 +522,7 @@ export default function AdminClient() {
     purchasingMembers: 0,
   });
   const router = useRouter();
+  const { currentUser, accountStatus } = useAuth();
 
   const usersById = useMemo(() => {
     const entries = new Map<string, UserData>();
@@ -547,57 +537,38 @@ export default function AdminClient() {
   }, [users]);
 
   useEffect(() => {
-    const checkAdminAccess = async () => {
+    const checkAdminAccess = () => {
       console.log("Admin access check starting...");
 
-      // Wait for Firebase Auth to initialize
-      const user = auth.currentUser;
-      if (!user) {
+      if (!currentUser) {
         console.log("No user found, redirecting to auth");
         router.push("/auth");
         return;
       }
 
-      console.log("User found:", user.email, "UID:", user.uid);
+      console.log("User found:", currentUser.email, "UID:", currentUser.uid);
+      console.log("Account status:", accountStatus);
 
-      try {
-        // Check user's account_status in Firestore
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-          console.log("User document does not exist in Firestore");
-          router.push("/");
-          return;
-        }
-
-        const userData = userDoc.data();
-        console.log("User data from Firestore:", userData);
-        console.log("Account status:", userData.account_status);
-
-        if (userData.account_status !== "admin") {
-          console.log("User is not admin, redirecting to home");
-          router.push("/");
-          return;
-        }
-
-        console.log("User is admin, loading dashboard data");
-        setAuthChecking(false);
-        // User is admin, load dashboard data
-        loadDashboardData();
-      } catch (error) {
-        console.error("Error checking admin access:", error);
+      if (accountStatus !== "admin") {
+        console.log("User is not admin, redirecting to home");
         router.push("/");
+        return;
       }
+
+      console.log("User is admin, loading dashboard data");
+      setAuthChecking(false);
+      // User is admin, load dashboard data
+      loadDashboardData();
     };
 
-    // Add a small delay to ensure Firebase Auth is ready
-    const timer = setTimeout(() => {
-      checkAdminAccess();
-    }, 1000);
+    // Wait for the auth context to resolve the session before gating.
+    if (currentUser === null && accountStatus === null) {
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [router]);
+    checkAdminAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, currentUser, accountStatus]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -623,21 +594,24 @@ export default function AdminClient() {
 
   const fetchUsers = async (): Promise<UserData[]> => {
     try {
-      const usersQuery = query(
-        collection(db, "users"),
-        orderBy("createdAt", "desc")
-      );
-      const snapshot = await getDocs(usersQuery);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
 
-      const usersData: UserData[] = [];
-      snapshot.forEach((doc) => {
-        usersData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as UserData);
-      });
-
-      return usersData;
+      return (data || []).map((row: any) => ({
+        id: row.uid,
+        email: row.email ?? undefined,
+        displayName: row.display_name ?? undefined,
+        createdAt: row.created_at ?? undefined,
+        hasActiveSubscription: row.has_active_subscription ?? false,
+        billingCancelled: row.billing_cancelled ?? false,
+        subscriptionStartDate: row.subscription_start_date ?? undefined,
+        subscriptionEndDate: row.subscription_end_date ?? undefined,
+        account_status: row.account_status ?? undefined,
+        gdg_member: row.gdg_member ?? false,
+      }));
     } catch (error) {
       console.error("Error fetching users:", error);
       return [];
@@ -646,21 +620,20 @@ export default function AdminClient() {
 
   const fetchFeedback = async (): Promise<FeedbackData[]> => {
     try {
-      const feedbackQuery = query(
-        collection(db, "feedback"),
-        orderBy("timestamp", "desc")
-      );
-      const snapshot = await getDocs(feedbackQuery);
+      const { data, error } = await supabase
+        .from("feedback")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
 
-      const feedbackData: FeedbackData[] = [];
-      snapshot.forEach((doc) => {
-        feedbackData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as FeedbackData);
-      });
-
-      return feedbackData;
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        userId: row.user_id ?? "",
+        category: row.category,
+        reasons: row.reasons ?? [],
+        otherReason: row.other_reason ?? undefined,
+        timestamp: row.created_at,
+      }));
     } catch (error) {
       console.error("Error fetching feedback:", error);
       return [];
@@ -668,75 +641,43 @@ export default function AdminClient() {
   };
 
   const fetchEventsCount = async (): Promise<number> => {
-    const collectionCandidates = ["events", "meetups", "meetup"];
-
-    for (const name of collectionCandidates) {
-      try {
-        const eventsRef = collection(db, name);
-        const countSnapshot = await getCountFromServer(eventsRef);
-        const count = countSnapshot.data().count ?? 0;
-        if (
-          count > 0 ||
-          name === collectionCandidates[collectionCandidates.length - 1]
-        ) {
-          return count;
-        }
-      } catch (countError) {
-        console.warn(
-          `Count fetch failed for ${name}, falling back to doc fetch.`,
-          countError
-        );
-        try {
-          const snapshot = await getDocs(collection(db, name));
-          if (!snapshot.empty) {
-            return snapshot.size;
-          }
-        } catch (docError) {
-          console.error(`Fallback doc fetch failed for ${name}:`, docError);
-        }
-      }
+    try {
+      const { count, error } = await supabase
+        .from("meetups")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    } catch (error) {
+      console.error("Error fetching events count:", error);
+      return 0;
     }
-
-    return 0;
   };
 
   const fetchArticles = async (): Promise<ArticleData[]> => {
     try {
-      const baseRef = collection(db, "articles");
-      let snapshot;
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .order("timestamp", { ascending: false });
+      if (error) throw error;
 
-      try {
-        snapshot = await getDocs(query(baseRef, orderBy("timestamp", "desc")));
-      } catch (orderError) {
-        console.warn(
-          "Primary articles query failed, using unordered fetch.",
-          orderError
-        );
-        snapshot = await getDocs(baseRef);
-      }
-
-      const articlesData: ArticleData[] = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data() || {};
-        const rawTimestamp =
-          data.timestamp ?? data.publishedAt ?? data.createdAt ?? null;
+      const articlesData: ArticleData[] = (data || []).map((row: any) => {
+        const rawTimestamp = row.timestamp ?? row.created_at ?? null;
 
         let publishedAt: Date | undefined;
-        if (rawTimestamp?.toDate) {
-          publishedAt = rawTimestamp.toDate();
-        } else if (rawTimestamp instanceof Date) {
-          publishedAt = rawTimestamp;
-        } else if (typeof rawTimestamp === "string") {
+        if (typeof rawTimestamp === "string") {
           const parsed = new Date(rawTimestamp);
           if (!Number.isNaN(parsed.getTime())) {
             publishedAt = parsed;
           }
+        } else if (rawTimestamp instanceof Date) {
+          publishedAt = rawTimestamp;
         }
 
         return {
-          id: docSnap.id,
-          titleEnglish:
-            data.title?.english ?? data.titleEnglish ?? data.title ?? "",
-          titleKorean: data.title?.korean ?? data.titleKorean ?? "",
+          id: row.id,
+          titleEnglish: row.title?.english ?? "",
+          titleKorean: row.title?.korean ?? "",
           publishedAt,
         };
       });
@@ -783,13 +724,9 @@ export default function AdminClient() {
      setStats(newStats);
    };
  
-  const resolveToDate = (value?: Timestamp | Date | string): Date | null => {
+  const resolveToDate = (value?: Date | string): Date | null => {
     if (!value) {
       return null;
-    }
-
-    if (value instanceof Timestamp) {
-      return value.toDate();
     }
 
     if (value instanceof Date) {
@@ -827,27 +764,21 @@ export default function AdminClient() {
     setExtendingSubscriptions(true);
 
     try {
-      const batchSize = 400;
+      // No client-side multi-row batch in Supabase; update each active user's
+      // subscription_end_date individually (RLS admin policy on public.users allows it).
+      for (const user of activeUsers) {
+        const baseDate =
+          resolveToDate(user.subscriptionEndDate) ||
+          resolveToDate(user.subscriptionStartDate) ||
+          new Date();
+        const extendedDate = new Date(baseDate);
+        extendedDate.setDate(extendedDate.getDate() + 14);
 
-      for (let index = 0; index < activeUsers.length; index += batchSize) {
-        const slice = activeUsers.slice(index, index + batchSize);
-        const batch = writeBatch(db);
-
-        slice.forEach((user) => {
-          const userRef = doc(db, "users", user.id);
-          const baseDate =
-            resolveToDate(user.subscriptionEndDate) ||
-            resolveToDate(user.subscriptionStartDate) ||
-            new Date();
-          const extendedDate = new Date(baseDate);
-          extendedDate.setDate(extendedDate.getDate() + 14);
-
-          batch.update(userRef, {
-            subscriptionEndDate: Timestamp.fromDate(extendedDate),
-          });
-        });
-
-        await batch.commit();
+        const { error } = await supabase
+          .from("users")
+          .update({ subscription_end_date: extendedDate.toISOString() })
+          .eq("uid", user.id);
+        if (error) throw error;
       }
 
       const updatedUsers = await fetchUsers();
@@ -877,7 +808,11 @@ export default function AdminClient() {
 
     setDeletingArticleId(articleId);
     try {
-      await deleteDoc(doc(db, "articles", articleId));
+      const { error } = await supabase
+        .from("articles")
+        .delete()
+        .eq("id", articleId);
+      if (error) throw error;
       setArticles((prev) => prev.filter((article) => article.id !== articleId));
     } catch (error) {
       console.error("Error deleting article:", error);
@@ -887,7 +822,7 @@ export default function AdminClient() {
     }
   };
 
-  const formatDate = (value?: Timestamp | Date | string) => {
+  const formatDate = (value?: Date | string) => {
     const date = resolveToDate(value);
     if (!date) {
       return "-";
@@ -896,7 +831,7 @@ export default function AdminClient() {
     return format(date, "yyyy.MM.dd", { locale: ko });
   };
 
-  const formatDateTime = (value?: Timestamp | Date | string) => {
+  const formatDateTime = (value?: Date | string) => {
     const date = resolveToDate(value);
     if (!date) {
       return "-";

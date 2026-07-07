@@ -3,8 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase/firebase";
+import { supabase } from "../lib/supabase/client";
 
 // Import extracted components and utilities
 import {
@@ -635,17 +634,20 @@ const ShadowClient: React.FC = () => {
         timeUpdateIntervalRef.current = null;
       }
       try {
-        const docRef = doc(db, "shadow", "sample");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const { data, error } = await supabase
+          .from("shadow")
+          .select("*")
+          .eq("id", "sample")
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
           if (data && data.youtube_url) {
             const embedUrl = convertToEmbedUrl(data.youtube_url as string);
             if (embedUrl) setYoutubeUrl(embedUrl);
-            else setYoutubeError("Invalid YouTube URL in Firestore.");
+            else setYoutubeError("Invalid YouTube URL in database.");
           } else
             setYoutubeError(
-              "youtube_url field not found in Firestore document."
+              "youtube_url field not found in database row."
             );
           if (
             data &&
@@ -661,15 +663,15 @@ const ShadowClient: React.FC = () => {
             setVideoTimestamps([]);
             setSentencesToAssess([]);
             console.warn(
-              "audio_timestamps not found or not an array in Firestore."
+              "audio_timestamps not found or not an array in database row."
             );
           }
         } else
           setYoutubeError(
-            "Shadow learning content not found. Please ensure the 'shadow/sample' document exists in Firestore with youtube_url and audio_timestamps fields."
+            "Shadow learning content not found. Please ensure the 'shadow' row with id='sample' exists with youtube_url and audio_timestamps fields."
           );
       } catch (error: any) {
-        console.error("Firestore fetch error:", error);
+        console.error("Shadow data fetch error:", error);
         setYoutubeError(`Failed to load video data: ${error.message}`);
       } finally {
         setYoutubeLoading(false);
