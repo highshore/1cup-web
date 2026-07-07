@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { styled } from "styled-components";
 import { useRouter, useSearchParams } from "next/navigation";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../../lib/firebase/firebase";
+import { invokeFunction } from "../../lib/supabase/client";
 
 // Styled components
 const Container = styled.div`
@@ -558,15 +557,13 @@ export default function PaymentResultClient() {
           JSON.stringify(processedPayments)
         );
 
-        // Verify payment result with Firebase function
-        const verifyPayment = httpsCallable(functions, "verifyPaymentResult");
-        const result = await verifyPayment({
+        // Verify payment result with the payment Edge Function
+        const resultData = (await invokeFunction("payment", {
+          action: "verify",
           userId,
           paymentParams,
           timestamp: Date.now(),
-        });
-
-        const resultData = result.data as PaymentResult;
+        })) as PaymentResult;
 
         // Check if there's an error code in the result
         if (!resultData.success && resultData.errorCode) {
