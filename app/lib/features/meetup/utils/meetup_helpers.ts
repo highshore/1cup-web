@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 import { FirestoreMeetupEvent, MeetupEvent } from '../types/meetup_types';
 
 // Convert Firestore Timestamp to date and time strings
@@ -89,7 +88,7 @@ export const convertFirestoreToMeetupEvent = (doc: FirestoreMeetupEvent | any): 
 export const sampleFirestoreEvents: Record<string, FirestoreMeetupEvent> = {
   'wst_korea_univ_001': {
     id: 'wst_korea_univ_001',
-    date_time: Timestamp.fromDate(new Date('2024-02-07T17:00:00+09:00')),
+    date_time: new Date('2024-02-07T17:00:00+09:00').toISOString(),
     description: '월가 담화에서는 The Wall Street Journal에서 기사 2개를 선정하여 각각 1시간씩, 총 2시간 토의를 합니다. 비즈니스 영어와 시사 토론 실력을 향상시키고 싶은 분들에게 완벽한 기회입니다.',
     duration_minutes: 120,
     image_urls: [
@@ -115,7 +114,7 @@ export const sampleFirestoreEvents: Record<string, FirestoreMeetupEvent> = {
   },
   'english_speaking_practice_001': {
     id: 'english_speaking_practice_001',
-    date_time: Timestamp.fromDate(new Date('2024-01-15T19:00:00+09:00')),
+    date_time: new Date('2024-01-15T19:00:00+09:00').toISOString(),
     description: 'Join us for a relaxed English conversation practice session. Perfect for beginners who want to improve their speaking confidence in a supportive environment.',
     duration_minutes: 90,
     image_urls: [
@@ -141,7 +140,7 @@ export const sampleFirestoreEvents: Record<string, FirestoreMeetupEvent> = {
   },
   'business_english_workshop_001': {
     id: 'business_english_workshop_001',
-    date_time: Timestamp.fromDate(new Date('2024-01-20T14:00:00+09:00')),
+    date_time: new Date('2024-01-20T14:00:00+09:00').toISOString(),
     description: 'Learn essential business English phrases and practice professional communication skills. Great for working professionals looking to advance their careers.',
     duration_minutes: 180,
     image_urls: [
@@ -167,7 +166,7 @@ export const sampleFirestoreEvents: Record<string, FirestoreMeetupEvent> = {
   },
   'movie_night_discussion_001': {
     id: 'movie_night_discussion_001',
-    date_time: Timestamp.fromDate(new Date('2024-01-25T18:30:00+09:00')),
+    date_time: new Date('2024-01-25T18:30:00+09:00').toISOString(),
     description: 'Watch an English movie together and discuss it afterwards. Improve your listening skills while having fun! Popcorn and drinks included.',
     duration_minutes: 150,
     image_urls: [

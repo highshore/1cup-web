@@ -17,8 +17,7 @@ import {
   changeUserRole,
   deleteMeetupEvent,
 } from "../../lib/features/meetup/services/meetup_service";
-import { db } from "../../lib/firebase/firebase";
-import { doc, setDoc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { supabase, invokeFunction } from "../../lib/supabase/client";
 import {
   formatEventDateTime,
   isEventLocked,
@@ -38,8 +37,6 @@ import {
 } from "../../lib/features/meetup/components/meetup_icons";
 import { appLayout } from "../../lib/constants/app_layout";
 import { naverMapsScriptSrc } from "../../lib/constants/naver_maps";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../../lib/firebase/firebase";
 import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import {
   DndContext,
@@ -1523,7 +1520,7 @@ export function EventDetailClient() {
     );
   }, [accountStatus, currentUser, event]);
 
-  // Function to save seating arrangement to Firestore
+  // Function to save seating arrangement to Supabase
   const saveSeatingArrangement = async (assignments: SeatingAssignment[]) => {
     const isLocalhost =
       typeof window !== "undefined" && window.location.hostname === "localhost";
@@ -1534,24 +1531,22 @@ export function EventDetailClient() {
     }
 
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const { db } = await import("../../lib/firebase/firebase");
-
-      const eventRef = doc(db, "meetup", event.id);
-
       // Sanitize only the assignments array to remove undefined values,
       // particularly from optional fields like photoURL in UserWithDetails.
       const cleanedAssignments = JSON.parse(JSON.stringify(assignments));
 
       const seatingData = {
         assignments: cleanedAssignments,
-        generatedAt: new Date(),
+        generatedAt: new Date().toISOString(),
         generatedBy: currentUser?.uid || "localhost-user",
       };
 
-      await updateDoc(eventRef, {
-        seatingArrangement: seatingData,
-      });
+      const { error } = await supabase
+        .from("meetups")
+        .update({ seating_arrangement: seatingData })
+        .eq("id", event.id);
+
+      if (error) throw error;
 
       // No alert on drag-and-drop save for better UX
       // alert("좌석 배치가 성공적으로 저장되었습니다!");
@@ -1563,30 +1558,32 @@ export function EventDetailClient() {
     }
   };
 
-  // Function to load seating arrangement from Firestore
+  // Function to load seating arrangement from Supabase
   const loadSeatingArrangement =
     async (): Promise<SavedSeatingArrangement | null> => {
       if (!event) return null;
 
       try {
-        const { doc, getDoc } = await import("firebase/firestore");
-        const { db } = await import("../../lib/firebase/firebase");
+        const { data, error } = await supabase
+          .from("meetups")
+          .select("seating_arrangement")
+          .eq("id", event.id)
+          .maybeSingle();
 
-        const eventRef = doc(db, "meetup", event.id);
-        const eventDoc = await getDoc(eventRef);
+        if (error) throw error;
 
-        if (eventDoc.exists()) {
-          const data = eventDoc.data();
+        if (data) {
+          const seatingArrangement = data.seating_arrangement;
           if (
-            data.seatingArrangement &&
-            data.seatingArrangement.assignments &&
-            Array.isArray(data.seatingArrangement.assignments)
+            seatingArrangement &&
+            seatingArrangement.assignments &&
+            Array.isArray(seatingArrangement.assignments)
           ) {
             const allUserUids = [...event.leaders, ...event.participants];
             const userDetails = await fetchUserDetails(allUserUids);
 
             const reconstructedAssignments =
-              data.seatingArrangement.assignments.map((assignment: any) => {
+              seatingArrangement.assignments.map((assignment: any) => {
                 const leaderDetails = userDetails.find(
                   (user) => user.uid === assignment.leaderUid
                 );
@@ -1604,14 +1601,13 @@ export function EventDetailClient() {
                 };
               });
 
-            // Robustly handle `generatedAt` which might be a Timestamp or a string
-            const rawGeneratedAt = data.seatingArrangement.generatedAt;
-            let generatedAtDate;
+            // Robustly handle `generatedAt` which might be a Timestamp-like
+            // object or an ISO string.
+            const rawGeneratedAt = seatingArrangement.generatedAt;
+            let generatedAtDate: Date;
             if (rawGeneratedAt && typeof rawGeneratedAt.toDate === "function") {
-              // It's a Firestore Timestamp
               generatedAtDate = rawGeneratedAt.toDate();
             } else if (typeof rawGeneratedAt === "string") {
-              // It's likely an ISO string from previous broken saves
               generatedAtDate = new Date(rawGeneratedAt);
             } else {
               // Fallback for unexpected types
@@ -1621,7 +1617,7 @@ export function EventDetailClient() {
             return {
               assignments: reconstructedAssignments,
               generatedAt: generatedAtDate,
-              generatedBy: data.seatingArrangement.generatedBy,
+              generatedBy: seatingArrangement.generatedBy,
             };
           }
         }
@@ -1637,15 +1633,13 @@ export function EventDetailClient() {
     uids: string[]
   ): Promise<UserWithDetails[]> => {
     try {
-      const getUserDisplayNames = httpsCallable(
-        functions,
-        "getUserDisplayNames"
-      );
-      const response = await getUserDisplayNames({ userIds: uids });
-      const result = response.data as {
+      const result = await invokeFunction<{
         displayNames: Record<string, string>;
         phoneNumbers: Record<string, string>;
-      };
+      }>("messaging", {
+        action: "user-names",
+        userIds: uids,
+      });
 
       return uids.map((uid) => ({
         uid,
@@ -2296,27 +2290,33 @@ export function EventDetailClient() {
           ? articleTopics[0]?.id || ""
           : articleTopics[1]?.id || "";
 
-      // Create transcript document in Firestore
+      // Create transcript row in Supabase
       const transcriptData = {
         id: transcriptId,
-        eventId: eventId,
-        sessionNumber: assignment.sessionNumber,
-        articleId: articleId,
-        leaderUids: [assignment.leaderUid],
-        participantUids: assignment.participants.map((p) => p.uid),
-        createdAt: new Date(),
-        createdBy: currentUser?.uid || "localhost-user",
+        event_id: eventId,
+        session_number: assignment.sessionNumber,
+        article_id: articleId || null,
+        leader_uids: [assignment.leaderUid],
+        participant_uids: assignment.participants.map((p) => p.uid),
+        created_at: new Date().toISOString(),
+        created_by: currentUser?.uid || "localhost-user",
       };
 
-      await setDoc(doc(db, "transcripts", transcriptId), transcriptData);
+      const { error: transcriptError } = await supabase
+        .from("transcripts")
+        .insert(transcriptData);
+      if (transcriptError) throw transcriptError;
 
-      // Update the seating arrangement in the meetup collection to include transcript ID
-      const eventDoc = doc(db, "meetup", eventId);
-      const eventSnapshot = await getDoc(eventDoc);
+      // Update the seating arrangement on the meetups row to include transcript ID
+      const { data: eventRow, error: eventError } = await supabase
+        .from("meetups")
+        .select("seating_arrangement")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (eventError) throw eventError;
 
-      if (eventSnapshot.exists()) {
-        const eventData = eventSnapshot.data();
-        const currentSeatingArrangement = eventData.seatingArrangement;
+      if (eventRow) {
+        const currentSeatingArrangement = eventRow.seating_arrangement;
 
         if (
           currentSeatingArrangement &&
@@ -2335,10 +2335,17 @@ export function EventDetailClient() {
             }
           );
 
-          // Update the entire seating arrangement with the modified assignments
-          await updateDoc(eventDoc, {
-            "seatingArrangement.assignments": updatedAssignments,
-          });
+          // Persist the entire seating arrangement with the modified assignments
+          const { error: updateError } = await supabase
+            .from("meetups")
+            .update({
+              seating_arrangement: {
+                ...currentSeatingArrangement,
+                assignments: updatedAssignments,
+              },
+            })
+            .eq("id", eventId);
+          if (updateError) throw updateError;
 
           console.log(
             `[Transcript] Updated seating arrangement with transcript ID: ${transcriptId}`
@@ -2375,14 +2382,14 @@ export function EventDetailClient() {
     }
 
     try {
-      const sendMeetupReminder = httpsCallable(functions, "sendMeetupReminder");
-
-      const result = await sendMeetupReminder({ eventId: event.id });
-      const data = result.data as {
+      const data = await invokeFunction<{
         success: boolean;
         messagesSent: number;
         message: string;
-      };
+      }>("messaging", {
+        action: "meetup-reminder",
+        eventId: event.id,
+      });
 
       if (data.success) {
         alert(
@@ -2531,7 +2538,7 @@ export function EventDetailClient() {
       }
       newAssignments[destGroupIndex] = destGroup;
 
-      // Save the updated arrangement to Firestore
+      // Save the updated arrangement to Supabase
       saveSeatingArrangement(newAssignments);
 
       return newAssignments;

@@ -1,36 +1,37 @@
-import { db } from "../../../firebase/firebaseAdmin";
-import { MeetupEvent, FirestoreMeetupEvent } from "../types/meetup_types";
+import { admin } from "../../../supabase/server";
+import { MeetupEvent } from "../types/meetup_types";
 
-const MEETUP_COLLECTION = "meetups";
+const MEETUP_TABLE = "meetups";
 
-// Convert Firestore document to MeetupEvent for server-side
-const convertFirestoreToMeetupEvent = (
-  firestoreEvent: FirestoreMeetupEvent
+// Convert a Supabase meetups row to MeetupEvent for server-side rendering.
+const rowToMeetupEvent = (
+  row: Record<string, any>,
+  participants: string[],
+  leaders: string[],
+  articles: string[]
 ): MeetupEvent => {
-  const dateTime = firestoreEvent.date_time?.toDate
-    ? firestoreEvent.date_time.toDate()
-    : new Date();
+  const dateTime = row.date_time ? new Date(row.date_time) : new Date();
 
   return {
-    id: firestoreEvent.id,
-    title: firestoreEvent.title,
-    description: firestoreEvent.description,
+    id: row.id,
+    title: row.title,
+    description: row.description,
     date: dateTime.toISOString().split("T")[0], // YYYY-MM-DD format
     time: dateTime.toTimeString().split(" ")[0].slice(0, 5), // HH:MM format
-    location_name: firestoreEvent.location_name,
-    location_address: firestoreEvent.location_address,
-    location_map_url: firestoreEvent.location_map_url,
-    latitude: firestoreEvent.latitude,
-    longitude: firestoreEvent.longitude,
-    location_extra_info: firestoreEvent.location_extra_info,
-    duration_minutes: firestoreEvent.duration_minutes,
-    lockdown_minutes: firestoreEvent.lockdown_minutes,
-    max_participants: firestoreEvent.max_participants,
-    participants: firestoreEvent.participants || [],
-    leaders: firestoreEvent.leaders || [],
-    image_urls: firestoreEvent.image_urls || [],
-    topics: firestoreEvent.topics || [],
-    articles: firestoreEvent.articles || [],
+    location_name: row.location_name,
+    location_address: row.location_address,
+    location_map_url: row.location_map_url,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    location_extra_info: row.location_extra_info,
+    duration_minutes: row.duration_minutes,
+    lockdown_minutes: row.lockdown_minutes,
+    max_participants: row.max_participants,
+    participants,
+    leaders,
+    image_urls: row.image_urls || [],
+    topics: row.topics || [],
+    articles,
   };
 };
 
@@ -39,37 +40,74 @@ export const fetchUpcomingMeetupEventsServer = async (): Promise<
   MeetupEvent[]
 > => {
   try {
-    // Check if Firebase Admin SDK is properly initialized
-    if (!db || !db.collection) {
-      console.warn(
-        "Firebase Admin SDK not initialized, returning empty meetup events"
-      );
-      return [];
-    }
+    const supabase = admin();
 
     const now = new Date();
-    const meetupRef = db.collection(MEETUP_COLLECTION);
 
-    // Check if the collection reference has the get method
-    if (!meetupRef || typeof meetupRef.get !== 'function') {
+    // Get all meetups and filter/sort in memory (mirrors the previous behaviour
+    // of reading everything and computing "upcoming" client-side).
+    const { data: rows, error } = await supabase
+      .from(MEETUP_TABLE)
+      .select("*");
+
+    if (error) {
       console.warn(
-        "Firebase collection reference not properly initialized, returning empty meetup events"
+        "Supabase not available, returning empty meetup events",
+        error
       );
       return [];
     }
 
-    // Get all documents and filter/sort in memory to avoid index issues
-    const querySnapshot = await meetupRef.get();
+    const meetupRows = rows || [];
+    if (meetupRows.length === 0) return [];
+
+    const ids = meetupRows.map((r) => r.id);
+
+    // Batch-load junction data for participants/leaders and articles.
+    const [participantsResult, articlesResult] = await Promise.all([
+      supabase
+        .from("meetup_participants")
+        .select("meetup_id, user_id, role")
+        .in("meetup_id", ids),
+      supabase
+        .from("meetup_articles")
+        .select("meetup_id, article_id")
+        .in("meetup_id", ids),
+    ]);
+
+    const participantsByMeetup = new Map<
+      string,
+      { participants: string[]; leaders: string[] }
+    >();
+    ids.forEach((id) =>
+      participantsByMeetup.set(id, { participants: [], leaders: [] })
+    );
+    (participantsResult.data || []).forEach((p) => {
+      const bucket = participantsByMeetup.get(p.meetup_id);
+      if (!bucket) return;
+      if (p.role === "leader") bucket.leaders.push(p.user_id);
+      else bucket.participants.push(p.user_id);
+    });
+
+    const articlesByMeetup = new Map<string, string[]>();
+    ids.forEach((id) => articlesByMeetup.set(id, []));
+    (articlesResult.data || []).forEach((a) => {
+      articlesByMeetup.get(a.meetup_id)?.push(a.article_id);
+    });
 
     const events: MeetupEvent[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Omit<FirestoreMeetupEvent, "id">;
-      const eventData: FirestoreMeetupEvent = {
-        id: doc.id,
-        ...data,
+    meetupRows.forEach((row) => {
+      const pl = participantsByMeetup.get(row.id) || {
+        participants: [],
+        leaders: [],
       };
-
-      const meetupEvent = convertFirestoreToMeetupEvent(eventData);
+      const articles = articlesByMeetup.get(row.id) || [];
+      const meetupEvent = rowToMeetupEvent(
+        row,
+        pl.participants,
+        pl.leaders,
+        articles
+      );
 
       // Check if the event is upcoming
       const eventDateTime = new Date(`${meetupEvent.date}T${meetupEvent.time}`);

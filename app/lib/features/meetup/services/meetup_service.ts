@@ -1,25 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  orderBy,
-  where,
-  Timestamp,
-  limit,
-  startAfter,
-  QueryDocumentSnapshot,
-  DocumentData,
-  addDoc,
-  updateDoc,
-  runTransaction,
-  arrayUnion,
-  arrayRemove,
-  deleteDoc,
-} from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 import {
   FirestoreMeetupEvent,
   MeetupEvent,
@@ -33,11 +12,15 @@ import {
 } from "../utils/meetup_helpers";
 import { geocodeLocation } from "./geocoding_service";
 
-// Collection references
-const MEETUP_COLLECTION = "meetup";
-const ARTICLES_COLLECTION = "articles";
-const PAYMENT_ORDERS_COLLECTION = "payment_orders";
+// Table references (Firestore collections "meetup"/"meetups"/"events" all map to
+// the single Supabase table `meetups`).
+const MEETUP_TABLE = "meetups";
+const ARTICLES_TABLE = "articles";
+const PAYMENT_ORDERS_TABLE = "payment_orders";
 const DEFAULT_EVENTS_PER_PAGE = 5; // Reduced to 5 for smaller incremental loading
+
+// Offset-based pagination cursor (replaces Firestore's QueryDocumentSnapshot).
+export type MeetupPageCursor = number;
 
 type UserLeaderboardProfile = {
   uid: string;
@@ -47,6 +30,103 @@ type UserLeaderboardProfile = {
   hasActiveSubscription?: boolean;
   createdAt?: Date | null;
   firstSubscriptionDate?: Date | null;
+};
+
+// Fetch the participant/leader uid arrays for a set of meetups from the
+// meetup_participants junction table, grouped by meetup id.
+const fetchParticipantsForMeetups = async (
+  meetupIds: string[]
+): Promise<Map<string, { participants: string[]; leaders: string[] }>> => {
+  const byMeetup = new Map<
+    string,
+    { participants: string[]; leaders: string[] }
+  >();
+  meetupIds.forEach((id) =>
+    byMeetup.set(id, { participants: [], leaders: [] })
+  );
+
+  if (meetupIds.length === 0) return byMeetup;
+
+  const { data, error } = await supabase
+    .from("meetup_participants")
+    .select("meetup_id, user_id, role")
+    .in("meetup_id", meetupIds);
+
+  if (error) throw error;
+
+  (data || []).forEach((row) => {
+    const bucket = byMeetup.get(row.meetup_id);
+    if (!bucket) return;
+    if (row.role === "leader") {
+      bucket.leaders.push(row.user_id);
+    } else {
+      bucket.participants.push(row.user_id);
+    }
+  });
+
+  return byMeetup;
+};
+
+// Fetch the article ids for a set of meetups from the meetup_articles junction.
+const fetchArticlesForMeetups = async (
+  meetupIds: string[]
+): Promise<Map<string, string[]>> => {
+  const byMeetup = new Map<string, string[]>();
+  meetupIds.forEach((id) => byMeetup.set(id, []));
+
+  if (meetupIds.length === 0) return byMeetup;
+
+  const { data, error } = await supabase
+    .from("meetup_articles")
+    .select("meetup_id, article_id")
+    .in("meetup_id", meetupIds);
+
+  if (error) throw error;
+
+  (data || []).forEach((row) => {
+    const bucket = byMeetup.get(row.meetup_id);
+    if (bucket) bucket.push(row.article_id);
+  });
+
+  return byMeetup;
+};
+
+// Build a MeetupEvent from a meetups row + its junction data.
+const rowToMeetupEvent = (
+  row: Record<string, unknown>,
+  participants: string[],
+  leaders: string[],
+  articles: string[]
+): MeetupEvent => {
+  const eventData = {
+    ...row,
+    id: row.id as string,
+    participants,
+    leaders,
+    articles,
+  };
+  return convertFirestoreToMeetupEvent(eventData);
+};
+
+// Hydrate a list of meetups rows into MeetupEvents (batched junction lookups).
+const hydrateMeetupRows = async (
+  rows: Record<string, unknown>[]
+): Promise<MeetupEvent[]> => {
+  const ids = rows.map((r) => r.id as string);
+  const [participantsByMeetup, articlesByMeetup] = await Promise.all([
+    fetchParticipantsForMeetups(ids),
+    fetchArticlesForMeetups(ids),
+  ]);
+
+  return rows.map((row) => {
+    const id = row.id as string;
+    const pl = participantsByMeetup.get(id) || {
+      participants: [],
+      leaders: [],
+    };
+    const articles = articlesByMeetup.get(id) || [];
+    return rowToMeetupEvent(row, pl.participants, pl.leaders, articles);
+  });
 };
 
 const resolveDate = (value: unknown): Date | null => {
@@ -95,22 +175,21 @@ const fetchFirstSubscriptionDates = async (): Promise<Map<string, Date>> => {
   const datesByUserId = new Map<string, Date>();
 
   try {
-    const paymentSnapshot = await getDocs(
-      query(
-        collection(db, PAYMENT_ORDERS_COLLECTION),
-        where("type", "==", "subscription_initial_payment")
-      )
-    );
+    const { data, error } = await supabase
+      .from(PAYMENT_ORDERS_TABLE)
+      .select("user_id, completed_at, created_at, order_date, type")
+      .eq("type", "subscription_initial_payment");
 
-    paymentSnapshot.forEach((paymentDoc) => {
-      const data = paymentDoc.data();
-      const userId = typeof data.userId === "string" ? data.userId : "";
+    if (error) throw error;
+
+    (data || []).forEach((row) => {
+      const userId = typeof row.user_id === "string" ? row.user_id : "";
       if (!userId) return;
 
       const paymentDate =
-        resolveDate(data.completedAt) ||
-        resolveDate(data.createdAt) ||
-        resolveDate(data.orderDate);
+        resolveDate(row.completed_at) ||
+        resolveDate(row.created_at) ||
+        resolveDate(row.order_date);
       if (!paymentDate) return;
 
       const currentDate = datesByUserId.get(userId);
@@ -186,43 +265,29 @@ const createParticipationRateEntries = (
 
 // Fetch all meetup events with pagination
 export const fetchMeetupEvents = async (
-  lastDoc?: QueryDocumentSnapshot<DocumentData>,
+  lastDoc?: MeetupPageCursor,
   limitCount: number = DEFAULT_EVENTS_PER_PAGE
 ): Promise<{
   events: MeetupEvent[];
-  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  lastDoc: MeetupPageCursor | null;
 }> => {
   try {
-    const meetupCollection = collection(db, MEETUP_COLLECTION);
-    let eventsQuery = query(
-      meetupCollection,
-      orderBy("date_time", "desc"), // Most recent first
-      limit(limitCount)
-    );
+    const offset = lastDoc ?? 0;
 
-    // Add pagination if lastDoc is provided
-    if (lastDoc) {
-      eventsQuery = query(
-        meetupCollection,
-        orderBy("date_time", "desc"),
-        startAfter(lastDoc),
-        limit(limitCount)
-      );
-    }
+    const { data, error } = await supabase
+      .from(MEETUP_TABLE)
+      .select("*")
+      .order("date_time", { ascending: false }) // Most recent first
+      .range(offset, offset + limitCount - 1);
 
-    const querySnapshot = await getDocs(eventsQuery);
-    const events: MeetupEvent[] = [];
-    let newLastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
+    if (error) throw error;
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Omit<FirestoreMeetupEvent, "id">;
-      const eventData: FirestoreMeetupEvent = {
-        id: doc.id,
-        ...data,
-      };
-      events.push(convertFirestoreToMeetupEvent(eventData));
-      newLastDoc = doc;
-    });
+    const rows = data || [];
+    const events = await hydrateMeetupRows(rows);
+
+    // Advance the cursor only if a full page was returned (more may remain).
+    const newLastDoc =
+      rows.length === limitCount ? offset + rows.length : null;
 
     return { events, lastDoc: newLastDoc };
   } catch (error) {
@@ -251,48 +316,75 @@ export const fetchMeetupLeaderboards = async (
 
   try {
     const [
-      meetupSnapshot,
-      usersSnapshot,
+      meetupResult,
+      usersResult,
+      participantsResult,
       firstSubscriptionDatesByUserId,
     ] = await Promise.all([
-      getDocs(
-        query(collection(db, MEETUP_COLLECTION), orderBy("date_time", "desc"))
-      ),
-      getDocs(collection(db, "users")),
+      supabase
+        .from(MEETUP_TABLE)
+        .select("id, date_time")
+        .order("date_time", { ascending: false }),
+      supabase
+        .from("users")
+        .select(
+          "uid, display_name, photo_url, account_status, has_active_subscription, created_at, subscription_start_date"
+        ),
+      supabase
+        .from("meetup_participants")
+        .select("meetup_id, user_id, role"),
       fetchFirstSubscriptionDates(),
     ]);
 
+    if (meetupResult.error) throw meetupResult.error;
+    if (usersResult.error) throw usersResult.error;
+    if (participantsResult.error) throw participantsResult.error;
+
     const usersById = new Map<string, UserLeaderboardProfile>();
-    usersSnapshot.forEach((userDoc) => {
-      const data = userDoc.data();
-      const photoURL = data.photoURL || data.avatar;
-      usersById.set(userDoc.id, {
-        uid: userDoc.id,
+    (usersResult.data || []).forEach((data) => {
+      const photoURL = data.photo_url;
+      usersById.set(data.uid, {
+        uid: data.uid,
         displayName:
-          data.displayName || data.name || `User ${userDoc.id.substring(0, 6)}`,
+          data.display_name || `User ${String(data.uid).substring(0, 6)}`,
         photoURL:
           typeof photoURL === "string" && photoURL.trim() !== ""
             ? photoURL
             : undefined,
         account_status: data.account_status,
-        hasActiveSubscription: data.hasActiveSubscription === true,
-        createdAt: resolveDate(data.registeredAt) || resolveDate(data.createdAt),
+        hasActiveSubscription: data.has_active_subscription === true,
+        createdAt: resolveDate(data.created_at),
         firstSubscriptionDate:
-          firstSubscriptionDatesByUserId.get(userDoc.id) ||
-          resolveDate(data.firstSubscriptionDate),
+          firstSubscriptionDatesByUserId.get(data.uid) ||
+          resolveDate(data.subscription_start_date),
       });
+    });
+
+    // Build a map of meetup id -> event date, and group participant uids per meetup.
+    const eventDateById = new Map<string, Date | null>();
+    (meetupResult.data || []).forEach((row) => {
+      eventDateById.set(row.id, resolveDate(row.date_time));
+    });
+
+    const participantsByMeetup = new Map<string, Set<string>>();
+    (participantsResult.data || []).forEach((row) => {
+      // Only "participant" rows contribute to participation counts (matching the
+      // old Firestore meetup.participants[] semantics).
+      if (row.role === "leader") return;
+      if (!participantsByMeetup.has(row.meetup_id)) {
+        participantsByMeetup.set(row.meetup_id, new Set());
+      }
+      participantsByMeetup.get(row.meetup_id)!.add(row.user_id);
     });
 
     const totalCounts = new Map<string, number>();
     const monthlyCounts = new Map<string, number>();
     const firstParticipationDates = new Map<string, Date>();
 
-    meetupSnapshot.forEach((meetupDoc) => {
-      const data = meetupDoc.data() as Omit<FirestoreMeetupEvent, "id">;
-      const eventDate = resolveDate(data.date_time);
+    participantsByMeetup.forEach((participants, meetupId) => {
+      const eventDate = eventDateById.get(meetupId) || null;
       const isCurrentMonth =
         !!eventDate && eventDate >= monthStart && eventDate < nextMonthStart;
-      const participants = Array.from(new Set(data.participants || []));
 
       participants.forEach((uid) => {
         if (!uid || isExcludedLeaderboardUser(usersById.get(uid))) return;
@@ -413,27 +505,17 @@ export const fetchMeetupLeaderboards = async (
 // Fetch upcoming meetup events
 export const fetchUpcomingMeetupEvents = async (): Promise<MeetupEvent[]> => {
   try {
-    const now = Timestamp.now();
-    const meetupCollection = collection(db, MEETUP_COLLECTION);
-    const upcomingQuery = query(
-      meetupCollection,
-      where("date_time", ">=", now),
-      orderBy("date_time", "asc")
-    );
+    const nowIso = new Date().toISOString();
 
-    const querySnapshot = await getDocs(upcomingQuery);
-    const events: MeetupEvent[] = [];
+    const { data, error } = await supabase
+      .from(MEETUP_TABLE)
+      .select("*")
+      .gte("date_time", nowIso)
+      .order("date_time", { ascending: true });
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Omit<FirestoreMeetupEvent, "id">;
-      const eventData: FirestoreMeetupEvent = {
-        id: doc.id,
-        ...data,
-      };
-      events.push(convertFirestoreToMeetupEvent(eventData));
-    });
+    if (error) throw error;
 
-    return events;
+    return await hydrateMeetupRows(data || []);
   } catch (error) {
     console.error("Error fetching upcoming meetup events:", error);
     // Fallback to sample data in development
@@ -452,19 +534,17 @@ export const fetchMeetupEventById = async (
   eventId: string
 ): Promise<MeetupEvent | null> => {
   try {
-    const eventDoc = doc(db, MEETUP_COLLECTION, eventId);
-    const docSnapshot = await getDoc(eventDoc);
+    const { data, error } = await supabase
+      .from(MEETUP_TABLE)
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle();
 
-    if (docSnapshot.exists()) {
-      const data = docSnapshot.data() as Omit<FirestoreMeetupEvent, "id">;
-      const eventData: FirestoreMeetupEvent = {
-        id: docSnapshot.id,
-        ...data,
-      };
-      return convertFirestoreToMeetupEvent(eventData);
-    }
+    if (error) throw error;
+    if (!data) return null;
 
-    return null;
+    const [events] = await hydrateMeetupRows([data]);
+    return events || null;
   } catch (error) {
     console.error(`Error fetching meetup event ${eventId}:`, error);
     // Fallback to sample data in development
@@ -483,44 +563,49 @@ export const fetchMeetupEventById = async (
 export const subscribeToAllEvents = (
   callback: (events: MeetupEvent[]) => void
 ) => {
-  try {
-    const meetupCollection = collection(db, MEETUP_COLLECTION);
-    const allEventsQuery = query(
-      meetupCollection,
-      orderBy("date_time", "desc")
-    );
-
-    const unsubscribe = onSnapshot(
-      allEventsQuery,
-      (querySnapshot) => {
-        const events: MeetupEvent[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as Omit<FirestoreMeetupEvent, "id">;
-          const eventData: FirestoreMeetupEvent = {
-            id: doc.id,
-            ...data,
-          };
-          events.push(convertFirestoreToMeetupEvent(eventData));
-        });
-        callback(events);
-      },
-      (error) => {
-        console.error("Error in real-time subscription:", error);
-        // Fallback to sample data in development
-        if (process.env.NODE_ENV === "development") {
-          console.log("Using sample data for real-time subscription");
-          const sampleEvents = Object.values(sampleFirestoreEvents).map(
-            convertFirestoreToMeetupEvent
-          );
-          callback(sampleEvents);
+  const load = () => {
+    supabase
+      .from(MEETUP_TABLE)
+      .select("*")
+      .order("date_time", { ascending: false })
+      .then(async ({ data, error }) => {
+        if (error) {
+          console.error("Error in real-time subscription:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.log("Using sample data for real-time subscription");
+            const sampleEvents = Object.values(sampleFirestoreEvents).map(
+              convertFirestoreToMeetupEvent
+            );
+            callback(sampleEvents);
+          }
+          return;
         }
-      }
-    );
+        callback(await hydrateMeetupRows(data || []));
+      });
+  };
 
-    return unsubscribe;
+  try {
+    load();
+
+    const channel = supabase
+      .channel("meetups-all")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: MEETUP_TABLE },
+        load
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "meetup_participants" },
+        load
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   } catch (error) {
     console.error("Error setting up real-time subscription:", error);
-    // Return a no-op function if setup fails
     return () => {};
   }
 };
@@ -529,46 +614,51 @@ export const subscribeToAllEvents = (
 export const subscribeToUpcomingEvents = (
   callback: (events: MeetupEvent[]) => void
 ) => {
-  try {
-    const now = Timestamp.now();
-    const meetupCollection = collection(db, MEETUP_COLLECTION);
-    const upcomingQuery = query(
-      meetupCollection,
-      where("date_time", ">=", now),
-      orderBy("date_time", "asc")
-    );
-
-    const unsubscribe = onSnapshot(
-      upcomingQuery,
-      (querySnapshot) => {
-        const events: MeetupEvent[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as Omit<FirestoreMeetupEvent, "id">;
-          const eventData: FirestoreMeetupEvent = {
-            id: doc.id,
-            ...data,
-          };
-          events.push(convertFirestoreToMeetupEvent(eventData));
-        });
-        callback(events);
-      },
-      (error) => {
-        console.error("Error in real-time subscription:", error);
-        // Fallback to sample data in development
-        if (process.env.NODE_ENV === "development") {
-          console.log("Using sample data for real-time subscription");
-          const sampleEvents = Object.values(sampleFirestoreEvents).map(
-            convertFirestoreToMeetupEvent
-          );
-          callback(sampleEvents);
+  const load = () => {
+    const nowIso = new Date().toISOString();
+    supabase
+      .from(MEETUP_TABLE)
+      .select("*")
+      .gte("date_time", nowIso)
+      .order("date_time", { ascending: true })
+      .then(async ({ data, error }) => {
+        if (error) {
+          console.error("Error in real-time subscription:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.log("Using sample data for real-time subscription");
+            const sampleEvents = Object.values(sampleFirestoreEvents).map(
+              convertFirestoreToMeetupEvent
+            );
+            callback(sampleEvents);
+          }
+          return;
         }
-      }
-    );
+        callback(await hydrateMeetupRows(data || []));
+      });
+  };
 
-    return unsubscribe;
+  try {
+    load();
+
+    const channel = supabase
+      .channel("meetups-upcoming")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: MEETUP_TABLE },
+        load
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "meetup_participants" },
+        load
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   } catch (error) {
     console.error("Error setting up real-time subscription:", error);
-    // Return a no-op function if setup fails
     return () => {};
   }
 };
@@ -578,29 +668,14 @@ export const subscribeToEvent = (
   eventId: string,
   callback: (event: MeetupEvent | null) => void
 ) => {
-  try {
-    const eventDoc = doc(db, MEETUP_COLLECTION, eventId);
-
-    const unsubscribe = onSnapshot(
-      eventDoc,
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data() as Omit<FirestoreMeetupEvent, "id">;
-          const eventData: FirestoreMeetupEvent = {
-            id: docSnapshot.id,
-            ...data,
-          };
-          callback(convertFirestoreToMeetupEvent(eventData));
-        } else {
-          callback(null);
-        }
-      },
-      (error) => {
+  const load = () => {
+    fetchMeetupEventById(eventId)
+      .then((event) => callback(event))
+      .catch((error) => {
         console.error(
           `Error in real-time subscription for event ${eventId}:`,
           error
         );
-        // Fallback to sample data in development
         if (
           process.env.NODE_ENV === "development" &&
           sampleFirestoreEvents[eventId]
@@ -614,16 +689,44 @@ export const subscribeToEvent = (
         } else {
           callback(null);
         }
-      }
-    );
+      });
+  };
 
-    return unsubscribe;
+  try {
+    load();
+
+    const channel = supabase
+      .channel(`meetup-${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: MEETUP_TABLE,
+          filter: `id=eq.${eventId}`,
+        },
+        load
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "meetup_participants",
+          filter: `meetup_id=eq.${eventId}`,
+        },
+        load
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   } catch (error) {
     console.error(
       `Error setting up real-time subscription for event ${eventId}:`,
       error
     );
-    // Return a no-op function if setup fails
     return () => {};
   }
 };
@@ -634,177 +737,188 @@ export const joinEventAsRole = async (
   userId: string,
   role: "participant" | "leader"
 ): Promise<void> => {
-  const eventRef = doc(db, MEETUP_COLLECTION, eventId);
   try {
-    await runTransaction(db, async (transaction) => {
-      const eventDoc = await transaction.get(eventRef);
-      if (!eventDoc.exists()) {
-        throw new Error("Event does not exist!");
-      }
+    // Read current participation for this event.
+    const { data: rows, error: readError } = await supabase
+      .from("meetup_participants")
+      .select("user_id, role")
+      .eq("meetup_id", eventId);
+    if (readError) throw readError;
 
-      const eventData = eventDoc.data() as FirestoreMeetupEvent;
-      const isParticipant = eventData.participants?.includes(userId);
-      const isLeader = eventData.leaders?.includes(userId);
+    const existing = (rows || []).find((r) => r.user_id === userId);
 
-      // If already in the chosen role or the other role, do nothing (or handle as an error/notification)
-      if (
-        (role === "participant" && isParticipant) ||
-        (role === "leader" && isLeader)
-      ) {
-        console.log(`User ${userId} already in the event as ${role}.`);
-        return; // Or throw an error to indicate this
-      }
+    // Already in the chosen role — nothing to do.
+    if (existing && existing.role === role) {
+      console.log(`User ${userId} already in the event as ${role}.`);
+      return;
+    }
 
-      // Prevent joining if event is full (unless joining as a leader - leaders might bypass this)
-      const currentTotal =
-        (eventData.participants?.length || 0) +
-        (eventData.leaders?.length || 0);
-      if (
-        role === "participant" &&
-        currentTotal >= eventData.max_participants
-      ) {
+    // Prevent joining as a participant if the event is full.
+    if (role === "participant") {
+      const { data: meetup, error: meetupError } = await supabase
+        .from(MEETUP_TABLE)
+        .select("max_participants")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (meetupError) throw meetupError;
+      if (!meetup) throw new Error("Event does not exist!");
+
+      const currentTotal = (rows || []).length - (existing ? 1 : 0);
+      if (currentTotal >= (meetup.max_participants as number)) {
         throw new Error("Event is already full for participants.");
       }
+    }
 
-      const updateData: Record<string, unknown> = {};
+    // Upsert the caller's own row into the new role (RLS: user_id must be self).
+    const { error: upsertError } = await supabase
+      .from("meetup_participants")
+      .upsert(
+        { meetup_id: eventId, user_id: userId, role },
+        { onConflict: "meetup_id,user_id" }
+      );
+    if (upsertError) throw upsertError;
 
-      if (role === "participant") {
-        updateData.participants = arrayUnion(userId);
-        if (isLeader) {
-          // If they were a leader, remove them from leaders list
-          updateData.leaders = arrayRemove(userId);
-        }
-      } else {
-        // role === 'leader'
-        updateData.leaders = arrayUnion(userId);
-        if (isParticipant) {
-          // If they were a participant, remove them from participants list
-          updateData.participants = arrayRemove(userId);
-        }
-      }
-
-      // No need to manage current_participants since we calculate it on the fly
-
-      transaction.update(eventRef, updateData);
-    });
     console.log(
       `User ${userId} successfully joined event ${eventId} as ${role}.`
     );
   } catch (error) {
     console.error("Error joining event:", error);
-    throw error; // Re-throw to be caught by the caller
+    throw error;
   }
 };
 
-// Cancel participation in an event (removes from either participant or leader list)
+// Cancel participation in an event (removes the user's row regardless of role)
 export const cancelParticipation = async (
   eventId: string,
   userId: string
 ): Promise<void> => {
-  const eventRef = doc(db, MEETUP_COLLECTION, eventId);
   try {
-    await runTransaction(db, async (transaction) => {
-      const eventDoc = await transaction.get(eventRef);
-      if (!eventDoc.exists()) {
-        throw new Error("Event does not exist!");
-      }
-      const eventData = eventDoc.data() as FirestoreMeetupEvent;
-      const isParticipant = eventData.participants?.includes(userId);
-      const isLeader = eventData.leaders?.includes(userId);
+    const { error } = await supabase
+      .from("meetup_participants")
+      .delete()
+      .eq("meetup_id", eventId)
+      .eq("user_id", userId);
+    if (error) throw error;
 
-      if (!isParticipant && !isLeader) {
-        console.log(`User ${userId} is not part of event ${eventId}.`);
-        return; // Or throw an error
-      }
-
-      const updateData: Record<string, unknown> = {};
-
-      if (isParticipant) {
-        updateData.participants = arrayRemove(userId);
-      }
-      if (isLeader) {
-        // Can be both a participant and leader based on old logic, so check separately
-        updateData.leaders = arrayRemove(userId);
-      }
-
-      // No need to manage current_participants since we calculate it on the fly
-
-      transaction.update(eventRef, updateData);
-    });
     console.log(
       `User ${userId} successfully canceled participation for event ${eventId}.`
     );
   } catch (error) {
     console.error("Error canceling participation:", error);
-    throw error; // Re-throw to be caught by the caller
+    throw error;
   }
 };
 
 // Create a new meetup event
 export const createMeetupEvent = async (
-  eventData: Partial<FirestoreMeetupEvent>,
+  eventData: Partial<FirestoreMeetupEvent> & { articles?: string[] },
   creatorUid: string
 ): Promise<string> => {
   try {
-    const dataToSave: Omit<FirestoreMeetupEvent, "id"> = {
+    // date_time may arrive as an ISO string or a Date.
+    const dateTime =
+      eventData.date_time instanceof Date
+        ? eventData.date_time.toISOString()
+        : (eventData.date_time as string) || new Date().toISOString();
+
+    let latitude = eventData.latitude ?? 0;
+    let longitude = eventData.longitude ?? 0;
+    const locationAddress = eventData.location_address || "";
+
+    // Geocode only if coordinates are 0 AND an address is available.
+    if ((latitude === 0 || longitude === 0) && locationAddress) {
+      console.log(`Geocoding for new event: ${locationAddress}`);
+      const geocoded = await geocodeLocation(locationAddress);
+      if (geocoded) {
+        latitude = geocoded.latitude;
+        longitude = geocoded.longitude;
+        console.log(
+          `Geocoded to: lat=${geocoded.latitude}, lng=${geocoded.longitude}`
+        );
+      } else {
+        console.warn(
+          `Geocoding failed for: ${locationAddress}. Using 0,0.`
+        );
+        latitude = 0;
+        longitude = 0;
+      }
+    } else if (latitude !== 0 && longitude !== 0) {
+      console.log(
+        `Using provided coordinates for new event: lat=${latitude}, lng=${longitude}`
+      );
+    } else {
+      console.log(
+        "No address to geocode and no valid coordinates provided. Using 0,0."
+      );
+      latitude = 0;
+      longitude = 0;
+    }
+
+    // Firestore doc ids were 20-char strings; keep the same key style.
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
+    const rowToSave = {
+      id,
       title: eventData.title || "Untitled Event",
       description: eventData.description || "",
-      date_time: eventData.date_time || Timestamp.now(),
+      date_time: dateTime,
       duration_minutes: eventData.duration_minutes || 60,
       image_urls: eventData.image_urls || [],
-      leaders: eventData.leaders || [creatorUid], // Default leader is creator
-      participants: eventData.participants || [], // Default empty participants
       lockdown_minutes:
         eventData.lockdown_minutes === undefined
           ? 10
           : eventData.lockdown_minutes,
       max_participants: eventData.max_participants || 20,
       topics: eventData.topics || [],
-      articles: eventData.articles || [], // Default empty articles
-
       location_name: eventData.location_name || "",
-      location_address: eventData.location_address || "",
+      location_address: locationAddress,
       location_map_url: eventData.location_map_url || "",
-      latitude: eventData.latitude || 0,
-      longitude: eventData.longitude || 0,
+      latitude,
+      longitude,
       location_extra_info: eventData.location_extra_info || "",
     };
 
-    // Geocode only if coordinates are 0 (meaning not set by Naver search) AND an address is available
-    if (
-      (dataToSave.latitude === 0 || dataToSave.longitude === 0) &&
-      dataToSave.location_address
-    ) {
-      console.log(`Geocoding for new event: ${dataToSave.location_address}`);
-      const geocoded = await geocodeLocation(dataToSave.location_address);
-      if (geocoded) {
-        dataToSave.latitude = geocoded.latitude;
-        dataToSave.longitude = geocoded.longitude;
-        console.log(
-          `Geocoded to: lat=${geocoded.latitude}, lng=${geocoded.longitude}`
+    const { error: insertError } = await supabase
+      .from(MEETUP_TABLE)
+      .insert(rowToSave);
+    if (insertError) throw insertError;
+
+    // Creator becomes the default leader (junction row).
+    const leaders = eventData.leaders || [creatorUid];
+    if (leaders.length > 0) {
+      const { error: leaderError } = await supabase
+        .from("meetup_participants")
+        .upsert(
+          leaders.map((uid) => ({
+            meetup_id: id,
+            user_id: uid,
+            role: "leader" as const,
+          })),
+          { onConflict: "meetup_id,user_id" }
         );
-      } else {
-        console.warn(
-          `Geocoding failed for: ${dataToSave.location_address}. Using 0,0.`
-        );
-        dataToSave.latitude = 0;
-        dataToSave.longitude = 0;
-      }
-    } else if (dataToSave.latitude !== 0 && dataToSave.longitude !== 0) {
-      console.log(
-        `Using provided coordinates for new event: lat=${dataToSave.latitude}, lng=${dataToSave.longitude}`
-      );
-    } else {
-      console.log(
-        "No address to geocode and no valid coordinates provided. Using 0,0."
-      );
-      dataToSave.latitude = 0;
-      dataToSave.longitude = 0;
+      if (leaderError) throw leaderError;
     }
 
-    const docRef = await addDoc(collection(db, MEETUP_COLLECTION), dataToSave);
-    console.log("Event created successfully with ID:", docRef.id);
-    return docRef.id;
+    // Discussion topic articles → meetup_articles junction.
+    const articles = eventData.articles || [];
+    if (articles.length > 0) {
+      const { error: articleError } = await supabase
+        .from("meetup_articles")
+        .upsert(
+          articles.map((articleId) => ({
+            meetup_id: id,
+            article_id: articleId,
+          })),
+          { onConflict: "meetup_id,article_id" }
+        );
+      if (articleError) throw articleError;
+    }
+
+    console.log("Event created successfully with ID:", id);
+    return id;
   } catch (error) {
     console.error("Error creating meetup event:", error);
     throw error;
@@ -814,19 +928,25 @@ export const createMeetupEvent = async (
 // Update an existing meetup event
 export const updateMeetupEvent = async (
   eventId: string,
-  eventData: Partial<FirestoreMeetupEvent>
+  eventData: Partial<FirestoreMeetupEvent> & { articles?: string[] }
 ): Promise<void> => {
   try {
-    // Create a mutable copy for updateData
-    const updateData: Partial<FirestoreMeetupEvent> = { ...eventData };
+    // Separate the relational fields (articles) from the scalar meetups columns.
+    const { articles, leaders, participants, ...scalarData } = eventData as Record<
+      string,
+      unknown
+    >;
 
-    // Determine if geocoding is needed for an update:
-    // 1. If location_address is being updated AND
-    // 2. If latitude or longitude are not part of this specific update OR they are explicitly set to 0 in this update.
+    const updateData: Record<string, unknown> = { ...scalarData };
+
+    // Normalize date_time if provided as a Date.
+    if (updateData.date_time instanceof Date) {
+      updateData.date_time = updateData.date_time.toISOString();
+    }
+
+    // Geocoding (same policy as the Firestore version).
     let needsGeocoding = false;
     if (typeof updateData.location_address === "string") {
-      // Check if address is actually being updated
-      // If lat/lng are not provided in this update, or are 0, and we have an address, try geocoding.
       if (
         updateData.latitude === undefined ||
         updateData.longitude === undefined ||
@@ -841,7 +961,9 @@ export const updateMeetupEvent = async (
       console.log(
         `Geocoding for event update (ID: ${eventId}): ${updateData.location_address}`
       );
-      const geocoded = await geocodeLocation(updateData.location_address);
+      const geocoded = await geocodeLocation(
+        updateData.location_address as string
+      );
       if (geocoded) {
         updateData.latitude = geocoded.latitude;
         updateData.longitude = geocoded.longitude;
@@ -850,11 +972,8 @@ export const updateMeetupEvent = async (
         );
       } else {
         console.warn(
-          `Geocoding failed for: ${updateData.location_address}. Coordinates will be set to 0,0 if not already present in updateData or will remain unchanged if not part of updateData.`
+          `Geocoding failed for: ${updateData.location_address}. Falling back to 0,0 where needed.`
         );
-        // If geocoding fails, ensure lat/lng are numbers if they were intended to be updated to 0 or were undefined.
-        // If they were defined with non-zero values in `eventData`, those will be used.
-        // If they were not in `eventData` at all, they won't be touched here, preserving existing values in Firestore.
         if (updateData.latitude === undefined || updateData.latitude === 0)
           updateData.latitude = 0;
         if (updateData.longitude === undefined || updateData.longitude === 0)
@@ -864,29 +983,44 @@ export const updateMeetupEvent = async (
       updateData.latitude !== undefined &&
       updateData.longitude !== undefined
     ) {
-      // If latitude and longitude are explicitly provided in the update (and non-zero, or geocoding wasn't needed)
       console.log(
         `Using provided coordinates for event update (ID: ${eventId}): lat=${updateData.latitude}, lng=${updateData.longitude}`
       );
     }
-    // If neither of the above, existing coordinates in Firestore are preserved unless explicitly changed in updateData.
 
-    // Remove undefined fields from updateData to avoid overwriting existing fields with undefined
-    // Firestore's updateDoc with partial data only updates fields that are explicitly in the object.
-    // However, if a field is present with `undefined` it might clear it.
-    // It's generally safer to build updateData with only the fields that are meant to change.
-    // The current approach of spreading eventData and then conditionally modifying lat/lng is okay
-    // as long as eventData itself doesn't contain undefined for fields that shouldn't be cleared.
-    // For Partial<FirestoreMeetupEvent>, this is usually fine.
+    if (Object.keys(updateData).length > 0) {
+      const { error: updateError } = await supabase
+        .from(MEETUP_TABLE)
+        .update(updateData)
+        .eq("id", eventId);
+      if (updateError) throw updateError;
+    }
 
-    console.log(
-      "Updating event (ID: ${eventId}) with data:",
-      JSON.stringify(updateData, null, 2)
-    );
-    await updateDoc(doc(db, MEETUP_COLLECTION, eventId), updateData);
+    // Reconcile the article junction rows if articles were provided.
+    if (Array.isArray(articles)) {
+      const { error: deleteError } = await supabase
+        .from("meetup_articles")
+        .delete()
+        .eq("meetup_id", eventId);
+      if (deleteError) throw deleteError;
+
+      if (articles.length > 0) {
+        const { error: insertError } = await supabase
+          .from("meetup_articles")
+          .upsert(
+            (articles as string[]).map((articleId) => ({
+              meetup_id: eventId,
+              article_id: articleId,
+            })),
+            { onConflict: "meetup_id,article_id" }
+          );
+        if (insertError) throw insertError;
+      }
+    }
+
     console.log("Event updated successfully:", eventId);
   } catch (error) {
-    console.error("Error updating meetup event (ID: ${eventId}):", error);
+    console.error(`Error updating meetup event (ID: ${eventId}):`, error);
     throw error;
   }
 };
@@ -894,54 +1028,36 @@ export const updateMeetupEvent = async (
 // Fetch recent articles for topic selection
 export const fetchRecentArticles = async (
   limitCount: number = 10,
-  lastDoc?: QueryDocumentSnapshot<DocumentData>
+  lastDoc?: MeetupPageCursor
 ): Promise<{
   articles: Article[];
-  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  lastDoc: MeetupPageCursor | null;
   hasMore: boolean;
 }> => {
   try {
-    const articlesCollection = collection(db, ARTICLES_COLLECTION);
-    let articlesQuery = query(
-      articlesCollection,
-      orderBy("timestamp", "desc"),
-      limit(limitCount)
-    );
+    const offset = lastDoc ?? 0;
 
-    // If lastDoc is provided, start after it for pagination
-    if (lastDoc) {
-      articlesQuery = query(
-        articlesCollection,
-        orderBy("timestamp", "desc"),
-        startAfter(lastDoc),
-        limit(limitCount)
-      );
-    }
+    const { data, error } = await supabase
+      .from(ARTICLES_TABLE)
+      .select("id, title, timestamp")
+      .order("timestamp", { ascending: false })
+      .range(offset, offset + limitCount - 1);
 
-    const querySnapshot = await getDocs(articlesQuery);
-    const articles: Article[] = [];
+    if (error) throw error;
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      articles.push({
-        id: doc.id,
-        title: data.title || { english: "", korean: "" },
-        timestamp: data.timestamp,
-      });
-    });
+    const rows = data || [];
+    const articles: Article[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title || { english: "", korean: "" },
+      timestamp: row.timestamp,
+    }));
 
-    // Get the last document for pagination
-    const newLastDoc =
-      querySnapshot.docs.length > 0
-        ? querySnapshot.docs[querySnapshot.docs.length - 1]
-        : null;
-
-    // Check if there are more documents by trying to fetch one more
-    const hasMore = querySnapshot.docs.length === limitCount;
+    const hasMore = rows.length === limitCount;
+    const newLastDoc = rows.length > 0 ? offset + rows.length : null;
 
     return {
       articles,
-      lastDoc: newLastDoc,
+      lastDoc: hasMore ? newLastDoc : null,
       hasMore,
     };
   } catch (error) {
@@ -961,24 +1077,26 @@ export const fetchArticlesByIds = async (
   try {
     if (articleIds.length === 0) return [];
 
-    const articles: Article[] = [];
+    const { data, error } = await supabase
+      .from(ARTICLES_TABLE)
+      .select("id, title, timestamp")
+      .in("id", articleIds);
 
-    // Fetch each article by ID
-    for (const articleId of articleIds) {
-      const articleRef = doc(db, ARTICLES_COLLECTION, articleId);
-      const articleSnap = await getDoc(articleRef);
+    if (error) throw error;
 
-      if (articleSnap.exists()) {
-        const data = articleSnap.data();
-        articles.push({
-          id: articleSnap.id,
-          title: data.title || { english: "", korean: "" },
-          timestamp: data.timestamp,
-        });
-      }
-    }
+    const byId = new Map<string, Article>();
+    (data || []).forEach((row) => {
+      byId.set(row.id, {
+        id: row.id,
+        title: row.title || { english: "", korean: "" },
+        timestamp: row.timestamp,
+      });
+    });
 
-    return articles;
+    // Preserve the requested ordering.
+    return articleIds
+      .map((id) => byId.get(id))
+      .filter((a): a is Article => Boolean(a));
   } catch (error) {
     console.error("Error fetching articles by IDs:", error);
     return [];
@@ -990,33 +1108,14 @@ export const removeParticipant = async (
   eventId: string,
   userId: string
 ): Promise<void> => {
-  const eventRef = doc(db, MEETUP_COLLECTION, eventId);
   try {
-    await runTransaction(db, async (transaction) => {
-      const eventDoc = await transaction.get(eventRef);
-      if (!eventDoc.exists()) {
-        throw new Error("Event does not exist!");
-      }
+    const { error } = await supabase
+      .from("meetup_participants")
+      .delete()
+      .eq("meetup_id", eventId)
+      .eq("user_id", userId);
+    if (error) throw error;
 
-      const eventData = eventDoc.data() as FirestoreMeetupEvent;
-      const isParticipant = eventData.participants?.includes(userId);
-      const isLeader = eventData.leaders?.includes(userId);
-
-      if (!isParticipant && !isLeader) {
-        throw new Error(`User ${userId} is not part of event ${eventId}.`);
-      }
-
-      const updateData: Record<string, unknown> = {};
-
-      if (isParticipant) {
-        updateData.participants = arrayRemove(userId);
-      }
-      if (isLeader) {
-        updateData.leaders = arrayRemove(userId);
-      }
-
-      transaction.update(eventRef, updateData);
-    });
     console.log(`User ${userId} successfully removed from event ${eventId}.`);
   } catch (error) {
     console.error("Error removing participant:", error);
@@ -1030,40 +1129,16 @@ export const changeUserRole = async (
   userId: string,
   newRole: "participant" | "leader"
 ): Promise<void> => {
-  const eventRef = doc(db, MEETUP_COLLECTION, eventId);
   try {
-    await runTransaction(db, async (transaction) => {
-      const eventDoc = await transaction.get(eventRef);
-      if (!eventDoc.exists()) {
-        throw new Error("Event does not exist!");
-      }
+    // Upsert the row with the new role (a user has at most one row per meetup).
+    const { error } = await supabase
+      .from("meetup_participants")
+      .upsert(
+        { meetup_id: eventId, user_id: userId, role: newRole },
+        { onConflict: "meetup_id,user_id" }
+      );
+    if (error) throw error;
 
-      const eventData = eventDoc.data() as FirestoreMeetupEvent;
-      const isParticipant = eventData.participants?.includes(userId);
-      const isLeader = eventData.leaders?.includes(userId);
-
-      if (!isParticipant && !isLeader) {
-        throw new Error(`User ${userId} is not part of event ${eventId}.`);
-      }
-
-      const updateData: Record<string, unknown> = {};
-
-      if (newRole === "participant") {
-        // Moving to participant: add to participants, remove from leaders
-        updateData.participants = arrayUnion(userId);
-        if (isLeader) {
-          updateData.leaders = arrayRemove(userId);
-        }
-      } else {
-        // Moving to leader: add to leaders, remove from participants
-        updateData.leaders = arrayUnion(userId);
-        if (isParticipant) {
-          updateData.participants = arrayRemove(userId);
-        }
-      }
-
-      transaction.update(eventRef, updateData);
-    });
     console.log(
       `User ${userId} successfully changed to ${newRole} for event ${eventId}.`
     );
@@ -1076,7 +1151,12 @@ export const changeUserRole = async (
 // Admin function to delete an event permanently
 export const deleteMeetupEvent = async (eventId: string): Promise<void> => {
   try {
-    await deleteDoc(doc(db, MEETUP_COLLECTION, eventId));
+    const { error } = await supabase
+      .from(MEETUP_TABLE)
+      .delete()
+      .eq("id", eventId);
+    if (error) throw error;
+
     console.log(`Event ${eventId} deleted successfully.`);
   } catch (error) {
     console.error("Error deleting meetup event:", error);
