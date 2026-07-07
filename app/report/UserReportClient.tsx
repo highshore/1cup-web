@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { styled } from "styled-components";
 import { useSearchParams, useRouter } from "next/navigation";
-import { auth, db } from "../lib/firebase/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { supabase } from "../lib/supabase/client";
+import { useAuth } from "../lib/contexts/auth_context";
 
 const Container = styled.div`
   max-width: 1100px;
@@ -76,45 +76,57 @@ export default function UserReportClient() {
   const router = useRouter();
   const params = useSearchParams();
   const uidParam = params.get("uid");
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<any[]>([]);
 
   // Guard: only allow current user (or admin in future) to access
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
-      if (!u) {
-        router.push("/auth?redirect=/report/user" + (uidParam ? `?uid=${uidParam}` : ""));
-        return;
-      }
-      const targetUid = uidParam || u.uid;
-      if (targetUid !== u.uid) {
-        // Non-owner access blocked for now
-        router.push("/profile");
-      }
-    });
-    return () => unsub();
-  }, [router, uidParam]);
+    if (!currentUser) {
+      router.push("/auth?redirect=/report/user" + (uidParam ? `?uid=${uidParam}` : ""));
+      return;
+    }
+    const targetUid = uidParam || currentUser.uid;
+    if (targetUid !== currentUser.uid) {
+      // Non-owner access blocked for now
+      router.push("/profile");
+    }
+  }, [router, uidParam, currentUser]);
 
   // Load user's reports
   useEffect(() => {
-    const u = auth.currentUser;
-    if (!u) return;
-    const targetUid = uidParam || u.uid;
-    const colRef = collection(db, `users/${targetUid}/speaking_reports`);
-    const unsub = onSnapshot(colRef, (snap) => {
-      const items: any[] = [];
-      snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
-      items.forEach((r) => {
-        if (r?.metadata?.createdAt?.toDate) {
-          r.metadata.createdAt = r.metadata.createdAt.toDate();
-        }
-      });
-      items.sort((a, b) => (b?.metadata?.createdAt?.getTime?.() || 0) - (a?.metadata?.createdAt?.getTime?.() || 0));
+    if (!currentUser) return;
+    const targetUid = uidParam || currentUser.uid;
+    let cancelled = false;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("speaking_reports")
+        .select("*")
+        .eq("user_id", targetUid)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      if (error) {
+        console.error("Failed to load speaking reports:", error);
+        setReports([]);
+        setLoading(false);
+        return;
+      }
+      const items = (data || []).map((r) => ({
+        ...r,
+        id: r.transcript_id,
+        transcriptId: r.transcript_id,
+        createdAt: r.created_at ? new Date(r.created_at) : null,
+      }));
       setReports(items);
       setLoading(false);
-    });
-    return () => unsub();
-  }, [uidParam]);
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [uidParam, currentUser]);
 
   const agg = useMemo(() => {
     if (reports.length === 0) {
@@ -127,10 +139,10 @@ export default function UserReportClient() {
       };
     }
     const sessions = reports.length;
-    const totalWords = reports.reduce((s, r) => s + (r?.metadata?.wordCount || 0), 0);
-    const totalSec = reports.reduce((s, r) => s + (r?.metadata?.speakingDuration || 0), 0);
+    const totalWords = reports.reduce((s, r) => s + (r?.word_count || 0), 0);
+    const totalSec = reports.reduce((s, r) => s + (r?.speaking_duration_sec || 0), 0);
     const avgWpm = totalSec > 0 ? totalWords / (totalSec / 60) : 0;
-    const avgOverall = reports.reduce((s, r) => s + (r?.analysis?.overallScore || 0), 0) / sessions;
+    const avgOverall = reports.reduce((s, r) => s + (r?.overall_score || 0), 0) / sessions;
     return { sessions, totalWords, totalSec, avgWpm, avgOverall };
   }, [reports]);
 
@@ -176,14 +188,14 @@ export default function UserReportClient() {
               <Item key={r.id} onClick={() => router.push(`/transcript/${r.transcriptId}`)}>
                 <div>
                   <div style={{ fontWeight: 700 }}>
-                    세션 {r?.metadata?.sessionNumber || "-"}
+                    세션 {r?.session_number || "-"}
                   </div>
                   <div style={{ color: "#6b7280", fontSize: 12 }}>
-                    {r?.metadata?.createdAt ? new Date(r.metadata.createdAt).toLocaleDateString() : "-"}
+                    {r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}
                   </div>
                 </div>
                 <div style={{ fontWeight: 800 }}>
-                  {typeof r?.analysis?.overallScore === "number" ? `${r.analysis.overallScore.toFixed(1)}/10` : "-"}
+                  {typeof r?.overall_score === "number" ? `${r.overall_score.toFixed(1)}/10` : "-"}
                 </div>
               </Item>
             ))}
@@ -193,5 +205,3 @@ export default function UserReportClient() {
     </Container>
   );
 }
-
-

@@ -1,5 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 
 const generateUniqueFilename = (originalName: string): string => {
   const timestamp = Date.now();
@@ -20,11 +19,17 @@ export const uploadArticleImage = async (file: File): Promise<string> => {
   }
 
   const filename = generateUniqueFilename(file.name);
-  const storageRef = ref(storage, `articles/${filename}`);
+  const path = `articles/${filename}`;
 
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(snapshot.ref);
-  return downloadURL;
+  const { error: uploadError } = await supabase.storage
+    .from("assets")
+    .upload(path, file, { upsert: true });
+  if (uploadError) throw uploadError;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("assets").getPublicUrl(path);
+  return publicUrl;
 };
 
 export const validateArticleImageFiles = (
