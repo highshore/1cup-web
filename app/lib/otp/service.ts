@@ -21,6 +21,11 @@ const MAX_SENDS_PER_HOUR = 5;             // sends per number per hour
 
 const HMAC_SECRET = process.env.OTP_HMAC_SECRET ?? "";
 
+// Testing only: when OTP_DEV_ECHO=true, log the code to the server console and do
+// NOT fail the request if AlimTalk delivery fails (e.g. template pending approval).
+// NEVER set this in real production — it writes OTP codes to the function logs.
+const DEV_ECHO = process.env.OTP_DEV_ECHO === "true";
+
 // Error whose .status maps to the HTTP response. Messages here are user-facing (Korean).
 export class OtpError extends Error {
   status: number;
@@ -98,6 +103,17 @@ export async function createAndSendCode(rawPhone: string): Promise<void> {
     expires_at: new Date(Date.now() + CODE_TTL_MS).toISOString(),
   });
   if (iErr) throw new OtpError("인증번호 전송에 실패했습니다.", 500);
+
+  if (DEV_ECHO) {
+    // Read the code from the server/Vercel logs while the AlimTalk template is pending.
+    console.warn(`[OTP_DEV_ECHO] phone=${local} code=${code}`);
+    try {
+      await sendOtpViaAlimtalk(local, code);
+    } catch (e) {
+      console.warn("[OTP_DEV_ECHO] delivery failed (ignored for testing):", e);
+    }
+    return;
+  }
 
   // Deliver last; if this throws the row simply expires unused.
   await sendOtpViaAlimtalk(local, code);
