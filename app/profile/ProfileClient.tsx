@@ -2435,6 +2435,7 @@ export default function ProfileClient() {
     school: "",
     nationality: "",
     interests: "",
+    profile_public: true,
   });
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCancellationOptions, setShowCancellationOptions] = useState(false);
@@ -2534,6 +2535,7 @@ export default function ProfileClient() {
             school: userDataObj.school || "",
             nationality: userDataObj.nationality || "",
             interests: userDataObj.interests || "",
+            profile_public: userDataObj.profilePublic !== false,
           });
 
           // Set subscription data
@@ -2780,11 +2782,12 @@ export default function ProfileClient() {
         .from("users")
         .update({
           ...profileFormDb,
-          profile_public: true,
           updated_at: new Date().toISOString(),
         })
         .eq("uid", user.uid);
-      setUserData((prev) => (prev ? { ...prev, ...profileForm, profilePublic: true } : prev));
+      setUserData((prev) =>
+        prev ? { ...prev, ...profileForm, profilePublic: profileForm.profile_public } : prev
+      );
       setIsEditingDetails(false);
       setSuccessMessage("프로필 정보가 업데이트되었습니다.");
     } catch (error) {
@@ -3404,6 +3407,28 @@ export default function ProfileClient() {
                   }
                   placeholder={t.profile.interestsPlaceholder}
                 />
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    margin: "0.75rem 0",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={profileForm.profile_public}
+                    onChange={(e) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        profile_public: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>{t.profile.makePublic}</span>
+                </label>
                 <NbEditActions>
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
                     {t.profile.save}
@@ -3417,6 +3442,7 @@ export default function ProfileClient() {
                         school: userData?.school || "",
                         nationality: userData?.nationality || "",
                         interests: userData?.interests || "",
+                        profile_public: userData?.profilePublic !== false,
                       });
                       setIsEditingDetails(false);
                     }}

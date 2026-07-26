@@ -76,7 +76,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: row?.email ?? authUser.email ?? null,
         displayName: row?.display_name ?? (meta.name as string) ?? (meta.full_name as string) ?? null,
         phoneNumber: row?.phone ?? null,
-        photoURL: row?.photo_url ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
+        photoURL:
+          (row?.photo_url ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? "")
+            .replace(/^http:\/\//, "https://") || null,
       });
       setHasActiveSubscription(row?.has_active_subscription ?? false);
       setAccountStatus(row?.account_status ?? "user");

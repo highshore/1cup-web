@@ -439,6 +439,8 @@ const ko = {
     verified: "인증",
     taglineDefault: "커피 한 잔과 함께 영어로 이야기 나눠요",
     storyDefault: "영어 한잔에서 꾸준히 영어 루틴을 쌓아가고 있는 멤버입니다.",
+    privateProfile: "이 멤버는 프로필을 비공개로 설정했습니다.",
+    makePublic: "프로필 공개 (다른 사용자가 소개·직업·관심사를 볼 수 있어요)",
     meetupsCompleted: "참여 밋업",
     avgSparkScore: "평균 점수",
     speakingReports: "스피킹 리포트",

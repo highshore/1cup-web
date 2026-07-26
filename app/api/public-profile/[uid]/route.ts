@@ -18,6 +18,11 @@ const toIso = (value: any) => {
   return null;
 };
 
+// Upgrade http image URLs to https so browsers don't block them as mixed content
+// (some Kakao CDN avatar URLs come back as http://).
+const toHttps = (u: any) =>
+  typeof u === "string" ? u.replace(/^http:\/\//, "https://") : u;
+
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { uid } = await context.params;
 
@@ -42,11 +47,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const publicProfileDisabled = data.profile_public === false;
-
-    if (publicProfileDisabled) {
-      return NextResponse.json({ error: "Profile is private" }, { status: 403 });
-    }
+    // Name, avatar, badges and stats stay visible even for private profiles (they
+    // appear in meetups/leaderboards); only the detailed personal fields are hidden.
+    const isPublic = data.profile_public !== false;
 
     // The users/{uid}/speaking_reports subcollection is now a top-level table keyed by user_id.
     const { data: reports } = await sb
@@ -77,12 +80,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const publicProfile = {
       uid,
       displayName: data.display_name || `Member ${uid.slice(0, 6)}`,
-      photoURL: data.photo_url || null,
-      bio: data.bio || "",
-      work: data.work || "",
-      school: data.school || "",
-      location: data.location || "",
-      interests: data.interests || "",
+      photoURL: toHttps(data.photo_url) || null,
+      isPublic,
+      // Detailed fields are withheld for private profiles.
+      bio: isPublic ? data.bio || "" : "",
+      work: isPublic ? data.work || "" : "",
+      school: isPublic ? data.school || "" : "",
+      location: isPublic ? data.location || "" : "",
+      interests: isPublic ? data.interests || "" : "",
       badges: {
         gdgMember: data.gdg_member === true,
         activeMember: data.has_active_subscription === true,

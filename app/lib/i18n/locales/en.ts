@@ -439,6 +439,8 @@ const en = {
     verified: "Verified",
     taglineDefault: "Let's chat in English over a cup of coffee",
     storyDefault: "A member steadily building an English routine at One Cup English.",
+    privateProfile: "This member has set their profile to private.",
+    makePublic: "Make my profile public (others can see my bio, work, and interests)",
     meetupsCompleted: "Meetups Completed",
     avgSparkScore: "Avg Spark Score",
     speakingReports: "Speaking Reports",
