@@ -175,27 +175,20 @@ const fetchFirstSubscriptionDates = async (): Promise<Map<string, Date>> => {
   const datesByUserId = new Map<string, Date>();
 
   try {
+    // Read via the public view: payment_orders itself is RLS-restricted to the
+    // caller's own rows for the browser, which would leave every other member's
+    // first-paid date empty (and break Newest Members ordering). The view exposes
+    // only user_id + the earliest subscription_initial_payment date.
     const { data, error } = await supabase
-      .from(PAYMENT_ORDERS_TABLE)
-      .select("user_id, completed_at, created_at, order_date, type")
-      .eq("type", "subscription_initial_payment");
+      .from("user_first_paid")
+      .select("user_id, first_paid_at");
 
     if (error) throw error;
 
     (data || []).forEach((row) => {
       const userId = typeof row.user_id === "string" ? row.user_id : "";
-      if (!userId) return;
-
-      const paymentDate =
-        resolveDate(row.completed_at) ||
-        resolveDate(row.created_at) ||
-        resolveDate(row.order_date);
-      if (!paymentDate) return;
-
-      const currentDate = datesByUserId.get(userId);
-      if (!currentDate || paymentDate < currentDate) {
-        datesByUserId.set(userId, paymentDate);
-      }
+      const paymentDate = resolveDate(row.first_paid_at);
+      if (userId && paymentDate) datesByUserId.set(userId, paymentDate);
     });
   } catch (error) {
     console.warn(
