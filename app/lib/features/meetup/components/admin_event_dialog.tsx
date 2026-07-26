@@ -646,8 +646,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     setErrorMessage("");
 
     try {
-      // Call your Firebase Function instead of direct API
-      const functionUrl = `https://searchnaverlocal-cds6z3hrga-du.a.run.app?query=${encodeURIComponent(
+      // Server-side proxy to Naver Local Search (replaces the old Firebase Cloud Run fn).
+      const functionUrl = `/api/naver-local?query=${encodeURIComponent(
         query
       )}&display=5&start=1&sort=random`;
 

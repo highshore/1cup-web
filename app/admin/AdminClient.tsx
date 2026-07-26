@@ -623,6 +623,7 @@ export default function AdminClient() {
       const { data, error } = await supabase
         .from("feedback")
         .select("*")
+        .neq("kind", "survey") // this view shows cancellation/refund feedback; surveys have no category
         .order("created_at", { ascending: false });
       if (error) throw error;
 
