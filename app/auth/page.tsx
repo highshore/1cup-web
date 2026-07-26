@@ -8,14 +8,6 @@ import styled, { keyframes } from "styled-components";
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 
-// 010…/+8210… -> +8210… (E.164) for Supabase phone OTP
-const toE164 = (input: string): string => {
-  const c = input.replace(/[^\d]/g, "");
-  if (c.startsWith("010")) return `+82${c.slice(1)}`;
-  if (c.startsWith("82")) return `+${c}`;
-  return `+82${c}`;
-};
-
 const SIGN_IN_PHRASES = [
   "Welcome",
   "영어 한잔",
@@ -534,14 +526,21 @@ function AuthContent() {
     sendVerificationCode();
   };
 
-  // Supabase phone OTP. NOTE: requires an SMS provider configured in the Supabase
-  // dashboard (Authentication → Providers → Phone). No reCAPTCHA needed.
+  // Custom phone OTP delivered via Kakao AlimTalk (see app/api/phone-otp/*).
+  // Free-plan alternative to Supabase's Pro-only Send SMS auth hook.
   const sendVerificationCode = async () => {
     setLoading(true);
     setErrorState(null);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ phone: toE164(phoneNumber) });
-      if (error) throw error;
+      const res = await fetch("/api/phone-otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "" }));
+        throw new Error(error || "인증번호 전송에 실패했습니다");
+      }
       setVerificationId(true);
       setMessage("인증번호가 전송되었습니다!");
     } catch (err: unknown) {
@@ -556,14 +555,20 @@ function AuthContent() {
     setLoading(true);
     setErrorState(null);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: toE164(phoneNumber),
-        token: verificationCode,
-        type: "sms",
+      const res = await fetch("/api/phone-otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber, code: verificationCode }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "인증코드 확인에 실패했습니다");
+      // Establish the Supabase session from the server-minted tokens; the
+      // onAuthStateChange effect above then handles the redirect.
+      const { error } = await supabase.auth.setSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
       });
       if (error) throw error;
-      // public.users row is created/linked by the handle_new_user trigger;
-      // redirect is handled by the onAuthStateChange effect above.
       setMessage("로그인 성공!");
     } catch (err: unknown) {
       setErrorState(err instanceof Error ? err.message : "인증코드 확인에 실패했습니다");
@@ -581,8 +586,8 @@ function AuthContent() {
           <>
             <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
             <Description>
-              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증은 Google의 보안
-              서비스를 통해 진행합니다.
+              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오
+              알림톡(또는 문자)으로 발송됩니다.
             </Description>
           </>
         ) : (
