@@ -325,8 +325,10 @@ export const fetchMeetupLeaderboards = async (
         .from(MEETUP_TABLE)
         .select("id, date_time")
         .order("date_time", { ascending: false }),
+      // public_users view exposes only public-safe columns (RLS on `users` restricts
+      // the browser to its own row, which would break the leaderboard's name/avatar lookup).
       supabase
-        .from("users")
+        .from("public_users")
         .select(
           "uid, display_name, photo_url, account_status, has_active_subscription, created_at, subscription_start_date"
         ),
