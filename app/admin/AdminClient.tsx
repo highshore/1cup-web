@@ -13,13 +13,52 @@ import {
   orderBy,
   Timestamp,
   getCountFromServer,
+  onSnapshot,
   writeBatch,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { ko } from "date-fns/locale/ko";
+import { enUS, ko } from "date-fns/locale";
 import { CalendarDaysIcon, TrashIcon } from "@heroicons/react/24/outline";
 import GrowthDashboard from "../lib/features/growth/components/GrowthDashboard";
+import AdminArticleIngestForm from "../lib/features/article/components/AdminArticleIngestForm";
+import { useI18n } from "../lib/i18n/I18nProvider";
+
+export type AdminSection =
+  | "dashboard"
+  | "members"
+  | "articles"
+  | "marketing";
+
+interface AdminClientProps {
+  section?: AdminSection;
+}
+
+const ADMIN_SECTIONS: Array<{
+  id: AdminSection;
+  label: string;
+  path: string;
+  description: string;
+}> = [
+  {
+    id: "members",
+    label: "Members",
+    path: "/admin/members",
+    description: "Manage members and active subscriptions.",
+  },
+  {
+    id: "articles",
+    label: "Articles",
+    path: "/admin/articles",
+    description: "Review and manage published learning articles.",
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    path: "/admin/marketing",
+    description: "Review Growth Agent posts, approvals, and results.",
+  },
+];
 
 const Wrapper = styled.div`
   display: flex;
@@ -32,9 +71,6 @@ const Wrapper = styled.div`
 `;
 
 const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 20px;
 `;
 
@@ -43,31 +79,6 @@ const Title = styled.h1`
   font-weight: 900;
   color: #050505;
   margin: 0;
-`;
-
-const RefreshButton = styled.button`
-  background: #ffffff;
-  color: #050505;
-  padding: 11px 20px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: 3px 3px 0 #f47a4a;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #f47a4a;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-  }
 `;
 
 const StatsGrid = styled.div`
@@ -112,33 +123,61 @@ const StatSubtext = styled.div`
   margin-top: 4px;
 `;
 
-const TabContainer = styled.div`
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
+const QuickActionsSection = styled.section`
   background: #ffffff;
-  padding: 0.35rem;
-  margin-bottom: 24px;
-  box-shadow: 3px 3px 0 #f47a4a;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+  border: 3px solid #050505;
 `;
 
-const Tab = styled.button<{ active: boolean }>`
-  padding: 9px 20px;
-  border: 0;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 800;
+const QuickActionsTitle = styled.h2`
+  margin: 0 0 18px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #050505;
+`;
+
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+`;
+
+const QuickAction = styled.button`
+  min-height: 132px;
+  padding: 18px;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #050505;
   cursor: pointer;
-  background: ${(props) => (props.active ? "#050505" : "transparent")};
-  color: ${(props) => (props.active ? "#ffffff" : "#475569")};
-  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+  text-align: left;
+  box-shadow: 3px 3px 0 #f47a4a;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
 
   &:hover {
-    color: ${(props) => (props.active ? "#ffffff" : "#050505")};
-    transform: translateY(-1px);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 #f47a4a;
   }
+
+  &:focus-visible {
+    outline: 3px solid #f47a4a;
+    outline-offset: 3px;
+  }
+`;
+
+const QuickActionLabel = styled.div`
+  font-size: 16px;
+  font-weight: 900;
+`;
+
+const QuickActionDescription = styled.p`
+  margin: 8px 0 0;
+  color: rgba(5, 5, 5, 0.64);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
 `;
 
 const ContentSection = styled.div`
@@ -323,30 +362,97 @@ const ArticlesList = styled.div`
   gap: 16px;
 `;
 
-const ArticleCard = styled.button`
+const ArticleCard = styled.article`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   padding: 18px 20px;
   border-radius: 12px;
   border: 2px solid #050505;
   background: #ffffff;
   color: #050505;
   box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-  cursor: pointer;
-  text-align: left;
 
   &:hover {
     box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+  }
+`;
+
+const ArticleOpenButton = styled.button<{ $ready: boolean }>`
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: ${({ $ready }) => ($ready ? "pointer" : "default")};
+  text-align: left;
+  transition: transform 0.14s ease;
+
+  &:hover:not(:disabled) {
     transform: translate(-2px, -2px);
   }
 
   &:focus-visible {
-    outline: none;
-    box-shadow: 4px 4px 0 #f47a4a;
+    outline: 3px solid #f47a4a;
+    outline-offset: 5px;
   }
+
+  &:disabled {
+    opacity: 0.78;
+  }
+`;
+
+const ArticleStatus = styled.span<{ $tone: "processing" | "published" | "failed" }>`
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: ${({ $tone }) =>
+    $tone === "failed" ? "#fee2e2" : $tone === "published" ? "#dcfce7" : "#fff3cd"};
+  color: ${({ $tone }) => ($tone === "failed" ? "#991b1b" : "#050505")};
+  font-size: 11px;
+  font-weight: 900;
+`;
+
+const ProgressTrack = styled.div`
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #fff8f4;
+`;
+
+const ProgressFill = styled.div<{ $progress: number; $failed: boolean }>`
+  width: ${({ $progress }) => $progress}%;
+  height: 100%;
+  background: ${({ $failed }) => ($failed ? "#dc2626" : "#f47a4a")};
+  transition: width 0.3s ease;
+`;
+
+const ProgressHint = styled.span`
+  color: rgba(5, 5, 5, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const ArticleCardFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const ArticleActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
 `;
 
 const ArticleHeader = styled.div`
@@ -373,13 +479,6 @@ const ArticleMeta = styled.div`
   gap: 12px;
   font-size: 12px;
   color: rgba(5, 5, 5, 0.6);
-`;
-
-const ArticleActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 6px;
 `;
 
 const ArticleActionButton = styled.button<{ $variant?: "danger" }>`
@@ -509,14 +608,82 @@ interface ArticleData {
   titleEnglish?: string;
   titleKorean?: string;
   publishedAt?: Date;
+  publicationStatus?: "processing" | "published" | "failed";
+  processing?: {
+    state?: string;
+    stage?: string;
+    progress?: number;
+  };
 }
 
-export default function AdminClient() {
+const toArticleData = (docSnap: {
+  id: string;
+  data: () => Record<string, unknown>;
+}): ArticleData => {
+  const data = docSnap.data() || {};
+  const rawTimestamp =
+    data.timestamp ?? data.publishedAt ?? data.createdAt ?? null;
+
+  let publishedAt: Date | undefined;
+  if (
+    rawTimestamp &&
+    typeof rawTimestamp === "object" &&
+    "toDate" in rawTimestamp &&
+    typeof rawTimestamp.toDate === "function"
+  ) {
+    publishedAt = rawTimestamp.toDate() as Date;
+  } else if (rawTimestamp instanceof Date) {
+    publishedAt = rawTimestamp;
+  } else if (typeof rawTimestamp === "string") {
+    const parsed = new Date(rawTimestamp);
+    if (!Number.isNaN(parsed.getTime())) {
+      publishedAt = parsed;
+    }
+  }
+
+  const rawProcessing =
+    data.processing && typeof data.processing === "object"
+      ? (data.processing as Record<string, unknown>)
+      : undefined;
+  const rawStatus = data.publicationStatus;
+
+  return {
+    id: docSnap.id,
+    titleEnglish:
+      (data.title as Record<string, unknown> | undefined)?.english as string ??
+      (data.titleEnglish as string | undefined) ??
+      (typeof data.title === "string" ? data.title : ""),
+    titleKorean:
+      (data.title as Record<string, unknown> | undefined)?.korean as string ??
+      (data.titleKorean as string | undefined) ??
+      "",
+    publishedAt,
+    publicationStatus:
+      rawStatus === "processing" || rawStatus === "published" || rawStatus === "failed"
+        ? rawStatus
+        : undefined,
+    processing: rawProcessing
+      ? {
+          state: typeof rawProcessing.state === "string" ? rawProcessing.state : undefined,
+          stage: typeof rawProcessing.stage === "string" ? rawProcessing.stage : undefined,
+          progress:
+            typeof rawProcessing.progress === "number" ? rawProcessing.progress : undefined,
+        }
+      : undefined,
+  };
+};
+
+const sortArticles = (articleData: ArticleData[]): ArticleData[] =>
+  [...articleData].sort((a, b) => {
+    const aTime = a.publishedAt ? a.publishedAt.getTime() : 0;
+    const bTime = b.publishedAt ? b.publishedAt.getTime() : 0;
+    return bTime - aTime;
+  });
+
+export default function AdminClient({ section = "dashboard" }: AdminClientProps) {
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
-  const [activeTab, setActiveTab] = useState<
-    "dashboard" | "members" | "feedback" | "articles" | "growth"
-  >("dashboard");
   const [users, setUsers] = useState<UserData[]>([]);
   const [feedback, setFeedback] = useState<FeedbackData[]>([]);
   const [articles, setArticles] = useState<ArticleData[]>([]);
@@ -598,6 +765,27 @@ export default function AdminClient() {
 
     return () => clearTimeout(timer);
   }, [router]);
+
+  useEffect(() => {
+    if (section !== "articles" || authChecking) {
+      return;
+    }
+
+    const articlesQuery = query(
+      collection(db, "articles"),
+      orderBy("timestamp", "desc")
+    );
+
+    return onSnapshot(
+      articlesQuery,
+      (snapshot) => {
+        setArticles(sortArticles(snapshot.docs.map((docSnap) => toArticleData(docSnap))));
+      },
+      (error) => {
+        console.error("Error listening for article processing updates:", error);
+      }
+    );
+  }, [authChecking, section]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -715,37 +903,7 @@ export default function AdminClient() {
         snapshot = await getDocs(baseRef);
       }
 
-      const articlesData: ArticleData[] = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data() || {};
-        const rawTimestamp =
-          data.timestamp ?? data.publishedAt ?? data.createdAt ?? null;
-
-        let publishedAt: Date | undefined;
-        if (rawTimestamp?.toDate) {
-          publishedAt = rawTimestamp.toDate();
-        } else if (rawTimestamp instanceof Date) {
-          publishedAt = rawTimestamp;
-        } else if (typeof rawTimestamp === "string") {
-          const parsed = new Date(rawTimestamp);
-          if (!Number.isNaN(parsed.getTime())) {
-            publishedAt = parsed;
-          }
-        }
-
-        return {
-          id: docSnap.id,
-          titleEnglish:
-            data.title?.english ?? data.titleEnglish ?? data.title ?? "",
-          titleKorean: data.title?.korean ?? data.titleKorean ?? "",
-          publishedAt,
-        };
-      });
-
-      return articlesData.sort((a, b) => {
-        const aTime = a.publishedAt ? a.publishedAt.getTime() : 0;
-        const bTime = b.publishedAt ? b.publishedAt.getTime() : 0;
-        return bTime - aTime;
-      });
+      return sortArticles(snapshot.docs.map((docSnap) => toArticleData(docSnap)));
     } catch (error) {
       console.error("Error fetching articles:", error);
       return [];
@@ -866,10 +1024,23 @@ export default function AdminClient() {
     router.push(`/article/${articleId}`);
   };
 
-  const handleDeleteArticle = async (articleId: string) => {
-    const shouldDelete = window.confirm(
-      "Are you sure you want to delete this article? This action cannot be undone."
+  const handleArticleQueued = ({ articleId, title }: { articleId: string; title: string }) => {
+    setArticles((current) =>
+      sortArticles([
+        {
+          id: articleId,
+          titleEnglish: title,
+          publishedAt: new Date(),
+          publicationStatus: "processing",
+          processing: { state: "queued", stage: "queued", progress: 5 },
+        },
+        ...current.filter((article) => article.id !== articleId),
+      ])
     );
+  };
+
+  const handleDeleteArticle = async (articleId: string) => {
+    const shouldDelete = window.confirm(t.admin.articles.deleteConfirm);
 
     if (!shouldDelete) {
       return;
@@ -881,7 +1052,7 @@ export default function AdminClient() {
       setArticles((prev) => prev.filter((article) => article.id !== articleId));
     } catch (error) {
       console.error("Error deleting article:", error);
-      window.alert("Failed to delete article. Please try again.");
+      window.alert(t.admin.articles.deleteError);
     } finally {
       setDeletingArticleId(null);
     }
@@ -893,7 +1064,9 @@ export default function AdminClient() {
       return "-";
     }
 
-    return format(date, "yyyy.MM.dd", { locale: ko });
+    return format(date, "yyyy.MM.dd", {
+      locale: locale === "ko" ? ko : enUS,
+    });
   };
 
   const formatDateTime = (value?: Timestamp | Date | string) => {
@@ -902,11 +1075,29 @@ export default function AdminClient() {
       return "-";
     }
 
-    return format(date, "yyyy.MM.dd HH:mm", { locale: ko });
+    return format(date, "yyyy.MM.dd HH:mm", {
+      locale: locale === "ko" ? ko : enUS,
+    });
   };
 
   const renderDashboard = () => (
     <>
+      <QuickActionsSection>
+        <QuickActionsTitle>Manage 1Cup English</QuickActionsTitle>
+        <QuickActionsGrid>
+          {ADMIN_SECTIONS.map(({ id, label, path, description }) => (
+            <QuickAction key={id} type="button" onClick={() => router.push(path)}>
+              <QuickActionLabel>{label}</QuickActionLabel>
+              <QuickActionDescription>{description}</QuickActionDescription>
+            </QuickAction>
+          ))}
+        </QuickActionsGrid>
+      </QuickActionsSection>
+
+      <Header>
+        <Title>Welcome to the Admin Portal</Title>
+      </Header>
+
       <StatsGrid>
         <StatCard>
           <StatNumber>{stats.totalMembers}</StatNumber>
@@ -944,6 +1135,7 @@ export default function AdminClient() {
           <StatSubtext>Users with purchase history</StatSubtext>
         </StatCard>
       </StatsGrid>
+
     </>
   );
 
@@ -957,57 +1149,60 @@ export default function AdminClient() {
       : "No Active Members to Extend";
 
     return (
-      <ContentSection>
-        <SectionTitle>Member Management ({users.length} members)</SectionTitle>
-        <MembersToolbar>
-          <MembersActionButton
-            type="button"
-            onClick={handleExtendActiveMembers}
-            disabled={extendingSubscriptions || activeMembersCount === 0}
-          >
-            <CalendarDaysIcon />
-            {extendButtonLabel}
-          </MembersActionButton>
-        </MembersToolbar>
-        <UsersList>
-          {users.map((user) => (
-            <UserCard key={user.id}>
-              <UserInfo>
-                <div>
-                  <UserName>{user.displayName || "No Name"}</UserName>
-                  <UserEmail>{user.email}</UserEmail>
-                </div>
+      <>
+        <ContentSection>
+          <SectionTitle>Member Management ({users.length} members)</SectionTitle>
+          <MembersToolbar>
+            <MembersActionButton
+              type="button"
+              onClick={handleExtendActiveMembers}
+              disabled={extendingSubscriptions || activeMembersCount === 0}
+            >
+              <CalendarDaysIcon />
+              {extendButtonLabel}
+            </MembersActionButton>
+          </MembersToolbar>
+          <UsersList>
+            {users.map((user) => (
+              <UserCard key={user.id}>
+                <UserInfo>
+                  <div>
+                    <UserName>{user.displayName || "No Name"}</UserName>
+                    <UserEmail>{user.email}</UserEmail>
+                  </div>
 
-                <div>
-                  <GdgStatus $isMember={user.gdg_member === true}>
-                    {user.gdg_member ? "GDG Member" : "Non-GDG"}
-                  </GdgStatus>
-                </div>
+                  <div>
+                    <GdgStatus $isMember={user.gdg_member === true}>
+                      {user.gdg_member ? "GDG Member" : "Non-GDG"}
+                    </GdgStatus>
+                  </div>
 
-                <UserStatus active={!!user.hasActiveSubscription}>
-                  {user.hasActiveSubscription ? "Active" : "Inactive"}
-                </UserStatus>
+                  <UserStatus active={!!user.hasActiveSubscription}>
+                    {user.hasActiveSubscription ? "Active" : "Inactive"}
+                  </UserStatus>
 
-                <div>
-                  {user.billingCancelled && (
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "#dc2626",
-                        fontWeight: "500",
-                      }}
-                    >
-                      Billing Stopped
-                    </div>
-                  )}
-                </div>
+                  <div>
+                    {user.billingCancelled && (
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: "#dc2626",
+                          fontWeight: "500",
+                        }}
+                      >
+                        Billing Stopped
+                      </div>
+                    )}
+                  </div>
 
-                <UserDate>{formatDate(user.createdAt)}</UserDate>
-              </UserInfo>
-            </UserCard>
-          ))}
-        </UsersList>
-      </ContentSection>
+                  <UserDate>{formatDate(user.createdAt)}</UserDate>
+                </UserInfo>
+              </UserCard>
+            ))}
+          </UsersList>
+        </ContentSection>
+        {renderFeedback()}
+      </>
     );
   };
 
@@ -1063,62 +1258,141 @@ export default function AdminClient() {
      </ContentSection>
    );
 
-  const renderArticles = () => (
-    <ContentSection>
-      <SectionTitle>Articles ({articles.length})</SectionTitle>
-      {articles.length === 0 ? (
-        <EmptyState>No articles available.</EmptyState>
-      ) : (
-        <ArticlesList>
-          {articles.map((article) => {
-            const primaryTitle =
-              article.titleEnglish || article.titleKorean || "Untitled Article";
-            const showKoreanSubtitle =
-              article.titleKorean && article.titleKorean !== article.titleEnglish;
+  const renderArticles = () => {
+    const copy = t.admin.articles;
 
-            return (
-              <ArticleCard
-                key={article.id}
-                type="button"
-                onClick={() => handleArticleClick(article.id)}
-              >
-                <ArticleHeader>
-                  <ArticleTitle>{primaryTitle}</ArticleTitle>
-                  <ArticleMeta>
-                    <span>{formatDateTime(article.publishedAt)}</span>
-                  </ArticleMeta>
-                </ArticleHeader>
+    const processingLabel = (article: ArticleData) => {
+      if (article.publicationStatus === "failed") return copy.statusFailed;
+      if (!article.publicationStatus || article.publicationStatus === "published") {
+        return copy.statusPublished;
+      }
 
-                {showKoreanSubtitle && (
-                  <ArticleSubtitle>{article.titleKorean}</ArticleSubtitle>
-                )}
+      switch (article.processing?.stage) {
+        case "refining":
+          return copy.statusRefining;
+        case "summarizing":
+          return copy.statusSummarizing;
+        case "extractingVocabulary":
+          return copy.statusExtractingVocabulary;
+        case "draftingDiscussion":
+          return copy.statusDraftingDiscussion;
+        case "identifyingTerms":
+          return copy.statusIdentifyingTerms;
+        case "organizing":
+          return copy.statusOrganizing;
+        case "translating":
+          return copy.statusTranslating;
+        case "polishingKorean":
+          return copy.statusPolishingKorean;
+        case "validating":
+          return copy.statusValidating;
+        case "placingFigures":
+          return copy.statusPlacingFigures;
+        case "designingCover":
+          return copy.statusDesigningCover;
+        case "illustrating":
+          return copy.statusIllustrating;
+        case "publishing":
+          return copy.statusPublishing;
+        default:
+          return copy.statusQueued;
+      }
+    };
 
-                <ArticleMeta>
-                  <span>ID: {article.id}</span>
-                </ArticleMeta>
+    return (
+      <>
+        <AdminArticleIngestForm
+          onArticleQueued={handleArticleQueued}
+          onArticleCreated={loadDashboardData}
+        />
+        <ContentSection>
+          <SectionTitle>
+            {copy.listTitle.replace("{count}", String(articles.length))}
+          </SectionTitle>
+          {articles.length === 0 ? (
+            <EmptyState>{copy.empty}</EmptyState>
+          ) : (
+            <ArticlesList>
+              {articles.map((article) => {
+                const primaryTitle =
+                  article.titleEnglish || article.titleKorean || copy.untitled;
+                const showKoreanSubtitle =
+                  article.titleKorean && article.titleKorean !== article.titleEnglish;
+                const isReady =
+                  !article.publicationStatus || article.publicationStatus === "published";
+                const isFailed = article.publicationStatus === "failed";
+                const progress = Math.max(
+                  0,
+                  Math.min(100, article.processing?.progress ?? (isReady ? 100 : 5))
+                );
+                const statusTone = isFailed
+                  ? "failed"
+                  : isReady
+                  ? "published"
+                  : "processing";
 
-                <ArticleActions>
-                  <ArticleActionButton
-                    type="button"
-                    $variant="danger"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      handleDeleteArticle(article.id);
-                    }}
-                    disabled={deletingArticleId === article.id}
-                  >
-                    <TrashIcon />
-                    {deletingArticleId === article.id ? "Deleting..." : "Delete"}
-                  </ArticleActionButton>
-                </ArticleActions>
-              </ArticleCard>
-            );
-          })}
-        </ArticlesList>
-      )}
-    </ContentSection>
-  );
+                return (
+                  <ArticleCard key={article.id}>
+                    <ArticleOpenButton
+                      type="button"
+                      $ready={isReady}
+                      disabled={!isReady}
+                      onClick={() => handleArticleClick(article.id)}
+                      aria-label={isReady ? copy.openReady : copy.availableWhenReady}
+                    >
+                      <ArticleHeader>
+                        <ArticleTitle>{primaryTitle}</ArticleTitle>
+                        <ArticleMeta>
+                          <span>{formatDateTime(article.publishedAt)}</span>
+                        </ArticleMeta>
+                      </ArticleHeader>
+
+                      {showKoreanSubtitle && (
+                        <ArticleSubtitle>{article.titleKorean}</ArticleSubtitle>
+                      )}
+
+                      <ArticleMeta>
+                        <span>ID: {article.id}</span>
+                      </ArticleMeta>
+
+                      <ArticleCardFooter>
+                        <ArticleStatus $tone={statusTone}>
+                          {processingLabel(article)}
+                          {!isReady && !isFailed ? " · " + progress + "%" : ""}
+                        </ArticleStatus>
+                        {!isReady && (
+                          <>
+                            <ProgressTrack>
+                              <ProgressFill $progress={progress} $failed={isFailed} />
+                            </ProgressTrack>
+                            <ProgressHint>{copy.availableWhenReady}</ProgressHint>
+                          </>
+                        )}
+                      </ArticleCardFooter>
+                    </ArticleOpenButton>
+
+                    <ArticleActions>
+                      <ArticleActionButton
+                        type="button"
+                        $variant="danger"
+                        onClick={() => handleDeleteArticle(article.id)}
+                        disabled={deletingArticleId === article.id}
+                      >
+                        <TrashIcon />
+                        {deletingArticleId === article.id
+                          ? copy.deleting
+                          : copy.delete}
+                      </ArticleActionButton>
+                    </ArticleActions>
+                  </ArticleCard>
+                );
+              })}
+            </ArticlesList>
+          )}
+        </ContentSection>
+      </>
+    );
+  };
 
   if (authChecking) {
     return (
@@ -1138,49 +1412,20 @@ export default function AdminClient() {
 
   return (
     <Wrapper>
-      <Header>
-        <Title>Admin Dashboard</Title>
-        <RefreshButton onClick={loadDashboardData}>Refresh</RefreshButton>
-      </Header>
+      {section !== "dashboard" && (
+        <Header>
+          <Title>
+            {section === "articles"
+              ? t.admin.articles.pageTitle
+              : ADMIN_SECTIONS.find(({ id }) => id === section)?.label || "Admin"}
+          </Title>
+        </Header>
+      )}
 
-      <TabContainer>
-        <Tab
-          active={activeTab === "dashboard"}
-          onClick={() => setActiveTab("dashboard")}
-        >
-          Dashboard
-        </Tab>
-        <Tab
-          active={activeTab === "members"}
-          onClick={() => setActiveTab("members")}
-        >
-          Members
-        </Tab>
-        <Tab
-          active={activeTab === "feedback"}
-          onClick={() => setActiveTab("feedback")}
-        >
-          Feedback
-        </Tab>
-        <Tab
-          active={activeTab === "articles"}
-          onClick={() => setActiveTab("articles")}
-        >
-          Articles
-        </Tab>
-        <Tab
-          active={activeTab === "growth"}
-          onClick={() => setActiveTab("growth")}
-        >
-          Growth
-        </Tab>
-      </TabContainer>
-
-      {activeTab === "dashboard" && renderDashboard()}
-      {activeTab === "members" && renderMembers()}
-      {activeTab === "feedback" && renderFeedback()}
-      {activeTab === "articles" && renderArticles()}
-      {activeTab === "growth" && <GrowthDashboard />}
+      {section === "dashboard" && renderDashboard()}
+      {section === "members" && renderMembers()}
+      {section === "articles" && renderArticles()}
+      {section === "marketing" && <GrowthDashboard />}
     </Wrapper>
   );
 }

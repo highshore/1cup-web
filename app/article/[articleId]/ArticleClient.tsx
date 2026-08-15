@@ -3,22 +3,33 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
+  collection,
   doc,
   getDoc,
+  onSnapshot,
+  query,
   Timestamp,
   updateDoc,
   arrayUnion,
   arrayRemove,
   setDoc,
+  where,
 } from "firebase/firestore";
-import { db } from "../../lib/firebase/firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../../lib/firebase/firebase";
 import styled from "styled-components";
 import { useAuth } from "../../lib/contexts/auth_context";
+import { useI18n } from "../../lib/i18n/I18nProvider";
 import React from "react";
 import {
   ArrowUpTrayIcon,
   CheckIcon,
+  ChevronDownIcon,
+  DocumentDuplicateIcon,
   DocumentTextIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  LanguageIcon,
   LockClosedIcon,
   PencilSquareIcon,
   PhotoIcon,
@@ -49,8 +60,14 @@ interface ArticleData {
   url: string;
   image_url?: string; // Added new optional field
   discussion_topics?: string[]; // Added new optional field
+  discussion_topic_ids?: string[];
+  summary?: {
+    english?: string[];
+    korean?: string[];
+  };
   source_url?: string; // Added new optional field
-  figures?: ArticleFigure[]; // Inline figures/charts from the OCR pipeline
+  figures?: ArticleFigure[]; // Inline figures/charts supplied by the editor
+  publicationStatus?: "processing" | "published" | "failed";
 }
 
 interface ArticleFigure {
@@ -61,7 +78,48 @@ interface ArticleFigure {
   generated_url?: string | null;
   bbox?: number[];
   is_hero?: boolean;
+  after_paragraph?: number;
 }
+
+interface DiscussionTopicStats {
+  topicId: string;
+  score: number;
+  upvotes: number;
+  downvotes: number;
+}
+
+type TopicVoteValue = -1 | 0 | 1;
+
+interface DiscussionTopicEntry {
+  id: string;
+  originalIndex: number;
+  text: string;
+}
+
+interface DiscussionVoteResult {
+  topicId: string;
+  vote: TopicVoteValue;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+}
+
+const discussionTopicEntriesFor = (article: ArticleData | null): DiscussionTopicEntry[] =>
+  (article?.discussion_topics || []).flatMap((topic, originalIndex) => {
+    const text = typeof topic === "string" ? topic.trim() : "";
+    if (!text) return [];
+    const configuredId = article?.discussion_topic_ids?.[originalIndex];
+    return [
+      {
+        id:
+          typeof configuredId === "string" && /^[A-Za-z0-9_-]+$/.test(configuredId)
+            ? configuredId
+            : "topic-" + originalIndex,
+        originalIndex,
+        text,
+      },
+    ];
+  });
 
 interface WordData {
   categories: {
@@ -162,41 +220,125 @@ const TitleTextGroup = styled.div`
   min-width: 250px;
 `;
 
-const CalloutBox = styled.div`
+const QuickSummaryCard = styled.section`
   background: #ffffff;
-  padding: 1rem 1.2rem;
-  border-radius: 14px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-  color: rgba(5, 5, 5, 0.72);
   border: 2px solid #050505;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  line-height: 1.5;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 
   @media (max-width: 768px) {
-    font-size: 0.85rem;
-    margin-bottom: 1.2rem;
+    border-radius: 12px;
+  }
+`;
+
+const QuickSummaryHeader = styled.div`
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
     padding: 0.9rem 1rem;
+  }
+`;
+
+const QuickSummaryTitle = styled.span`
+  font-size: 1.05rem;
+  font-weight: 800;
+`;
+
+const QuickSummaryActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+`;
+
+const QuickSummaryLanguageButton = styled.button`
+  min-height: 1.7rem;
+  box-sizing: border-box;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0 0.5rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  svg {
+    width: 0.72rem;
+    height: 0.72rem;
   }
 
   &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-  }
-
-  &::before {
-    content: "";
-    width: 0.6rem;
-    height: 0.6rem;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    border: 2px solid #050505;
     background: #f47a4a;
   }
+`;
+
+const QuickSummaryExpandButton = styled.button`
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #050505;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover {
+    background: #f47a4a;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.45);
+    outline-offset: 2px;
+  }
+`;
+
+const QuickSummaryChevron = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  transition: transform 0.18s ease;
+  transform: rotate(${(props) => (props.$isExpanded ? "180deg" : "0deg")});
+`;
+
+const QuickSummaryList = styled.ul`
+  margin: -0.1rem 1.1rem 1rem 2.35rem;
+  padding: 0;
+  color: #050505;
+  list-style: disc outside;
+
+  @media (max-width: 768px) {
+    margin: -0.1rem 1rem 0.9rem 2.1rem;
+  }
+`;
+
+const QuickSummaryItem = styled.li`
+  padding-left: 0.15rem;
+  font-size: 0.98rem;
+  line-height: 1.58;
+
+  & + & {
+    margin-top: 0.55rem;
+  }
+`;
+
+const QuickSummaryEllipsis = styled.li`
+  list-style: none;
+  margin: 0.15rem 0 0 0.15rem;
+  color: rgba(5, 5, 5, 0.6);
+  font-weight: 800;
+  letter-spacing: 0.12em;
 `;
 
 const ReadingTime = styled.div`
@@ -315,7 +457,6 @@ const KoreanParagraph = styled.p<{ isVisible: boolean }>`
   overflow-y: ${(props) => (props.isVisible ? "auto" : "hidden")};
   transition: all 0.3s ease;
   margin-top: ${(props) => (props.isVisible ? "0.15rem" : "0")};
-  border-left: 4px solid #f47a4a;
 
   @media (max-width: 768px) {
     font-size: 1rem;
@@ -404,7 +545,6 @@ const KeywordCard = styled.div`
   margin-right: 0.6rem;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
   border: 2px solid #050505;
-  border-left: 5px solid #f47a4a;
   box-sizing: border-box;
   cursor: pointer;
 
@@ -559,7 +699,6 @@ const ModalContent = styled.div`
   transform: scale(1);
   transition: transform 0.3s ease;
   border: 2px solid #050505;
-  border-left: 6px solid #f47a4a;
   overflow-y: auto; /* Allow scrolling within modal if content is too tall */
   max-height: 90vh; /* Limit height on small screens */
 
@@ -633,20 +772,7 @@ const KoreanText = styled.div`
   font-size: 0.95rem;
   color: rgba(5, 5, 5, 0.72);
   line-height: 1.5;
-  position: relative;
-  padding-left: 0.8rem;
   font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: #f47a4a;
-    border-radius: 2px;
-  }
 
   @media (max-width: 768px) {
     font-size: 0.9rem;
@@ -656,7 +782,6 @@ const KoreanText = styled.div`
 const ExampleKoreanText = styled(KoreanText)`
   font-style: normal;
   margin-top: 0.5rem;
-  padding-left: 0.8rem;
   font-size: 0.9rem;
   opacity: 0.9;
 `;
@@ -1032,6 +1157,12 @@ const ArticlePageWrapper = styled.div`
 // Define necessary styled components
 const ParagraphContainer = styled.div`
   position: relative;
+  padding: 0.85rem 0 0.9rem;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+
+  &:first-child {
+    padding-top: 0;
+  }
 `;
 
 // Add a styled component for the translation toggle button
@@ -1040,14 +1171,17 @@ const TranslationToggleButton = styled.button`
   color: #050505;
   border: 2px solid #050505;
   border-radius: 999px;
-  padding: 0.25rem 0.7rem;
-  font-size: 0.7rem;
-  font-weight: 700;
+  min-height: 2rem;
+  box-sizing: border-box;
+  padding: 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
   cursor: pointer;
   margin-top: 0.6rem;
   margin-bottom: 0.2rem;
   display: flex;
   align-items: center;
+  justify-content: center;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
   box-shadow: 2px 2px 0 #050505;
 
@@ -1058,11 +1192,9 @@ const TranslationToggleButton = styled.button`
     box-shadow: 3px 3px 0 #050505;
   }
 
-  &::before {
-    content: "KO";
-    margin-right: 3px;
-    font-size: 0.66rem;
-    font-weight: 800;
+  svg {
+    width: 0.82rem;
+    height: 0.82rem;
   }
 
   &.active {
@@ -1076,6 +1208,56 @@ const TranslationToggleButton = styled.button`
     box-shadow: none;
     transform: none;
     pointer-events: none;
+  }
+`;
+
+const CopyActionButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
+  min-height: 2rem;
+  box-sizing: border-box;
+  padding: 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+
+  &:hover {
+    background: #f47a4a;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #050505;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.45);
+    outline-offset: 2px;
+  }
+
+  svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+`;
+
+const ParagraphActionRow = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+
+  ${TranslationToggleButton} {
+    margin-top: 0;
+    margin-bottom: 0;
   }
 `;
 
@@ -1196,9 +1378,10 @@ const getWordDefinition = async (
 
 const ArticleImage = styled.img`
   width: 100%;
+  aspect-ratio: 3 / 2;
   object-fit: cover;
-  border-radius: 16px;
-  margin: 1.5rem 0 0.5rem 0;
+  border-radius: 14px;
+  margin: 1.25rem 0 0.45rem 0;
   border: 2px solid #050505;
   box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
 
@@ -1224,7 +1407,8 @@ const ImageCaption = styled.p`
   font-size: 0.8rem;
   color: rgba(5, 5, 5, 0.6);
   text-align: left;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.25rem 0;
+  padding-left: 0.2rem;
 
   @media (max-width: 768px) {
     font-size: 0.7rem;
@@ -1232,9 +1416,9 @@ const ImageCaption = styled.p`
   }
 `;
 
-// Inline article figures (photos recreated by AI; charts kept original)
+// Inline article figures supplied by the editor.
 const FiguresSection = styled.div`
-  margin-top: 2rem;
+  margin: 1.25rem 0;
 `;
 
 const FiguresGrid = styled.div`
@@ -1244,51 +1428,45 @@ const FiguresGrid = styled.div`
   margin-top: 0.75rem;
 `;
 
+const PhotoFiguresGrid = styled(FiguresGrid)`
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const FigureCard = styled.figure`
   margin: 0;
 `;
 
-const FigureCaptionEn = styled.figcaption`
-  font-size: 0.9rem;
-  color: #050505;
-  line-height: 1.5;
-  margin-top: 0.6rem;
-`;
-
-const FigureCaptionKo = styled.span`
-  display: block;
-  font-size: 0.85rem;
-  color: rgba(5, 5, 5, 0.55);
-  line-height: 1.5;
-  margin-top: 0.2rem;
-`;
-
-// Chart image: plain, no boxed/bordered container.
+// Inline figures are visual breaks in the article, so they intentionally have
+// no visible label or caption.
 const ChartImage = styled.img`
   width: 100%;
   height: auto;
   object-fit: contain;
   display: block;
-  margin: 1.5rem 0 0.5rem 0;
+  border-radius: 14px;
+  margin: 1rem 0 0;
 
   @media (max-width: 768px) {
-    margin: 1rem 0 0.5rem 0;
+    margin: 0.9rem 0 0;
   }
 `;
 
-const FigureKindTag = styled.span`
+const ArticlePhoto = styled.img`
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
   display: block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: rgba(5, 5, 5, 0.5);
-  margin-top: 0.25rem;
+  border: 2px solid #050505;
+  border-radius: 14px;
 `;
 
 // Discussion topics components
 const DiscussionTopicsSection = styled.div`
-  margin-top: 2rem;
+  margin-top: 0;
   margin-bottom: 2rem;
 
   @media (max-width: 768px) {
@@ -1309,18 +1487,36 @@ const DiscussionTopicsList = styled.ul`
 `;
 
 const DiscussionTopicItem = styled.li`
-  font-size: 1.1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
+`;
+
+const DiscussionTopicText = styled.span`
+  flex: 1;
+  min-width: 0;
+  font-size: 1.02rem;
   color: #050505;
-  line-height: 1.6;
-  margin-bottom: 0.6rem;
-  padding-left: 1rem;
+  line-height: 1.55;
+  padding-left: 0.95rem;
   position: relative;
   cursor: pointer;
   transition: color 0.2s ease;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
 
   &::before {
     content: "•";
@@ -1328,7 +1524,7 @@ const DiscussionTopicItem = styled.li`
     font-weight: bold;
     position: absolute;
     left: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   &:hover {
@@ -1336,9 +1532,62 @@ const DiscussionTopicItem = styled.li`
   }
 
   @media (max-width: 768px) {
-    font-size: 1rem;
-    padding-left: 0.9rem;
+    font-size: 0.95rem;
+    padding-left: 0.85rem;
   }
+`;
+
+const DiscussionVoteControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+`;
+
+const DiscussionVoteButton = styled.button<{ $active: boolean; $negative?: boolean }>`
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: ${(props) =>
+    props.$active ? (props.$negative ? "#ffd9d9" : "#f47a4a") : "#ffffff"};
+  color: #050505;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+
+  svg {
+    width: 0.82rem;
+    height: 0.82rem;
+  }
+
+  &:hover:not(:disabled) {
+    background: ${(props) => (props.$negative ? "#ffd9d9" : "#f47a4a")};
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+`;
+
+const DiscussionVoteScore = styled.span`
+  min-width: 1.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+`;
+
+const VoteAccessNote = styled.p`
+  margin: 0.7rem 0 0;
+  color: rgba(5, 5, 5, 0.6);
+  font-size: 0.78rem;
+  line-height: 1.45;
 `;
 
 // Admin editing styled components
@@ -1357,13 +1606,16 @@ const AdminControlsContainer = styled.div`
 const AdminButton = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   background: #f47a4a;
   color: #050505;
   border: 2px solid #050505;
-  padding: 0.4rem 0.85rem;
+  min-height: 2rem;
+  box-sizing: border-box;
+  padding: 0 0.7rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
   font-weight: 800;
@@ -1383,7 +1635,7 @@ const AdminButton = styled.button`
 
   @media (max-width: 768px) {
     font-size: 0.75rem;
-    padding: 0.35rem 0.7rem;
+    padding: 0 0.8rem;
   }
 
   svg {
@@ -1529,13 +1781,33 @@ const SectionHeaderRow = styled.div`
   justify-content: space-between;
   gap: 0.8rem;
   margin-top: 2rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.9rem;
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
+`;
+
+const SectionActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+
+    > button {
+      flex: 1 1 auto;
+    }
+  }
+`;
+
+const DiscussionHeaderRow = styled(SectionHeaderRow)`
+  margin-top: 2rem;
+  margin-bottom: 1rem;
 `;
 
 const AdminActionGroup = styled.div`
@@ -1550,9 +1822,11 @@ const AdminActionButton = styled.button<{ variant?: "primary" | "ghost" }>`
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
+  min-height: 2rem;
+  box-sizing: border-box;
+  padding: 0 0.7rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 800;
   border: 2px solid #050505;
   background: ${(props) =>
@@ -1785,7 +2059,6 @@ const PaywallNotice = styled.div`
   padding: 1rem 1.2rem;
   border-radius: 16px;
   border: 2px solid #050505;
-  border-left: 6px solid #f47a4a;
   background: #ffffff;
   color: #050505;
   margin-bottom: 1.5rem;
@@ -1821,13 +2094,16 @@ const Article = () => {
     return <ErrorContainer>Article ID not found</ErrorContainer>;
   }
 
-  const { currentUser, accountStatus } = useAuth(); // Get the current user and account status from auth context
+  const { currentUser, accountStatus, hasActiveSubscription } = useAuth();
+  const { t } = useI18n();
   const isAdmin = accountStatus === "admin";
   const isGuestUser = !currentUser;
   const [article, setArticle] = useState<ArticleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isKoreanTitleVisible, setIsKoreanTitleVisible] = useState(false);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const [isKoreanSummaryVisible, setIsKoreanSummaryVisible] = useState(false);
   const [visibleKoreanParagraphs, setVisibleKoreanParagraphs] = useState<
     number[]
   >([]);
@@ -1853,6 +2129,11 @@ const Article = () => {
   const [editedTopics, setEditedTopics] = useState<string[]>([]);
   const [newTopic, setNewTopic] = useState("");
   const [isSavingTopics, setIsSavingTopics] = useState(false);
+  const [discussionStats, setDiscussionStats] = useState<
+    Record<string, DiscussionTopicStats>
+  >({});
+  const [topicVotes, setTopicVotes] = useState<Record<string, TopicVoteValue>>({});
+  const [votingTopicId, setVotingTopicId] = useState<string | null>(null);
 
   const [isEditingMedia, setIsEditingMedia] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState("");
@@ -1870,6 +2151,8 @@ const Article = () => {
   const [editedEnglishContent, setEditedEnglishContent] = useState<string[]>([]);
   const [editedKoreanContent, setEditedKoreanContent] = useState<string[]>([]);
   const [isSavingContent, setIsSavingContent] = useState(false);
+  const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
+  const copyFeedbackTimerRef = useRef<number | null>(null);
 
   // Translation warning state
   const [translationClickCount, setTranslationClickCount] = useState(0);
@@ -1920,6 +2203,17 @@ const Article = () => {
 
         if (articleSnap.exists()) {
           const data = articleSnap.data() as ArticleData;
+          if (
+            data.publicationStatus === "processing" ||
+            data.publicationStatus === "failed"
+          ) {
+            setError(
+              data.publicationStatus === "failed"
+                ? "This article could not be processed."
+                : "This article is still processing. Please try again shortly."
+            );
+            return;
+          }
           setArticle(data);
 
           // Prefetch word details for all keywords
@@ -1941,6 +2235,80 @@ const Article = () => {
 
     fetchArticle();
   }, [articleId]);
+
+  useEffect(() => {
+    const statsQuery = query(
+      collection(db, "article_discussion_stats"),
+      where("articleId", "==", articleId)
+    );
+    return onSnapshot(
+      statsQuery,
+      (snapshot) => {
+        const nextStats: Record<string, DiscussionTopicStats> = {};
+        snapshot.forEach((stat) => {
+          const data = stat.data();
+          if (typeof data.topicId !== "string") return;
+          nextStats[data.topicId] = {
+            topicId: data.topicId,
+            score: typeof data.score === "number" ? data.score : 0,
+            upvotes: typeof data.upvotes === "number" ? data.upvotes : 0,
+            downvotes: typeof data.downvotes === "number" ? data.downvotes : 0,
+          };
+        });
+        setDiscussionStats(nextStats);
+      },
+      (statsError) => {
+        console.error("Unable to subscribe to discussion-topic scores:", statsError);
+      }
+    );
+  }, [articleId]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setTopicVotes({});
+      return;
+    }
+
+    const topicEntries = discussionTopicEntriesFor(article);
+    if (topicEntries.length === 0) {
+      setTopicVotes({});
+      return;
+    }
+
+    let isCurrent = true;
+    const loadVotes = async () => {
+      try {
+        const snapshots = await Promise.all(
+          topicEntries.map((topic) =>
+            getDoc(
+              doc(
+                db,
+                "article_discussion_votes",
+                articleId + "_" + topic.id + "_" + currentUser.uid
+              )
+            )
+          )
+        );
+        if (!isCurrent) return;
+
+        const nextVotes: Record<string, TopicVoteValue> = {};
+        snapshots.forEach((snapshot, index) => {
+          const vote = snapshot.data()?.vote;
+          if (vote === 1 || vote === -1) {
+            nextVotes[topicEntries[index].id] = vote;
+          }
+        });
+        setTopicVotes(nextVotes);
+      } catch (voteError) {
+        console.error("Unable to load discussion-topic votes:", voteError);
+      }
+    };
+
+    loadVotes();
+    return () => {
+      isCurrent = false;
+    };
+  }, [article, articleId, currentUser]);
 
   // Fetch user's saved words when user changes
   useEffect(() => {
@@ -1972,6 +2340,14 @@ const Article = () => {
 
     fetchSavedWords();
   }, [currentUser]);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimerRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimerRef.current);
+      }
+    };
+  }, []);
 
   const fetchWordDetails = async (word: string) => {
     // Skip if already fetched or currently fetching
@@ -2061,6 +2437,36 @@ const Article = () => {
       ) {
         setShowTranslationWarning(true);
       }
+    }
+  };
+
+  const copyText = async (text: string, target: string) => {
+    if (!text.trim()) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+
+      setCopiedTarget(target);
+      if (copyFeedbackTimerRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimerRef.current);
+      }
+      copyFeedbackTimerRef.current = window.setTimeout(() => {
+        setCopiedTarget(null);
+        copyFeedbackTimerRef.current = null;
+      }, 1800);
+    } catch (copyError) {
+      console.error("Unable to copy article text:", copyError);
     }
   };
 
@@ -2626,13 +3032,24 @@ const Article = () => {
     setIsSavingTopics(true);
     try {
       const articleRef = doc(db, "articles", articleId);
+      const existingTopicIds = article?.discussion_topic_ids || [];
+      const discussionTopicIds = editedTopics.map(
+        (_, index) => existingTopicIds[index] || "topic-" + index
+      );
       await updateDoc(articleRef, {
         discussion_topics: editedTopics,
+        discussion_topic_ids: discussionTopicIds,
       });
 
       // Update local state
       setArticle((prev) =>
-        prev ? { ...prev, discussion_topics: editedTopics } : null
+        prev
+          ? {
+              ...prev,
+              discussion_topics: editedTopics,
+              discussion_topic_ids: discussionTopicIds,
+            }
+          : null
       );
       setIsEditingTopics(false);
       setEditedTopics([]);
@@ -2642,6 +3059,45 @@ const Article = () => {
       alert("토론 주제 저장 중 오류가 발생했습니다.");
     } finally {
       setIsSavingTopics(false);
+    }
+  };
+
+  const handleDiscussionVote = async (
+    topicId: string,
+    direction: Exclude<TopicVoteValue, 0>
+  ) => {
+    if (!currentUser || hasActiveSubscription !== true || votingTopicId) return;
+
+    const nextVote: TopicVoteValue =
+      topicVotes[topicId] === direction ? 0 : direction;
+    setVotingTopicId(topicId);
+    try {
+      const vote = httpsCallable<
+        { articleId: string; topicId: string; vote: TopicVoteValue },
+        DiscussionVoteResult
+      >(functions, "voteDiscussionTopic");
+      const result = await vote({ articleId, topicId, vote: nextVote });
+
+      setTopicVotes((previous) => {
+        const next = { ...previous };
+        if (result.data.vote === 0) delete next[topicId];
+        else next[topicId] = result.data.vote;
+        return next;
+      });
+      setDiscussionStats((previous) => ({
+        ...previous,
+        [topicId]: {
+          topicId,
+          score: result.data.score,
+          upvotes: result.data.upvotes,
+          downvotes: result.data.downvotes,
+        },
+      }));
+    } catch (voteError) {
+      console.error("Unable to save discussion-topic vote:", voteError);
+      alert(t.article.votingError);
+    } finally {
+      setVotingTopicId(null);
     }
   };
 
@@ -2906,6 +3362,30 @@ const Article = () => {
   if (!article) return <ErrorContainer>No article found</ErrorContainer>;
 
   const { content = { english: [], korean: [] }, keywords = [] } = article;
+  const englishSummary = (article.summary?.english || []).filter(
+    (item): item is string => typeof item === "string" && Boolean(item.trim())
+  );
+  const koreanSummary = (article.summary?.korean || []).filter(
+    (item): item is string => typeof item === "string" && Boolean(item.trim())
+  );
+  const displayedSummary =
+    isKoreanSummaryVisible && koreanSummary.length > 0
+      ? koreanSummary
+      : englishSummary.length > 0
+      ? englishSummary
+      : koreanSummary;
+  const canToggleSummaryLanguage =
+    englishSummary.length > 0 && koreanSummary.length > 0;
+  const isActiveSubscriber = hasActiveSubscription === true;
+  const discussionTopicEntries = discussionTopicEntriesFor(article)
+    .map((topic) => ({
+      ...topic,
+      score: discussionStats[topic.id]?.score || 0,
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score || left.originalIndex - right.originalIndex
+    );
   const displayedEnglishContent = isGuestUser
     ? content.english.slice(0, GUEST_PARAGRAPH_LIMIT)
     : content.english;
@@ -2914,6 +3394,19 @@ const Article = () => {
     : content.korean;
   const hasHiddenParagraphs =
     isGuestUser && content.english.length > displayedEnglishContent.length;
+  const articleFigures = (article.figures || []).filter(
+    (figure) => figure.display_url && !figure.is_hero
+  );
+  const figuresAfterParagraph = (paragraphIndex: number) =>
+    articleFigures.filter(
+      (figure) =>
+        figure.kind === "figure" && figure.after_paragraph === paragraphIndex
+    );
+  const unplacedFigures = articleFigures.filter(
+    (figure) =>
+      figure.kind !== "figure" ||
+      !Number.isInteger(figure.after_paragraph)
+  );
 
   // Update next button visibility logic to ensure it stays visible until the last card
   const hasMoreKeywords = currentKeywordIndex < keywords.length - 1;
@@ -3143,24 +3636,36 @@ const Article = () => {
         {(article.discussion_topics && article.discussion_topics.length > 0) ||
         accountStatus === "admin" ? (
           <DiscussionTopicsSection>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1rem",
-              }}
-            >
+            <DiscussionHeaderRow>
               <SectionTitle style={{ marginBottom: 0 }}>
                 Discussion Topics
               </SectionTitle>
-              {accountStatus === "admin" && !isEditingTopics && (
-                <AdminButton onClick={startEditingTopics}>
-                  <PencilSquareIcon />
-                  편집
-                </AdminButton>
-              )}
-            </div>
+              <SectionActions>
+                <CopyActionButton
+                  type="button"
+                  onClick={() =>
+                    copyText(
+                      discussionTopicEntries
+                        .map((topic, index) => `${index + 1}. ${topic.text}`)
+                        .join("\n"),
+                      "questions"
+                    )
+                  }
+                  aria-label={t.article.copyQuestions}
+                >
+                  <DocumentDuplicateIcon />
+                  {copiedTarget === "questions"
+                    ? t.article.copied
+                    : t.article.copyQuestions}
+                </CopyActionButton>
+                {accountStatus === "admin" && !isEditingTopics && (
+                  <AdminButton onClick={startEditingTopics}>
+                    <PencilSquareIcon />
+                    편집
+                  </AdminButton>
+                )}
+              </SectionActions>
+            </DiscussionHeaderRow>
 
             {isEditingTopics ? (
               <div>
@@ -3221,25 +3726,74 @@ const Article = () => {
               </div>
             ) : article.discussion_topics &&
               article.discussion_topics.length > 0 ? (
-              <DiscussionTopicsList>
-                {article.discussion_topics.map((topic, index) => (
-                  <DiscussionTopicItem
-                    key={index}
-                    className="article-text"
-                    data-original-text={topic}
-                    onClick={handleWordClick}
-                    onMouseDown={onMouseDownPress}
-                    onMouseMove={onMouseMovePress}
-                    onMouseUp={onMouseUpPress}
-                    onMouseLeave={onMouseLeavePress}
-                    onTouchStart={onTouchStartPress}
-                    onTouchMove={onTouchMovePress}
-                    onTouchEnd={onTouchEndPress}
-                  >
-                    {topic}
-                  </DiscussionTopicItem>
-                ))}
-              </DiscussionTopicsList>
+              <>
+                <DiscussionTopicsList>
+                  {discussionTopicEntries.map((topic) => {
+                    const currentVote = topicVotes[topic.id] || 0;
+                    const score = discussionStats[topic.id]?.score || 0;
+                    const votingDisabled =
+                      !isActiveSubscriber || votingTopicId !== null;
+
+                    return (
+                      <DiscussionTopicItem key={topic.id}>
+                        <DiscussionTopicText
+                          className="article-text"
+                          data-original-text={topic.text}
+                          onClick={handleWordClick}
+                          onMouseDown={onMouseDownPress}
+                          onMouseMove={onMouseMovePress}
+                          onMouseUp={onMouseUpPress}
+                          onMouseLeave={onMouseLeavePress}
+                          onTouchStart={onTouchStartPress}
+                          onTouchMove={onTouchMovePress}
+                          onTouchEnd={onTouchEndPress}
+                        >
+                          {topic.text}
+                        </DiscussionTopicText>
+                        <DiscussionVoteControls>
+                          <DiscussionVoteButton
+                            type="button"
+                            $active={currentVote === 1}
+                            disabled={votingDisabled}
+                            aria-pressed={currentVote === 1}
+                            aria-label={t.article.upvoteTopic}
+                            title={
+                              isActiveSubscriber
+                                ? t.article.upvoteTopic
+                                : t.article.votingMembersOnly
+                            }
+                            onClick={() => handleDiscussionVote(topic.id, 1)}
+                          >
+                            <HandThumbUpIcon />
+                          </DiscussionVoteButton>
+                          <DiscussionVoteScore aria-label={`${score}`}>
+                            {score > 0 ? `+${score}` : score}
+                          </DiscussionVoteScore>
+                          <DiscussionVoteButton
+                            type="button"
+                            $active={currentVote === -1}
+                            $negative
+                            disabled={votingDisabled}
+                            aria-pressed={currentVote === -1}
+                            aria-label={t.article.downvoteTopic}
+                            title={
+                              isActiveSubscriber
+                                ? t.article.downvoteTopic
+                                : t.article.votingMembersOnly
+                            }
+                            onClick={() => handleDiscussionVote(topic.id, -1)}
+                          >
+                            <HandThumbDownIcon />
+                          </DiscussionVoteButton>
+                        </DiscussionVoteControls>
+                      </DiscussionTopicItem>
+                    );
+                  })}
+                </DiscussionTopicsList>
+                {!isActiveSubscriber && (
+                  <VoteAccessNote>{t.article.votingMembersOnly}</VoteAccessNote>
+                )}
+              </>
             ) : (
               accountStatus === "admin" && (
                 <div
@@ -3262,18 +3816,72 @@ const Article = () => {
 
         <SectionHeaderRow>
           <SectionTitle style={{ marginBottom: 0 }}>Article Content</SectionTitle>
-          {isAdmin && !isEditingContent && (
-            <AdminActionButton type="button" onClick={startEditingContent}>
-              <DocumentTextIcon width={18} height={18} />
-              본문 편집
-            </AdminActionButton>
-          )}
+          <SectionActions>
+            {!isEditingContent && (
+              <CopyActionButton
+                type="button"
+                onClick={() =>
+                  copyText(displayedEnglishContent.join("\n\n"), "body")
+                }
+                aria-label={t.article.copyBody}
+              >
+                <DocumentDuplicateIcon />
+                {copiedTarget === "body" ? t.article.copied : t.article.copyBody}
+              </CopyActionButton>
+            )}
+            {isAdmin && !isEditingContent && (
+              <AdminActionButton type="button" onClick={startEditingContent}>
+                <DocumentTextIcon width={18} height={18} />
+                본문 편집
+              </AdminActionButton>
+            )}
+          </SectionActions>
         </SectionHeaderRow>
 
-        {!isEditingContent && (
-          <CalloutBox>
-            단어를 길게 누르면 뜻풀이 창이 열립니다. 짧게 누르거나 드래그하면 자유롭게 텍스트를 선택하고 복사할 수 있습니다.
-          </CalloutBox>
+        {!isEditingContent && displayedSummary.length > 0 && (
+          <QuickSummaryCard>
+            <QuickSummaryHeader>
+              <QuickSummaryTitle>{t.article.quickSummary}</QuickSummaryTitle>
+              <QuickSummaryActions>
+                {canToggleSummaryLanguage && (
+                  <QuickSummaryLanguageButton
+                    type="button"
+                    onClick={() =>
+                      setIsKoreanSummaryVisible((current) => !current)
+                    }
+                  >
+                    <LanguageIcon />
+                    {isKoreanSummaryVisible
+                      ? t.article.showEnglishSummary
+                      : t.article.showKoreanSummary}
+                  </QuickSummaryLanguageButton>
+                )}
+                <QuickSummaryExpandButton
+                  type="button"
+                  onClick={() => setIsSummaryExpanded((current) => !current)}
+                  aria-label={
+                    isSummaryExpanded
+                      ? t.article.collapseSummary
+                      : t.article.expandSummary
+                  }
+                  aria-expanded={isSummaryExpanded}
+                  aria-controls="quick-summary-list"
+                >
+                  <QuickSummaryChevron $isExpanded={isSummaryExpanded} />
+                </QuickSummaryExpandButton>
+              </QuickSummaryActions>
+            </QuickSummaryHeader>
+            <QuickSummaryList id="quick-summary-list">
+              {displayedSummary
+                .slice(0, isSummaryExpanded ? displayedSummary.length : 1)
+                .map((summaryItem, index) => (
+                  <QuickSummaryItem key={index}>{summaryItem}</QuickSummaryItem>
+                ))}
+              {!isSummaryExpanded && displayedSummary.length > 1 && (
+                <QuickSummaryEllipsis aria-hidden="true">…</QuickSummaryEllipsis>
+              )}
+            </QuickSummaryList>
+          </QuickSummaryCard>
         )}
 
         {hasHiddenParagraphs && !isEditingContent && (
@@ -3360,9 +3968,11 @@ const Article = () => {
                 const hasKoreanParagraph = Boolean(
                   displayedKoreanContent[index]
                 );
+                const placedFigures = figuresAfterParagraph(index);
 
                 return (
-                <ParagraphContainer key={index}>
+                <React.Fragment key={index}>
+                <ParagraphContainer>
                   <Paragraph
                     className="article-text"
                     data-original-text={paragraph}
@@ -3377,19 +3987,32 @@ const Article = () => {
                   >
                     {paragraph}
                   </Paragraph>
-                  <TranslationToggleButton
-                    onClick={() => toggleKoreanParagraph(index)}
-                    className={
-                      visibleKoreanParagraphs.includes(index) ? "active" : ""
-                    }
+                  <ParagraphActionRow>
+                    <CopyActionButton
+                      type="button"
+                      onClick={() => copyText(paragraph, `paragraph-${index}`)}
+                      aria-label={t.article.copyParagraph}
+                    >
+                      <DocumentDuplicateIcon />
+                      {copiedTarget === `paragraph-${index}`
+                        ? t.article.copied
+                        : t.article.copyParagraph}
+                    </CopyActionButton>
+                    <TranslationToggleButton
+                      onClick={() => toggleKoreanParagraph(index)}
+                      className={
+                        visibleKoreanParagraphs.includes(index) ? "active" : ""
+                      }
                       disabled={!hasKoreanParagraph}
-                  >
+                    >
+                      <LanguageIcon />
                       {hasKoreanParagraph
                         ? visibleKoreanParagraphs.includes(index)
-                          ? "한국어 번역 숨기기"
-                          : "한국어 번역 보기"
-                        : "한국어 번역 없음"}
-                  </TranslationToggleButton>
+                          ? t.article.hideKorean
+                          : t.article.showKorean
+                        : t.article.noKoreanTranslation}
+                    </TranslationToggleButton>
+                  </ParagraphActionRow>
                     {hasKoreanParagraph && (
                     <KoreanParagraph
                       isVisible={visibleKoreanParagraphs.includes(index)}
@@ -3400,6 +4023,22 @@ const Article = () => {
                     </KoreanParagraph>
                   )}
                 </ParagraphContainer>
+                {placedFigures.length > 0 && (
+                  <FiguresSection>
+                    <FiguresGrid>
+                      {placedFigures.map((figure, figureIndex) => (
+                        <FigureCard key={`figure-${index}-${figureIndex}`}>
+                          <ChartImage
+                            src={figure.display_url as string}
+                            alt={figure.caption?.english || "Article figure"}
+                            loading="lazy"
+                          />
+                        </FigureCard>
+                      ))}
+                    </FiguresGrid>
+                  </FiguresSection>
+                )}
+                </React.Fragment>
                 );
               })
             )}
@@ -3407,46 +4046,54 @@ const Article = () => {
         )}
 
         {(() => {
-          // Only charts/tables render inline; photos are represented solely by
-          // the hero image above.
-          const charts = (article.figures || []).filter(
+          const photos = unplacedFigures.filter(
+            (f) => f.display_url && !f.is_hero && f.kind === "photo"
+          );
+          const charts = unplacedFigures.filter(
             (f) =>
               f.display_url &&
               !f.is_hero &&
               (f.kind === "chart" || f.kind === "table")
           );
-          if (charts.length === 0) return null;
+          if (photos.length === 0 && charts.length === 0) return null;
           return (
             <FiguresSection>
-              <FiguresGrid>
-                {charts.map((fig, index) => (
-                  <FigureCard key={index}>
-                    <ChartImage
-                      src={fig.display_url as string}
-                      alt={fig.caption?.english || "Article chart"}
-                      loading="lazy"
-                    />
-                    <FigureKindTag>원본 차트 · Original chart</FigureKindTag>
-                    {(fig.caption?.english || fig.caption?.korean) && (
-                      <FigureCaptionEn>
-                        {fig.caption?.english}
-                        {fig.caption?.korean && (
-                          <FigureCaptionKo>
-                            {fig.caption.korean}
-                          </FigureCaptionKo>
-                        )}
-                      </FigureCaptionEn>
-                    )}
-                  </FigureCard>
-                ))}
-              </FiguresGrid>
+              {photos.length > 0 && (
+                <PhotoFiguresGrid>
+                  {photos.map((fig, index) => (
+                    <FigureCard key={`photo-${index}`}>
+                      <ArticlePhoto
+                        src={fig.display_url as string}
+                        alt={fig.caption?.english || article.title.english}
+                        loading="lazy"
+                      />
+                    </FigureCard>
+                  ))}
+                </PhotoFiguresGrid>
+              )}
+
+              {charts.length > 0 && (
+                <FiguresGrid>
+                  {charts.map((fig, index) => (
+                    <FigureCard key={index}>
+                      <ChartImage
+                        src={fig.display_url as string}
+                        alt={fig.caption?.english || "Article chart"}
+                        loading="lazy"
+                      />
+                    </FigureCard>
+                  ))}
+                </FiguresGrid>
+              )}
             </FiguresSection>
           );
         })()}
 
         {keywords && keywords.length > 0 && (
           <KeywordsSection>
-            <SectionTitle>Key Vocabulary</SectionTitle>
+            <SectionHeaderRow>
+              <SectionTitle style={{ marginBottom: 0 }}>Key Vocabulary</SectionTitle>
+            </SectionHeaderRow>
             <KeywordsContainer>
               <KeywordsSlider
                 ref={sliderRef}
