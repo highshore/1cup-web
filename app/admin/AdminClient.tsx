@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { supabase, invokeFunction } from "../lib/supabase/client";
+import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";

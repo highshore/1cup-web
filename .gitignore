@@ -59,3 +59,7 @@ firebase_service_account.json
 .vercel
 firebase-config.json
 .env*.local
+
+# Local investigation notes (contain user PII — do not commit)
+AUTH_ACCOUNT_CLEANUP.md
+.env*
