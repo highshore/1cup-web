@@ -110,6 +110,49 @@ a redeploy is behaviour-neutral). Do not reintroduce literals — this file is p
   literally and `\n` never became a line break. Decoded in
   `20260816100000_unquote_json_encoded_text.sql`.
 
+## Cutover runbook
+
+**Merging this branch to `main` IS the cutover.** Vercel's `one-cup-eng` project is linked to
+`highshore/1cup-web` with `main` as the production branch, so the merge deploys
+1cupenglish.com onto Supabase. Do the pre-merge list first.
+
+### Before merging
+
+1. **Supabase → Authentication → URL Configuration** must contain the production domain.
+   Until this is set, Kakao sign-in fails for everyone the moment the merge lands.
+2. Decide on rotating the Payple / AlimTalk keys (see the security note below). The cutover is
+   the natural moment: once the Cloud Functions are gone, the Supabase edge function is the
+   only consumer left.
+3. Put the real service-role key into the three `cron.job` command bodies (they ship with a
+   `<PASTE-REAL-service_role-KEY-HERE>` placeholder; they work today only because the target
+   functions have `verify_jwt = false`).
+4. Exercise MEET_003/004/005 — joining, leaving and the capacity limit are what members touch
+   every week and have never been clicked on Supabase.
+
+### Cutover, in order
+
+| # | Step | Why the order matters |
+|---|---|---|
+| 1 | Announce, freeze writes (or pick a quiet hour) | avoids losing writes made during the switch |
+| 2 | `scripts/migration/firestore_to_ndjson_prod.mjs` → `delta_to_supabase.mjs --apply` → `backfill_auth_identifiers_rest.mjs --apply` | brings Supabase up to date |
+| 3 | **Merge the PR** → Vercel deploys production | writes now go to Supabase |
+| 4 | Run the delta sync **once more** | absorbs anything written between 2 and 3; upserts, so it is safe |
+| 5 | **Disable the Firebase schedulers**: `processRecurringPayments`, `sendLinksToUsers`, `pollCefrBatches`, `updateHomeStats` | **do this before step 6** |
+| 6 | Enable the Supabase cron jobs `recurring-payments` and `send-links` | both sides active at once means **double billing** |
+| 7 | Set `PAYMENT_ENABLED=true` on Vercel production | re-opens subscriptions |
+| 8 | Smoke test: Kakao login, phone login, meetup list, payment window | |
+
+`updateHomeStats` has no Supabase counterpart — it became the `home_stats` view, so there is
+nothing to enable. `poll-cefr` is already running on Supabase, so today both sides poll; step 5
+resolves that.
+
+### Rollback window is short
+
+After the cutover, new signups, payments and meetup joins exist only in Supabase. Reverting
+`main` returns the app to Firebase but not that data, and there is no reverse sync. Realistic
+rollback window is a few hours; after that the only way is forward. Schedule the cutover when
+someone can watch it.
+
 ## Remaining / caveats
 
 - **Payment is parked.** `/payment` is gated by `PAYMENT_ENABLED` and the `recurring-payments`
