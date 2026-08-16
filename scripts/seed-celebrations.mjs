@@ -3,36 +3,9 @@
 // Idempotent: re-running will not create duplicates.
 //
 // Usage: node scripts/seed-celebrations.mjs
-import { initializeApp, cert } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-import dotenv from "dotenv";
+import { supabase } from "./_supabase.mjs";
 
-dotenv.config({ path: ".env.local" });
-
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-
-// The key in .env.local is wrapped in quotes and may use escaped newlines.
-let privateKey = (process.env.FIREBASE_PRIVATE_KEY || "").trim();
-if (
-  (privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-  (privateKey.startsWith("'") && privateKey.endsWith("'"))
-) {
-  privateKey = privateKey.slice(1, -1);
-}
-privateKey = privateKey.replace(/\\n/g, "\n");
-
-if (!projectId || !clientEmail || !privateKey) {
-  console.error(
-    "Missing FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY in .env.local"
-  );
-  process.exit(1);
-}
-
-initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
-const db = getFirestore();
-
-const COLLECTION = "celebrations";
+const TABLE = "celebrations";
 
 // achievedAt is an ISO date string (or null). Idempotent on (memberName, headline).
 const SEED = [
@@ -63,34 +36,38 @@ const SEED = [
 
 async function main() {
   for (const entry of SEED) {
-    const existing = await db
-      .collection(COLLECTION)
-      .where("headline", "==", entry.headline)
-      .where("memberName", "==", entry.memberName)
-      .get();
+    const { data: existing, error: selectError } = await supabase
+      .from(TABLE)
+      .select("id")
+      .eq("headline", entry.headline)
+      .eq("member_name", entry.memberName)
+      .limit(1);
+    if (selectError) throw selectError;
 
-    if (!existing.empty) {
-      console.log(
-        `Skip (exists): ${entry.memberName} — ${entry.headline}`
-      );
+    if (existing?.length) {
+      console.log(`Skip (exists): ${entry.memberName} — ${entry.headline}`);
       continue;
     }
 
-    const now = Timestamp.now();
-    const doc = {
-      memberName: entry.memberName,
+    // celebrations.id is TEXT with no default (it used to be a Firestore doc id),
+    // so generate one — same as createCelebration() in celebration_service.ts.
+    const row = {
+      id: crypto.randomUUID(),
+      member_name: entry.memberName,
       headline: entry.headline,
-      createdAt: now,
-      updatedAt: now,
+      achieved_at: new Date(entry.achievedAt ?? Date.now()).toISOString(),
     };
-    if (entry.description) doc.description = entry.description;
-    if (entry.logoUrl) doc.logoUrl = entry.logoUrl;
-    doc.achievedAt = entry.achievedAt
-      ? Timestamp.fromDate(new Date(entry.achievedAt))
-      : now;
+    if (entry.description) row.description = entry.description;
+    if (entry.logoUrl) row.logo_url = entry.logoUrl;
 
-    const ref = await db.collection(COLLECTION).add(doc);
-    console.log(`Seeded: ${entry.memberName} — ${entry.headline} (${ref.id})`);
+    const { data: inserted, error } = await supabase
+      .from(TABLE)
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    console.log(`Seeded: ${entry.memberName} — ${entry.headline} (${inserted.id})`);
   }
 }
 

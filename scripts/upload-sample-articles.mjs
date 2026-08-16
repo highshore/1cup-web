@@ -1,21 +1,15 @@
 // Upload the 1cup_article pipeline's post-processed sample JSON + figure crops
-// into Firestore `articles` and Storage `article_images/samples/<docId>/`.
+// into Supabase `articles` and Storage `assets/article_images/samples/<id>/`.
 //
-// Idempotent: fixed doc IDs, re-running overwrites the same docs/objects.
-// Sample docs carry `_preview.sample = true` so they're easy to find or delete.
+// Idempotent: fixed row ids and upsert:true uploads, so re-running overwrites the same
+// rows/objects. Sample rows use ids prefixed `sample-` so they're easy to find or delete.
 //
-// Usage: node scripts/upload-sample-articles.mjs
-import { initializeApp, cert } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
-import { randomUUID } from "crypto";
+// Usage: node scripts/upload-sample-articles.mjs [slug ...]
 import fs from "fs/promises";
 import path from "path";
-import dotenv from "dotenv";
+import { supabase } from "./_supabase.mjs";
 
-dotenv.config({ path: ".env.local" });
-
-const BUCKET = "one-cup-eng.firebasestorage.app";
+const BUCKET = "assets";
 const PIPELINE_OUT = path.resolve(process.cwd(), "../1cup_article/output");
 
 // Per-sample presentation config keyed by the pipeline slug (meta.slug).
@@ -37,37 +31,17 @@ const CONFIG = {
   },
 };
 
-let privateKey = (process.env.FIREBASE_PRIVATE_KEY || "").trim();
-if (
-  (privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-  (privateKey.startsWith("'") && privateKey.endsWith("'"))
-)
-  privateKey = privateKey.slice(1, -1);
-privateKey = privateKey.replace(/\\n/g, "\n");
-
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-if (!projectId || !clientEmail || !privateKey) {
-  console.error("Missing FIREBASE_* in .env.local");
-  process.exit(1);
-}
-
-initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
-const db = getFirestore();
-const bucket = getStorage().bucket(BUCKET);
-
 async function uploadFigure(localPath, destPath, contentType = "image/jpeg") {
-  const token = randomUUID();
-  await bucket.upload(localPath, {
-    destination: destPath,
-    metadata: {
-      contentType,
-      metadata: { firebaseStorageDownloadTokens: token },
-    },
-  });
-  return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(
-    destPath
-  )}?alt=media&token=${token}`;
+  const body = await fs.readFile(localPath);
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(destPath, body, { contentType, upsert: true });
+  if (error) throw error;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(BUCKET).getPublicUrl(destPath);
+  return publicUrl;
 }
 
 async function processSample(slug) {
@@ -134,12 +108,13 @@ async function processSample(slug) {
     ) || figures.find((f) => f.display_url) || null;
   if (hero) hero.is_hero = true;
 
-  // 2) Build the Firestore article doc in the production schema, plus
-  //    non-breaking extra fields that preserve the full pipeline output.
+  // 2) Build the row in the production schema. `articles` is narrower than the old
+  //    Firestore doc: subtitle / byline / published_raw / _preview have no columns,
+  //    so the pipeline metadata that still matters is folded into the row below and
+  //    the rest is intentionally dropped.
   const isoTs = data.article.published_iso;
-  const ts = isoTs ? Timestamp.fromDate(new Date(isoTs)) : Timestamp.now();
-
-  const doc = {
+  const row = {
+    id: docId,
     title: {
       english: data.article.title.en,
       korean: data.article.title.ko,
@@ -148,35 +123,21 @@ async function processSample(slug) {
       english: data.article.paragraphs.map((p) => p.en),
       korean: data.article.paragraphs.map((p) => p.ko),
     },
-    keywords: [],
     url: cfg.source_url,
     source_url: cfg.source_url,
     image_url: hero ? hero.display_url : "",
-    timestamp: ts,
-    // discussion is now a flat list of English strings (house-style prompt).
+    timestamp: isoTs ? new Date(isoTs).toISOString() : new Date().toISOString(),
+    // discussion is a flat list of English strings (house-style prompt).
     discussion_topics: (data.discussion || []).map((d) =>
       typeof d === "string" ? d : d.en
     ),
-    // ---- extra fields (ignored by the current page; kept for Supabase) ----
-    subtitle: {
-      english: data.article.subtitle.en,
-      korean: data.article.subtitle.ko,
-    },
-    byline: data.article.byline,
-    published_raw: data.article.published_raw,
     figures,
-    _preview: {
-      sample: true,
-      pipeline: "1cup_article",
-      source_file: data.meta.source_file,
-      slug,
-      processed_at: data.meta.processed_at,
-      uploaded_at: new Date().toISOString(),
-    },
   };
 
-  await db.collection("articles").doc(docId).set(doc, { merge: true });
+  const { error } = await supabase.from("articles").upsert(row, { onConflict: "id" });
+  if (error) throw error;
   console.log(`  wrote articles/${docId}`);
+
   return { docId, figures: figures.length };
 }
 

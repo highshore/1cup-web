@@ -1,46 +1,20 @@
+// Export the Supabase `articles` table to articles_export.csv at the repo root.
+// jsonb columns (title, content, figures, …) are flattened into dotted columns the
+// same way the Firestore version did, so existing spreadsheets keep working.
+//
+// Usage: node scripts/export-articles-to-csv.mjs
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { initializeApp } from "firebase/app";
-import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { supabase } from "./_supabase.mjs";
 
-const firebaseConfig = {
-  apiKey:
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-    "AIzaSyBC62vsKGQqdgpyC9RugoHEfh9UcRi2SMA",
-  authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
-    "one-cup-eng.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "one-cup-eng",
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-    "one-cup-eng.firebasestorage.app",
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "615807178262",
-  appId:
-    process.env.NEXT_PUBLIC_FIREBASE_APP_ID ||
-    "1:615807178262:web:9a96a5f0d94ae628d74737",
-};
-
-const COLLECTION_NAME = "articles";
+const TABLE_NAME = "articles";
 const OUTPUT_FILE = "articles_export.csv";
-
-function isFirestoreTimestamp(value) {
-  return (
-    value &&
-    typeof value === "object" &&
-    typeof value.toDate === "function" &&
-    typeof value.toMillis === "function"
-  );
-}
+const PAGE_SIZE = 500;
 
 function normalizeScalar(value) {
   if (value == null) {
     return "";
-  }
-
-  if (isFirestoreTimestamp(value)) {
-    return value.toDate().toISOString();
   }
 
   if (Array.isArray(value) || typeof value === "object") {
@@ -55,11 +29,6 @@ function flattenRecord(value, prefix = "", target = {}) {
     if (prefix) {
       target[prefix] = "";
     }
-    return target;
-  }
-
-  if (isFirestoreTimestamp(value)) {
-    target[prefix] = normalizeScalar(value);
     return target;
   }
 
@@ -93,21 +62,64 @@ function escapeCsv(value) {
   return `"${normalized.replaceAll('"', '""')}"`;
 }
 
+// Keywords live in the article_keywords junction table, not on articles.
+async function fetchKeywords() {
+  const byArticle = new Map();
+  let from = 0;
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from("article_keywords")
+      .select("article_id, word")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data.length) break;
+
+    for (const { article_id, word } of data) {
+      if (!byArticle.has(article_id)) byArticle.set(article_id, []);
+      byArticle.get(article_id).push(word);
+    }
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return byArticle;
+}
+
+async function fetchArticles() {
+  const rows = [];
+  let from = 0;
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .order("timestamp", { ascending: false, nullsFirst: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data.length) break;
+
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return rows;
+}
+
 async function main() {
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const snapshot = await getDocs(collection(db, COLLECTION_NAME));
+  const [articles, keywordsByArticle] = await Promise.all([
+    fetchArticles(),
+    fetchKeywords(),
+  ]);
 
-  const rows = snapshot.docs.map((doc) => {
-    const flattened = { id: doc.id };
-    flattenRecord(doc.data(), "", flattened);
+  const rows = articles.map(({ id, ...rest }) => {
+    const flattened = { id };
+    flattenRecord(rest, "", flattened);
+    const keywords = keywordsByArticle.get(id);
+    if (keywords?.length) flattened.keywords = normalizeScalar(keywords);
     return flattened;
-  });
-
-  rows.sort((a, b) => {
-    const left = a.timestamp || "";
-    const right = b.timestamp || "";
-    return right.localeCompare(left);
   });
 
   const columns = Array.from(
@@ -136,9 +148,7 @@ async function main() {
 
   await fs.writeFile(outputPath, `${csvLines.join("\n")}\n`, "utf8");
 
-  console.log(
-    `Exported ${rows.length} ${COLLECTION_NAME} documents to ${outputPath}`
-  );
+  console.log(`Exported ${rows.length} ${TABLE_NAME} rows to ${outputPath}`);
   console.log(`Columns: ${columns.join(", ")}`);
 }
 
