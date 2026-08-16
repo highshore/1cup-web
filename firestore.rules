@@ -38,6 +38,32 @@ service cloud.firestore {
       allow read, write: if request.auth != null &&
                             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
     }
+    match /marketing_cron_runs/{runId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+    match /marketing_templates/{templateId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+
+    // Source material is transient and processed by Cloud Functions with the
+    // Admin SDK. It must never be exposed through the broad default rule below.
+    match /article_processing_jobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    // Discussion-topic totals are server-owned. Individual voter records are
+    // private so a caller can read only their own current vote.
+    match /article_discussion_stats/{statId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /article_discussion_votes/{voteId} {
+      allow get: if request.auth != null &&
+                   (resource == null || resource.data.userId == request.auth.uid);
+      allow list, create, update, delete: if false;
+    }
 
     // Referral tracking for attributed signups. Public read; writes happen
     // server-side via the Admin SDK (the /r/<code> redirect + the agent).
@@ -47,9 +73,17 @@ service cloud.firestore {
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
     }
 
-    // Default rule for other collections (you should customize this)
-    match /{document=**} {
-      allow read, write: if true;
+    // Default rule for other collections (you should customize this). Keep
+    // article_processing_jobs excluded: its documents hold temporary source text.
+    match /{collection}/{document=**} {
+      allow read, write: if collection != 'article_processing_jobs' &&
+                           collection != 'growth_posts' &&
+                           collection != 'growth_iterations' &&
+                           collection != 'growth_config' &&
+                           collection != 'marketing_cron_runs' &&
+                           collection != 'marketing_templates' &&
+                           collection != 'article_discussion_stats' &&
+                           collection != 'article_discussion_votes';
     }
   }
 }

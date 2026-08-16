@@ -184,6 +184,7 @@ interface PaymentWindowData {
   pcd_good_name: string;
   selected_categories: string[];
   referralCode?: string;
+  growthTrackingCode?: string;
 }
 
 // Function to get payment window parameters
@@ -219,6 +220,7 @@ export const getPaymentWindow = onCall<PaymentWindowData>(
         pcd_good_name,
         selected_categories,
         referralCode,
+        growthTrackingCode,
       } = request.data || {};
 
       // Log each field individually for debugging
@@ -366,6 +368,11 @@ export const getPaymentWindow = onCall<PaymentWindowData>(
       // Check referral code if provided (validate only; amount comes from frontend-calculated price)
       let finalAmount = pcd_amount;
       let appliedReferralCode = null;
+      const appliedGrowthTrackingCode =
+        typeof growthTrackingCode === "string" &&
+        /^[a-z0-9_-]{4,80}$/i.test(growthTrackingCode)
+          ? growthTrackingCode
+          : null;
 
       if (referralCode) {
         try {
@@ -468,6 +475,7 @@ export const getPaymentWindow = onCall<PaymentWindowData>(
           orderNumber,
           amount: finalAmount, // Use amount from frontend
           referralCode: appliedReferralCode, // Store referral code if used
+          growthTrackingCode: appliedGrowthTrackingCode,
           orderDate: Timestamp.fromDate(orderDate),
           status: "pending_auth", // Indicate waiting for Payple auth/callback
           type: "subscription_init",
@@ -617,6 +625,7 @@ export const verifyPaymentResult = onCall<VerifyPaymentData>(
       let selectedCategories: { [key: string]: boolean } = {};
       let productName = "영어 한잔 멤버십 (정기결제)"; // Default fallback
       let referrerUid: string | null = null;
+      let growthTrackingCode: string | null = null;
 
       if (paymentOrderId) {
         try {
@@ -669,6 +678,12 @@ export const verifyPaymentResult = onCall<VerifyPaymentData>(
               if (refDoc.exists && refDoc.data()?.referrer) {
                 referrerUid = refDoc.data()!.referrer as string;
               }
+            }
+            if (
+              typeof orderData?.growthTrackingCode === "string" &&
+              /^[a-z0-9_-]{4,80}$/i.test(orderData.growthTrackingCode)
+            ) {
+              growthTrackingCode = orderData.growthTrackingCode;
             }
           }
         } catch (fetchError) {
@@ -783,6 +798,44 @@ export const verifyPaymentResult = onCall<VerifyPaymentData>(
               relatedAuthOrder: paymentOrderId || null, // Link to the initial CERT order
               createdAt: Timestamp.now(), // Add creation timestamp
             });
+
+          if (growthTrackingCode && paymentOrderId) {
+            try {
+              const firestore = admin.firestore();
+              const sourceOrderRef = firestore
+                .collection("payment_orders")
+                .doc(paymentOrderId);
+              const trackedPostQuery = firestore
+                .collection("growth_posts")
+                .where("trackingCode", "==", growthTrackingCode)
+                .limit(1);
+
+              await firestore.runTransaction(async (transaction) => {
+                const [sourceOrder, trackedPosts] = await Promise.all([
+                  transaction.get(sourceOrderRef),
+                  transaction.get(trackedPostQuery),
+                ]);
+
+                if (
+                  !sourceOrder.exists ||
+                  sourceOrder.data()?.growthSignupAttributedAt ||
+                  trackedPosts.empty
+                ) {
+                  return;
+                }
+
+                transaction.update(sourceOrderRef, {
+                  growthSignupAttributedAt: Timestamp.now(),
+                });
+                transaction.update(trackedPosts.docs[0].ref, {
+                  "metrics.signups": admin.firestore.FieldValue.increment(1),
+                  updatedAt: Timestamp.now(),
+                });
+              });
+            } catch (growthAttributionError) {
+              logger.error("Failed to attribute growth signup:", growthAttributionError);
+            }
+          }
 
           // --- Update user subscription status in Firestore ---
           const subscriptionStartDate = new Date();

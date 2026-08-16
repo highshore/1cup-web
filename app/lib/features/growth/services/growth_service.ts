@@ -1,171 +1,257 @@
-import { supabase } from "../../../supabase/client";
+import { httpsCallable } from "firebase/functions";
 import {
-  GrowthPost,
-  GrowthIteration,
-  GrowthConfig,
-  GrowthPostStatus,
-  DEFAULT_GROWTH_CONFIG,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+
+import { db, functions } from "../../../firebase/firebase";
+import {
+  DEFAULT_MARKETING_CRON_SETTINGS,
+  MarketingCronRun,
+  MarketingCronSchedule,
+  MarketingCronSettings,
+  MarketingPerformanceSnapshot,
+  MarketingRunStatus,
+  MarketingTemplate,
+  MarketingTemplatePhoto,
 } from "../types/growth_types";
 
-const POSTS = "growth_posts";
-const ITERATIONS = "growth_iterations";
 const CONFIG = "growth_config";
 const CONFIG_DOC = "settings";
+const RUNS = "marketing_cron_runs";
+const TEMPLATES = "marketing_templates";
 
-const toDate = (v: any): Date => (v ? new Date(v) : new Date());
+const toDate = (value: unknown): Date | null => {
+  if (value && typeof (value as { toDate?: unknown }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
 
-const toIso = (v: any): string | null => (v ? new Date(v).toISOString() : null);
+const toNumber = (value: unknown, fallback = 0): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
-const rowToPost = (data: any): GrowthPost => {
+const toSchedule = (value: unknown): MarketingCronSchedule => {
+  const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const savedDays = Array.isArray(data.daysOfWeek) ? data.daysOfWeek : null;
+  const days = savedDays
+    ? savedDays.filter(
+        (day): day is number =>
+          typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6
+      )
+    : [];
   return {
-    id: data.id,
-    channel: data.channel || "koreapas",
-    title: data.title || "",
-    content: data.content || "",
-    imageUrl: data.image_url || "",
-    variant: data.variant || {},
-    trackingCode: data.tracking_code || "",
-    status: (data.status as GrowthPostStatus) || "draft",
-    externalUrl: data.external_url || "",
-    iterationId: data.iteration_id || "",
-    metrics: {
-      impressions: data.metrics?.impressions ?? 0,
-      clicks: data.metrics?.clicks ?? 0,
-      signups: data.metrics?.signups ?? 0,
-      likes: data.metrics?.likes ?? 0,
-      comments: data.metrics?.comments ?? 0,
+    minute: Math.min(55, Math.max(0, toNumber(data.minute, 0))),
+    hour: Math.min(23, Math.max(0, toNumber(data.hour, 19))),
+    daysOfWeek: savedDays
+      ? [...new Set(days)].sort((a, b) => a - b)
+      : DEFAULT_MARKETING_CRON_SETTINGS.schedule.daysOfWeek,
+  };
+};
+
+const toTemplateAssignments = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>(
+    (assignments, [day, templateId]) => {
+      if (/^[0-6]$/.test(day) && typeof templateId === "string" && templateId) {
+        assignments[day] = templateId;
+      }
+      return assignments;
     },
-    scheduledFor: toIso(data.scheduled_for),
-    postedAt: toIso(data.posted_at),
-    createdAt: toDate(data.created_at),
-    updatedAt: toDate(data.updated_at),
-  };
+    {}
+  );
 };
 
-const rowToIteration = (data: any): GrowthIteration => {
-  return {
-    id: data.id,
-    runAt: toDate(data.run_at),
-    channel: data.channel || "koreapas",
-    observation: data.observation || "",
-    decision: data.decision || "",
-    strategyChange: data.strategy_change || "",
-    variant: data.variant || {},
-    postId: data.post_id || "",
-    model: data.model || "",
-    tokensUsed: data.tokens_used ?? 0,
-  };
-};
+const toPhotos = (value: unknown): MarketingTemplatePhoto[] =>
+  Array.isArray(value)
+    ? value.flatMap((photo) => {
+        if (!photo || typeof photo !== "object") return [];
+        const data = photo as Record<string, unknown>;
+        return typeof data.url === "string" && data.url
+          ? [{ url: data.url, alt: typeof data.alt === "string" ? data.alt : "" }]
+          : [];
+      })
+    : [];
 
-// Short, URL-safe tracking code for a post's /r/<code> link.
-const generateTrackingCode = (): string =>
-  Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+const toSettings = (data?: Record<string, unknown>): MarketingCronSettings => ({
+  ...DEFAULT_MARKETING_CRON_SETTINGS,
+  enabled: Boolean(data?.enabled),
+  nextRunAt: toDate(data?.nextRunAt),
+  schedule: toSchedule(data?.schedule),
+  templateId: typeof data?.templateId === "string" ? data.templateId : "",
+  templateAssignments: toTemplateAssignments(data?.templateAssignments),
+  destinationUrl:
+    typeof data?.destinationUrl === "string"
+      ? data.destinationUrl
+      : DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
+  title: typeof data?.title === "string" ? data.title : "",
+  copy: typeof data?.copy === "string" ? data.copy : "",
+  callToAction: typeof data?.callToAction === "string" ? data.callToAction : "",
+  photos: toPhotos(data?.photos),
+  timeZone:
+    typeof data?.timeZone === "string"
+      ? data.timeZone
+      : DEFAULT_MARKETING_CRON_SETTINGS.timeZone,
+  lastRunAt: toDate(data?.lastRunAt),
+  updatedAt: toDate(data?.updatedAt),
+});
 
-export const fetchGrowthPosts = async (): Promise<GrowthPost[]> => {
+const toTemplate = (id: string, data: Record<string, unknown>): MarketingTemplate => ({
+  id,
+  name: typeof data.name === "string" ? data.name : "",
+  destinationUrl: typeof data.destinationUrl === "string" ? data.destinationUrl : "",
+  title: typeof data.title === "string" ? data.title : "",
+  copy: typeof data.copy === "string" ? data.copy : "",
+  callToAction: typeof data.callToAction === "string" ? data.callToAction : "",
+  photos: toPhotos(data.photos),
+  createdAt: toDate(data.createdAt),
+  updatedAt: toDate(data.updatedAt),
+});
+
+const toPerformance = (data?: Record<string, unknown>): MarketingPerformanceSnapshot => ({
+  trackedPosts: toNumber(data?.trackedPosts),
+  impressions: toNumber(data?.impressions),
+  clicks: toNumber(data?.clicks),
+  signups: toNumber(data?.signups),
+  likes: toNumber(data?.likes),
+  comments: toNumber(data?.comments),
+});
+
+const toRun = (id: string, data: Record<string, unknown>): MarketingCronRun => ({
+  id,
+  channel: "koreapas",
+  trigger: data.trigger === "manual" ? "manual" : "schedule",
+  status: (data.status as MarketingRunStatus) || "queued",
+  scheduledFor: toDate(data.scheduledFor),
+  startedAt: toDate(data.startedAt),
+  completedAt: toDate(data.completedAt),
+  postId: typeof data.postId === "string" ? data.postId : "",
+  postTitle: typeof data.postTitle === "string" ? data.postTitle : "",
+  postCopy: typeof data.postCopy === "string" ? data.postCopy : "",
+  trackingCode: typeof data.trackingCode === "string" ? data.trackingCode : "",
+  trackingUrl: typeof data.trackingUrl === "string" ? data.trackingUrl : "",
+  hiddenPostId: typeof data.hiddenPostId === "string" ? data.hiddenPostId : "",
+  externalPostUrl: typeof data.externalPostUrl === "string" ? data.externalPostUrl : "",
+  photos: toPhotos(data.photos),
+  performance: toPerformance(data.performance as Record<string, unknown> | undefined),
+  performanceCheckedAt: toDate(data.performanceCheckedAt),
+  error: typeof data.error === "string" ? data.error : "",
+});
+
+export const fetchMarketingCronSettings = async (): Promise<MarketingCronSettings> => {
   try {
-    const { data, error } = await supabase
-      .from(POSTS)
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data || []).map(rowToPost);
+    const snapshot = await getDoc(doc(db, CONFIG, CONFIG_DOC));
+    return snapshot.exists()
+      ? toSettings(snapshot.data() as Record<string, unknown>)
+      : { ...DEFAULT_MARKETING_CRON_SETTINGS };
   } catch (error) {
-    console.error("Error fetching growth posts:", error);
+    console.error("Unable to load marketing cron settings:", error);
+    return { ...DEFAULT_MARKETING_CRON_SETTINGS };
+  }
+};
+
+export const fetchMarketingCronRuns = async (): Promise<MarketingCronRun[]> => {
+  try {
+    const snapshot = await getDocs(
+      query(collection(db, RUNS), orderBy("scheduledFor", "desc"), limit(50))
+    );
+    return snapshot.docs.map((entry) =>
+      toRun(entry.id, entry.data() as Record<string, unknown>)
+    );
+  } catch (error) {
+    console.error("Unable to load marketing cron runs:", error);
     return [];
   }
 };
 
-export const fetchGrowthIterations = async (
-  max = 50
-): Promise<GrowthIteration[]> => {
+export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> => {
   try {
-    const { data, error } = await supabase
-      .from(ITERATIONS)
-      .select("*")
-      .order("run_at", { ascending: false })
-      .limit(max);
-    if (error) throw error;
-    return (data || []).map(rowToIteration);
+    const snapshot = await getDocs(
+      query(collection(db, TEMPLATES), orderBy("updatedAt", "desc"), limit(100))
+    );
+    return snapshot.docs.map((entry) =>
+      toTemplate(entry.id, entry.data() as Record<string, unknown>)
+    );
   } catch (error) {
-    console.error("Error fetching growth iterations:", error);
+    console.error("Unable to load marketing templates:", error);
     return [];
   }
 };
 
-export const fetchGrowthConfig = async (): Promise<GrowthConfig> => {
-  try {
-    const { data, error } = await supabase
-      .from(CONFIG)
-      .select("*")
-      .eq("id", CONFIG_DOC)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) return { ...DEFAULT_GROWTH_CONFIG };
-    return {
-      agentActive: !!data.agent_active,
-      approveFirst: data.approve_first ?? true,
-      updatedAt: toDate(data.updated_at),
-    };
-  } catch (error) {
-    console.error("Error fetching growth config:", error);
-    return { ...DEFAULT_GROWTH_CONFIG };
-  }
+export const subscribeToMarketingCronRuns = (
+  onUpdate: (runs: MarketingCronRun[]) => void
+) =>
+  onSnapshot(
+    query(collection(db, RUNS), orderBy("scheduledFor", "desc"), limit(50)),
+    (snapshot) =>
+      onUpdate(
+        snapshot.docs.map((entry) =>
+          toRun(entry.id, entry.data() as Record<string, unknown>)
+        )
+      ),
+    (error) => console.error("Unable to watch marketing cron runs:", error)
+  );
+
+export const subscribeToMarketingTemplates = (
+  onUpdate: (templates: MarketingTemplate[]) => void
+) =>
+  onSnapshot(
+    query(collection(db, TEMPLATES), orderBy("updatedAt", "desc"), limit(100)),
+    (snapshot) =>
+      onUpdate(
+        snapshot.docs.map((entry) =>
+          toTemplate(entry.id, entry.data() as Record<string, unknown>)
+        )
+      ),
+    (error) => console.error("Unable to watch marketing templates:", error)
+  );
+
+export const saveMarketingCronSettings = async (settings: {
+  enabled: boolean;
+  schedule: MarketingCronSchedule;
+  templateId: string;
+  templateAssignments: Record<string, string>;
+}) => {
+  const callable = httpsCallable(functions, "saveMarketingCronSettings");
+  await callable(settings);
 };
 
-export const updateGrowthConfig = async (
-  partial: Partial<GrowthConfig>
-): Promise<void> => {
-  const update: any = { id: CONFIG_DOC, updated_at: new Date().toISOString() };
-  if (partial.agentActive !== undefined) update.agent_active = partial.agentActive;
-  if (partial.approveFirst !== undefined) update.approve_first = partial.approveFirst;
-  const { error } = await supabase.from(CONFIG).upsert(update);
-  if (error) throw error;
+export const createMarketingTemplate = async (template: {
+  name: string;
+  destinationUrl: string;
+  title: string;
+  copy: string;
+  callToAction: string;
+  photos: MarketingTemplatePhoto[];
+}) => {
+  const callable = httpsCallable(functions, "createMarketingTemplate");
+  const result = await callable(template);
+  return (result.data as { templateId: string }).templateId;
 };
 
-export const createGrowthPost = async (
-  data: Partial<GrowthPost>
-): Promise<string> => {
-  const now = new Date().toISOString();
-  const post: any = {
-    id: crypto.randomUUID(),
-    channel: data.channel || "koreapas",
-    title: data.title || "",
-    content: data.content || "",
-    image_url: data.imageUrl || "",
-    variant: data.variant || {},
-    tracking_code: data.trackingCode || generateTrackingCode(),
-    status: data.status || "draft",
-    external_url: data.externalUrl || "",
-    iteration_id: data.iterationId || "",
-    metrics: { clicks: 0, signups: 0 },
-    created_at: now,
-    updated_at: now,
-  };
-  const { data: inserted, error } = await supabase
-    .from(POSTS)
-    .insert(post)
-    .select()
-    .single();
-  if (error) throw error;
-  return inserted.id;
+export const ensureDefaultMarketingTemplate = async () => {
+  const callable = httpsCallable(functions, "ensureDefaultMarketingTemplate");
+  const result = await callable({});
+  return (result.data as { templateId: string }).templateId;
 };
 
-export const updateGrowthPostStatus = async (
-  id: string,
-  status: GrowthPostStatus,
-  extra?: { externalUrl?: string }
-): Promise<void> => {
-  const update: any = {
-    status,
-    updated_at: new Date().toISOString(),
-  };
-  if (status === "posted") update.posted_at = new Date().toISOString();
-  if (extra?.externalUrl !== undefined) update.external_url = extra.externalUrl;
-  const { error } = await supabase.from(POSTS).update(update).eq("id", id);
-  if (error) throw error;
+export const deleteMarketingTemplate = async (templateId: string) => {
+  const callable = httpsCallable(functions, "deleteMarketingTemplate");
+  await callable({ templateId });
 };
 
-export const deleteGrowthPost = async (id: string): Promise<void> => {
-  const { error } = await supabase.from(POSTS).delete().eq("id", id);
-  if (error) throw error;
+export const runMarketingCronNow = async () => {
+  const callable = httpsCallable(functions, "runMarketingCronNow");
+  await callable({});
 };

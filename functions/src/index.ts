@@ -7,6 +7,16 @@ import cors from "cors";
 import OpenAI from "openai";
 export { startCefrBatch, pollCefrBatches } from "./cefr";
 export { updateHomeStats, triggerHomeStatsUpdate } from "./updateHomeStats";
+export { createAdminArticle, processAdminArticle } from "./createAdminArticle";
+export { voteDiscussionTopic } from "./voteDiscussionTopic";
+export {
+  runMarketingCron,
+  runMarketingCronNow,
+  saveMarketingCronSettings,
+  createMarketingTemplate,
+  deleteMarketingTemplate,
+  ensureDefaultMarketingTemplate,
+} from "./marketingCron";
 
 // Initialize Firebase Admin SDK only once
 if (admin.apps.length === 0) {

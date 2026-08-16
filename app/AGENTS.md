@@ -8,6 +8,11 @@
 - Use existing global layout wrappers rather than adding per-page nav/footer wrappers.
 - For client components, keep `"use client"` at the top and avoid server-only imports such as Firebase Admin.
 
+## Current implementation record
+
+- Admin navigation is route-based rather than tab-based. Keep the overview on `/admin` and focused tools on their dedicated routes.
+- Article UI changes belong in `article/[articleId]/ArticleClient.tsx`; new visible strings must remain localized in both locale files.
+
 ## 한국어
 
 - 라우트 파일은 작게 유지합니다. 복잡한 클라이언트 UI는 `*Client.tsx`로 분리합니다.
@@ -15,3 +20,8 @@
 - 공통 페이지 폭과 gutter는 `app/lib/constants/app_layout.ts`를 사용합니다.
 - 페이지마다 nav/footer wrapper를 새로 만들지 말고 기존 글로벌 layout wrapper를 사용합니다.
 - 클라이언트 컴포넌트는 `"use client"`를 최상단에 두고 Firebase Admin 같은 서버 전용 import를 피합니다.
+
+## 현재 구현 기록
+
+- 관리자 내비게이션은 탭이 아닌 라우트 기반입니다. `/admin`에는 개요를, 세부 도구에는 전용 라우트를 유지합니다.
+- 아티클 UI 변경은 `article/[articleId]/ArticleClient.tsx`에 두고, 새 문구는 두 locale 파일에서 함께 관리합니다.
