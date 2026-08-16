@@ -119,11 +119,19 @@ a redeploy is behaviour-neutral). Do not reintroduce literals — this file is p
 - **Cron auth:** the three job bodies carry a `<PASTE-REAL-service_role-KEY-HERE>` placeholder
   instead of a key. `poll-cefr` works anyway (`verify_jwt = false`), verified end-to-end; fill
   the key in if any target function ever requires JWT verification.
-- **Legacy Kakao-user linking:** `handle_new_user` matches on `provider_id`/`kakao_id`, then
-  phone, then email, and repoints `auth_id` on match. Re-verify with a real Kakao login at
-  cutover.
-- **`scripts/*.mjs`** (article export/seed) still use Firebase Admin — not in the app bundle;
-  port if you still run them. `app/lib/firebase/*` is now unused by the app (safe to delete).
+- **Object storage stays on Firebase (decided 2026-08-16).** Audio and images — 561 files,
+  902 MB, growing ~32 MB/month from ~9 articles — live in the
+  `one-cup-eng.firebasestorage.app` bucket (asia-northeast3). Supabase Free caps file storage
+  at 1 GB with no overage billing, so moving them would fill 88% of the cap on day one and
+  hit it within about four months; Pro removes the cap but costs $25/month against a service
+  currently taking 45,000–162,000 KRW/month. Keeping the bucket costs cents.
+  **Consequence for cutover: retire Auth, Firestore and Functions, but leave Firebase Storage
+  enabled.** Stored URLs are `firebasestorage.googleapis.com/...?alt=media&token=…`, which the
+  Firebase Storage service serves — deleting the project breaks every image and audio file.
+  Revisit if the project moves to Pro for other reasons; re-uploading 900 MB and rewriting the
+  URLs is roughly a day of work.
+- **Watch the 500 MB database cap** on the Free plan. Currently 81 MB. Unlike storage, hitting
+  this one stops writes.
 - **Growth agent** (`growth-agent/`, Cloud Run) was never deployed — no service exists, its
   Firestore config is `agentActive: false`, and both Firestore and Supabase growth tables are
   empty. Port `firestore_client.py` to Supabase whenever it does get deployed; it blocks
