@@ -200,26 +200,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const currentUid = (currentLink?.uid as string | undefined) ?? null;
 
   // The profile this person really owns: kakao_id first (exact), then phone.
-  // NOTE: no `auth_id is null` filter. Every migrated row already has an auth_id
-  // from the seeded phone identity, so requiring null meant the phone path could
-  // never fire for exactly the people who need it.
+  //
+  // Both lookups must EXCLUDE the row this session currently points at. When the
+  // trigger cannot match anyone it creates a fresh row and stamps the kakao_id on it,
+  // so an unfiltered kakao_id search finds that brand-new row, decides the session is
+  // already correct, and never tries the phone — which is the only identifier that can
+  // reach the real profile. That is exactly the duplicate this hook exists to prevent.
+  //
+  // No `auth_id is null` filter either: every migrated row already has an auth_id from
+  // the seeded phone identity, so requiring null made the phone path unreachable for
+  // precisely the people who need it.
+  const COLUMNS = "uid, auth_id, email, display_name, photo_url, phone, kakao_id";
+
+  const lookup = async (column: "kakao_id" | "phone", value: string) => {
+    let query = a.from("users").select(COLUMNS).eq(column, value);
+    if (currentUid) query = query.neq("uid", currentUid);
+    const { data } = await query.limit(1).maybeSingle();
+    return data;
+  };
+
   const findProfile = async () => {
-    const byKakao = await a
-      .from("users")
-      .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
-      .eq("kakao_id", kakaoSub)
-      .limit(1)
-      .maybeSingle();
-    if (byKakao.data) return { row: byKakao.data, how: "merged_by_kakao_id" as const };
+    const byKakao = await lookup("kakao_id", kakaoSub);
+    if (byKakao) return { row: byKakao, how: "merged_by_kakao_id" as const };
 
     if (normalizedKakaoPhone) {
-      const byPhone = await a
-        .from("users")
-        .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
-        .eq("phone", normalizedKakaoPhone)
-        .limit(1)
-        .maybeSingle();
-      if (byPhone.data) return { row: byPhone.data, how: "merged_by_phone" as const };
+      const byPhone = await lookup("phone", normalizedKakaoPhone);
+      if (byPhone) return { row: byPhone, how: "merged_by_phone" as const };
     }
     return null;
   };
