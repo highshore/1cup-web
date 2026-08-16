@@ -38,6 +38,9 @@ const COLLECTIONS = [
   "celebrations", "communityAnnouncements", "communityComments", "communityTopics",
   "en_dict", "feedback", "links", "meetup", "meetup_reports", "payment_cancellations",
   "payment_orders", "referral_codes", "reports", "shadow", "transcripts", "users", "words",
+  // Added by main's marketing / article-ingest / discussion-voting work (2026-08).
+  "growth_config", "growth_posts", "marketing_templates", "marketing_cron_runs",
+  "article_discussion_votes", "article_discussion_stats", "article_processing_jobs",
 ];
 
 // Recursively serialize Firestore values to JSON-safe forms.

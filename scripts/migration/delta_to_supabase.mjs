@@ -270,6 +270,75 @@ await push("shadow", rows("shadow").map((s) => ({
   audio_timestamps: s.audio_timestamps ?? s.audioTimestamps ?? null,
 })), "id");
 
+// 9. marketing / article-ingest / discussion voting (added to main in 2026-08)
+await push("growth_config", rows("growth_config").map((c) => ({
+  id: c.__id,
+  agent_active: !!c.agentActive,
+  approve_first: c.approveFirst !== false,
+  enabled: !!c.enabled,
+  next_run_at: ts(c.nextRunAt),
+  schedule: c.schedule ?? { minute: 0, hour: 9, daysOfWeek: [1, 3, 5] },
+  template_id: c.templateId ?? null,
+  template_assignments: c.templateAssignments ?? {},
+  destination_url: c.destinationUrl ?? "",
+  title: c.title ?? "",
+  copy: c.copy ?? "",
+  call_to_action: c.callToAction ?? "",
+  photos: c.photos ?? [],
+  time_zone: c.timeZone ?? "Asia/Seoul",
+  last_run_at: ts(c.lastRunAt),
+  updated_at: ts(c.updatedAt),
+})), "id");
+
+await push("growth_posts", rows("growth_posts").map((p) => ({
+  id: p.__id, channel: p.channel, title: p.title, content: p.content,
+  image_url: p.imageUrl ?? null, tracking_code: p.trackingCode ?? null,
+  hidden_post_id: p.hiddenPostId ?? null, destination_url: p.destinationUrl ?? null,
+  run_id: p.runId ?? null, status: p.status ?? "draft",
+  external_url: p.externalPostUrl ?? p.externalUrl ?? null,
+  photos: p.photos ?? [], metrics: p.metrics ?? {},
+  publisher_status: p.publisherStatus ?? null,
+  posted_at: ts(p.postedAt), created_at: ts(p.createdAt), updated_at: ts(p.updatedAt),
+})), "id");
+
+await push("marketing_templates", rows("marketing_templates").map((t) => ({
+  id: t.__id, name: t.name ?? "", destination_url: t.destinationUrl ?? "",
+  title: t.title ?? "", copy: t.copy ?? "", call_to_action: t.callToAction ?? "",
+  photos: t.photos ?? [], created_at: ts(t.createdAt), updated_at: ts(t.updatedAt),
+})), "id");
+
+await push("marketing_cron_runs", rows("marketing_cron_runs").map((r) => ({
+  id: r.__id, channel: r.channel ?? "koreapas", trigger: r.trigger ?? "schedule",
+  status: r.status ?? "queued", scheduled_for: ts(r.scheduledFor),
+  started_at: ts(r.startedAt), completed_at: ts(r.completedAt),
+  post_id: r.postId || null, post_title: r.postTitle ?? "", post_copy: r.postCopy ?? "",
+  tracking_code: r.trackingCode ?? "", tracking_url: r.trackingUrl ?? "",
+  hidden_post_id: r.hiddenPostId ?? "", external_post_url: r.externalPostUrl ?? "",
+  photos: r.photos ?? [], performance: r.performance ?? {},
+  performance_checked_at: ts(r.performanceCheckedAt), error: r.error ?? "",
+  settings: r.settings ?? {}, created_at: ts(r.createdAt),
+})), "id");
+
+// Firestore keyed these by "<article>_<topic>[_<user>]"; the columns carry the same
+// values, so the composite primary key replaces the composed document id.
+await push("article_discussion_votes", rows("article_discussion_votes").map((v) => ({
+  article_id: v.articleId, topic_id: v.topicId, user_id: v.userId,
+  vote: v.vote, updated_at: ts(v.updatedAt),
+})), "article_id,topic_id,user_id");
+
+await push("article_discussion_stats", rows("article_discussion_stats").map((s) => ({
+  article_id: s.articleId, topic_id: s.topicId, topic_text: s.topicText ?? "",
+  topic_index: s.topicIndex ?? null, upvotes: s.upvotes ?? 0, downvotes: s.downvotes ?? 0,
+  score: s.score ?? 0, updated_at: ts(s.updatedAt),
+})), "article_id,topic_id");
+
+await push("article_processing_jobs", rows("article_processing_jobs").map((j) => ({
+  article_id: j.articleId ?? j.__id, title: j.title ?? "", status: j.status ?? "queued",
+  stage: j.stage ?? "queued", progress: j.progress ?? 0, provider: j.provider ?? null,
+  model: j.model ?? null, workflow: j.workflow ?? null, error: j.error ?? null,
+  created_by: j.createdBy ?? null, created_at: ts(j.createdAt), updated_at: ts(j.updatedAt),
+})), "article_id");
+
 console.log("\ntable                              source   written  note");
 for (const [t, src, w, note] of stats) {
   console.log(`${t.padEnd(34)} ${String(src).padStart(6)} ${String(w).padStart(8)}  ${note}`);
