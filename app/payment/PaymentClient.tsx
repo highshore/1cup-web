@@ -6,6 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, invokeFunction } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 
+// Payple payment-window SDK host. Live is cpay.payple.kr; set
+// NEXT_PUBLIC_PAYPLE_HOST=https://democpay.payple.kr to run against the sandbox
+// (must match PAYPLE_HOST on the payment edge function — mixing the two fails auth).
+const PAYPLE_HOST = (
+  process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr"
+).replace(/\/+$/, "");
+const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
+
 // Declare the jQuery global variable and other globals
 declare global {
   interface Window {
@@ -749,7 +757,7 @@ export default function PaymentClient() {
         jqueryScript.onload = () => {
           // After jQuery is loaded, load the Payple script
           const paypleScript = document.createElement("script");
-          paypleScript.src = "https://cpay.payple.kr/js/v1/payment.js";
+          paypleScript.src = PAYPLE_SDK_SRC;
           paypleScript.async = true;
           document.body.appendChild(paypleScript);
         };
@@ -757,7 +765,7 @@ export default function PaymentClient() {
       } else {
         // jQuery already loaded, just load Payple script
         const paypleScript = document.createElement("script");
-        paypleScript.src = "https://cpay.payple.kr/js/v1/payment.js";
+        paypleScript.src = PAYPLE_SDK_SRC;
         paypleScript.async = true;
         document.body.appendChild(paypleScript);
       }
@@ -771,7 +779,7 @@ export default function PaymentClient() {
         'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]'
       );
       const paypleScript = document.querySelector(
-        'script[src="https://cpay.payple.kr/js/v1/payment.js"]'
+        `script[src="${PAYPLE_SDK_SRC}"]`
       );
       if (jqueryScript && jqueryScript.parentNode) {
         jqueryScript.parentNode.removeChild(jqueryScript);
