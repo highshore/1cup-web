@@ -178,3 +178,35 @@ create policy "discussion votes write own" on public.article_discussion_votes
   using (user_id = public.current_uid()) with check (user_id = public.current_uid());
 
 grant execute on function public.recount_discussion_topic(text, text) to authenticated, service_role;
+
+-- ------------------------------------------------- marketing cron bookkeeping
+-- The Firestore version held a run lease on the config document so the scheduled tick
+-- and a manual "run now" could not both fire. Postgres does the same with a conditional
+-- UPDATE ... RETURNING, which needs somewhere to keep the lease.
+alter table public.growth_config
+  add column if not exists active_run_id          text,
+  add column if not exists active_run_lease_until timestamptz;
+
+-- Each run snapshots the settings it ran with, so history stays readable after edits.
+alter table public.marketing_cron_runs
+  add column if not exists settings jsonb not null default '{}'::jsonb;
+
+alter table public.growth_posts
+  add column if not exists hidden_post_id   text,
+  add column if not exists photos           jsonb not null default '[]'::jsonb,
+  add column if not exists publisher_status text;
+
+-- ------------------------------------------------------------- marketing cron job
+-- Ticks every 10 minutes and does nothing unless growth_config says a run is due, which
+-- is how the Firestore version behaved (Cloud Scheduler fired, the function decided).
+-- Registered PAUSED: enable it once the Gopas publisher endpoint is configured.
+-- Replace <SERVICE_ROLE_KEY> when applying to a fresh project.
+--   select cron.schedule('marketing-tick', '*/10 * * * *', $cron$
+--     select net.http_post(
+--       url     := 'https://<ref>.supabase.co/functions/v1/marketing',
+--       headers := jsonb_build_object('Content-Type','application/json',
+--                                     'Authorization','Bearer <SERVICE_ROLE_KEY>'),
+--       body    := jsonb_build_object('action','tick'));
+--   $cron$);
+--   select cron.alter_job((select jobid from cron.job where jobname='marketing-tick'),
+--                         active := false);

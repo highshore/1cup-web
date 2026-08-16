@@ -412,6 +412,12 @@ verify_jwt = false          # Supabase auth hook
 [functions.discussion-vote]
 verify_jwt = true           # members only; membership re-checked inside
 
+[functions.marketing]
+verify_jwt = false          # admin actions check the caller; pg_cron calls it with no user JWT
+
+[functions.admin-article]
+verify_jwt = true           # admins only; re-checked inside
+
 [analytics]
 enabled = true
 port = 54327
