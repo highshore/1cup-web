@@ -85,7 +85,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
 
-    supabase.auth.getSession().then(({ data }) => hydrate(data.session?.user ?? null));
+    // A stored session can outlive its auth user (deleted or banned server-side). The
+    // cached JWT still looks valid to getSession(), so the app would sit there signed in
+    // with no profile, and signOut() would fail because the server rejects the token.
+    // Validate against the server once at startup and drop the local session if it is
+    // no longer real.
+    async function start() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return hydrate(null);
+
+      const { data: verified, error } = await supabase.auth.getUser();
+      if (error || !verified?.user) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        return hydrate(null);
+      }
+      return hydrate(verified.user);
+    }
+
+    start();
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       hydrate(session?.user ?? null);
     });
@@ -93,7 +110,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  const logout = async () => { await supabase.auth.signOut(); };
+  // Signing out server-side fails when the token's user no longer exists, which used to
+  // leave the person stuck in a session they could not clear. Always fall back to
+  // dropping the local session.
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  };
 
   return (
     <AuthContext.Provider
