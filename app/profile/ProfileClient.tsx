@@ -2650,7 +2650,7 @@ export default function ProfileClient() {
         // Update the profile (public.users.photo_url) and auth metadata
         await supabase
           .from("users")
-          .update({ photo_url: avatarUrl })
+          .update({ photo_url: avatarUrl, updated_at: new Date().toISOString() })
           .eq("uid", user.uid);
         await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
 
@@ -2692,7 +2692,7 @@ export default function ProfileClient() {
       // Update the profile to remove photoURL
       await supabase
         .from("users")
-        .update({ photo_url: "" })
+        .update({ photo_url: "", updated_at: new Date().toISOString() })
         .eq("uid", user.uid);
       await supabase.auth.updateUser({ data: { avatar_url: "" } });
 
@@ -2711,7 +2711,7 @@ export default function ProfileClient() {
         try {
           await supabase
             .from("users")
-            .update({ photo_url: "" })
+            .update({ photo_url: "", updated_at: new Date().toISOString() })
             .eq("uid", user.uid);
           await supabase.auth.updateUser({ data: { avatar_url: "" } });
           setAvatar("");

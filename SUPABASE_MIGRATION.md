@@ -119,17 +119,33 @@ a redeploy is behaviour-neutral). Do not reintroduce literals — this file is p
 - **Cron auth:** the three job bodies carry a `<PASTE-REAL-service_role-KEY-HERE>` placeholder
   instead of a key. `poll-cefr` works anyway (`verify_jwt = false`), verified end-to-end; fill
   the key in if any target function ever requires JWT verification.
-- **Object storage stays on Firebase (decided 2026-08-16).** Audio and images — 561 files,
-  902 MB, growing ~32 MB/month from ~9 articles — live in the
-  `one-cup-eng.firebasestorage.app` bucket (asia-northeast3). Supabase Free caps file storage
-  at 1 GB with no overage billing, so moving them would fill 88% of the cap on day one and
-  hit it within about four months; Pro removes the cap but costs $25/month against a service
-  currently taking 45,000–162,000 KRW/month. Keeping the bucket costs cents.
+- **Object storage is split across BOTH providers, permanently.** Read this before deciding
+  anything about the Firebase project.
+
+  | What | Where | Size | Written by |
+  |---|---|---|---|
+  | Article audio + article images | **Firebase** `one-cup-eng.firebasestorage.app` | 840 MB, +~32 MB/month | the external article pipeline, which was never migrated |
+  | Legacy avatars | **Firebase** | 10 users | pre-migration uploads |
+  | Avatars, blog images, celebration images, admin article images | **Supabase** `avatars` / `assets` | ~14 kB today | the web app — every upload path was ported |
+  | Kakao profile pictures | kakao CDN | 45 users | not our storage at all |
+
+  The split was not designed; the app's upload paths moved with the feature migration and the
+  pipeline stayed put. It happens to be the right shape — everything large and growing is on
+  the pay-as-you-go bucket, and Supabase only receives small user uploads — so it stays.
+
+  **Keeping the big files on Firebase was the deliberate call (2026-08-16).** Supabase Free
+  caps file storage at 1 GB with no overage billing: moving them would fill 88% of the cap on
+  day one and hit it within about four months. Pro removes the cap at $25/month, against a
+  service currently taking 45,000–162,000 KRW/month. The bucket costs cents; note it sits in
+  asia-northeast3, so the 5 GB Firebase free tier (us-central1/us-west1/us-east1 only) does
+  not apply and it is already billed as ordinary GCS.
+
   **Consequence for cutover: retire Auth, Firestore and Functions, but leave Firebase Storage
-  enabled.** Stored URLs are `firebasestorage.googleapis.com/...?alt=media&token=…`, which the
-  Firebase Storage service serves — deleting the project breaks every image and audio file.
-  Revisit if the project moves to Pro for other reasons; re-uploading 900 MB and rewriting the
-  URLs is roughly a day of work.
+  enabled.** Stored URLs are `firebasestorage.googleapis.com/...?alt=media&token=…`, served by
+  that service — deleting the project breaks every article image and audio file. Equally, do
+  not assume Supabase Storage can be ignored: new uploads land there. Revisit only if the
+  project moves to Pro for other reasons; re-uploading 900 MB and rewriting the URLs is
+  roughly a day of work.
 - **Watch the 500 MB database cap** on the Free plan. Currently 81 MB. Unlike storage, hitting
   this one stops writes.
 - **Growth agent** (`growth-agent/`, Cloud Run) was never deployed — no service exists, its
