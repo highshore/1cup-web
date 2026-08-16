@@ -1,16 +1,7 @@
-import { httpsCallable } from "firebase/functions";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
-
-import { db, functions } from "../../../firebase/firebase";
+// Marketing cron settings, templates and run history — Supabase port of the Firestore
+// version. Reads go straight to Postgres; writes go through the `marketing` edge
+// function so the admin check and the cron's own bookkeeping stay server-side.
+import { supabase, invokeFunction } from "../../../supabase/client";
 import {
   DEFAULT_MARKETING_CRON_SETTINGS,
   MarketingCronRun,
@@ -23,208 +14,182 @@ import {
 } from "../types/growth_types";
 
 const CONFIG = "growth_config";
-const CONFIG_DOC = "settings";
+const CONFIG_ROW = "settings";
 const RUNS = "marketing_cron_runs";
 const TEMPLATES = "marketing_templates";
 
+const RUN_LIMIT = 50;
+const TEMPLATE_LIMIT = 100;
+
 const toDate = (value: unknown): Date | null => {
-  if (value && typeof (value as { toDate?: unknown }).toDate === "function") {
-    return (value as { toDate: () => Date }).toDate();
-  }
-  if (value instanceof Date) return value;
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
+  if (!value) return null;
+  const parsed = new Date(value as string);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
 const toNumber = (value: unknown, fallback = 0): number =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
-const toSchedule = (value: unknown): MarketingCronSchedule => {
-  const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const savedDays = Array.isArray(data.daysOfWeek) ? data.daysOfWeek : null;
-  const days = savedDays
-    ? savedDays.filter(
-        (day): day is number =>
-          typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6
-      )
+const toPhotos = (value: unknown): MarketingTemplatePhoto[] =>
+  Array.isArray(value)
+    ? value
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+        .map((p) => ({
+          url: typeof p.url === "string" ? p.url : "",
+          alt: typeof p.alt === "string" ? p.alt : "",
+        }))
+        .filter((p) => p.url)
     : [];
+
+const toSettings = (row: Record<string, unknown> | null): MarketingCronSettings => {
+  if (!row) return DEFAULT_MARKETING_CRON_SETTINGS;
+  const schedule = (row.schedule ?? {}) as Record<string, unknown>;
   return {
-    minute: Math.min(55, Math.max(0, toNumber(data.minute, 0))),
-    hour: Math.min(23, Math.max(0, toNumber(data.hour, 19))),
-    daysOfWeek: savedDays
-      ? [...new Set(days)].sort((a, b) => a - b)
-      : DEFAULT_MARKETING_CRON_SETTINGS.schedule.daysOfWeek,
+    enabled: row.enabled === true,
+    nextRunAt: toDate(row.next_run_at),
+    schedule: {
+      minute: toNumber(schedule.minute, DEFAULT_MARKETING_CRON_SETTINGS.schedule.minute),
+      hour: toNumber(schedule.hour, DEFAULT_MARKETING_CRON_SETTINGS.schedule.hour),
+      daysOfWeek: Array.isArray(schedule.daysOfWeek)
+        ? (schedule.daysOfWeek as unknown[]).map((d) => toNumber(d))
+        : DEFAULT_MARKETING_CRON_SETTINGS.schedule.daysOfWeek,
+    },
+    templateId: typeof row.template_id === "string" ? row.template_id : "",
+    templateAssignments:
+      row.template_assignments && typeof row.template_assignments === "object"
+        ? (row.template_assignments as Record<string, string>)
+        : {},
+    destinationUrl:
+      typeof row.destination_url === "string" && row.destination_url
+        ? row.destination_url
+        : DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
+    title: typeof row.title === "string" ? row.title : "",
+    copy: typeof row.copy === "string" ? row.copy : "",
+    callToAction: typeof row.call_to_action === "string" ? row.call_to_action : "",
+    photos: toPhotos(row.photos),
+    timeZone:
+      typeof row.time_zone === "string" && row.time_zone
+        ? row.time_zone
+        : DEFAULT_MARKETING_CRON_SETTINGS.timeZone,
+    lastRunAt: toDate(row.last_run_at),
+    updatedAt: toDate(row.updated_at),
   };
 };
 
-const toTemplateAssignments = (value: unknown): Record<string, string> => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>(
-    (assignments, [day, templateId]) => {
-      if (/^[0-6]$/.test(day) && typeof templateId === "string" && templateId) {
-        assignments[day] = templateId;
-      }
-      return assignments;
-    },
-    {}
-  );
+const toTemplate = (row: Record<string, unknown>): MarketingTemplate => ({
+  id: String(row.id ?? ""),
+  name: typeof row.name === "string" ? row.name : "",
+  destinationUrl: typeof row.destination_url === "string" ? row.destination_url : "",
+  title: typeof row.title === "string" ? row.title : "",
+  copy: typeof row.copy === "string" ? row.copy : "",
+  callToAction: typeof row.call_to_action === "string" ? row.call_to_action : "",
+  photos: toPhotos(row.photos),
+  createdAt: toDate(row.created_at),
+  updatedAt: toDate(row.updated_at),
+});
+
+const toPerformance = (value: unknown): MarketingPerformanceSnapshot => {
+  const data = (value ?? {}) as Record<string, unknown>;
+  return {
+    trackedPosts: toNumber(data.trackedPosts),
+    impressions: toNumber(data.impressions),
+    clicks: toNumber(data.clicks),
+    signups: toNumber(data.signups),
+    likes: toNumber(data.likes),
+    comments: toNumber(data.comments),
+  };
 };
 
-const toPhotos = (value: unknown): MarketingTemplatePhoto[] =>
-  Array.isArray(value)
-    ? value.flatMap((photo) => {
-        if (!photo || typeof photo !== "object") return [];
-        const data = photo as Record<string, unknown>;
-        return typeof data.url === "string" && data.url
-          ? [{ url: data.url, alt: typeof data.alt === "string" ? data.alt : "" }]
-          : [];
-      })
-    : [];
-
-const toSettings = (data?: Record<string, unknown>): MarketingCronSettings => ({
-  ...DEFAULT_MARKETING_CRON_SETTINGS,
-  enabled: Boolean(data?.enabled),
-  nextRunAt: toDate(data?.nextRunAt),
-  schedule: toSchedule(data?.schedule),
-  templateId: typeof data?.templateId === "string" ? data.templateId : "",
-  templateAssignments: toTemplateAssignments(data?.templateAssignments),
-  destinationUrl:
-    typeof data?.destinationUrl === "string"
-      ? data.destinationUrl
-      : DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
-  title: typeof data?.title === "string" ? data.title : "",
-  copy: typeof data?.copy === "string" ? data.copy : "",
-  callToAction: typeof data?.callToAction === "string" ? data.callToAction : "",
-  photos: toPhotos(data?.photos),
-  timeZone:
-    typeof data?.timeZone === "string"
-      ? data.timeZone
-      : DEFAULT_MARKETING_CRON_SETTINGS.timeZone,
-  lastRunAt: toDate(data?.lastRunAt),
-  updatedAt: toDate(data?.updatedAt),
-});
-
-const toTemplate = (id: string, data: Record<string, unknown>): MarketingTemplate => ({
-  id,
-  name: typeof data.name === "string" ? data.name : "",
-  destinationUrl: typeof data.destinationUrl === "string" ? data.destinationUrl : "",
-  title: typeof data.title === "string" ? data.title : "",
-  copy: typeof data.copy === "string" ? data.copy : "",
-  callToAction: typeof data.callToAction === "string" ? data.callToAction : "",
-  photos: toPhotos(data.photos),
-  createdAt: toDate(data.createdAt),
-  updatedAt: toDate(data.updatedAt),
-});
-
-const toPerformance = (data?: Record<string, unknown>): MarketingPerformanceSnapshot => ({
-  trackedPosts: toNumber(data?.trackedPosts),
-  impressions: toNumber(data?.impressions),
-  clicks: toNumber(data?.clicks),
-  signups: toNumber(data?.signups),
-  likes: toNumber(data?.likes),
-  comments: toNumber(data?.comments),
-});
-
-const toRun = (id: string, data: Record<string, unknown>): MarketingCronRun => ({
-  id,
+const toRun = (row: Record<string, unknown>): MarketingCronRun => ({
+  id: String(row.id ?? ""),
   channel: "koreapas",
-  trigger: data.trigger === "manual" ? "manual" : "schedule",
-  status: (data.status as MarketingRunStatus) || "queued",
-  scheduledFor: toDate(data.scheduledFor),
-  startedAt: toDate(data.startedAt),
-  completedAt: toDate(data.completedAt),
-  postId: typeof data.postId === "string" ? data.postId : "",
-  postTitle: typeof data.postTitle === "string" ? data.postTitle : "",
-  postCopy: typeof data.postCopy === "string" ? data.postCopy : "",
-  trackingCode: typeof data.trackingCode === "string" ? data.trackingCode : "",
-  trackingUrl: typeof data.trackingUrl === "string" ? data.trackingUrl : "",
-  hiddenPostId: typeof data.hiddenPostId === "string" ? data.hiddenPostId : "",
-  externalPostUrl: typeof data.externalPostUrl === "string" ? data.externalPostUrl : "",
-  photos: toPhotos(data.photos),
-  performance: toPerformance(data.performance as Record<string, unknown> | undefined),
-  performanceCheckedAt: toDate(data.performanceCheckedAt),
-  error: typeof data.error === "string" ? data.error : "",
+  trigger: row.trigger === "manual" ? "manual" : "schedule",
+  status: (row.status as MarketingRunStatus) || "queued",
+  scheduledFor: toDate(row.scheduled_for),
+  startedAt: toDate(row.started_at),
+  completedAt: toDate(row.completed_at),
+  postId: typeof row.post_id === "string" ? row.post_id : "",
+  postTitle: typeof row.post_title === "string" ? row.post_title : "",
+  postCopy: typeof row.post_copy === "string" ? row.post_copy : "",
+  trackingCode: typeof row.tracking_code === "string" ? row.tracking_code : "",
+  trackingUrl: typeof row.tracking_url === "string" ? row.tracking_url : "",
+  hiddenPostId: typeof row.hidden_post_id === "string" ? row.hidden_post_id : "",
+  externalPostUrl: typeof row.external_post_url === "string" ? row.external_post_url : "",
+  photos: toPhotos(row.photos),
+  performance: toPerformance(row.performance),
+  performanceCheckedAt: toDate(row.performance_checked_at),
+  error: typeof row.error === "string" ? row.error : "",
 });
 
 export const fetchMarketingCronSettings = async (): Promise<MarketingCronSettings> => {
-  try {
-    const snapshot = await getDoc(doc(db, CONFIG, CONFIG_DOC));
-    return snapshot.exists()
-      ? toSettings(snapshot.data() as Record<string, unknown>)
-      : { ...DEFAULT_MARKETING_CRON_SETTINGS };
-  } catch (error) {
-    console.error("Unable to load marketing cron settings:", error);
-    return { ...DEFAULT_MARKETING_CRON_SETTINGS };
-  }
+  const { data } = await supabase.from(CONFIG).select("*").eq("id", CONFIG_ROW).maybeSingle();
+  return toSettings(data as Record<string, unknown> | null);
 };
 
 export const fetchMarketingCronRuns = async (): Promise<MarketingCronRun[]> => {
-  try {
-    const snapshot = await getDocs(
-      query(collection(db, RUNS), orderBy("scheduledFor", "desc"), limit(50))
-    );
-    return snapshot.docs.map((entry) =>
-      toRun(entry.id, entry.data() as Record<string, unknown>)
-    );
-  } catch (error) {
-    console.error("Unable to load marketing cron runs:", error);
-    return [];
-  }
+  const { data, error } = await supabase
+    .from(RUNS)
+    .select("*")
+    .order("scheduled_for", { ascending: false, nullsFirst: false })
+    .limit(RUN_LIMIT);
+  if (error) throw error;
+  return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };
 
 export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> => {
-  try {
-    const snapshot = await getDocs(
-      query(collection(db, TEMPLATES), orderBy("updatedAt", "desc"), limit(100))
-    );
-    return snapshot.docs.map((entry) =>
-      toTemplate(entry.id, entry.data() as Record<string, unknown>)
-    );
-  } catch (error) {
-    console.error("Unable to load marketing templates:", error);
-    return [];
-  }
+  const { data, error } = await supabase
+    .from(TEMPLATES)
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(TEMPLATE_LIMIT);
+  if (error) throw error;
+  return (data ?? []).map((row) => toTemplate(row as Record<string, unknown>));
+};
+
+// Firestore's onSnapshot becomes a Realtime channel. postgres_changes only carries the
+// changed row, so each event refetches the ordered list — the volumes here are tiny and
+// it keeps the ordering identical to the initial load.
+const subscribeToTable = <T>(
+  table: string,
+  load: () => Promise<T[]>,
+  onChange: (rows: T[]) => void,
+): (() => void) => {
+  let cancelled = false;
+  const push = () => {
+    load()
+      .then((rows) => {
+        if (!cancelled) onChange(rows);
+      })
+      .catch((e) => console.error(`Failed to load ${table}:`, e));
+  };
+  push();
+  const channel = supabase
+    .channel(`${table}-changes`)
+    .on("postgres_changes", { event: "*", schema: "public", table }, push)
+    .subscribe();
+  return () => {
+    cancelled = true;
+    supabase.removeChannel(channel);
+  };
 };
 
 export const subscribeToMarketingCronRuns = (
-  onUpdate: (runs: MarketingCronRun[]) => void
-) =>
-  onSnapshot(
-    query(collection(db, RUNS), orderBy("scheduledFor", "desc"), limit(50)),
-    (snapshot) =>
-      onUpdate(
-        snapshot.docs.map((entry) =>
-          toRun(entry.id, entry.data() as Record<string, unknown>)
-        )
-      ),
-    (error) => console.error("Unable to watch marketing cron runs:", error)
-  );
+  onChange: (runs: MarketingCronRun[]) => void,
+): (() => void) => subscribeToTable(RUNS, fetchMarketingCronRuns, onChange);
 
 export const subscribeToMarketingTemplates = (
-  onUpdate: (templates: MarketingTemplate[]) => void
-) =>
-  onSnapshot(
-    query(collection(db, TEMPLATES), orderBy("updatedAt", "desc"), limit(100)),
-    (snapshot) =>
-      onUpdate(
-        snapshot.docs.map((entry) =>
-          toTemplate(entry.id, entry.data() as Record<string, unknown>)
-        )
-      ),
-    (error) => console.error("Unable to watch marketing templates:", error)
-  );
+  onChange: (templates: MarketingTemplate[]) => void,
+): (() => void) => subscribeToTable(TEMPLATES, fetchMarketingTemplates, onChange);
+
+// ---- writes: all through the edge function, which re-checks admin server-side ----
 
 export const saveMarketingCronSettings = async (settings: {
   enabled: boolean;
   schedule: MarketingCronSchedule;
   templateId: string;
   templateAssignments: Record<string, string>;
-}) => {
-  const callable = httpsCallable(functions, "saveMarketingCronSettings");
-  await callable(settings);
+}): Promise<void> => {
+  await invokeFunction("marketing", { action: "save-settings", settings });
 };
 
 export const createMarketingTemplate = async (template: {
@@ -234,24 +199,25 @@ export const createMarketingTemplate = async (template: {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
-}) => {
-  const callable = httpsCallable(functions, "createMarketingTemplate");
-  const result = await callable(template);
-  return (result.data as { templateId: string }).templateId;
+}): Promise<string> => {
+  const result = await invokeFunction<{ templateId: string }>("marketing", {
+    action: "create-template",
+    template,
+  });
+  return result.templateId;
 };
 
-export const ensureDefaultMarketingTemplate = async () => {
-  const callable = httpsCallable(functions, "ensureDefaultMarketingTemplate");
-  const result = await callable({});
-  return (result.data as { templateId: string }).templateId;
+export const ensureDefaultMarketingTemplate = async (): Promise<string> => {
+  const result = await invokeFunction<{ templateId: string }>("marketing", {
+    action: "ensure-default-template",
+  });
+  return result.templateId;
 };
 
-export const deleteMarketingTemplate = async (templateId: string) => {
-  const callable = httpsCallable(functions, "deleteMarketingTemplate");
-  await callable({ templateId });
+export const deleteMarketingTemplate = async (templateId: string): Promise<void> => {
+  await invokeFunction("marketing", { action: "delete-template", templateId });
 };
 
-export const runMarketingCronNow = async () => {
-  const callable = httpsCallable(functions, "runMarketingCronNow");
-  await callable({});
+export const runMarketingCronNow = async (): Promise<void> => {
+  await invokeFunction("marketing", { action: "run-now" });
 };

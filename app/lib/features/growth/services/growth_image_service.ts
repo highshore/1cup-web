@@ -1,7 +1,9 @@
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+// Marketing photo uploads. Goes to the Supabase `assets` bucket, like every other
+// app-side upload (blog, celebrations, admin article images); only the article
+// pipeline still writes to Firebase Storage.
+import { supabase } from "../../../supabase/client";
 
-import { storage } from "../../../firebase/firebase";
-
+const BUCKET = "assets";
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024;
 
@@ -18,7 +20,12 @@ export const uploadMarketingImage = async (file: File): Promise<string> => {
     throw new Error("Images must be 5 MB or smaller.");
   }
 
-  const storageRef = ref(storage, `marketing/${fileName(file.name)}`);
-  const uploaded = await uploadBytes(storageRef, file);
-  return getDownloadURL(uploaded.ref);
+  const path = `marketing/${fileName(file.name)}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
+  if (error) throw error;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return publicUrl;
 };
