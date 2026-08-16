@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, ReactNode, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "../lib/supabase/client";
+import type { Session } from "@supabase/supabase-js";
+import { supabase, invokeFunction } from "../lib/supabase/client";
 import styled, { keyframes } from "styled-components";
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
@@ -461,6 +462,10 @@ function AuthContent() {
         redirectTo: `${window.location.origin}/auth${
           redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""
         }`,
+        // account_email/phone_number are what let us recognise a returning member.
+        // The number never appears in the id_token, but the scope puts it on the
+        // access token so the `kakao-login` hook can read it from kapi.kakao.com.
+        scopes: "profile_nickname profile_image account_email phone_number",
       },
     });
     if (error) setErrorState(error.message);
@@ -511,12 +516,33 @@ function AuthContent() {
       router.push(finalUrl);
       router.refresh();
     };
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) redirectOnSession();
-      else setLoading(false);
+    // Kakao's OIDC id_token carries `phone_verified` but never the number itself, so
+    // handle_new_user() cannot match someone who signed up by phone and has no
+    // kakao_id on file — they would end up with a duplicate profile. The Kakao access
+    // token can read the number from kapi.kakao.com, so hand it to the `kakao-login`
+    // hook, which links this identity to the existing profile. provider_token only
+    // exists on the session right after the OAuth redirect, never after a refresh.
+    const reconcileKakao = async (session: Session | null) => {
+      if (!session?.provider_token || session.user?.app_metadata?.provider !== "kakao") return;
+      try {
+        await invokeFunction("kakao-login", { kakaoAccessToken: session.provider_token });
+      } catch (e) {
+        // Non-fatal: the user is signed in either way, and the hook is idempotent.
+        console.error("Kakao account reconciliation failed:", e);
+      }
+    };
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        await reconcileKakao(data.session);
+        redirectOnSession();
+      } else setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) redirectOnSession();
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      if (session) {
+        await reconcileKakao(session);
+        redirectOnSession();
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, [router, searchParams]);

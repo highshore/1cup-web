@@ -25,16 +25,21 @@
 // auth identity) keeps their existing `public.users` row instead of getting a
 // duplicate.
 //
-// Mapping of the original 3 priorities (Firebase Auth + Firestore) onto
-// public.users:
-//   1. Match by PHONE  (a public.users row with the same normalized phone and
-//      no auth_id yet) -> link it: set auth_id + kakao_id. This is the
-//      "merge_by_phone" path (was: Firebase Auth getUserByPhoneNumber).
-//   2. Match by KAKAO_ID (a public.users row already carrying this kakao_id)
-//      -> link/refresh it. This is the "merge_by_kakao_id" path
-//      (was: Firestore where kakaoId == kakaoSub).
-//   3. Otherwise create/update THIS auth user's own public.users row from the
-//      Kakao profile. This is the "success" path (was: P3 OIDC user finalize).
+// WHY THIS IS STILL NEEDED WITH THE NATIVE PROVIDER
+// ---------------------------------------------------------------------------
+// handle_new_user() already matches a new auth user against public.users by
+// kakao_id, phone and email. What it cannot do is match on a phone number it never
+// receives: Kakao's OIDC id_token carries `phone_verified` but not the number
+// itself — that lives only in kapi.kakao.com's `kakao_account.phone_number`, even
+// when the consent item is set to 필수 동의. Users who signed up by phone and have
+// no kakao_id on file are therefore invisible to the trigger, and a Kakao sign-in
+// leaves them with a duplicate profile.
+//
+// This hook closes that gap: fetch the real number with the caller's Kakao access
+// token, find the profile by kakao_id (exact) or phone, and point this auth user's
+// identity link at it. It ADDS a row to user_auth_identities rather than repointing
+// users.auth_id, so the person's other login method keeps working; a stub profile
+// the trigger just created is removed only when nothing references it.
 //
 // public.users columns used:
 //   uid, auth_id (uuid), email, display_name, photo_url, phone, kakao_id,
@@ -177,175 +182,153 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const nowIso = new Date().toISOString();
 
   // ===========================================================================
-  // PRIORITY 1 — match by phone, row not yet linked to any auth identity.
-  // (was: Firebase Auth getUserByPhoneNumber + merge into that account)
+  // MERGE — reconcile this Kakao auth user with the person's existing profile.
+  //
+  // The native provider already ran handle_new_user(), which matched on kakao_id /
+  // phone / email and linked or created a row. It cannot match a phone the trigger
+  // never saw, though: Kakao's OIDC id_token carries no phone number, only
+  // `phone_verified`. That is why this hook exists — it reads the real number from
+  // kapi.kakao.com and retries the match with it.
   // ===========================================================================
-  if (normalizedKakaoPhone) {
-    const { data: phoneRow, error: phoneErr } = await a
-      .from("users")
-      .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
-      .eq("phone", normalizedKakaoPhone)
-      .is("auth_id", null)
-      .limit(1)
-      .maybeSingle();
 
-    if (phoneErr) {
-      console.error("Error querying users by phone:", phoneErr.message);
-      // Non-fatal: fall through to kakao_id / create paths (mirrors original).
-    } else if (phoneRow) {
-      console.log(`Found unlinked public.users row by phone. uid=${phoneRow.uid}`);
+  // Where this auth user currently points (the trigger always leaves a link).
+  const { data: currentLink } = await a
+    .from("user_auth_identities")
+    .select("uid")
+    .eq("auth_id", authId)
+    .maybeSingle();
+  const currentUid = (currentLink?.uid as string | undefined) ?? null;
 
-      // Link the phone-matched row to this auth identity + Kakao. Only fill
-      // profile fields that are currently empty (faithful "only if empty").
-      const update: Record<string, unknown> = {
-        auth_id: authId,
-        kakao_id: kakaoSub,
-        last_login_at: nowIso,
-      };
-      if (kakaoProfileNickname && !phoneRow.display_name) update.display_name = kakaoProfileNickname;
-      if (kakaoEmail && !phoneRow.email) update.email = kakaoEmail;
-      if (kakaoProfileImageUrl && !phoneRow.photo_url) update.photo_url = kakaoProfileImageUrl;
-
-      const { error: linkErr } = await a.from("users").update(update).eq("uid", phoneRow.uid);
-      if (linkErr) {
-        console.error("Failed to link phone-matched user:", linkErr.message);
-        return json(req, { error: "internal", message: "Failed to merge by phone." }, 500);
-      }
-
-      return json(req, {
-        status: "merged_by_phone",
-        finalUid: phoneRow.uid,
-        authId,
-        message: "Account merged: Kakao identity linked to existing phone-verified user.",
-      });
-    } else {
-      console.log(`No unlinked public.users row with phone '${normalizedKakaoPhone}'. Checking by kakao_id.`);
-    }
-  }
-
-  // ===========================================================================
-  // PRIORITY 2 — match by kakao_id already present on a row.
-  // (was: Firestore where kakaoId == kakaoSub + merge into that account)
-  // ===========================================================================
-  {
-    const { data: kakaoRow, error: kakaoErr } = await a
+  // The profile this person really owns: kakao_id first (exact), then phone.
+  // NOTE: no `auth_id is null` filter. Every migrated row already has an auth_id
+  // from the seeded phone identity, so requiring null meant the phone path could
+  // never fire for exactly the people who need it.
+  const findProfile = async () => {
+    const byKakao = await a
       .from("users")
       .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
       .eq("kakao_id", kakaoSub)
       .limit(1)
       .maybeSingle();
+    if (byKakao.data) return { row: byKakao.data, how: "merged_by_kakao_id" as const };
 
-    if (kakaoErr) {
-      console.error("Error querying users by kakao_id:", kakaoErr.message);
-      // Non-fatal: fall through to create path (mirrors original).
-    } else if (kakaoRow) {
-      console.log(`Found public.users row by kakao_id=${kakaoSub}. uid=${kakaoRow.uid}`);
-
-      const update: Record<string, unknown> = {
-        kakao_id: kakaoSub,
-        last_login_at: nowIso,
-      };
-      // Ensure the row is linked to this auth identity if it wasn't already.
-      if (!kakaoRow.auth_id) update.auth_id = authId;
-      // Fill empty profile fields only.
-      if (kakaoProfileNickname && !kakaoRow.display_name) update.display_name = kakaoProfileNickname;
-      if (kakaoEmail && !kakaoRow.email) update.email = kakaoEmail;
-      if (kakaoProfileImageUrl && !kakaoRow.photo_url) update.photo_url = kakaoProfileImageUrl;
-      if (normalizedKakaoPhone && !kakaoRow.phone) update.phone = normalizedKakaoPhone;
-
-      const { error: linkErr } = await a.from("users").update(update).eq("uid", kakaoRow.uid);
-      if (linkErr) {
-        console.error("Failed to link kakao_id-matched user:", linkErr.message);
-        return json(req, { error: "internal", message: "Failed to merge by kakao_id." }, 500);
-      }
-
-      return json(req, {
-        status: "merged_by_kakao_id",
-        finalUid: kakaoRow.uid,
-        authId,
-        message: "Account merged: Kakao identity linked to existing user found by kakao_id.",
-      });
-    } else {
-      console.log(`No public.users row with kakao_id=${kakaoSub}. Finalizing this auth user.`);
+    if (normalizedKakaoPhone) {
+      const byPhone = await a
+        .from("users")
+        .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
+        .eq("phone", normalizedKakaoPhone)
+        .limit(1)
+        .maybeSingle();
+      if (byPhone.data) return { row: byPhone.data, how: "merged_by_phone" as const };
     }
-  }
+    return null;
+  };
 
-  // ===========================================================================
-  // PRIORITY 3 — create/update THIS auth user's own public.users row.
-  // (was: P3 finalize Auth + Firestore for the OIDC user)
-  // ===========================================================================
+  const found = await findProfile();
 
-  // Pull any existing row already linked to this auth identity.
-  const { data: ownRow, error: ownErr } = await a
-    .from("users")
-    .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id, created_at")
-    .eq("auth_id", authId)
-    .limit(1)
-    .maybeSingle();
+  // Fill only what is empty — the existing profile always wins.
+  const fillFrom = (row: { display_name?: unknown; email?: unknown; photo_url?: unknown; phone?: unknown }) => {
+    const update: Record<string, unknown> = { kakao_id: kakaoSub, last_login_at: nowIso };
+    if (kakaoProfileNickname && !row.display_name) update.display_name = kakaoProfileNickname;
+    if (kakaoEmail && !row.email) update.email = kakaoEmail;
+    if (kakaoProfileImageUrl && !row.photo_url) update.photo_url = kakaoProfileImageUrl;
+    if (normalizedKakaoPhone && !row.phone) update.phone = normalizedKakaoPhone;
+    return update;
+  };
 
-  if (ownErr) {
-    console.error("Error querying own user row:", ownErr.message);
-    return json(req, { error: "internal", message: "Failed to load user row." }, 500);
-  }
-
-  // Best-effort display fields from the Supabase auth user metadata as a
-  // fallback (the native Kakao provider populates these).
-  const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
-  const metaName = typeof meta.name === "string" ? meta.name
-    : typeof meta.full_name === "string" ? meta.full_name : null;
-  const metaAvatar = typeof meta.avatar_url === "string" ? meta.avatar_url
-    : typeof meta.picture === "string" ? meta.picture : null;
-
-  if (!ownRow) {
-    // Create a brand-new row. uid mirrors the auth uuid for new Supabase users.
-    const insert = {
-      uid: authId,
-      auth_id: authId,
-      kakao_id: kakaoSub,
-      email: kakaoEmail ?? authUser.email ?? null,
-      display_name: kakaoProfileNickname ?? metaName ?? null,
-      photo_url: kakaoProfileImageUrl ?? metaAvatar ?? null,
-      phone: normalizedKakaoPhone ?? null,
-      last_login_at: nowIso,
-      created_at: nowIso,
-    };
-    const { error: insErr } = await a.from("users").insert(insert);
-    if (insErr) {
-      console.error("Failed to create public.users row:", insErr.message);
-      return json(req, { error: "internal", message: "Failed to create user row." }, 500);
+  // A row the trigger just created for this auth user, with nothing attached to it
+  // yet, is safe to drop once the link moves to the real profile. Anything with
+  // history is left alone and only unlinked — losing data would be worse than
+  // leaving an orphan row for a human to look at.
+  const stubIsDisposable = async (uid: string): Promise<boolean> => {
+    if (uid !== authId) return false; // trigger-created rows use the auth uuid as uid
+    for (const [table, column] of [
+      ["payment_orders", "user_id"],
+      ["meetup_participants", "user_id"],
+      ["transcripts", "created_by"],
+      ["speaking_reports", "user_id"],
+      ["feedback", "user_id"],
+    ] as const) {
+      const { count } = await a.from(table).select("*", { count: "exact", head: true }).eq(column, uid);
+      if ((count ?? 0) > 0) return false;
     }
-    console.log(`Created NEW public.users row for auth user ${authId}.`);
+    return true;
+  };
+
+  if (found && found.row.uid !== currentUid) {
+    // Same person, different auth user: move the link, never repoint users.auth_id.
+    const { error: linkErr } = await a
+      .from("user_auth_identities")
+      .upsert({ auth_id: authId, uid: found.row.uid }, { onConflict: "auth_id" });
+    if (linkErr) {
+      console.error("Failed to link auth identity:", linkErr.message);
+      return json(req, { error: "internal", message: "Failed to link account." }, 500);
+    }
+
+    const { error: updErr } = await a.from("users").update(fillFrom(found.row)).eq("uid", found.row.uid);
+    if (updErr) console.error("Failed to refresh merged row:", updErr.message);
+
+    let removedStub = false;
+    if (currentUid && (await stubIsDisposable(currentUid))) {
+      const { error: delErr } = await a.from("users").delete().eq("uid", currentUid);
+      if (delErr) console.error("Failed to remove stub row:", delErr.message);
+      else removedStub = true;
+    } else if (currentUid) {
+      console.warn(`Left orphan public.users row ${currentUid}: it has history attached.`);
+    }
 
     return json(req, {
-      status: "success_oidc_user",
-      finalUid: authId,
+      status: found.how,
+      finalUid: found.row.uid,
       authId,
-      message: "Kakao login processed. New public.users row created for this user.",
+      removedStub,
+      message: "Account merged: this Kakao identity now resolves to the existing profile.",
     });
   }
 
-  // Update the existing row — fill empties, refresh kakao_id + last_login_at.
-  const update: Record<string, unknown> = {
-    kakao_id: kakaoSub,
-    last_login_at: nowIso,
-  };
-  if (kakaoProfileNickname && !ownRow.display_name) update.display_name = kakaoProfileNickname;
-  if (kakaoEmail && !ownRow.email) update.email = kakaoEmail;
-  if (kakaoProfileImageUrl && !ownRow.photo_url) update.photo_url = kakaoProfileImageUrl;
-  if (normalizedKakaoPhone && !ownRow.phone) update.phone = normalizedKakaoPhone;
+  // Already pointing at the right profile (or this is a genuinely new person):
+  // just refresh it from the Kakao profile.
+  const targetUid = found?.row.uid ?? currentUid;
+  if (!targetUid) {
+    return json(req, { error: "internal", message: "No profile linked to this session." }, 500);
+  }
+
+  const { data: ownRow, error: ownErr } = await a
+    .from("users")
+    .select("uid, auth_id, email, display_name, photo_url, phone, kakao_id")
+    .eq("uid", targetUid)
+    .maybeSingle();
+  if (ownErr || !ownRow) {
+    console.error("Error loading target row:", ownErr?.message);
+    return json(req, { error: "internal", message: "Failed to load user row." }, 500);
+  }
+
+  // The native provider fills these on the auth user; use them if Kakao's API did not.
+  const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+  const update = fillFrom(ownRow);
+  if (!update.display_name && !ownRow.display_name) {
+    const metaName = typeof meta.name === "string" ? meta.name
+      : typeof meta.full_name === "string" ? meta.full_name : null;
+    if (metaName) update.display_name = metaName;
+  }
+  if (!update.photo_url && !ownRow.photo_url) {
+    const metaAvatar = typeof meta.avatar_url === "string" ? meta.avatar_url
+      : typeof meta.picture === "string" ? meta.picture : null;
+    if (metaAvatar) update.photo_url = metaAvatar;
+  }
+  if (!update.email && !ownRow.email && authUser.email) update.email = authUser.email;
 
   const { error: updErr } = await a.from("users").update(update).eq("uid", ownRow.uid);
   if (updErr) {
     console.error("Failed to update public.users row:", updErr.message);
     return json(req, { error: "internal", message: "Failed to update user row." }, 500);
   }
-  console.log(`Updated EXISTING public.users row for auth user ${authId} (uid=${ownRow.uid}).`);
 
   return json(req, {
-    status: "success_oidc_user",
+    status: "success",
     finalUid: ownRow.uid,
     authId,
-    message: "Kakao login processed. Existing public.users row updated for this user.",
+    message: "Kakao login processed; profile refreshed.",
   });
 });
 
