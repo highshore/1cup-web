@@ -1,4 +1,5 @@
 import { supabase } from "../../../supabase/client";
+import { FEATURED_ARTICLE_IDS } from "./featured_articles";
 
 export interface HomeTopicArticle {
   id: string;
@@ -9,17 +10,6 @@ export interface HomeTopicArticle {
   keywords: string[];
   timestampISO: string;
 }
-
-// Featured article IDs - these are the article table primary keys (Firestore doc ids).
-export const FEATURED_ARTICLE_IDS = [
-  "Alx2pN2Wrv9jbP2MCNKo",
-  "7WHMBwU9m8LtBYI2wQVA",
-  "hienPf1lJL8GMBKkjnKm",
-  "H1hBMM5hB7MqdXkbvvxp",
-  "xI3D8ijG6Fp7UHHCvu9B",
-  "Xi1YVDM6xqHYNTfnhW6X",
-  "foxCpkxHU7C7Fwf0kPRW",
-];
 
 // Client-side fetch using the Supabase browser client - fetches specific articles by ID
 export const fetchHomeTopicsClient = async (): Promise<HomeTopicArticle[]> => {
