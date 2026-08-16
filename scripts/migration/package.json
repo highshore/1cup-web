@@ -1,0 +1,11 @@
+{
+  "name": "one-cup-eng-migration-tools",
+  "private": true,
+  "type": "module",
+  "description": "Firebase -> Supabase migration/cutover tooling. Kept out of the web app's dependency tree, like functions/.",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "firebase-admin": "^13.4.0",
+    "pg": "^8.13.1"
+  }
+}
