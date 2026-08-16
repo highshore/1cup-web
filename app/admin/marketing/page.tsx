@@ -3,7 +3,7 @@ import AdminClient from "../AdminClient";
 
 export const metadata: Metadata = {
   title: "Marketing - Admin - OneCup English",
-  description: "Review Growth Agent marketing activity and performance",
+  description: "Schedule Gopas posts and review marketing performance",
 };
 
 export default function AdminMarketingPage() {

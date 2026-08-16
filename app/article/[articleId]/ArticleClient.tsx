@@ -25,10 +25,9 @@ import {
   ArrowUpTrayIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   LanguageIcon,
   LockClosedIcon,
   PencilSquareIcon,
@@ -1163,6 +1162,10 @@ const ParagraphContainer = styled.div`
   &:first-child {
     padding-top: 0;
   }
+
+  @media (max-width: 768px) {
+    padding: 0.55rem 0 0.6rem;
+  }
 `;
 
 // Add a styled component for the translation toggle button
@@ -1209,6 +1212,12 @@ const TranslationToggleButton = styled.button`
     transform: none;
     pointer-events: none;
   }
+
+  @media (max-width: 768px) {
+    min-height: 1.85rem;
+    padding: 0 0.5rem;
+    font-size: 0.68rem;
+  }
 `;
 
 const CopyActionButton = styled.button`
@@ -1245,6 +1254,13 @@ const CopyActionButton = styled.button`
     width: 0.9rem;
     height: 0.9rem;
   }
+
+  @media (max-width: 768px) {
+    gap: 0.25rem;
+    min-height: 1.85rem;
+    padding: 0 0.5rem;
+    font-size: 0.68rem;
+  }
 `;
 
 const ParagraphActionRow = styled.div`
@@ -1258,6 +1274,11 @@ const ParagraphActionRow = styled.div`
   ${TranslationToggleButton} {
     margin-top: 0;
     margin-bottom: 0;
+  }
+
+  @media (max-width: 768px) {
+    gap: 0.35rem;
+    margin-top: 0.35rem;
   }
 `;
 
@@ -1797,10 +1818,13 @@ const SectionActions = styled.div`
   flex-wrap: wrap;
 
   @media (max-width: 768px) {
-    width: 100%;
+    width: auto;
+    gap: 0.35rem;
+    align-self: flex-end;
+    justify-content: flex-end;
 
     > button {
-      flex: 1 1 auto;
+      flex: 0 0 auto;
     }
   }
 `;
@@ -1849,6 +1873,13 @@ const AdminActionButton = styled.button<{ variant?: "primary" | "ghost" }>`
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+  }
+
+  @media (max-width: 768px) {
+    gap: 0.25rem;
+    min-height: 1.85rem;
+    padding: 0 0.5rem;
+    font-size: 0.68rem;
   }
 `;
 
@@ -2417,6 +2448,27 @@ const Article = () => {
     localStorage.setItem("dontShowTranslationWarning", dontShow.toString());
   };
 
+  const registerKoreanTranslationView = () => {
+    const newClickCount = translationClickCount + 1;
+    setTranslationClickCount(newClickCount);
+
+    if (
+      newClickCount >= 3 &&
+      !showTranslationWarning &&
+      !dontShowTranslationWarning
+    ) {
+      setShowTranslationWarning(true);
+    }
+  };
+
+  const toggleKoreanSummary = () => {
+    if (!isKoreanSummaryVisible) {
+      registerKoreanTranslationView();
+    }
+
+    setIsKoreanSummaryVisible((current) => !current);
+  };
+
   const toggleKoreanParagraph = (index: number) => {
     const wasVisible = visibleKoreanParagraphs.includes(index);
 
@@ -2426,17 +2478,7 @@ const Article = () => {
 
     // Only track translation clicks when EXPANDING (showing) Korean text, not when hiding
     if (!wasVisible) {
-      const newClickCount = translationClickCount + 1;
-      setTranslationClickCount(newClickCount);
-
-      // Only show warning if user hasn't disabled it and we've reached 3 clicks
-      if (
-        newClickCount >= 3 &&
-        !showTranslationWarning &&
-        !dontShowTranslationWarning
-      ) {
-        setShowTranslationWarning(true);
-      }
+      registerKoreanTranslationView();
     }
   };
 
@@ -3764,7 +3806,7 @@ const Article = () => {
                             }
                             onClick={() => handleDiscussionVote(topic.id, 1)}
                           >
-                            <HandThumbUpIcon />
+                            <ChevronUpIcon />
                           </DiscussionVoteButton>
                           <DiscussionVoteScore aria-label={`${score}`}>
                             {score > 0 ? `+${score}` : score}
@@ -3783,7 +3825,7 @@ const Article = () => {
                             }
                             onClick={() => handleDiscussionVote(topic.id, -1)}
                           >
-                            <HandThumbDownIcon />
+                            <ChevronDownIcon />
                           </DiscussionVoteButton>
                         </DiscussionVoteControls>
                       </DiscussionTopicItem>
@@ -3846,9 +3888,7 @@ const Article = () => {
                 {canToggleSummaryLanguage && (
                   <QuickSummaryLanguageButton
                     type="button"
-                    onClick={() =>
-                      setIsKoreanSummaryVisible((current) => !current)
-                    }
+                    onClick={toggleKoreanSummary}
                   >
                     <LanguageIcon />
                     {isKoreanSummaryVisible

@@ -56,7 +56,7 @@ const ADMIN_SECTIONS: Array<{
     id: "marketing",
     label: "Marketing",
     path: "/admin/marketing",
-    description: "Review Growth Agent posts, approvals, and results.",
+    description: "Schedule Gopas posts and review their performance.",
   },
 ];
 
@@ -680,7 +680,9 @@ const sortArticles = (articleData: ArticleData[]): ArticleData[] =>
     return bTime - aTime;
   });
 
-export default function AdminClient({ section = "dashboard" }: AdminClientProps) {
+export default function AdminClient({
+  section = "dashboard",
+}: AdminClientProps) {
   const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);

@@ -513,6 +513,19 @@ export default function PaymentClient() {
   const [prefillChecked, setPrefillChecked] = useState(false);
   // --- END REFERRAL STATE ---
 
+  const getGrowthTrackingCode = () => {
+    const urlCode = searchParams?.get("growth")?.trim();
+    const cookieCode =
+      typeof document !== "undefined"
+        ? document.cookie
+            .split("; ")
+            .find((cookie) => cookie.startsWith("growthTrackingCode="))
+            ?.split("=")[1]
+        : undefined;
+    const code = urlCode || cookieCode || "";
+    return /^[a-z0-9_-]{4,80}$/i.test(code) ? code : undefined;
+  };
+
   // Check authentication and fetch user data
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -693,6 +706,7 @@ export default function PaymentClient() {
           meetup: selectMeetup,
         },
         referralCode: isReferralValid ? referralCode.trim() : undefined,
+        growthTrackingCode: getGrowthTrackingCode(),
       };
       // --- END UPDATE ---
 

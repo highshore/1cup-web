@@ -38,6 +38,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null &&
                             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
     }
+    match /marketing_cron_runs/{runId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
+    match /marketing_templates/{templateId} {
+      allow read, write: if request.auth != null &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.account_status == 'admin';
+    }
 
     // Source material is transient and processed by Cloud Functions with the
     // Admin SDK. It must never be exposed through the broad default rule below.
@@ -69,6 +77,11 @@ service cloud.firestore {
     // article_processing_jobs excluded: its documents hold temporary source text.
     match /{collection}/{document=**} {
       allow read, write: if collection != 'article_processing_jobs' &&
+                           collection != 'growth_posts' &&
+                           collection != 'growth_iterations' &&
+                           collection != 'growth_config' &&
+                           collection != 'marketing_cron_runs' &&
+                           collection != 'marketing_templates' &&
                            collection != 'article_discussion_stats' &&
                            collection != 'article_discussion_votes';
     }
