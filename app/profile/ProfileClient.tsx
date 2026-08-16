@@ -2838,6 +2838,20 @@ export default function ProfileClient() {
     const shareText = `영어 한잔 추천 코드: ${userData.referralCode}\nhttps://1cupenglish.com/payment?ref=${userData.referralCode}`;
     const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
 
+    // Copy BEFORE opening the Kakao dialog, for two reasons. The dialog can fail after
+    // it opens — an unregistered domain, a popup blocker, no KakaoTalk installed — and
+    // sendDefault gives us no callback for that, so the catch below never fires and the
+    // user would be left with a broken popup and a "shared!" message. Copying first also
+    // keeps the clipboard write inside the click gesture, which awaiting the SDK load
+    // would otherwise break.
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(shareText);
+      copied = true;
+    } catch (e) {
+      console.error("Clipboard copy failed", e);
+    }
+
     // Try Kakao share first if key exists
     if (kakaoKey) {
       try {
@@ -2871,7 +2885,11 @@ export default function ProfileClient() {
               },
             ],
           });
-          setSuccessMessage("카카오톡 공유를 시도했습니다.");
+          setSuccessMessage(
+            copied
+              ? "카카오톡 공유 창을 열었습니다. 창이 뜨지 않거나 실패하면, 복사된 추천 코드를 붙여넣어 공유해주세요."
+              : "카카오톡 공유 창을 열었습니다.",
+          );
           return;
         }
       } catch (e) {
@@ -2879,11 +2897,9 @@ export default function ProfileClient() {
       }
     }
 
-    // Fallback: copy to clipboard
-    try {
-      await navigator.clipboard.writeText(shareText);
+    if (copied) {
       setSuccessMessage("추천 코드가 복사되었습니다. 카카오톡에 붙여넣어 공유해주세요.");
-    } catch (e) {
+    } else {
       setError("클립보드 복사에 실패했습니다. 직접 복사하여 공유해주세요.");
     }
   };
