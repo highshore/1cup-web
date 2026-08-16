@@ -153,6 +153,16 @@ After the cutover, new signups, payments and meetup joins exist only in Supabase
 rollback window is a few hours; after that the only way is forward. Schedule the cutover when
 someone can watch it.
 
+## Edge function secrets
+
+Beyond the Payple/AlimTalk/Kakao values carried over from the Cloud Functions:
+
+| Secret | Used by | Where it came from |
+|---|---|---|
+| `GCP_SERVICE_ACCOUNT_JSON` | `admin-article` (Vertex AI) | **New.** Cloud Functions got application default credentials from their compute service account; Deno has no metadata server, so the key is signed into a JWT and exchanged for an access token. Currently the `firebase-adminsdk-fbsvc@` key, which was granted `roles/aiplatform.user` on 2026-08-16. |
+| `GOOGLE_CLOUD_PROJECT` | `admin-article` | was `GCLOUD_PROJECT`, injected automatically by Cloud Functions |
+| `KOREAPAS_PUBLISHER_URL` / `KOREAPAS_PUBLISHER_TOKEN` | `marketing` | **Not set on either platform** — the Gopas publishing webhook has never been built. Without it a run records everything and stops at `awaitingPublisher`, which is the designed behaviour, so this blocks nothing. |
+
 ## Remaining / caveats
 
 - **Payment is parked.** `/payment` is gated by `PAYMENT_ENABLED` and the `recurring-payments`
