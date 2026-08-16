@@ -2415,7 +2415,7 @@ const NbCancelButton = styled.button`
 
 export default function ProfileClient() {
   const { locale, t } = useI18n();
-  const { currentUser: user } = useAuth();
+  const { currentUser: user, isLoading: authLoading } = useAuth();
   const [avatar, setAvatar] = useState(user?.photoURL || "");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -2462,6 +2462,11 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const fetchUserData = async () => {
+      // AuthProvider starts with currentUser = null and fills it in after reading the
+      // session, so on a cold load (a direct URL, a refresh, or the OAuth callback's
+      // server redirect) this effect runs before the session is known. Redirecting on
+      // that first pass bounced signed-in people straight back to /auth.
+      if (authLoading) return;
       if (!user) {
         router.push("/auth");
         return;
@@ -2607,7 +2612,7 @@ export default function ProfileClient() {
     };
 
     fetchUserData();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { files } = e.target;

@@ -522,7 +522,7 @@ export default function AdminClient() {
     purchasingMembers: 0,
   });
   const router = useRouter();
-  const { currentUser, accountStatus } = useAuth();
+  const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
 
   const usersById = useMemo(() => {
     const entries = new Map<string, UserData>();
@@ -561,14 +561,16 @@ export default function AdminClient() {
       loadDashboardData();
     };
 
-    // Wait for the auth context to resolve the session before gating.
-    if (currentUser === null && accountStatus === null) {
+    // Wait for the auth context to resolve the session before gating. The old check
+    // (both values still null) also matched a genuinely signed-out visitor, who then
+    // sat on the loading screen instead of being sent to /auth.
+    if (authLoading) {
       return;
     }
 
     checkAdminAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, currentUser, accountStatus]);
+  }, [router, currentUser, accountStatus, authLoading]);
 
   const loadDashboardData = async () => {
     setLoading(true);
