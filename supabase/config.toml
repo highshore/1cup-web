@@ -385,6 +385,30 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Per-function settings, mirroring what is deployed. Without these blocks the CLI
+# would deploy every function with verify_jwt = true and break the ones that are
+# called without a user JWT (Payple's webhook, pg_cron jobs, the SMS auth hook).
+[functions.payment]
+verify_jwt = false          # Payple posts to /payment/callback with no JWT
+
+[functions.kakao-login]
+verify_jwt = true
+
+[functions.messaging]
+verify_jwt = false          # invoked by pg_cron (send-links) with a service-role bearer
+
+[functions.speaking-reports]
+verify_jwt = true
+
+[functions.cefr]
+verify_jwt = false          # invoked by pg_cron (poll-cefr)
+
+[functions.proxy]
+verify_jwt = false          # naver/youtube proxy, called from the browser
+
+[functions.send-sms-hook]
+verify_jwt = false          # Supabase auth hook
+
 [analytics]
 enabled = true
 port = 54327
