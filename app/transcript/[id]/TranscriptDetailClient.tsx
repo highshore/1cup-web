@@ -2704,7 +2704,7 @@ export default function TranscriptDetailClient() {
     }
   }, [filteredFinalTranscript, calculateSpeakingMetrics]);
 
-  // OpenAI analysis using Firebase Function
+  // OpenAI analysis via the `speaking-reports` Supabase Edge Function
   const analyzeWithOpenAI = async (text: string, metrics: any) => {
     const prompt = `Analyze this English speaking sample for a Korean learner. Provide scores (0-100) and levels for:
 

@@ -634,7 +634,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     return htmlText.replace(/<[^>]*>/g, "");
   };
 
-  // Call Firebase Function for Naver Local Search
+  // Naver Local Search via the /api/naver-local server proxy
   const performSearchWithNaver = async (query: string) => {
     if (!query.trim()) {
       setResults([]);
