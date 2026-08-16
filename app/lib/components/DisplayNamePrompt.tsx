@@ -150,13 +150,16 @@ export default function DisplayNamePrompt({
       await supabase.auth.updateUser({ data: { name } });
 
       // Update the users table row.
+      // Target the row by uid resolved through the auth-identity link table — a person
+      // can have more than one auth user, so auth_id alone may not match their row.
+      const { data: uid } = await supabase.rpc("current_uid");
       const { error: updateError } = await supabase
         .from("users")
         .update({
           display_name: name,
           updated_at: new Date().toISOString(),
         })
-        .eq("auth_id", user.id);
+        .eq("uid", uid);
 
       if (updateError) throw updateError;
 

@@ -21,12 +21,11 @@ export const saveFeedback = async (
     throw new Error("User not authenticated");
   }
 
-  const { data: userRow } = await supabase
-    .from("users")
-    .select("uid")
-    .eq("auth_id", user.id)
-    .maybeSingle();
-  const userId = userRow?.uid ?? user.id;
+  // Resolve through the auth-identity link table: phone-OTP and Kakao sessions are
+  // different auth users for the same person, and the RLS insert CHECK is
+  // user_id = current_uid().
+  const { data: resolvedUid } = await supabase.rpc("current_uid");
+  const userId = (resolvedUid as string | null) ?? user.id;
 
   const feedbackData: any = {
     id: crypto.randomUUID(),

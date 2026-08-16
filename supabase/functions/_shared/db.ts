@@ -21,8 +21,16 @@ export async function callerUid(req: Request): Promise<string | null> {
   );
   const { data } = await client.auth.getUser();
   if (!data.user) return null;
-  // public.users.uid is the Firebase-style id; resolve via the auth_id link column.
+  // public.users.uid is the Firebase-style id. One person can own several auth users
+  // (phone OTP and Kakao each create their own), so resolve through the identity link
+  // table first and only fall back to the legacy users.auth_id column.
   const a = admin();
+  const { data: link } = await a
+    .from("user_auth_identities")
+    .select("uid")
+    .eq("auth_id", data.user.id)
+    .maybeSingle();
+  if (link?.uid) return link.uid as string;
   const { data: row } = await a.from("users").select("uid").eq("auth_id", data.user.id).maybeSingle();
   return row?.uid ?? data.user.id;
 }

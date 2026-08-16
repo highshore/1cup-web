@@ -60,13 +60,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
         return;
       }
-      // Resolve the public.users row linked via auth_id (created/linked by the
-      // handle_new_user trigger). This is the app-level identity.
-      const { data: row } = await supabase
-        .from("users")
-        .select("uid, email, display_name, phone, photo_url, has_active_subscription, account_status, gdg_member")
-        .eq("auth_id", authUser.id)
-        .maybeSingle();
+      // Resolve the public.users row for this session. Goes through
+      // current_user_row() rather than `.eq("auth_id", …)`: one person can have several
+      // auth users (phone OTP and Kakao each create their own), and only the link table
+      // maps every one of them back to the same profile.
+      const { data: rows } = await supabase.rpc("current_user_row");
+      const row = Array.isArray(rows) ? rows[0] : rows;
       if (!active) return;
 
       const meta = authUser.user_metadata ?? {};

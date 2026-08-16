@@ -176,19 +176,29 @@ export async function verifyCodeAndMintSession(
     .select("uid, auth_id")
     .eq("phone", local)
     .limit(1);
+  const existingUid = existing?.[0]?.uid as string | undefined;
   const existingAuthId = existing?.[0]?.auth_id as string | undefined;
 
-  if (existingAuthId) {
-    // Make sure the auth user is signable by phone+password.
-    const { error: uErr } = await db.auth.admin.updateUserById(existingAuthId, {
+  // signInWithPassword({ phone }) authenticates whichever auth user OWNS this number,
+  // which is not necessarily users.auth_id: after a Kakao login the profile can point
+  // at the Kakao auth user while the phone still belongs to the original one. Set the
+  // password on the phone's actual owner, otherwise we update one account and sign in
+  // as another. auth.users is not reachable over PostgREST, hence the RPC.
+  const { data: phoneOwner } = await db.rpc("auth_user_id_by_phone", { p_phone: e164 });
+  const targetAuthId = (phoneOwner as string | null) ?? existingAuthId ?? null;
+
+  let authId: string;
+  if (targetAuthId) {
+    const { error: uErr } = await db.auth.admin.updateUserById(targetAuthId, {
       password,
       phone: e164,
       phone_confirm: true,
     });
     if (uErr) {
-      // Phone may already be set/owned by this user; retry password-only so sign-in can proceed.
-      await db.auth.admin.updateUserById(existingAuthId, { password });
+      // The number may already be confirmed on this account; password-only is enough.
+      await db.auth.admin.updateUserById(targetAuthId, { password });
     }
+    authId = targetAuthId;
   } else {
     const { data: created, error: cErr } = await db.auth.admin.createUser({
       phone: e164,
@@ -196,13 +206,23 @@ export async function verifyCodeAndMintSession(
       password,
     });
     if (cErr || !created?.user) throw new OtpError("계정 생성에 실패했습니다.", 500);
+    authId = created.user.id;
     // Defensive: ensure a public.users row exists even if the handle_new_user trigger didn't.
-    const authId = created.user.id;
-    const { data: linked } = await db.from("users").select("uid").eq("auth_id", authId).limit(1);
-    if (!linked || linked.length === 0) {
+    const { data: linked } = await db
+      .from("user_auth_identities")
+      .select("uid")
+      .eq("auth_id", authId)
+      .maybeSingle();
+    if (!linked) {
       await db.from("users").insert({ uid: authId, auth_id: authId, phone: local });
     }
   }
+
+  // Make sure this auth user resolves to the existing profile. Without the link row,
+  // current_uid() returns null for the session and RLS hides the user's own data.
+  await db
+    .from("user_auth_identities")
+    .upsert({ auth_id: authId, uid: existingUid ?? authId }, { onConflict: "auth_id" });
 
   // Sign in server-side with a throwaway anon client to obtain real tokens
   // (proper access + refresh, unlike a hand-signed JWT).

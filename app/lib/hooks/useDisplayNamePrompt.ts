@@ -24,11 +24,10 @@ export function useDisplayNamePrompt() {
 
       try {
         // Check whether the user already has a display_name set.
-        const { data: userData } = await supabase
-          .from("users")
-          .select("display_name")
-          .eq("auth_id", sessionUser.id)
-          .maybeSingle();
+        // current_user_row() resolves through the auth-identity link table, so it works
+        // for whichever login method this session used.
+        const { data: rows } = await supabase.rpc("current_user_row");
+        const userData = Array.isArray(rows) ? rows[0] : rows;
 
         const hasDisplayName =
           !!userData?.display_name && userData.display_name.trim() !== "";
