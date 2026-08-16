@@ -73,19 +73,63 @@ npm run dev                              # http://localhost:3000
 Supabase → Authentication → URL Configuration must allow `http://localhost:3000/**`
 (and any Vercel preview URL) for OAuth redirects.
 
+## The backend now lives in this repo (2026-08-16)
+
+The live project used to be the only copy of the backend. It is now reproducible from
+`supabase/`:
+
+- `supabase/migrations/20260620000000_baseline_schema.sql` — extensions, 31 tables,
+  62 constraints, 21 indexes, 4 functions (`is_admin`, `current_uid`, `handle_new_user`,
+  `home_stats_counts`), 6 views, grants, and the `on_auth_user_created` trigger.
+- `…_20260620000100_baseline_rls.sql` — RLS on every table + all policies.
+- `…_20260620000200_baseline_storage_realtime_cron.sql` — `avatars`/`assets` buckets and
+  their policies, the `supabase_realtime` publication, and the three `pg_cron` jobs.
+- `supabase/functions/` — all 7 edge functions (`payment`, `kakao-login`, `messaging`,
+  `speaking-reports`, `cefr`, `proxy`, `send-sms-hook`) + `_shared/`.
+
+All of it was generated from the live project by catalog introspection (`supabase functions
+download` for the sources), and every version is recorded in the live
+`supabase_migrations.schema_migrations`, so `supabase db push` will not re-run it.
+
+**Payple credentials** were hardcoded as fallbacks in the deployed `payment` function. The
+committed source requires them from Edge Function secrets instead (they are already set, so
+a redeploy is behaviour-neutral). Do not reintroduce literals — this file is public.
+
+## Fixed on 2026-08-16 (found while capturing the live state)
+
+- **`is_admin()` always returned false for browser sessions.** `coalesce((auth.jwt()->>'role')
+  = 'admin', exists(…), false)` short-circuited on the first argument, which is `false` (not
+  null) for every Supabase JWT. 20 of 39 policies call it, so all admin reads/writes were
+  blocked. Now `or`-based; verified true for an admin and false for a normal user.
+- **`cefr_runs` and `meetup_articles` had RLS on with no policy** (deny-all). CEFR batch
+  progress and each meetup's discussion articles silently returned nothing in the browser.
+- **`article_meanings`** write policy `for all using (true)` split into insert/update for
+  authenticated, delete for admins only.
+- **JSON-encoded text from the import.** `meetups.title` (75/75), `blog_posts.title`/`content`
+  (8/8), `community_topics`/`community_comments` were stored as JSON strings — quotes rendered
+  literally and `\n` never became a line break. Decoded in
+  `20260816100000_unquote_json_encoded_text.sql`.
+
 ## Remaining / caveats
 
-- **Phone OTP** needs an SMS provider in Supabase (Auth → Providers → Phone). Kakao works today.
-- **Dev-permissive RLS** to tighten before production: `article_meanings` write (definition
-  cache), `transcripts` read. See `../1cup-db-migration/pipeline/rls_app_policies.sql`.
-- **Legacy Kakao-user linking:** the `handle_new_user` trigger matches existing users by
-  phone/email; the Supabase native Kakao provider doesn't expose `kakao_id` the same way, so
-  re-verify kakao_id matching at production cutover.
+- **Payment is parked.** `/payment` is gated by `PAYMENT_ENABLED` and the `recurring-payments`
+  + `send-links` cron jobs exist but are `active = false`. The **Firebase** schedulers
+  (`processRecurringPayments`, `sendLinksToUsers`) are still the live ones — disable them in
+  the same window you enable the Supabase jobs, with production Payple keys and live mode.
+- **Cron auth:** the three job bodies carry a `<PASTE-REAL-service_role-KEY-HERE>` placeholder
+  instead of a key. `poll-cefr` works anyway (`verify_jwt = false`), verified end-to-end; fill
+  the key in if any target function ever requires JWT verification.
+- **Legacy Kakao-user linking:** `handle_new_user` matches on `provider_id`/`kakao_id`, then
+  phone, then email, and repoints `auth_id` on match. Re-verify with a real Kakao login at
+  cutover.
 - **`scripts/*.mjs`** (article export/seed) still use Firebase Admin — not in the app bundle;
   port if you still run them. `app/lib/firebase/*` is now unused by the app (safe to delete).
-- **Production cutover:** rotate the Kakao Alimtalk keys (were hardcoded), re-enable the
-  payment/message crons with production Payple keys, set Payple to live mode, tighten RLS,
-  and register the production domain in Supabase URL config + the (production) Kakao app.
+- **Growth agent** (`growth-agent/`, Cloud Run) was never deployed — no service exists, its
+  Firestore config is `agentActive: false`, and both Firestore and Supabase growth tables are
+  empty. Port `firestore_client.py` to Supabase whenever it does get deployed; it blocks
+  nothing today.
+- **Production cutover:** rotate the Kakao Alimtalk keys (were hardcoded), set Payple to live
+  mode, and register the production domain in Supabase URL config + the (production) Kakao app.
 
 ## Reference docs (in `../1cup-db-migration`)
 
