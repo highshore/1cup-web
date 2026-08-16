@@ -1,10 +1,6 @@
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { storage } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
+
+const BUCKET = "assets";
 
 // Generate unique filename for uploaded blog images
 const generateUniqueFilename = (originalName: string): string => {
@@ -14,7 +10,7 @@ const generateUniqueFilename = (originalName: string): string => {
   return `${timestamp}_${randomId}.${extension}`;
 };
 
-// Upload a single image to Firebase Storage for blog posts
+// Upload a single image to Supabase Storage for blog posts
 export const uploadBlogImage = async (file: File): Promise<string> => {
   try {
     // Validate file type
@@ -29,20 +25,21 @@ export const uploadBlogImage = async (file: File): Promise<string> => {
       throw new Error("Image size must be less than 5MB");
     }
 
-    // Generate unique filename
+    // Generate unique filename and upload under the blog/ prefix.
     const filename = generateUniqueFilename(file.name);
+    const path = `blog/${filename}`;
 
-    // Create storage reference under blog directory
-    const storageRef = ref(storage, `blog/${filename}`);
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, { upsert: true });
+    if (error) throw error;
 
-    // Upload file
-    const snapshot = await uploadBytes(storageRef, file);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-
-    console.log("Blog image uploaded successfully:", downloadURL);
-    return downloadURL;
+    console.log("Blog image uploaded successfully:", publicUrl);
+    return publicUrl;
   } catch (error) {
     console.error("Error uploading blog image:", error);
     throw error;
@@ -64,21 +61,23 @@ export const uploadBlogImages = async (files: File[]): Promise<string[]> => {
   }
 };
 
-// Delete a blog image from Firebase Storage
+// Delete a blog image from Supabase Storage
 export const deleteBlogImage = async (imageUrl: string): Promise<void> => {
   try {
-    // Extract the file path from the download URL
-    const url = new URL(imageUrl);
-    const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
-
-    if (!pathMatch) {
-      throw new Error("Invalid Firebase Storage URL");
+    // Extract the storage path from the public URL.
+    // Public URLs look like: .../storage/v1/object/public/assets/blog/<file>
+    const marker = `/object/public/${BUCKET}/`;
+    const idx = imageUrl.indexOf(marker);
+    if (idx === -1) {
+      throw new Error("Invalid Supabase Storage URL");
     }
 
-    const filePath = decodeURIComponent(pathMatch[1]);
-    const storageRef = ref(storage, filePath);
+    const filePath = decodeURIComponent(
+      imageUrl.substring(idx + marker.length)
+    );
 
-    await deleteObject(storageRef);
+    const { error } = await supabase.storage.from(BUCKET).remove([filePath]);
+    if (error) throw error;
     console.log("Blog image deleted successfully:", imageUrl);
   } catch (error) {
     console.error("Error deleting blog image:", error);

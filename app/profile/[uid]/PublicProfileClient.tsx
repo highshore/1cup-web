@@ -14,6 +14,7 @@ interface PublicProfile {
   uid: string;
   displayName: string;
   photoURL?: string | null;
+  isPublic?: boolean;
   bio?: string;
   work?: string;
   school?: string;
@@ -429,7 +430,11 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
             <CardHeading>
               <SparklesIcon /> {t.profile.myStory}
             </CardHeading>
-            <BodyText>{profile.bio || t.profile.storyDefault}</BodyText>
+            <BodyText>
+              {profile.isPublic === false
+                ? t.profile.privateProfile
+                : profile.bio || t.profile.storyDefault}
+            </BodyText>
           </Card>
 
           {hasAbout && (

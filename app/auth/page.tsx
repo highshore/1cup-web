@@ -3,26 +3,10 @@
 import { useState, useEffect, useMemo, ReactNode, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { auth, db } from "../lib/firebase/firebase";
+import { supabase } from "../lib/supabase/client";
 import styled, { keyframes } from "styled-components";
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-} from "firebase/auth";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
-
-const KAKAO_CLIENT_ID = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-const KAKAO_REDIRECT_URI = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
-const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}&response_type=code`;
 
 const SIGN_IN_PHRASES = [
   "Welcome",
@@ -55,12 +39,6 @@ const sanitizeRedirectUrl = (value: string | null) => {
 
   return value;
 };
-
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
-}
 
 // Layout Components
 const PageWrapper = styled.div`
@@ -467,22 +445,31 @@ function AuthContent() {
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [verificationId, setVerificationId] =
-    useState<ConfirmationResult | null>(null);
+  const [verificationId, setVerificationId] = useState<boolean>(false); // true once OTP sent
   const [loading, setLoading] = useState(false);
   const [errorState, setErrorState] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isValidPhoneNumber, setIsValidPhoneNumber] = useState(false);
 
-  // Handle Kakao Login Click
-  const handleKakaoLoginClick = () => {
+  // Handle Kakao Login Click — Supabase native Kakao OAuth
+  const handleKakaoLoginClick = async () => {
     const redirectUrl = sanitizeRedirectUrl(searchParams.get("redirect"));
-
-    if (redirectUrl) {
-      localStorage.setItem("returnUrl", redirectUrl);
-    }
-
-    window.location.href = KAKAO_AUTH_URL;
+    if (redirectUrl) localStorage.setItem("returnUrl", redirectUrl);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: {
+        // Must land on the route handler that trades the PKCE code for a session —
+        // the /auth page only reads an existing one.
+        redirectTo: `${window.location.origin}/auth/callback${
+          redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""
+        }`,
+        // account_email/phone_number are what let us recognise a returning member.
+        // The number never appears in the id_token, but the scope puts it on the
+        // access token so the `kakao-login` hook can read it from kapi.kakao.com.
+        scopes: "profile_nickname profile_image account_email phone_number",
+      },
+    });
+    if (error) setErrorState(error.message);
   };
 
   const handlePhoneAuthClick = () => {
@@ -519,162 +506,55 @@ function AuthContent() {
     );
   };
 
-  // Format phone number for Firebase (E.164 format)
-  const formatPhoneNumberForFirebase = (input: string): string => {
-    const cleaned = input.replace(/[^\d]/g, "");
-
-    // For Korean numbers, we need to ensure proper E.164 format
-    // E.164 format is: +[country code][number without leading 0]
-    if (cleaned.startsWith("010")) {
-      // Remove leading 0 and add +82
-      return `+82${cleaned.slice(1)}`;
-    }
-
-    // If already in the correct format with +82
-    if (cleaned.startsWith("8210")) {
-      return `+${cleaned}`;
-    }
-
-    // If starts with just the country code without +
-    if (cleaned.startsWith("82") && cleaned.length >= 12) {
-      return `+${cleaned}`;
-    }
-
-    // If all else fails, just format as a Korean number
-    return `+82${cleaned}`;
-  };
-
+  // On an existing/new Supabase session, redirect. The handle_new_user trigger
+  // creates/links the public.users row server-side, so no client doc write here.
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // User is signed in, see docs for a list of available properties
-        // https://firebase.google.com/docs/reference/js/firebase.User
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
+    const redirectOnSession = () => {
+      const redirectFromParams = sanitizeRedirectUrl(searchParams.get("redirect"));
+      const returnUrlFromStorage = sanitizeRedirectUrl(localStorage.getItem("returnUrl"));
+      const finalUrl = redirectFromParams || returnUrlFromStorage || "/profile";
+      if (returnUrlFromStorage) localStorage.removeItem("returnUrl");
+      router.push(finalUrl);
+      router.refresh();
+    };
+    // OAuth failures come back from /auth/callback as ?error=<message>.
+    const callbackError = searchParams.get("error");
+    if (callbackError) setErrorState(callbackError);
 
-        if (!userDoc.exists()) {
-          // Create user document if it doesn\'t exist
-          await setDoc(userDocRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || "Anonymous User",
-            photoURL: user.photoURL,
-            createdAt: serverTimestamp(),
-            lastLoginAt: serverTimestamp(),
-            // Add other default fields as needed
-            account_status: "free", // e.g. \'free\', \'premium\'
-            user_type: "member", // e.g. \'member\', \'admin\'
-            phone_number: user.phoneNumber,
-          });
-        } else {
-          // Update last login time
-          await updateDoc(userDocRef, {
-            lastLoginAt: serverTimestamp(),
-          });
-        }
-
-        // Get return URL from URL params or localStorage, fallback to /profile
-        const redirectFromParams = sanitizeRedirectUrl(
-          searchParams.get("redirect")
-        );
-        const returnUrlFromStorage = sanitizeRedirectUrl(
-          localStorage.getItem("returnUrl")
-        );
-        const finalUrl =
-          redirectFromParams || returnUrlFromStorage || "/profile";
-
-        // Clear the stored return URL
-        if (returnUrlFromStorage) {
-          localStorage.removeItem("returnUrl");
-        }
-
-        // Redirect user
-        router.push(finalUrl);
-        router.refresh();
-      } else {
-        // User is signed out
-        setLoading(false);
-      }
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) redirectOnSession();
+      else setLoading(false);
     });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session) redirectOnSession();
+    });
+    return () => sub.subscription.unsubscribe();
   }, [router, searchParams]);
-
-  const setupInvisibleRecaptcha = () => {
-    if (window.recaptchaVerifier) {
-      try {
-        window.recaptchaVerifier.clear();
-      } catch (err) {}
-    }
-
-    try {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "send-code-button",
-        {
-          size: "invisible",
-          callback: () => {},
-          // Set language to Korean
-          hl: "ko",
-        }
-      );
-    } catch (err: any) {
-      setErrorState(
-        "전화번호 인증 설정에 실패했습니다. 새로고침 후 다시 시도해주세요."
-      );
-    }
-  };
 
   const onSignInSubmit = () => {
     if (!isValidPhoneNumber || loading) return;
-
-    if (!window.recaptchaVerifier) {
-      setupInvisibleRecaptcha();
-    }
-
-    // For invisible reCAPTCHA, we should directly call sendVerificationCode
-    // The reCAPTCHA will be solved automatically during the phone auth process
     sendVerificationCode();
   };
 
+  // Custom phone OTP delivered via Kakao AlimTalk (see app/api/phone-otp/*).
+  // Free-plan alternative to Supabase's Pro-only Send SMS auth hook.
   const sendVerificationCode = async () => {
     setLoading(true);
     setErrorState(null);
-
     try {
-      // Format the phone number for Firebase
-      const formattedPhoneNumber = formatPhoneNumberForFirebase(phoneNumber);
-
-      // Send verification code directly with signInWithPhoneNumber
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhoneNumber,
-        window.recaptchaVerifier
-      );
-
-      setVerificationId(confirmationResult);
+      const res = await fetch("/api/phone-otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "" }));
+        throw new Error(error || "인증번호 전송에 실패했습니다");
+      }
+      setVerificationId(true);
       setMessage("인증번호가 전송되었습니다!");
     } catch (err: unknown) {
-      let errorMessage = "인증번호 전송에 실패했습니다";
-      if (err && typeof err === "object") {
-        if (
-          "message" in err &&
-          typeof (err as { message: unknown }).message === "string"
-        ) {
-          errorMessage = (err as { message: string }).message;
-        }
-      }
-      setErrorState(errorMessage);
-
-      try {
-        if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.clear();
-        }
-        setupInvisibleRecaptcha();
-      } catch {
-        // Silent error handling for cleanup
-      }
+      setErrorState(err instanceof Error ? err.message : "인증번호 전송에 실패했습니다");
     } finally {
       setLoading(false);
     }
@@ -682,94 +562,30 @@ function AuthContent() {
 
   const verifyCode = async () => {
     if (!verificationId) return;
-
     setLoading(true);
     setErrorState(null);
-
     try {
-      // Confirm the verification code
-      const userCredential = await verificationId.confirm(verificationCode);
-      const user = userCredential.user; // Convenience variable for user object
-
-      // Reference to the user's document in Firestore
-      const userDocRef = doc(db, `users/${user.uid}`);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        // NEW USER: Create their document in Firestore
-        const ancientDate = new Date(1000, 0, 1); // Month is 0-based
-
-        const newUserFirestoreData: {
-          last_received: Date;
-          left_count: number;
-          received_articles: unknown[];
-          saved_words: unknown[];
-          createdAt: ReturnType<typeof serverTimestamp>;
-          photoURL?: string;
-        } = {
-          last_received: ancientDate,
-          left_count: 0,
-          received_articles: [],
-          saved_words: [],
-          createdAt: serverTimestamp(),
-        };
-
-        // If Auth profile has a photoURL, add it to the new Firestore document
-        if (user.photoURL) {
-          newUserFirestoreData.photoURL = user.photoURL;
-        }
-
-        await setDoc(userDocRef, newUserFirestoreData);
-      } else {
-        // EXISTING USER: Check if photoURL needs to be updated
-        if (user.photoURL) {
-          const currentFirestorePhotoURL = userDocSnap.data()?.photoURL;
-          if (currentFirestorePhotoURL !== user.photoURL) {
-            await updateDoc(userDocRef, {
-              photoURL: user.photoURL,
-            });
-          }
-        }
-      }
-
+      const res = await fetch("/api/phone-otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber, code: verificationCode }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "인증코드 확인에 실패했습니다");
+      // Establish the Supabase session from the server-minted tokens; the
+      // onAuthStateChange effect above then handles the redirect.
+      const { error } = await supabase.auth.setSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
+      });
+      if (error) throw error;
       setMessage("로그인 성공!");
     } catch (err: unknown) {
-      let errorMessage = "인증코드 확인에 실패했습니다";
-      if (err && typeof err === "object") {
-        if (
-          "message" in err &&
-          typeof (err as { message: unknown }).message === "string"
-        ) {
-          errorMessage = (err as { message: string }).message;
-        }
-      }
-      setErrorState(errorMessage);
+      setErrorState(err instanceof Error ? err.message : "인증코드 확인에 실패했습니다");
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    // Setup reCAPTCHA only when the phone auth UI is visible
-    if (showPhoneAuth) {
-      try {
-        setupInvisibleRecaptcha();
-      } catch (err: unknown) {
-        setErrorState("전화번호 인증 설정에 실패했습니다. 다시 시도해주세요.");
-      }
-    }
-
-    // Cleanup function
-    return () => {
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch {
-          // Silent error handling for cleanup
-        }
-      }
-    };
-  }, [showPhoneAuth]); // Depend on showPhoneAuth
 
   return (
     <>
@@ -780,8 +596,8 @@ function AuthContent() {
           <>
             <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
             <Description>
-              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증은 Google의 보안
-              서비스를 통해 진행합니다.
+              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오
+              알림톡(또는 문자)으로 발송됩니다.
             </Description>
           </>
         ) : (

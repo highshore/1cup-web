@@ -1,10 +1,6 @@
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { storage } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
+
+const STORAGE_BUCKET = "assets";
 
 // Generate unique filename for uploaded images
 const generateUniqueFilename = (originalName: string): string => {
@@ -14,7 +10,7 @@ const generateUniqueFilename = (originalName: string): string => {
   return `${timestamp}_${randomId}.${extension}`;
 };
 
-// Upload a single image to Firebase Storage
+// Upload a single image to Supabase Storage
 export const uploadMeetupImage = async (file: File): Promise<string> => {
   try {
     // Validate file type
@@ -31,15 +27,21 @@ export const uploadMeetupImage = async (file: File): Promise<string> => {
 
     // Generate unique filename
     const filename = generateUniqueFilename(file.name);
+    const path = `meetup/${filename}`;
 
-    // Create storage reference
-    const storageRef = ref(storage, `meetup/${filename}`);
+    // Upload file to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, { upsert: true });
 
-    // Upload file
-    const snapshot = await uploadBytes(storageRef, file);
+    if (uploadError) {
+      throw uploadError;
+    }
 
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    // Get public URL
+    const downloadURL = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path).data.publicUrl;
 
     console.log("Image uploaded successfully:", downloadURL);
     return downloadURL;
@@ -64,21 +66,31 @@ export const uploadMeetupImages = async (files: File[]): Promise<string[]> => {
   }
 };
 
-// Delete an image from Firebase Storage
+// Delete an image from Supabase Storage
 export const deleteMeetupImage = async (imageUrl: string): Promise<void> => {
   try {
-    // Extract the file path from the download URL
+    // Extract the object path from the public URL:
+    //   .../storage/v1/object/public/assets/<path>
     const url = new URL(imageUrl);
-    const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+    const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+    const markerIndex = url.pathname.indexOf(marker);
 
-    if (!pathMatch) {
-      throw new Error("Invalid Firebase Storage URL");
+    if (markerIndex === -1) {
+      throw new Error("Invalid Supabase Storage URL");
     }
 
-    const filePath = decodeURIComponent(pathMatch[1]);
-    const storageRef = ref(storage, filePath);
+    const filePath = decodeURIComponent(
+      url.pathname.substring(markerIndex + marker.length)
+    );
 
-    await deleteObject(storageRef);
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+
+    if (error) {
+      throw error;
+    }
+
     console.log("Image deleted successfully:", imageUrl);
   } catch (error) {
     console.error("Error deleting image:", error);

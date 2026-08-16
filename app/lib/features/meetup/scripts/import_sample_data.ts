@@ -1,10 +1,11 @@
-import { collection, doc, setDoc, Timestamp } from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 
-// Sample data matching your mobile schema
+// Sample data matching the original mobile schema. The old `location` tuple is
+// [name, address, mapUrl, latitude, longitude, extraInfo]; `leaders` and
+// `participants` are inline uid arrays that now live in meetup_participants.
 const sampleMeetupData = {
   wst_korea_univ_001: {
-    date_time: Timestamp.fromDate(new Date("2024-02-07T17:00:00+09:00")),
+    date_time: new Date("2024-02-07T17:00:00+09:00").toISOString(),
     description:
       "월가 담화에서는 The Wall Street Journal에서 기사 2개를 선정하여 각각 1시간씩, 총 2시간 토의를 합니다. 비즈니스 영어와 시사 토론 실력을 향상시키고 싶은 분들에게 완벽한 기회입니다.",
     duration_minutes: 120,
@@ -40,7 +41,7 @@ const sampleMeetupData = {
     ],
   },
   english_speaking_practice_001: {
-    date_time: Timestamp.fromDate(new Date("2025-01-15T19:00:00+09:00")), // Future date
+    date_time: new Date("2025-01-15T19:00:00+09:00").toISOString(), // Future date
     description:
       "Join us for a relaxed English conversation practice session. Perfect for beginners who want to improve their speaking confidence in a supportive environment.",
     duration_minutes: 90,
@@ -67,7 +68,7 @@ const sampleMeetupData = {
     ],
   },
   business_english_workshop_001: {
-    date_time: Timestamp.fromDate(new Date("2025-01-20T14:00:00+09:00")), // Future date
+    date_time: new Date("2025-01-20T14:00:00+09:00").toISOString(), // Future date
     description:
       "Learn essential business English phrases and practice professional communication skills. Great for working professionals looking to advance their careers.",
     duration_minutes: 180,
@@ -94,7 +95,7 @@ const sampleMeetupData = {
     ],
   },
   movie_night_discussion_001: {
-    date_time: Timestamp.fromDate(new Date("2025-01-25T18:30:00+09:00")), // Future date
+    date_time: new Date("2025-01-25T18:30:00+09:00").toISOString(), // Future date
     description:
       "Watch an English movie together and discuss it afterwards. Improve your listening skills while having fun! Popcorn and drinks included.",
     duration_minutes: 150,
@@ -143,18 +144,60 @@ const sampleMeetupData = {
   },
 };
 
-// Function to import sample data into Firestore
+// Function to import sample data into Supabase (meetups + meetup_participants)
 export const importSampleMeetupData = async (): Promise<void> => {
   try {
-    console.log("🚀 Starting to import sample meetup data to Firestore...");
-
-    const meetupCollection = collection(db, "meetup");
+    console.log("🚀 Starting to import sample meetup data to Supabase...");
 
     for (const [docId, data] of Object.entries(sampleMeetupData)) {
-      console.log(`📝 Creating document: ${docId}`);
+      console.log(`📝 Creating meetup: ${docId}`);
 
-      const docRef = doc(meetupCollection, docId);
-      await setDoc(docRef, data);
+      const { leaders, participants, location, ...rest } = data;
+
+      // Split the old location tuple into normalized columns.
+      const meetupRow = {
+        id: docId,
+        title: rest.title,
+        description: rest.description,
+        date_time: rest.date_time,
+        duration_minutes: rest.duration_minutes,
+        image_urls: rest.image_urls,
+        lockdown_minutes: rest.lockdown_minutes,
+        max_participants: rest.max_participants,
+        topics: rest.topics,
+        location_name: location[0] as string,
+        location_address: location[1] as string,
+        location_map_url: location[2] as string,
+        latitude: location[3] as number,
+        longitude: location[4] as number,
+        location_extra_info: (location[5] as string) || "",
+      };
+
+      const { error: meetupError } = await supabase
+        .from("meetups")
+        .upsert(meetupRow, { onConflict: "id" });
+      if (meetupError) throw meetupError;
+
+      // Inline leader/participant arrays → meetup_participants junction rows.
+      const participantRows = [
+        ...leaders.map((uid) => ({
+          meetup_id: docId,
+          user_id: uid,
+          role: "leader" as const,
+        })),
+        ...participants.map((uid) => ({
+          meetup_id: docId,
+          user_id: uid,
+          role: "participant" as const,
+        })),
+      ];
+
+      if (participantRows.length > 0) {
+        const { error: participantError } = await supabase
+          .from("meetup_participants")
+          .upsert(participantRows, { onConflict: "meetup_id,user_id" });
+        if (participantError) throw participantError;
+      }
 
       console.log(`✅ Successfully created: ${data.title}`);
     }
@@ -172,13 +215,14 @@ export const importSampleMeetupData = async (): Promise<void> => {
 // Function to check if data already exists
 export const checkExistingData = async (): Promise<boolean> => {
   try {
-    const meetupCollection = collection(db, "meetup");
-    const firstDocRef = doc(meetupCollection, "wst_korea_univ_001");
-    const docSnapshot = await import("firebase/firestore").then(({ getDoc }) =>
-      getDoc(firstDocRef)
-    );
+    const { data, error } = await supabase
+      .from("meetups")
+      .select("id")
+      .eq("id", "wst_korea_univ_001")
+      .maybeSingle();
 
-    return docSnapshot.exists();
+    if (error) throw error;
+    return Boolean(data);
   } catch (error) {
     console.error("Error checking existing data:", error);
     return false;

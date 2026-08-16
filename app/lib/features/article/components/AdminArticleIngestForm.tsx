@@ -7,10 +7,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { httpsCallable } from "firebase/functions";
 import styled from "styled-components";
 
-import { functions } from "../../../firebase/firebase";
+import { invokeFunction } from "../../../supabase/client";
 import { useI18n } from "../../../i18n/I18nProvider";
 import {
   uploadArticleImage,
@@ -429,19 +428,19 @@ export default function AdminArticleIngestForm({
       const imageUrls = await Promise.all(
         photos.map((photo) => uploadArticleImage(photo.file))
       );
-      const createArticle = httpsCallable<
-        { title: string; sourceUrl: string; body: string; imageUrls: string[] },
-        CreateAdminArticleResponse
-      >(functions, "createAdminArticle");
-      const response = await createArticle({
-        title: submittedTitle,
-        sourceUrl: sourceUrl.trim(),
-        body: body.trim(),
-        imageUrls,
-      });
+      const response = await invokeFunction<CreateAdminArticleResponse>(
+        "admin-article",
+        {
+          action: "create",
+          title: submittedTitle,
+          sourceUrl: sourceUrl.trim(),
+          body: body.trim(),
+          imageUrls,
+        },
+      );
 
       await onArticleQueued?.({
-        articleId: response.data.articleId,
+        articleId: response.articleId,
         title: submittedTitle,
       });
       setTitle("");

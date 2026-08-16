@@ -36,15 +36,7 @@ import {
   ChatBubbleOvalLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleIconSolid } from "@heroicons/react/24/solid";
-import {
-  collection,
-  getCountFromServer,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-} from "firebase/firestore";
-import { db as clientDb } from "../lib/firebase/firebase";
+import { supabase } from "../lib/supabase/client";
 import MembershipSection from "./sections/MembershipSection";
 import FaqSection from "./sections/FaqSection";
 import CtaSection from "./sections/CtaSection";
@@ -3101,49 +3093,28 @@ export default function NewHomeClient({
     let ignore = false;
 
     const fetchClientFallbackStats = async (): Promise<HomeStats | null> => {
-      if (!clientDb) {
-        return null;
-      }
-
-      const countCollections = async (names: string[]): Promise<number> => {
-        for (const name of names) {
-          try {
-            const collRef = collection(clientDb, name);
-            const countSnapshot = await getCountFromServer(collRef);
-            const count = countSnapshot.data().count ?? 0;
-            if (count > 0) {
-              return count;
-            }
-          } catch (countError) {
-            console.warn(`Client count failed for ${name}, attempting doc fetch.`, countError);
-            try {
-              const limitedSnapshot = await getDocs(query(collection(clientDb, name), limit(1)));
-              if (!limitedSnapshot.empty) {
-                const fullSnapshot = await getDocs(collection(clientDb, name));
-                return fullSnapshot.size;
-              }
-            } catch (docError) {
-              console.error(`Client fetch failed for ${name}:`, docError);
-            }
-          }
-        }
-        return 0;
-      };
-
+      // Stats are now the `home_stats` VIEW (replaces the old cache/homeStats doc
+      // + client-side collection counting). Read it directly.
       try {
-        const [meetups, members, articles] = await Promise.all([
-          countCollections(["events", "meetups", "meetup"]),
-          countCollections(["users", "members"]),
-          countCollections(["articles", "articleEntries", "posts"]),
-        ]);
+        const { data, error } = await supabase
+          .from("home_stats")
+          .select("*")
+          .maybeSingle();
+
+        if (error || !data) {
+          if (error) {
+            console.error("Client fallback stats fetch failed:", error);
+          }
+          return null;
+        }
 
         const derived: HomeStats = {
-          totalMeetups: meetups,
-          totalMembers: members,
-          totalArticles: articles,
+          totalMeetups: data.total_meetups ?? 0,
+          totalMembers: data.total_members ?? 0,
+          totalArticles: data.total_articles ?? 0,
         };
 
-        if (meetups || members || articles) {
+        if (derived.totalMeetups || derived.totalMembers || derived.totalArticles) {
           return derived;
         }
 

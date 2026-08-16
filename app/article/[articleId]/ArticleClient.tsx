@@ -2,21 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-  Timestamp,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  setDoc,
-  where,
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "../../lib/firebase/firebase";
+import { supabase, invokeFunction } from "../../lib/supabase/client";
 import styled from "styled-components";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -51,7 +37,7 @@ interface ArticleData {
     korean: string[];
   };
   keywords: string[]; // Changed to just array of word strings
-  timestamp: Timestamp;
+  timestamp: string;
   title: {
     english: string;
     korean: string;
@@ -1334,13 +1320,16 @@ const getWordDefinition = async (
     // Normalize the word to lowercase for consistent storage
     const wordLower = word.toLowerCase();
 
-    // First check if the definition exists in Firestore
-    const meaningRef = doc(db, `articles/${articleId}/meanings/${wordLower}`);
-    const meaningSnap = await getDoc(meaningRef);
+    // Shared definition cache, keyed by (article, word).
+    const { data: cached } = await supabase
+      .from("article_meanings")
+      .select("definition")
+      .eq("article_id", articleId)
+      .eq("word", wordLower)
+      .maybeSingle();
 
-    // If the definition exists in Firestore, return it
-    if (meaningSnap.exists()) {
-      return meaningSnap.data().definition;
+    if (cached?.definition) {
+      return cached.definition;
     }
 
     // If not found in Firestore, call the GPT API
@@ -1384,11 +1373,11 @@ const getWordDefinition = async (
     const data = await response.json();
     const definition = data.choices[0].message.content;
 
-    // Store the result in Firestore for future use
-    await setDoc(meaningRef, {
-      word: wordLower,
-      definition: definition,
-    });
+    // Store the result for future readers.
+    await supabase.from("article_meanings").upsert(
+      { article_id: articleId, word: wordLower, definition },
+      { onConflict: "article_id,word" },
+    );
 
     return definition;
   } catch (error) {
@@ -2229,11 +2218,17 @@ const Article = () => {
       if (!articleId) return;
 
       try {
-        const articleRef = doc(db, "articles", articleId);
-        const articleSnap = await getDoc(articleRef);
+        const { data: articleRow } = await supabase
+          .from("articles")
+          .select("*")
+          .eq("id", articleId)
+          .maybeSingle();
 
-        if (articleSnap.exists()) {
-          const data = articleSnap.data() as ArticleData;
+        if (articleRow) {
+          const data = {
+            ...articleRow,
+            publicationStatus: (articleRow as any).publication_status,
+          } as unknown as ArticleData;
           if (
             data.publicationStatus === "processing" ||
             data.publicationStatus === "failed"
@@ -2268,30 +2263,44 @@ const Article = () => {
   }, [articleId]);
 
   useEffect(() => {
-    const statsQuery = query(
-      collection(db, "article_discussion_stats"),
-      where("articleId", "==", articleId)
-    );
-    return onSnapshot(
-      statsQuery,
-      (snapshot) => {
-        const nextStats: Record<string, DiscussionTopicStats> = {};
-        snapshot.forEach((stat) => {
-          const data = stat.data();
-          if (typeof data.topicId !== "string") return;
-          nextStats[data.topicId] = {
-            topicId: data.topicId,
-            score: typeof data.score === "number" ? data.score : 0,
-            upvotes: typeof data.upvotes === "number" ? data.upvotes : 0,
-            downvotes: typeof data.downvotes === "number" ? data.downvotes : 0,
-          };
-        });
-        setDiscussionStats(nextStats);
-      },
-      (statsError) => {
-        console.error("Unable to subscribe to discussion-topic scores:", statsError);
-      }
-    );
+    const loadStats = async () => {
+      const { data } = await supabase
+        .from("article_discussion_stats")
+        .select("topic_id, score, upvotes, downvotes")
+        .eq("article_id", articleId);
+
+      const nextStats: Record<string, DiscussionTopicStats> = {};
+      (data ?? []).forEach((row: any) => {
+        if (typeof row.topic_id !== "string") return;
+        nextStats[row.topic_id] = {
+          topicId: row.topic_id,
+          score: typeof row.score === "number" ? row.score : 0,
+          upvotes: typeof row.upvotes === "number" ? row.upvotes : 0,
+          downvotes: typeof row.downvotes === "number" ? row.downvotes : 0,
+        };
+      });
+      setDiscussionStats(nextStats);
+    };
+
+    loadStats().catch((e) => console.error("Error loading discussion stats:", e));
+    const channel = supabase
+      .channel(`discussion-stats-${articleId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "article_discussion_stats",
+          filter: `article_id=eq.${articleId}`,
+        },
+        () => {
+          loadStats().catch((e) => console.error("Error refreshing stats:", e));
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [articleId]);
 
   useEffect(() => {
@@ -2309,24 +2318,21 @@ const Article = () => {
     let isCurrent = true;
     const loadVotes = async () => {
       try {
-        const snapshots = await Promise.all(
-          topicEntries.map((topic) =>
-            getDoc(
-              doc(
-                db,
-                "article_discussion_votes",
-                articleId + "_" + topic.id + "_" + currentUser.uid
-              )
-            )
-          )
-        );
+        const { data: voteRows } = await supabase
+          .from("article_discussion_votes")
+          .select("topic_id, vote")
+          .eq("article_id", articleId)
+          .in(
+            "topic_id",
+            topicEntries.map((topic) => topic.id),
+          );
+
         if (!isCurrent) return;
 
         const nextVotes: Record<string, TopicVoteValue> = {};
-        snapshots.forEach((snapshot, index) => {
-          const vote = snapshot.data()?.vote;
-          if (vote === 1 || vote === -1) {
-            nextVotes[topicEntries[index].id] = vote;
+        (voteRows ?? []).forEach((row: any) => {
+          if (row.vote === 1 || row.vote === -1) {
+            nextVotes[row.topic_id] = row.vote;
           }
         });
         setTopicVotes(nextVotes);
@@ -2350,19 +2356,15 @@ const Article = () => {
       }
 
       try {
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
+        const { data: userRow } = await supabase
+          .from("users")
+          .select("saved_words")
+          .eq("uid", currentUser.uid)
+          .maybeSingle();
 
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          setSavedWords(userData.saved_words || []);
-        } else {
-          // Create user document if it doesn't exist
-          await setDoc(userRef, {
-            saved_words: [],
-          });
-          setSavedWords([]);
-        }
+        // The row always exists here — handle_new_user creates it at sign-up — so a
+        // miss just means no saved words yet.
+        setSavedWords(userRow?.saved_words || []);
       } catch (err) {
         console.error("Error fetching saved words:", err);
         setSavedWords([]);
@@ -2399,12 +2401,14 @@ const Article = () => {
     }, 5000); // 5 seconds timeout
 
     try {
-      const wordRef = doc(db, "words", word);
-      const wordSnap = await getDoc(wordRef);
+      const { data: wordRow } = await supabase
+        .from("words")
+        .select("*")
+        .eq("word", word)
+        .maybeSingle();
 
-      if (wordSnap.exists()) {
-        const wordData = wordSnap.data() as WordData;
-        setWordDetails((prev) => ({ ...prev, [word]: wordData }));
+      if (wordRow) {
+        setWordDetails((prev) => ({ ...prev, [word]: wordRow as WordData }));
       } else {
         console.error(`Word "${word}" not found in the database`);
       }
@@ -2717,21 +2721,18 @@ const Article = () => {
     setIsSaving(true);
 
     try {
-      const userRef = doc(db, "users", currentUser.uid);
+      // saved_words is a text[] column; Firestore's arrayUnion/arrayRemove become a
+      // read-modify-write against the list already held in component state.
+      const nextWords = savedWords.includes(word)
+        ? savedWords.filter((w) => w !== word)
+        : [...savedWords, word];
 
-      if (savedWords.includes(word)) {
-        // Remove word if already saved
-        await updateDoc(userRef, {
-          saved_words: arrayRemove(word),
-        });
-        setSavedWords((prevWords) => prevWords.filter((w) => w !== word));
-      } else {
-        // Add word if not saved
-        await updateDoc(userRef, {
-          saved_words: arrayUnion(word),
-        });
-        setSavedWords((prevWords) => [...prevWords, word]);
-      }
+      const { error } = await supabase
+        .from("users")
+        .update({ saved_words: nextWords })
+        .eq("uid", currentUser.uid);
+      if (error) throw error;
+      setSavedWords(nextWords);
     } catch (err) {
       console.error("Error saving word:", err);
       alert("단어 저장 중 오류가 발생했습니다.");
@@ -3073,15 +3074,18 @@ const Article = () => {
 
     setIsSavingTopics(true);
     try {
-      const articleRef = doc(db, "articles", articleId);
       const existingTopicIds = article?.discussion_topic_ids || [];
       const discussionTopicIds = editedTopics.map(
         (_, index) => existingTopicIds[index] || "topic-" + index
       );
-      await updateDoc(articleRef, {
-        discussion_topics: editedTopics,
-        discussion_topic_ids: discussionTopicIds,
-      });
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          discussion_topics: editedTopics,
+          discussion_topic_ids: discussionTopicIds,
+        })
+        .eq("id", articleId);
+      if (error) throw error;
 
       // Update local state
       setArticle((prev) =>
@@ -3114,25 +3118,25 @@ const Article = () => {
       topicVotes[topicId] === direction ? 0 : direction;
     setVotingTopicId(topicId);
     try {
-      const vote = httpsCallable<
-        { articleId: string; topicId: string; vote: TopicVoteValue },
-        DiscussionVoteResult
-      >(functions, "voteDiscussionTopic");
-      const result = await vote({ articleId, topicId, vote: nextVote });
+      const result = await invokeFunction<DiscussionVoteResult>("discussion-vote", {
+        articleId,
+        topicId,
+        vote: nextVote,
+      });
 
       setTopicVotes((previous) => {
         const next = { ...previous };
-        if (result.data.vote === 0) delete next[topicId];
-        else next[topicId] = result.data.vote;
+        if (result.vote === 0) delete next[topicId];
+        else next[topicId] = result.vote;
         return next;
       });
       setDiscussionStats((previous) => ({
         ...previous,
         [topicId]: {
           topicId,
-          score: result.data.score,
-          upvotes: result.data.upvotes,
-          downvotes: result.data.downvotes,
+          score: result.score,
+          upvotes: result.upvotes,
+          downvotes: result.downvotes,
         },
       }));
     } catch (voteError) {
@@ -3210,10 +3214,13 @@ const Article = () => {
 
     setIsSavingMedia(true);
     try {
-      const articleRef = doc(db, "articles", articleId);
-      await updateDoc(articleRef, {
-        image_url: trimmedUrl,
-      });
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          image_url: trimmedUrl,
+        })
+        .eq("id", articleId);
+      if (error) throw error;
 
       setArticle((prev) =>
         prev
@@ -3261,13 +3268,16 @@ const Article = () => {
 
     setIsSavingTitle(true);
     try {
-      const articleRef = doc(db, "articles", articleId);
-      await updateDoc(articleRef, {
-        title: {
-          english: trimmedEnglish,
-          korean: trimmedKorean,
-        },
-      });
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          title: {
+            english: trimmedEnglish,
+            korean: trimmedKorean,
+          },
+        })
+        .eq("id", articleId);
+      if (error) throw error;
 
       setArticle((prev) =>
         prev
@@ -3367,13 +3377,16 @@ const Article = () => {
 
     setIsSavingContent(true);
     try {
-      const articleRef = doc(db, "articles", articleId);
-      await updateDoc(articleRef, {
-        content: {
-          english: englishContent,
-          korean: koreanContent,
-        },
-      });
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          content: {
+            english: englishContent,
+            korean: koreanContent,
+          },
+        })
+        .eq("id", articleId);
+      if (error) throw error;
 
       setArticle((prev) =>
         prev

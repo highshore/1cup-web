@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { auth, db } from "../firebase/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "../supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export function useDisplayNamePrompt() {
   const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
@@ -11,19 +10,27 @@ export function useDisplayNamePrompt() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
 
-      if (!user) {
+      if (!sessionUser) {
         setShouldShowPrompt(false);
         setLoading(false);
         return;
       }
 
       try {
-        // Check if user has displayName set and if they've been prompted before
+        // Check whether the user already has a display_name set.
+        // current_user_row() resolves through the auth-identity link table, so it works
+        // for whichever login method this session used.
+        const { data: rows } = await supabase.rpc("current_user_row");
+        const userData = Array.isArray(rows) ? rows[0] : rows;
+
         const hasDisplayName =
-          user.displayName && user.displayName.trim() !== "";
+          !!userData?.display_name && userData.display_name.trim() !== "";
 
         if (hasDisplayName) {
           setShouldShowPrompt(false);
@@ -31,28 +38,7 @@ export function useDisplayNamePrompt() {
           return;
         }
 
-        // Check Firestore to see if user has been prompted recently
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const hasBeenPrompted = userData.displayNamePrompted;
-          const promptedAt = userData.displayNamePromptedAt?.toDate();
-
-          // If prompted within last 7 days, don't show again
-          if (hasBeenPrompted && promptedAt) {
-            const daysSincePrompt =
-              (Date.now() - promptedAt.getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSincePrompt < 7) {
-              setShouldShowPrompt(false);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-
-        // Show prompt if user has no displayName and hasn't been prompted recently
+        // Show prompt if user has no display_name.
         setShouldShowPrompt(true);
       } catch (error) {
         console.error("Error checking display name prompt status:", error);
@@ -62,7 +48,7 @@ export function useDisplayNamePrompt() {
       }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const hidePrompt = () => {

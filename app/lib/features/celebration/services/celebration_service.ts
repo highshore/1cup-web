@@ -1,35 +1,24 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  writeBatch,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "../../../firebase/firebase";
+import { supabase } from "../../../supabase/client";
 import { Celebration } from "../types/celebration_types";
 
-const COLLECTION_NAME = "celebrations";
+const TABLE_NAME = "celebrations";
 
-// Convert a Firestore document into a Celebration object.
-const docToCelebration = (doc: any): Celebration => {
-  const data = doc.data();
+// Convert a Supabase row (snake_case) into a Celebration object.
+// NOTE: the celebrations table has no created_at/updated_at columns (see
+// supabase_schema.sql). The Celebration type still requires them, so we
+// synthesize them from achieved_at (falling back to now) to keep sort/UI stable.
+const rowToCelebration = (data: any): Celebration => {
+  const achieved = data.achieved_at ? new Date(data.achieved_at) : null;
   return {
-    id: doc.id,
-    memberName: data.memberName || "",
+    id: data.id,
+    memberName: data.member_name || "",
     headline: data.headline || "",
     description: data.description || "",
-    logoUrl: data.logoUrl || "",
-    achievedAt: data.achievedAt
-      ? data.achievedAt.toDate
-        ? data.achievedAt.toDate().toISOString()
-        : String(data.achievedAt)
-      : null,
+    logoUrl: data.logo_url || "",
+    achievedAt: achieved ? achieved.toISOString() : null,
     order: typeof data.order === "number" ? data.order : null,
-    createdAt: data.createdAt?.toDate() || new Date(),
-    updatedAt: data.updatedAt?.toDate() || new Date(),
+    createdAt: achieved || new Date(),
+    updatedAt: achieved || new Date(),
   };
 };
 
@@ -49,9 +38,9 @@ const sortCelebrations = (a: Celebration, b: Celebration): number => {
 // Fetch all celebrations (public).
 export const fetchCelebrations = async (): Promise<Celebration[]> => {
   try {
-    const celebrationRef = collection(db, COLLECTION_NAME);
-    const querySnapshot = await getDocs(celebrationRef);
-    return querySnapshot.docs.map(docToCelebration).sort(sortCelebrations);
+    const { data, error } = await supabase.from(TABLE_NAME).select("*");
+    if (error) throw error;
+    return (data || []).map(rowToCelebration).sort(sortCelebrations);
   } catch (error) {
     console.error("Error fetching celebrations:", error);
     // Return empty array instead of throwing if collection doesn't exist yet.
@@ -59,28 +48,32 @@ export const fetchCelebrations = async (): Promise<Celebration[]> => {
   }
 };
 
-// Create a celebration (admin only — enforced by Firestore rules).
+// Create a celebration (admin only — enforced by RLS).
 export const createCelebration = async (
   data: Partial<Celebration>
 ): Promise<string> => {
   try {
-    const now = new Date();
+    // celebrations.id is TEXT (was a Firestore doc id) — generate one.
+    const id = crypto.randomUUID();
     const celebration: any = {
-      memberName: data.memberName || "",
+      id,
+      member_name: data.memberName || "",
       headline: data.headline || "",
-      createdAt: Timestamp.fromDate(now),
-      updatedAt: Timestamp.fromDate(now),
     };
 
     if (data.description) celebration.description = data.description;
-    if (data.logoUrl) celebration.logoUrl = data.logoUrl;
+    if (data.logoUrl) celebration.logo_url = data.logoUrl;
     if (data.achievedAt) {
-      celebration.achievedAt = Timestamp.fromDate(new Date(data.achievedAt));
+      celebration.achieved_at = new Date(data.achievedAt).toISOString();
     }
 
-    const celebrationRef = collection(db, COLLECTION_NAME);
-    const docRef = await addDoc(celebrationRef, celebration);
-    return docRef.id;
+    const { data: inserted, error } = await supabase
+      .from(TABLE_NAME)
+      .insert(celebration)
+      .select()
+      .single();
+    if (error) throw error;
+    return inserted.id;
   } catch (error) {
     console.error("Error creating celebration:", error);
     throw new Error(
@@ -96,21 +89,24 @@ export const updateCelebration = async (
   data: Partial<Celebration>
 ): Promise<void> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const updateData: any = { updatedAt: Timestamp.fromDate(new Date()) };
+    const updateData: any = {};
 
-    if (data.memberName !== undefined) updateData.memberName = data.memberName;
+    if (data.memberName !== undefined) updateData.member_name = data.memberName;
     if (data.headline !== undefined) updateData.headline = data.headline;
     if (data.description !== undefined)
       updateData.description = data.description;
-    if (data.logoUrl !== undefined) updateData.logoUrl = data.logoUrl;
+    if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl;
     if (data.achievedAt !== undefined) {
-      updateData.achievedAt = data.achievedAt
-        ? Timestamp.fromDate(new Date(data.achievedAt))
+      updateData.achieved_at = data.achievedAt
+        ? new Date(data.achievedAt).toISOString()
         : null;
     }
 
-    await updateDoc(docRef, updateData);
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update(updateData)
+      .eq("id", id);
+    if (error) throw error;
   } catch (error) {
     console.error("Error updating celebration:", error);
     throw new Error(
@@ -123,8 +119,8 @@ export const updateCelebration = async (
 // Delete a celebration (admin only).
 export const deleteCelebration = async (id: string): Promise<void> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    await deleteDoc(docRef);
+    const { error } = await supabase.from(TABLE_NAME).delete().eq("id", id);
+    if (error) throw error;
   } catch (error) {
     console.error("Error deleting celebration:", error);
     throw new Error("Failed to delete celebration");
@@ -132,20 +128,19 @@ export const deleteCelebration = async (id: string): Promise<void> => {
 };
 
 // Persist a new display order (admin only). Writes `order` = position index for
-// each id in a single batch, so the whole list gets explicit, stable ordering.
+// each id, so the whole list gets explicit, stable ordering.
 export const reorderCelebrations = async (
   orderedIds: string[]
 ): Promise<void> => {
   try {
-    const batch = writeBatch(db);
-    const now = Timestamp.fromDate(new Date());
-    orderedIds.forEach((id, index) => {
-      batch.update(doc(db, COLLECTION_NAME, id), {
-        order: index,
-        updatedAt: now,
-      });
-    });
-    await batch.commit();
+    // supabase-js has no batch primitive; issue the updates in parallel.
+    const results = await Promise.all(
+      orderedIds.map((id, index) =>
+        supabase.from(TABLE_NAME).update({ order: index }).eq("id", id)
+      )
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
   } catch (error) {
     console.error("Error reordering celebrations:", error);
     throw new Error("Failed to reorder celebrations");

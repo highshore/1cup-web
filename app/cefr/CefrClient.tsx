@@ -1,8 +1,7 @@
 "use client";
 import React from "react";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../lib/firebase/firebase";
+import { supabase, invokeFunction } from "../lib/supabase/client";
 import styled from "styled-components";
 
 type CefrLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -214,31 +213,12 @@ export default function CefrClient() {
 		setTotal(0);
 		setBatchId(null);
 		try {
-			const resp = await fetch("https://startcefrbatch-cds6z3hrga-du.a.run.app", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: payloadJson
-			});
-			if (!resp.ok) {
-				let message = "Failed to create batch";
-				if (resp.status === 413) {
-					message = "Text is too large. Please reduce the text size and try again.";
-				} else if (resp.status === 500) {
-					message = "Server error. Please try again later.";
-				}
-				try {
-					const j = await resp.json();
-					if (j?.error) message = String(j.error);
-				} catch {}
-				setError(message);
-				return;
-			}
-			const data = await resp.json();
-			setBatchId(data.batchId || data.runId || null);
+			const data = await invokeFunction<any>("cefr", { action: "start", words: entries });
+			setBatchId(data?.batchId || data?.runId || null);
 			setStatus("in_progress");
-		} catch (e) {
+		} catch (e: any) {
 			console.error(e);
-			setError("Unexpected error while creating batch");
+			setError(e?.message ? String(e.message) : "Unexpected error while creating batch");
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -254,12 +234,22 @@ export default function CefrClient() {
 		handleSubmit();
 	}, [handleSubmit, isSubmitting]);
 
-	// Subscribe to Firestore run status when batchId exists
+	// Subscribe to run status when batchId exists (Supabase Realtime + initial fetch)
 	React.useEffect(() => {
 		if (!batchId) return;
-		const unsub = onSnapshot(doc(db, "cefr_runs", batchId), (snap) => {
-			const data: any = snap.data();
-			if (!data) return;
+
+		// Map a snake_case cefr_runs row into the camelCase shape this handler expects.
+		const applyRow = (row: any) => {
+			if (!row) return;
+			const data: any = {
+				status: row.status,
+				total: row.total,
+				counts: row.counts,
+				uniqueCounts: row.unique_counts,
+				wordsByLevel: row.words_by_level,
+				existing: row.existing,
+				acronyms: row.acronyms,
+			};
 			const s: string = data.status || "in_progress";
 			setStatus(s);
 			if (data.counts && data.wordsByLevel) {
@@ -319,8 +309,36 @@ export default function CefrClient() {
 				}
 			}
 			setLabeledWords(flat.sort((a,b) => (a.level > b.level ? 1 : a.level < b.level ? -1 : 0)));
-		});
-		return () => { unsub(); };
+		};
+
+		let cancelled = false;
+
+		// Initial fetch so current state is reflected immediately.
+		supabase
+			.from("cefr_runs")
+			.select("*")
+			.eq("id", batchId)
+			.maybeSingle()
+			.then(({ data }) => {
+				if (!cancelled) applyRow(data);
+			});
+
+		// Live updates via Postgres Realtime on this run row.
+		const channel = supabase
+			.channel(`cefr_runs:${batchId}`)
+			.on(
+				"postgres_changes",
+				{ event: "*", schema: "public", table: "cefr_runs", filter: `id=eq.${batchId}` },
+				(payload) => {
+					if (!cancelled) applyRow(payload.new);
+				}
+			)
+			.subscribe();
+
+		return () => {
+			cancelled = true;
+			supabase.removeChannel(channel);
+		};
 	}, [batchId]);
 
 	const maxCount = Math.max(1, ...levels.map(l => counts[l]));

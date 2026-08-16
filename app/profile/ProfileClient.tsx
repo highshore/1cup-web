@@ -1,20 +1,12 @@
 "use client";
 
 import { styled } from "styled-components";
-import { auth, storage, db, functions } from "../lib/firebase/firebase";
+import { supabase, invokeFunction } from "../lib/supabase/client";
+import { useAuth } from "../lib/contexts/auth_context";
 import { useState, useEffect } from "react";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-  deleteObject,
-} from "firebase/storage";
-import { updateProfile, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
-import { httpsCallable } from "firebase/functions";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { saveFeedback } from "../lib/services/feedback_service";
@@ -2423,7 +2415,7 @@ const NbCancelButton = styled.button`
 
 export default function ProfileClient() {
   const { locale, t } = useI18n();
-  const user = auth.currentUser;
+  const { currentUser: user, isLoading: authLoading } = useAuth();
   const [avatar, setAvatar] = useState(user?.photoURL || "");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -2443,6 +2435,7 @@ export default function ProfileClient() {
     school: "",
     nationality: "",
     interests: "",
+    profile_public: true,
   });
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCancellationOptions, setShowCancellationOptions] = useState(false);
@@ -2469,6 +2462,11 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const fetchUserData = async () => {
+      // AuthProvider starts with currentUser = null and fills it in after reading the
+      // session, so on a cold load (a direct URL, a refresh, or the OAuth callback's
+      // server redirect) this effect runs before the session is known. Redirecting on
+      // that first pass bounced signed-in people straight back to /auth.
+      if (authLoading) return;
       if (!user) {
         router.push("/auth");
         return;
@@ -2496,27 +2494,35 @@ export default function ProfileClient() {
           setAvatar("");
         }
 
-        const userDocRef = doc(db, `users/${user.uid}`);
-        const userDoc = await getDoc(userDocRef);
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("uid", user.uid)
+          .maybeSingle();
 
-        if (userDoc.exists()) {
-          const data = userDoc.data();
+        if (data) {
           const userDataObj = {
-            last_received: data.last_received?.toDate() || new Date(0),
+            last_received: data.last_received
+              ? new Date(data.last_received)
+              : new Date(0),
             received_articles: data.received_articles || [],
             saved_words: data.saved_words || [],
-            createdAt: data.createdAt?.toDate() || new Date(),
-            hasActiveSubscription: data.hasActiveSubscription || false,
-            subscriptionStartDate: data.subscriptionStartDate?.toDate(),
-            subscriptionEndDate: data.subscriptionEndDate?.toDate(),
-            billingKey: data.billingKey,
-            paymentMethod: data.paymentMethod,
-            billingCancelled: data.billingCancelled || false,
+            createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+            hasActiveSubscription: data.has_active_subscription || false,
+            subscriptionStartDate: data.subscription_start_date
+              ? new Date(data.subscription_start_date)
+              : undefined,
+            subscriptionEndDate: data.subscription_end_date
+              ? new Date(data.subscription_end_date)
+              : undefined,
+            billingKey: data.billing_key,
+            paymentMethod: data.payment_method,
+            billingCancelled: data.billing_cancelled || false,
             account_status: data.account_status,
             gdg_member: data.gdg_member || false,
-            referralCode: data.referralCode,
-            referralGeneratedAt: data.referralGeneratedAt?.toDate
-              ? data.referralGeneratedAt.toDate()
+            referralCode: data.referral_code,
+            referralGeneratedAt: data.referral_generated_at
+              ? new Date(data.referral_generated_at)
               : undefined,
             bio: data.bio || "",
             work: data.work || "",
@@ -2524,7 +2530,7 @@ export default function ProfileClient() {
             location: data.location || "",
             nationality: data.nationality || "",
             interests: data.interests || "",
-            profilePublic: data.profilePublic !== false,
+            profilePublic: data.profile_public !== false,
           };
 
           setUserData(userDataObj);
@@ -2534,6 +2540,7 @@ export default function ProfileClient() {
             school: userDataObj.school || "",
             nationality: userDataObj.nationality || "",
             interests: userDataObj.interests || "",
+            profile_public: userDataObj.profilePublic !== false,
           });
 
           // Set subscription data
@@ -2583,13 +2590,16 @@ export default function ProfileClient() {
       try {
         const articlesData = [];
         for (const id of articleIds) {
-          const articleDoc = await getDoc(doc(db, "articles", id));
-          if (articleDoc.exists()) {
-            const data = articleDoc.data();
+          const { data } = await supabase
+            .from("articles")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle();
+          if (data) {
             articlesData.push({
               id: id,
               title: data.title?.english || data.title?.korean || "Untitled",
-              date: data.timestamp?.toDate() || null,
+              date: data.timestamp ? new Date(data.timestamp) : null,
             });
           } else {
             articlesData.push({ id: id });
@@ -2602,7 +2612,7 @@ export default function ProfileClient() {
     };
 
     fetchUserData();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { files } = e.target;
@@ -2626,19 +2636,23 @@ export default function ProfileClient() {
         setSuccessMessage(null);
         setIsLoading(true);
 
-        // Create storage reference
-        const locationRef = ref(storage, `avatars/user_${user.uid}`);
-
-        // Upload the file
-        const result = await uploadBytes(locationRef, file);
-        const avatarUrl = await getDownloadURL(result.ref);
+        // Upload the file to Supabase Storage
+        const avatarPath = `${user.uid}/avatar.png`;
+        await supabase.storage
+          .from("avatars")
+          .upload(avatarPath, file, { upsert: true });
+        const {
+          data: { publicUrl: avatarUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(avatarPath);
 
         console.log("Profile - Uploaded new avatar:", avatarUrl);
 
-        // Update the profile
-        await updateProfile(user, {
-          photoURL: avatarUrl,
-        });
+        // Update the profile (public.users.photo_url) and auth metadata
+        await supabase
+          .from("users")
+          .update({ photo_url: avatarUrl, updated_at: new Date().toISOString() })
+          .eq("uid", user.uid);
+        await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
 
         console.log("Profile - Updated user profile with new photoURL");
 
@@ -2670,15 +2684,17 @@ export default function ProfileClient() {
       setIsLoading(true);
 
       // Delete from storage
-      const locationRef = ref(storage, `avatars/user_${user.uid}`);
-      await deleteObject(locationRef);
+      const avatarPath = `${user.uid}/avatar.png`;
+      await supabase.storage.from("avatars").remove([avatarPath]);
 
       console.log("Profile - Deleted avatar from storage");
 
       // Update the profile to remove photoURL
-      await updateProfile(user, {
-        photoURL: "",
-      });
+      await supabase
+        .from("users")
+        .update({ photo_url: "", updated_at: new Date().toISOString() })
+        .eq("uid", user.uid);
+      await supabase.auth.updateUser({ data: { avatar_url: "" } });
 
       console.log("Profile - Updated user profile to remove photoURL");
 
@@ -2693,9 +2709,11 @@ export default function ProfileClient() {
       ) {
         // If the file doesn't exist in storage, still update the profile
         try {
-          await updateProfile(user, {
-            photoURL: "",
-          });
+          await supabase
+            .from("users")
+            .update({ photo_url: "", updated_at: new Date().toISOString() })
+            .eq("uid", user.uid);
+          await supabase.auth.updateUser({ data: { avatar_url: "" } });
           setAvatar("");
           setSuccessMessage("Profile picture removed successfully!");
         } catch (updateError) {
@@ -2715,7 +2733,7 @@ export default function ProfileClient() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       console.log("User signed out successfully");
       router.push("/");
     } catch (error) {
@@ -2738,17 +2756,15 @@ export default function ProfileClient() {
     try {
       setIsLoading(true);
 
-      // Update Firebase Auth profile
-      await updateProfile(user, {
-        displayName: displayName,
-      });
-
-      // Update Firestore users collection
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        displayName: displayName,
-        updatedAt: new Date(),
-      });
+      // Update auth metadata + public.users
+      await supabase.auth.updateUser({ data: { name: displayName } });
+      await supabase
+        .from("users")
+        .update({
+          display_name: displayName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("uid", user.uid);
 
       setIsEditingName(false);
       setSuccessMessage("유저명이 성공적으로 변경되었습니다!");
@@ -2765,13 +2781,18 @@ export default function ProfileClient() {
 
     try {
       setIsLoading(true);
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        ...profileForm,
-        profilePublic: true,
-        updatedAt: new Date(),
-      });
-      setUserData((prev) => (prev ? { ...prev, ...profileForm, profilePublic: true } : prev));
+      // nationality has no column in public.users; keep it in local state only.
+      const { nationality, ...profileFormDb } = profileForm;
+      await supabase
+        .from("users")
+        .update({
+          ...profileFormDb,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("uid", user.uid);
+      setUserData((prev) =>
+        prev ? { ...prev, ...profileForm, profilePublic: profileForm.profile_public } : prev
+      );
       setIsEditingDetails(false);
       setSuccessMessage("프로필 정보가 업데이트되었습니다.");
     } catch (error) {
@@ -2792,9 +2813,10 @@ export default function ProfileClient() {
     if (!user) return;
     try {
       setReferralGenerating(true);
-      const generateReferralCodeFn = httpsCallable(functions, "generateReferralCode");
-      const result = await generateReferralCodeFn({});
-      const code = (result.data as any)?.referralCode;
+      const result = await invokeFunction("payment", {
+        action: "generate-referral",
+      });
+      const code = (result as any)?.referralCode;
       if (code) {
         setUserData((prev) =>
           prev ? { ...prev, referralCode: code, referralGeneratedAt: new Date() } : prev
@@ -2815,6 +2837,20 @@ export default function ProfileClient() {
     if (!userData?.referralCode) return;
     const shareText = `영어 한잔 추천 코드: ${userData.referralCode}\nhttps://1cupenglish.com/payment?ref=${userData.referralCode}`;
     const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+
+    // Copy BEFORE opening the Kakao dialog, for two reasons. The dialog can fail after
+    // it opens — an unregistered domain, a popup blocker, no KakaoTalk installed — and
+    // sendDefault gives us no callback for that, so the catch below never fires and the
+    // user would be left with a broken popup and a "shared!" message. Copying first also
+    // keeps the clipboard write inside the click gesture, which awaiting the SDK load
+    // would otherwise break.
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(shareText);
+      copied = true;
+    } catch (e) {
+      console.error("Clipboard copy failed", e);
+    }
 
     // Try Kakao share first if key exists
     if (kakaoKey) {
@@ -2849,7 +2885,11 @@ export default function ProfileClient() {
               },
             ],
           });
-          setSuccessMessage("카카오톡 공유를 시도했습니다.");
+          setSuccessMessage(
+            copied
+              ? "카카오톡 공유 창을 열었습니다. 창이 뜨지 않거나 실패하면, 복사된 추천 코드를 붙여넣어 공유해주세요."
+              : "카카오톡 공유 창을 열었습니다.",
+          );
           return;
         }
       } catch (e) {
@@ -2857,11 +2897,9 @@ export default function ProfileClient() {
       }
     }
 
-    // Fallback: copy to clipboard
-    try {
-      await navigator.clipboard.writeText(shareText);
+    if (copied) {
       setSuccessMessage("추천 코드가 복사되었습니다. 카카오톡에 붙여넣어 공유해주세요.");
-    } catch (e) {
+    } else {
       setError("클립보드 복사에 실패했습니다. 직접 복사하여 공유해주세요.");
     }
   };
@@ -2890,14 +2928,14 @@ export default function ProfileClient() {
       );
 
       // Call the stop next billing function
-      const stopNextBilling = httpsCallable(functions, "stopNextBilling");
-      const result = await stopNextBilling({
+      const result = await invokeFunction("payment", {
+        action: "stop",
         reason: "User requested stop billing",
       });
 
-      console.log("Stop billing result:", result.data);
+      console.log("Stop billing result:", result);
 
-      if (result.data && (result.data as any).success) {
+      if (result && (result as any).success) {
         // Update local state - subscription is still active but billing is cancelled
         setSubscriptionData((prev) => ({
           ...prev,
@@ -2906,7 +2944,7 @@ export default function ProfileClient() {
           nextBillingDate: null, // No next billing date since billing is cancelled
         }));
 
-        setSuccessMessage((result.data as any).message);
+        setSuccessMessage((result as any).message);
         setShowCancellationSurvey(false);
 
         // Reset survey data
@@ -2914,7 +2952,7 @@ export default function ProfileClient() {
         setCancellationOtherReason("");
       } else {
         throw new Error(
-          (result.data as any)?.message || "결제 중단에 실패했습니다."
+          (result as any)?.message || "결제 중단에 실패했습니다."
         );
       }
     } catch (error) {
@@ -2939,12 +2977,13 @@ export default function ProfileClient() {
     setError("");
 
     try {
-      // Update user data in Firestore to reactivate billing
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        billingCancelled: false, // Reactivate billing
-        reactivatedAt: new Date(),
-      });
+      // Update user data to reactivate billing
+      await supabase
+        .from("users")
+        .update({
+          billing_cancelled: false, // Reactivate billing
+        })
+        .eq("uid", user.uid);
 
       // Update local state and recalculate next billing date
       setSubscriptionData((prev) => {
@@ -2998,15 +3037,15 @@ export default function ProfileClient() {
       await saveFeedback("refund", refundSurveyReasons, refundOtherReason);
 
       // Call the cancel subscription function (original refund logic)
-      const cancelSubscription = httpsCallable(functions, "cancelSubscription");
-      const result = await cancelSubscription({
+      const result = await invokeFunction("payment", {
+        action: "cancel",
         userId: user.uid,
         billingKey: subscriptionData.billingKey,
       });
 
-      console.log("Subscription cancellation result:", result.data);
+      console.log("Subscription cancellation result:", result);
 
-      if (result.data && (result.data as any).success) {
+      if (result && (result as any).success) {
         // Update local state
         setSubscriptionData((prev) => ({
           ...prev,
@@ -3014,12 +3053,14 @@ export default function ProfileClient() {
           cancelledDate: new Date(),
         }));
 
-        // Update user data in Firestore
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, {
-          hasActiveSubscription: false,
-          subscriptionEndDate: new Date(),
-        });
+        // Update user data
+        await supabase
+          .from("users")
+          .update({
+            has_active_subscription: false,
+            subscription_end_date: new Date().toISOString(),
+          })
+          .eq("uid", user.uid);
 
         setSuccessMessage("구독이 성공적으로 해지되고 환불 처리되었습니다.");
         setShowRefundSurvey(false);
@@ -3029,7 +3070,7 @@ export default function ProfileClient() {
         setRefundOtherReason("");
       } else {
         throw new Error(
-          (result.data as any)?.message || "구독 해지에 실패했습니다."
+          (result as any)?.message || "구독 해지에 실패했습니다."
         );
       }
     } catch (error) {
@@ -3387,6 +3428,28 @@ export default function ProfileClient() {
                   }
                   placeholder={t.profile.interestsPlaceholder}
                 />
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    margin: "0.75rem 0",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={profileForm.profile_public}
+                    onChange={(e) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        profile_public: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>{t.profile.makePublic}</span>
+                </label>
                 <NbEditActions>
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
                     {t.profile.save}
@@ -3400,6 +3463,7 @@ export default function ProfileClient() {
                         school: userData?.school || "",
                         nationality: userData?.nationality || "",
                         interests: userData?.interests || "",
+                        profile_public: userData?.profilePublic !== false,
                       });
                       setIsEditingDetails(false);
                     }}

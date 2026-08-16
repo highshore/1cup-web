@@ -9,19 +9,7 @@ import React, {
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 import styled from "styled-components";
-import { db } from "../../lib/firebase/firebase";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
-  updateDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-} from "firebase/firestore";
+import { supabase, invokeFunction } from "../../lib/supabase/client";
 import { useSoniox } from "../hooks/useSoniox";
 import { colors } from "../../lib/constants/colors";
 import { UserAvatar } from "../../lib/features/meetup/components/user_avatar";
@@ -31,8 +19,6 @@ import {
 } from "../../lib/features/meetup/services/user_service";
 import { useTranscriptCopilot } from "../hooks/useTranscriptCopilot";
 import CopilotTranscriptSnippet from "../components/CopilotTranscriptSnippet";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../../lib/firebase/firebase";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
@@ -1912,24 +1898,22 @@ export default function TranscriptDetailClient() {
     uids: string[]
   ): Promise<UserWithDetails[]> => {
     try {
-      const getUserDisplayNames = httpsCallable(
-        functions,
-        "getUserDisplayNames"
-      );
-      const response = await getUserDisplayNames({ userIds: uids });
-      const result = response.data as {
+      // Use the service-role messaging function (RLS would hide other users' rows
+      // from a non-admin leader). Returns { displayNames, phoneNumbers } keyed by uid.
+      const result = await invokeFunction<{
         displayNames: Record<string, string>;
         phoneNumbers: Record<string, string>;
-      };
+      }>("messaging", { action: "user-names", userIds: uids });
 
-      return uids.map((uid) => ({
-        uid,
-        displayName: result.displayNames[uid] || `User ${uid.substring(0, 6)}`,
-        phoneNumber: result.phoneNumbers[uid] || "",
-        phoneLast4: result.phoneNumbers[uid]
-          ? result.phoneNumbers[uid].replace(/\D/g, "").slice(-4)
-          : "",
-      }));
+      return uids.map((uid) => {
+        const phone = result.phoneNumbers[uid] || "";
+        return {
+          uid,
+          displayName: result.displayNames[uid] || `User ${uid.substring(0, 6)}`,
+          phoneNumber: phone,
+          phoneLast4: phone ? phone.replace(/\D/g, "").slice(-4) : "",
+        };
+      });
     } catch (error) {
       console.error("Error fetching user details:", error);
       return uids.map((uid) => ({
@@ -2720,7 +2704,7 @@ export default function TranscriptDetailClient() {
     }
   }, [filteredFinalTranscript, calculateSpeakingMetrics]);
 
-  // OpenAI analysis using Firebase Function
+  // OpenAI analysis via the `speaking-reports` Supabase Edge Function
   const analyzeWithOpenAI = async (text: string, metrics: any) => {
     const prompt = `Analyze this English speaking sample for a Korean learner. Provide scores (0-100) and levels for:
 
@@ -2754,26 +2738,16 @@ Respond in JSON format:
 }`;
 
     try {
-      const { httpsCallable } = await import("firebase/functions");
-      const { functions } = await import("../../lib/firebase/firebase");
-
-      const generateSpeakingReports = httpsCallable(
-        functions,
-        "generateSpeakingReports"
-      );
-
-      const result = await generateSpeakingReports({
-        analysisType: "simple",
-        prompt,
-        model: "gpt-4o-mini",
-      });
-
-      const data = result.data as {
+      const data = await invokeFunction<{
         success: boolean;
         analysis: any;
         model: string;
         usage: any;
-      };
+      }>("speaking-reports", {
+        analysisType: "simple",
+        prompt,
+        model: "gpt-4o-mini",
+      });
 
       if (!data.success) {
         throw new Error("Analysis failed");
@@ -2782,7 +2756,7 @@ Respond in JSON format:
       return data.analysis;
     } catch (error) {
       throw new Error(
-        `Firebase Function error: ${
+        `Speaking reports function error: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
@@ -2995,28 +2969,31 @@ Respond in JSON format:
           setRecordedAudioUrl(null);
         }
 
-        // Clear the transcript data in Firestore
+        // Clear the transcript data in the database
         if (transcriptId) {
           try {
-            const transcriptRef = doc(db, "transcripts", transcriptId);
-            await updateDoc(transcriptRef, {
-              transcriptContent: [],
-              transcriptMetadata: {
-                totalWords: 0,
-                uniqueSpeakers: [],
-                speakerCount: 0,
-                latestTimestamp: 0,
-                lastRecordingSession: new Date(),
-                totalRecordingDuration: 0,
-                totalPausedDuration: 0,
-                pausePeriods: [],
-              },
-            });
+            const { error } = await supabase
+              .from("transcripts")
+              .update({
+                transcript_content: [],
+                transcript_metadata: {
+                  totalWords: 0,
+                  uniqueSpeakers: [],
+                  speakerCount: 0,
+                  latestTimestamp: 0,
+                  lastRecordingSession: new Date().toISOString(),
+                  totalRecordingDuration: 0,
+                  totalPausedDuration: 0,
+                  pausePeriods: [],
+                },
+              })
+              .eq("id", transcriptId);
+            if (error) throw error;
             console.log(
-              "[Recording] Cleared existing transcript data from Firestore"
+              "[Recording] Cleared existing transcript data from database"
             );
           } catch (error) {
-            console.error("[Recording] Error clearing Firestore data:", error);
+            console.error("[Recording] Error clearing transcript data:", error);
           }
         }
       }
@@ -3269,11 +3246,12 @@ Respond in JSON format:
 
       setSpeakerMappings(newMappings);
 
-      // Save to Firestore
-      const transcriptRef = doc(db, "transcripts", transcriptId);
-      await updateDoc(transcriptRef, {
-        speakerMappings: newMappings,
-      });
+      // Save to the database
+      const { error } = await supabase
+        .from("transcripts")
+        .update({ speaker_mappings: newMappings })
+        .eq("id", transcriptId);
+      if (error) throw error;
 
       setShowSpeakerModal(false);
       setSelectedSpeaker(null);
@@ -3283,13 +3261,11 @@ Respond in JSON format:
     }
   };
 
-  // Auto-save transcript to Firestore with comprehensive data
+  // Auto-save transcript to the database with comprehensive data
   const saveTranscriptToFirestore = useCallback(async () => {
     if (!transcriptId || !combinedFinalTranscript) return;
 
     try {
-      const transcriptRef = doc(db, "transcripts", transcriptId);
-
       // Use filtered transcript data (excluding paused periods)
       const transcriptData = filterPausedResults(combinedFinalTranscript);
       const totalWords = transcriptData.reduce((count, result) => {
@@ -3313,20 +3289,24 @@ Respond in JSON format:
             )
           : 0;
 
-      await updateDoc(transcriptRef, {
-        transcriptContent: transcriptData,
-        lastUpdated: new Date(),
-        transcriptMetadata: {
-          totalWords,
-          uniqueSpeakers: Array.from(speakers),
-          speakerCount: speakers.size,
-          latestTimestamp,
-          lastRecordingSession: new Date(),
-          totalRecordingDuration,
-          totalPausedDuration,
-          pausePeriods: pausePeriodsRef.current,
-        },
-      });
+      const { error } = await supabase
+        .from("transcripts")
+        .update({
+          transcript_content: transcriptData,
+          last_updated: new Date().toISOString(),
+          transcript_metadata: {
+            totalWords,
+            uniqueSpeakers: Array.from(speakers),
+            speakerCount: speakers.size,
+            latestTimestamp,
+            lastRecordingSession: new Date().toISOString(),
+            totalRecordingDuration,
+            totalPausedDuration,
+            pausePeriods: pausePeriodsRef.current,
+          },
+        })
+        .eq("id", transcriptId);
+      if (error) throw error;
 
       // Update our local saved data to match what was just saved
       setSavedTranscriptData(transcriptData);
@@ -3351,10 +3331,11 @@ Respond in JSON format:
 
     if (transcriptId) {
       try {
-        const transcriptRef = doc(db, "transcripts", transcriptId);
-        await updateDoc(transcriptRef, {
-          hideUnidentifiedSpeakers: newValue,
-        });
+        const { error } = await supabase
+          .from("transcripts")
+          .update({ hide_unidentified_speakers: newValue })
+          .eq("id", transcriptId);
+        if (error) throw error;
       } catch (error) {
         console.error("Error saving hide preference:", error);
       }
@@ -3382,23 +3363,10 @@ Respond in JSON format:
     setShowCreateReportDialog(false);
 
     try {
-      // Capture current eventId before local variable shadowing below
-      const currentEventId = transcriptData?.eventId;
-      const generateSpeakingReports = httpsCallable(
-        functions,
-        "generateSpeakingReports"
-      );
-
-      // Use saved Firestore transcript data (source of truth)
+      // Use saved transcript data (source of truth)
       const filteredTranscriptData = filterPausedResults(savedTranscriptData);
 
-      const result = await generateSpeakingReports({
-        transcriptId,
-        speakerMappings,
-        transcriptContent: filteredTranscriptData,
-      });
-
-      const data = result.data as {
+      const data = await invokeFunction<{
         success: boolean;
         reportCount: number;
         reports: Array<{
@@ -3406,7 +3374,11 @@ Respond in JSON format:
           overallScore: number;
           wordCount: number;
         }>;
-      };
+      }>("speaking-reports", {
+        transcriptId,
+        speakerMappings,
+        transcriptContent: filteredTranscriptData,
+      });
 
       if (data.success) {
         const message = `Successfully generated ${data.reportCount} speaking analysis reports!\n\nView the reports in the Speaking Analysis Reports section below, or visit:\n${window.location.href}`;
@@ -3415,18 +3387,8 @@ Respond in JSON format:
         // Load the generated reports
         await loadReports();
 
-        // Also aggregate reports across all transcripts for this meetup event
-        if (currentEventId) {
-          try {
-            const aggregateMeetupReports = httpsCallable(
-              functions,
-              "aggregateMeetupReports"
-            );
-            await aggregateMeetupReports({ eventId: currentEventId });
-          } catch (aggErr) {
-            console.error("Error aggregating meetup reports:", aggErr);
-          }
-        }
+        // Per-event rollups are now live SQL views (meetup_report_users /
+        // meetup_reports) — no aggregation call needed.
       } else {
         alert("Failed to generate reports. Please try again.");
       }
@@ -3446,22 +3408,37 @@ Respond in JSON format:
     if (!transcriptId) return;
 
     try {
-      // Query without orderBy to avoid composite index surprises, then sort client-side
-      const reportsQuery = query(
-        collection(db, "reports"),
-        where("transcriptId", "==", transcriptId)
-      );
+      const { data: rows, error } = await supabase
+        .from("speaking_reports")
+        .select("*")
+        .eq("transcript_id", transcriptId);
+      if (error) throw error;
 
-      const querySnapshot = await getDocs(reportsQuery);
       const dedupMap = new Map<string, UserSpeakingReport>();
 
-      querySnapshot.forEach((docSnapshot) => {
-        const data = docSnapshot.data();
+      (rows || []).forEach((row) => {
+        const rawMetadata = row.metadata || {};
+        const createdAt = row.created_at
+          ? new Date(row.created_at)
+          : rawMetadata.createdAt
+          ? new Date(rawMetadata.createdAt)
+          : new Date(0);
+
         const report = {
-          ...data,
+          userId: row.user_id,
+          transcriptId: row.transcript_id,
+          speakerId: row.speaker_id,
+          userScript: row.user_script,
+          analysis: row.analysis,
           metadata: {
-            ...data.metadata,
-            createdAt: data.metadata.createdAt.toDate(),
+            ...rawMetadata,
+            // Prefer promoted columns; fall back to the raw metadata map.
+            wordCount: row.word_count ?? rawMetadata.wordCount,
+            speakingDuration: row.speaking_duration_sec ?? rawMetadata.speakingDuration,
+            averageWordsPerMinute: row.avg_wpm ?? rawMetadata.averageWordsPerMinute,
+            articleId: row.article_id ?? rawMetadata.articleId,
+            sessionNumber: row.session_number ?? rawMetadata.sessionNumber,
+            createdAt,
           },
         } as UserSpeakingReport;
 
@@ -3503,53 +3480,53 @@ Respond in JSON format:
       return;
     }
 
-    const transcriptRef = doc(db, "transcripts", transcriptId);
+    let cancelled = false;
 
-    const unsubscribe = onSnapshot(
-      transcriptRef,
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
+    // Map a snake_case transcripts row into the camelCase shape the UI uses.
+    const processTranscriptRow = (row: any) => {
+      if (cancelled) return;
+      if (row) {
+          const data = row;
           const transcriptInfo = {
-            id: docSnapshot.id,
-            eventId: data.eventId,
-            sessionNumber: data.sessionNumber,
-            articleId: data.articleId,
-            leaderUids: data.leaderUids || [],
-            participantUids: data.participantUids || [],
-            createdAt: data.createdAt?.toDate() || new Date(),
-            createdBy: data.createdBy,
-            speakerMappings: data.speakerMappings || {},
-            transcriptContent: data.transcriptContent || [],
-            hideUnidentifiedSpeakers: data.hideUnidentifiedSpeakers || false,
+            id: row.id,
+            eventId: data.event_id,
+            sessionNumber: data.session_number,
+            articleId: data.article_id,
+            leaderUids: data.leader_uids || [],
+            participantUids: data.participant_uids || [],
+            createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+            createdBy: data.created_by,
+            speakerMappings: data.speaker_mappings || {},
+            transcriptContent: data.transcript_content || [],
+            hideUnidentifiedSpeakers: data.hide_unidentified_speakers || false,
           };
 
           setTranscriptData(transcriptInfo);
-          setSpeakerMappings(data.speakerMappings || {});
-          setHideUnidentifiedSpeakers(data.hideUnidentifiedSpeakers || false);
-          setReportsGenerated(data.reportsGenerated || false);
+          setSpeakerMappings(data.speaker_mappings || {});
+          setHideUnidentifiedSpeakers(data.hide_unidentified_speakers || false);
+          setReportsGenerated(data.reports_generated || false);
 
           // Load saved transcript data - this is the source of truth
           if (
-            data.transcriptContent &&
-            Array.isArray(data.transcriptContent) &&
-            data.transcriptContent.length > 0
+            data.transcript_content &&
+            Array.isArray(data.transcript_content) &&
+            data.transcript_content.length > 0
           ) {
             console.log(
               "[Transcript Loading] Restoring",
-              data.transcriptContent.length,
+              data.transcript_content.length,
               "saved transcript items"
             );
-            setSavedTranscriptData(data.transcriptContent);
-            setSavedSonioxTranscript(data.transcriptContent);
+            setSavedTranscriptData(data.transcript_content);
+            setSavedSonioxTranscript(data.transcript_content);
           } else {
             setSavedTranscriptData([]);
           }
 
           // Load saved recording duration
-          if (data.transcriptMetadata?.totalRecordingDuration) {
+          if (data.transcript_metadata?.totalRecordingDuration) {
             setTotalRecordingDuration(
-              data.transcriptMetadata.totalRecordingDuration
+              data.transcript_metadata.totalRecordingDuration
             );
           }
 
@@ -3559,22 +3536,20 @@ Respond in JSON format:
               let allKeywords: string[] = [];
 
               // Get keywords from transcript custom keywords
-              if (data.customKeywords && Array.isArray(data.customKeywords)) {
-                allKeywords = [...data.customKeywords];
+              if (data.custom_keywords && Array.isArray(data.custom_keywords)) {
+                allKeywords = [...data.custom_keywords];
               }
 
               // Fetch article data and pronunciation keywords
               if (transcriptInfo.articleId) {
-                const articleRef = doc(
-                  db,
-                  "articles",
-                  transcriptInfo.articleId
-                );
-                const articleSnap = await getDoc(articleRef);
+                const { data: articleData } = await supabase
+                  .from("articles")
+                  .select("*")
+                  .eq("id", transcriptInfo.articleId)
+                  .maybeSingle();
 
-                if (articleSnap.exists()) {
-                  const articleData = articleSnap.data() as ArticleData;
-                  setArticleData(articleData);
+                if (articleData) {
+                  setArticleData(articleData as ArticleData);
 
                   // Add pronunciation keywords from article
                   if (
@@ -3654,15 +3629,50 @@ Respond in JSON format:
           setError("Transcript not found");
         }
         setLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching transcript:", err);
+    };
+
+    // Initial load + realtime subscription (replaces Firestore onSnapshot).
+    const loadTranscript = async () => {
+      const { data: row, error: fetchError } = await supabase
+        .from("transcripts")
+        .select("*")
+        .eq("id", transcriptId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (fetchError) {
+        console.error("Error fetching transcript:", fetchError);
         setError("Failed to load transcript");
         setLoading(false);
+        return;
       }
-    );
 
-    return () => unsubscribe();
+      processTranscriptRow(row);
+    };
+
+    loadTranscript();
+
+    const channel = supabase
+      .channel(`transcript-${transcriptId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transcripts",
+          filter: `id=eq.${transcriptId}`,
+        },
+        (payload) => {
+          processTranscriptRow(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [transcriptId]);
 
   // Load reports when transcript data is available
@@ -3959,11 +3969,12 @@ Respond in JSON format:
         updatedKeywords.length
       );
 
-      // Save to Firestore
-      const transcriptRef = doc(db, "transcripts", transcriptId);
-      await updateDoc(transcriptRef, {
-        customKeywords: updatedKeywords,
-      });
+      // Save to the database
+      const { error } = await supabase
+        .from("transcripts")
+        .update({ custom_keywords: updatedKeywords })
+        .eq("id", transcriptId);
+      if (error) throw error;
     } catch (error) {
       console.error("Error adding keyword:", error);
       alert("Failed to add keyword. Please try again.");
@@ -3980,11 +3991,12 @@ Respond in JSON format:
       setKeywords(updatedKeywords);
       keywordsRef.current = updatedKeywords;
 
-      // Save to Firestore
-      const transcriptRef = doc(db, "transcripts", transcriptId);
-      await updateDoc(transcriptRef, {
-        customKeywords: updatedKeywords,
-      });
+      // Save to the database
+      const { error } = await supabase
+        .from("transcripts")
+        .update({ custom_keywords: updatedKeywords })
+        .eq("id", transcriptId);
+      if (error) throw error;
     } catch (error) {
       console.error("Error removing keyword:", error);
       alert("Failed to remove keyword. Please try again.");

@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import styled, { keyframes, css } from "styled-components";
 import dynamic from "next/dynamic";
 import { MeetupEvent } from "../lib/features/meetup/types/meetup_types";
-import { fetchMeetupEvents } from "../lib/features/meetup/services/meetup_service";
+import {
+  fetchMeetupEvents,
+  MeetupPageCursor,
+} from "../lib/features/meetup/services/meetup_service";
 import {
   isEventLocked,
   formatEventTitleWithCountdown,
 } from "../lib/features/meetup/utils/meetup_helpers";
 import { UserAvatarStack } from "../lib/features/meetup/components/user_avatar";
-import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import {
   PinIcon,
   CalendarIcon,
@@ -593,8 +595,7 @@ const MeetupClient: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastDoc, setLastDoc] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [lastDoc, setLastDoc] = useState<MeetupPageCursor | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [locationFilter, setLocationFilter] = useState<

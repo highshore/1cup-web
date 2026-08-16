@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
-import { auth, db } from "../firebase/firebase";
-import { updateProfile } from "firebase/auth";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { supabase } from "../supabase/client";
 
 const Overlay = styled.div`
   position: fixed;
@@ -133,7 +131,11 @@ export default function DisplayNamePrompt({
       return;
     }
 
-    if (!auth.currentUser) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
       setError("로그인이 필요합니다.");
       return;
     }
@@ -141,18 +143,25 @@ export default function DisplayNamePrompt({
     setIsLoading(true);
     setError("");
 
-    try {
-      // Update Firebase Auth profile
-      await updateProfile(auth.currentUser, {
-        displayName: displayName.trim(),
-      });
+    const name = displayName.trim();
 
-      // Update Firestore users collection
-      const userDocRef = doc(db, "users", auth.currentUser.uid);
-      await updateDoc(userDocRef, {
-        displayName: displayName.trim(),
-        updatedAt: new Date(),
-      });
+    try {
+      // Mirror the name into Supabase Auth user metadata (replaces the old Auth profile update).
+      await supabase.auth.updateUser({ data: { name } });
+
+      // Update the users table row.
+      // Target the row by uid resolved through the auth-identity link table — a person
+      // can have more than one auth user, so auth_id alone may not match their row.
+      const { data: uid } = await supabase.rpc("current_uid");
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          display_name: name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("uid", uid);
+
+      if (updateError) throw updateError;
 
       onComplete();
     } catch (error) {
@@ -164,20 +173,7 @@ export default function DisplayNamePrompt({
   };
 
   const handleSkip = async () => {
-    if (!auth.currentUser) return;
-
-    try {
-      // Mark that user has been prompted (so we don't show again immediately)
-      const userDocRef = doc(db, "users", auth.currentUser.uid);
-      await updateDoc(userDocRef, {
-        displayNamePrompted: true,
-        displayNamePromptedAt: new Date(),
-      });
-      onComplete();
-    } catch (error) {
-      console.error("Error updating prompt status:", error);
-      onComplete(); // Still close the dialog even if we can't update the status
-    }
+    onComplete();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

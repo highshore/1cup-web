@@ -7,12 +7,21 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from "../firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "../supabase/client";
+
+// Firebase-User-compatible shape so existing components (currentUser.uid /
+// .displayName / .email / .phoneNumber / .photoURL) keep working unchanged.
+export interface AppUser {
+  uid: string;            // public.users.uid (Firebase uid for migrated users, auth uuid for new)
+  authId: string;         // auth.users.id
+  email: string | null;
+  displayName: string | null;
+  phoneNumber: string | null;
+  photoURL: string | null;
+}
 
 interface AuthContextProps {
-  currentUser: User | null;
+  currentUser: AppUser | null;
   isLoading: boolean;
   hasActiveSubscription: boolean | null;
   accountStatus: string | null;
@@ -31,67 +40,91 @@ const AuthContext = createContext<AuthContextProps>({
 
 export const useAuth = () => useContext(AuthContext);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState<
-    boolean | null
-  >(null);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [isGdgMember, setIsGdgMember] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setHasActiveSubscription(userData.hasActiveSubscription || false);
-            setAccountStatus(userData.account_status || "user");
-            setIsGdgMember(userData.gdg_member === true);
-          } else {
-            setHasActiveSubscription(false);
-            setAccountStatus("user");
-            setIsGdgMember(false);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setHasActiveSubscription(false);
-          setAccountStatus("user");
-          setIsGdgMember(false);
-        }
-      } else {
+    let active = true;
+
+    async function hydrate(authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null) {
+      if (!authUser) {
+        if (!active) return;
+        setCurrentUser(null);
         setHasActiveSubscription(null);
         setAccountStatus(null);
         setIsGdgMember(null);
+        setIsLoading(false);
+        return;
       }
+      // Resolve the public.users row for this session. Goes through
+      // current_user_row() rather than `.eq("auth_id", …)`: one person can have several
+      // auth users (phone OTP and Kakao each create their own), and only the link table
+      // maps every one of them back to the same profile.
+      const { data: rows } = await supabase.rpc("current_user_row");
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      if (!active) return;
+
+      const meta = authUser.user_metadata ?? {};
+      setCurrentUser({
+        uid: row?.uid ?? authUser.id,
+        authId: authUser.id,
+        email: row?.email ?? authUser.email ?? null,
+        displayName: row?.display_name ?? (meta.name as string) ?? (meta.full_name as string) ?? null,
+        phoneNumber: row?.phone ?? null,
+        photoURL:
+          (row?.photo_url ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? "")
+            .replace(/^http:\/\//, "https://") || null,
+      });
+      setHasActiveSubscription(row?.has_active_subscription ?? false);
+      setAccountStatus(row?.account_status ?? "user");
+      setIsGdgMember(row?.gdg_member === true);
       setIsLoading(false);
+    }
+
+    // A stored session can outlive its auth user (deleted or banned server-side). The
+    // cached JWT still looks valid to getSession(), so the app would sit there signed in
+    // with no profile, and signOut() would fail because the server rejects the token.
+    // Validate against the server once at startup and drop the local session if it is
+    // no longer real.
+    async function start() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return hydrate(null);
+
+      const { data: verified, error } = await supabase.auth.getUser();
+      if (error || !verified?.user) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        return hydrate(null);
+      }
+      return hydrate(verified.user);
+    }
+
+    start();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      hydrate(session?.user ?? null);
     });
 
-    return unsubscribe;
+    return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
 
+  // Signing out server-side fails when the token's user no longer exists, which used to
+  // leave the person stuck in a session they could not clear. Always fall back to
+  // dropping the local session.
   const logout = async () => {
-    await signOut(auth);
+    const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
   };
 
-  const value = {
-    currentUser,
-    isLoading,
-    hasActiveSubscription,
-    accountStatus,
-    isGdgMember,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ currentUser, isLoading, hasActiveSubscription, accountStatus, isGdgMember, logout }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthProvider;

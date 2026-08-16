@@ -246,9 +246,9 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
   );
 
   useEffect(() => {
-    // Always fetch from client-side Firebase if no initial topics
+    // Always fetch from the browser Supabase client if no initial topics
     if (!initialTopics || initialTopics.length === 0) {
-      console.log('Fetching topics from client-side Firebase...');
+      console.log('Fetching topics from client-side Supabase...');
       fetchHomeTopicsClient()
         .then(data => {
           console.log('Topics fetched:', data);

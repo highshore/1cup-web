@@ -1,6 +1,5 @@
-import admin from "firebase-admin";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "../../lib/firebase/firebaseAdmin";
+import { admin } from "../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,30 +28,41 @@ export async function GET(
   let isKnownTrackingCode = false;
 
   try {
-    const matches = await db
-      .collection("growth_posts")
-      .where("trackingCode", "==", normalizedCode)
+    const db = admin();
+    const { data: post } = await db
+      .from("growth_posts")
+      .select("id, destination_url, channel, run_id, metrics")
+      .eq("tracking_code", normalizedCode)
       .limit(1)
-      .get();
+      .maybeSingle();
 
-    if (!matches.empty) {
-      const post = matches.docs[0];
-      const data = post.data();
+    if (post) {
       isKnownTrackingCode = true;
-      destination = safeDestination(data.destinationUrl);
+      destination = safeDestination(post.destination_url);
       destination.searchParams.set("growth", normalizedCode);
-      destination.searchParams.set("utm_source", String(data.channel || "marketing"));
+      destination.searchParams.set(
+        "utm_source",
+        String(post.channel || "marketing")
+      );
       destination.searchParams.set("utm_medium", "community");
       destination.searchParams.set(
         "utm_campaign",
-        String(data.runId || "koreapas-cron")
+        String(post.run_id || "koreapas-cron")
       );
       destination.searchParams.set("utm_content", normalizedCode);
 
-      await post.ref.update({
-        "metrics.clicks": admin.firestore.FieldValue.increment(1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Firestore had FieldValue.increment; metrics is a jsonb blob here, so bump the
+      // click count in place. Redirects are not hot enough to need an atomic counter,
+      // and losing one click to a race is preferable to delaying the redirect.
+      const metrics = (post.metrics ?? {}) as Record<string, unknown>;
+      const clicks = Number(metrics.clicks ?? 0) + 1;
+      await db
+        .from("growth_posts")
+        .update({
+          metrics: { ...metrics, clicks },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", post.id);
     }
   } catch (error) {
     console.error("Growth tracking redirect failed:", error);

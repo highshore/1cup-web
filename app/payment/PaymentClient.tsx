@@ -3,9 +3,16 @@
 import { useState, useEffect, Suspense } from "react";
 import { styled } from "styled-components";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth, db, functions } from "../lib/firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { supabase, invokeFunction } from "../lib/supabase/client";
+import { useAuth } from "../lib/contexts/auth_context";
+
+// Payple payment-window SDK host. Live is cpay.payple.kr; set
+// NEXT_PUBLIC_PAYPLE_HOST=https://democpay.payple.kr to run against the sandbox
+// (must match PAYPLE_HOST on the payment edge function — mixing the two fails auth).
+const PAYPLE_HOST = (
+  process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr"
+).replace(/\/+$/, "");
+const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
 
 // Declare the jQuery global variable and other globals
 declare global {
@@ -13,7 +20,6 @@ declare global {
     PaypleCpayAuthCheck: (paymentParams: any) => void;
     $: any; // jQuery
     PaypleCpayCallback: any[]; // Array of callback handlers
-    functionsInstance?: typeof functions;
   }
 }
 
@@ -38,9 +44,9 @@ if (typeof window !== "undefined") {
       if (sessionInfo) {
         const parsedSession = JSON.parse(sessionInfo);
 
-        // Manually call our Firebase function to verify the payment
-        const verifyPayment = httpsCallable(functions, "verifyPaymentResult");
-        verifyPayment({
+        // Manually call our Edge Function to verify the payment
+        invokeFunction("payment", {
+          action: "verify",
           userId: parsedSession.userId,
           paymentParams: response,
           timestamp: Date.now(),
@@ -49,7 +55,7 @@ if (typeof window !== "undefined") {
             // Store the verification result
             sessionStorage.setItem(
               "paymentVerificationResult",
-              JSON.stringify(result.data)
+              JSON.stringify(result)
             );
 
             // Redirect to the result page - the user stays in the frontend app
@@ -487,11 +493,11 @@ interface UserData {
 export default function PaymentClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
 
   const BASE_PRICE = 9700;
 
@@ -528,19 +534,13 @@ export default function PaymentClient() {
 
   // Check authentication and fetch user data
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setCurrentUser(user);
-        fetchUserData(user.uid);
-      } else {
-        setLoading(false);
-        // Remove the redirect to auth - allow access without login
-        setCurrentUser(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (currentUser) {
+      fetchUserData(currentUser.uid);
+    } else {
+      setLoading(false);
+      // Allow access without login
+    }
+  }, [currentUser]);
 
   // Calculate total amount based on meetup selection
   useEffect(() => {
@@ -561,9 +561,10 @@ export default function PaymentClient() {
     setReferralMessage("");
 
     try {
-      const checkReferralCodeFn = httpsCallable(functions, "checkReferralCode");
-      const result = await checkReferralCodeFn({ code: codeToUse });
-      const data = result.data as any;
+      const data = (await invokeFunction("payment", {
+        action: "check-referral",
+        code: codeToUse,
+      })) as any;
 
       if (data.valid) {
         const discountValue = Number(data.discount ?? 0);
@@ -637,9 +638,23 @@ export default function PaymentClient() {
 
   const fetchUserData = async (userId: string) => {
     try {
-      const userDoc = await getDoc(doc(db, "users", userId));
-      if (userDoc.exists()) {
-        setUserData(userDoc.data() as UserData);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("uid", userId)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setUserData({
+          hasActiveSubscription: data.has_active_subscription ?? undefined,
+          subscriptionStartDate: data.subscription_start_date
+            ? new Date(data.subscription_start_date)
+            : undefined,
+          subscriptionEndDate: data.subscription_end_date
+            ? new Date(data.subscription_end_date)
+            : undefined,
+          billingKey: data.billing_key ?? undefined,
+        });
       }
       setLoading(false);
     } catch (err) {
@@ -648,17 +663,6 @@ export default function PaymentClient() {
       setLoading(false);
     }
   };
-
-  // Make functions available globally for the callback to use
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.functionsInstance = functions;
-
-      return () => {
-        window.functionsInstance = undefined;
-      };
-    }
-  }, []);
 
   const handlePaymentClick = async () => {
     if (!currentUser) {
@@ -722,9 +726,10 @@ export default function PaymentClient() {
       );
 
       // Get payment window data
-      const getPaymentWindow = httpsCallable(functions, "getPaymentWindow");
-      const result = await getPaymentWindow(userInfo);
-      const paymentData = result.data as any;
+      const paymentData = (await invokeFunction("payment", {
+        action: "window",
+        ...userInfo,
+      })) as any;
 
       if (!paymentData?.success) {
         throw new Error(
@@ -766,7 +771,7 @@ export default function PaymentClient() {
         jqueryScript.onload = () => {
           // After jQuery is loaded, load the Payple script
           const paypleScript = document.createElement("script");
-          paypleScript.src = "https://cpay.payple.kr/js/v1/payment.js";
+          paypleScript.src = PAYPLE_SDK_SRC;
           paypleScript.async = true;
           document.body.appendChild(paypleScript);
         };
@@ -774,7 +779,7 @@ export default function PaymentClient() {
       } else {
         // jQuery already loaded, just load Payple script
         const paypleScript = document.createElement("script");
-        paypleScript.src = "https://cpay.payple.kr/js/v1/payment.js";
+        paypleScript.src = PAYPLE_SDK_SRC;
         paypleScript.async = true;
         document.body.appendChild(paypleScript);
       }
@@ -788,7 +793,7 @@ export default function PaymentClient() {
         'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]'
       );
       const paypleScript = document.querySelector(
-        'script[src="https://cpay.payple.kr/js/v1/payment.js"]'
+        `script[src="${PAYPLE_SDK_SRC}"]`
       );
       if (jqueryScript && jqueryScript.parentNode) {
         jqueryScript.parentNode.removeChild(jqueryScript);

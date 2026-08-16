@@ -1,6 +1,4 @@
-import { db } from "../firebase/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { auth } from "../firebase/firebase";
+import { supabase } from "../supabase/client";
 
 export interface FeedbackData {
   userId: string;
@@ -15,25 +13,37 @@ export const saveFeedback = async (
   reasons: string[],
   otherReason?: string
 ): Promise<void> => {
-  const user = auth.currentUser;
+  // Resolve the current auth user, then the linked public.users.uid.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     throw new Error("User not authenticated");
   }
 
+  // Resolve through the auth-identity link table: phone-OTP and Kakao sessions are
+  // different auth users for the same person, and the RLS insert CHECK is
+  // user_id = current_uid().
+  const { data: resolvedUid } = await supabase.rpc("current_uid");
+  const userId = (resolvedUid as string | null) ?? user.id;
+
   const feedbackData: any = {
-    userId: user.uid,
+    id: crypto.randomUUID(),
+    kind: category, // survey | cancellation | refund
+    user_id: userId,
     category,
     reasons,
-    timestamp: serverTimestamp(),
+    created_at: new Date().toISOString(),
   };
 
-  // Only add otherReason if it exists and is not empty
+  // Only add other_reason if it exists and is not empty
   if (otherReason && otherReason.trim() !== "") {
-    feedbackData.otherReason = otherReason.trim();
+    feedbackData.other_reason = otherReason.trim();
   }
 
   try {
-    await addDoc(collection(db, "feedback"), feedbackData);
+    const { error } = await supabase.from("feedback").insert(feedbackData);
+    if (error) throw error;
     console.log("Feedback saved successfully");
   } catch (error) {
     console.error("Error saving feedback:", error);

@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import styled from "styled-components";
-import {
-  Timestamp,
-  QueryDocumentSnapshot,
-  DocumentData,
-} from "firebase/firestore";
 import { MeetupEvent, Article } from "../types/meetup_types";
 import {
   createMeetupEvent,
   updateMeetupEvent,
   fetchRecentArticles,
+  MeetupPageCursor,
 } from "../services/meetup_service";
 import {
   uploadMeetupImages,
@@ -638,7 +634,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     return htmlText.replace(/<[^>]*>/g, "");
   };
 
-  // Call Firebase Function for Naver Local Search
+  // Naver Local Search via the /api/naver-local server proxy
   const performSearchWithNaver = async (query: string) => {
     if (!query.trim()) {
       setResults([]);
@@ -650,8 +646,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     setErrorMessage("");
 
     try {
-      // Call your Firebase Function instead of direct API
-      const functionUrl = `https://searchnaverlocal-cds6z3hrga-du.a.run.app?query=${encodeURIComponent(
+      // Server-side proxy to Naver Local Search (replaces the old Firebase Cloud Run fn).
+      const functionUrl = `/api/naver-local?query=${encodeURIComponent(
         query
       )}&display=5&start=1&sort=random`;
 
@@ -860,7 +856,7 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
   const [loadingMoreArticles, setLoadingMoreArticles] = useState(false);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
   const [lastArticleDoc, setLastArticleDoc] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+    useState<MeetupPageCursor | null>(null);
   const articleListRef = useRef<HTMLDivElement>(null);
 
   // Initialize form data when template event or edit event changes
@@ -1077,7 +1073,7 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
     const imageUrl = formData.image_urls[index];
 
     try {
-      // Delete from Firebase Storage
+      // Delete from Supabase Storage
       await deleteMeetupImage(imageUrl);
 
       // Remove from form data
@@ -1102,13 +1098,11 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
     setLoading(true);
 
     try {
-      // Convert form data to Firestore format
+      // Convert form data to the meetups-table shape
       const firestoreEventData = {
         title: formData.title,
         description: formData.description,
-        date_time: Timestamp.fromDate(
-          new Date(`${formData.date}T${formData.time}`)
-        ),
+        date_time: new Date(`${formData.date}T${formData.time}`).toISOString(),
         duration_minutes: formData.duration_minutes,
         image_urls: formData.image_urls,
         location_name: formData.location_name,
