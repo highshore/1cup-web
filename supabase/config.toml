@@ -409,6 +409,9 @@ verify_jwt = false          # naver/youtube proxy, called from the browser
 [functions.send-sms-hook]
 verify_jwt = false          # Supabase auth hook
 
+[functions.discussion-vote]
+verify_jwt = true           # members only; membership re-checked inside
+
 [analytics]
 enabled = true
 port = 54327
