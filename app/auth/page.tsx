@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, ReactNode, Suspense } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  ReactNode,
+  Suspense,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../lib/supabase/client";
@@ -25,6 +33,24 @@ const caretBlink = keyframes`
 
   50%, 100% {
     opacity: 0;
+  }
+`;
+
+const revealStep = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const spin = keyframes`
+  to {
+    transform: rotate(360deg);
   }
 `;
 
@@ -120,8 +146,11 @@ const Logo = styled.img`
 const FormPane = styled.section`
   display: flex;
   min-height: 56vh;
-  align-items: center;
+  /* flex-start + margin:auto on the child, rather than align-items:center, so the
+     top of a tall form stays reachable once this pane has to scroll. */
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
   background: #ffffff;
   padding: 48px 24px;
   text-align: center;
@@ -153,6 +182,7 @@ const FormContent = styled.div`
   display: flex;
   width: 100%;
   max-width: 420px;
+  margin: auto; /* centres in the pane without trapping overflow — see FormPane */
   flex-direction: column;
   align-items: center;
 `;
@@ -293,32 +323,148 @@ const Description = styled.p`
   line-height: 1.6;
 `;
 
-const FormContainer = styled.div`
+const PhoneForm = styled.form`
   /* Specific to phone auth part */
+  display: flex;
   width: 100%;
+  flex-direction: column;
+  align-items: stretch;
 `;
 
-const Input = styled.input`
+const Input = styled.input<{ $hasInlineAction?: boolean }>`
   /* Specific to phone auth part */
   width: 100%;
   min-height: 54px;
   padding: 0.95rem 1.1rem;
-  margin-bottom: 1rem;
+  padding-right: ${(props) => (props.$hasInlineAction ? "5rem" : "1.1rem")};
   border: 1px solid #d1d5db;
   border-radius: 16px;
   font-size: 1rem;
+  background: #ffffff;
+  transition: border-color 140ms ease, box-shadow 140ms ease,
+    background-color 140ms ease;
 
   &:focus {
     outline: none;
     border-color: #111827;
     box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
   }
+
+  &:read-only {
+    background: #f9fafb;
+    color: #6b7280;
+  }
+`;
+
+/* Wraps one input so an inline action can sit on top of it. */
+const Field = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const InlineAction = styled.button`
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #111827;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+    background: transparent;
+  }
+`;
+
+/* The code step lives on the same screen — it slides in under the number. */
+const CodeStep = styled.div`
+  width: 100%;
+  animation: ${revealStep} 220ms ease-out;
+`;
+
+const CodeInput = styled(Input)`
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em; /* keeps the digits optically centred despite the tracking */
+`;
+
+const StepRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  text-align: left;
+`;
+
+const LinkButton = styled.button`
+  padding: 0;
+  border: none;
+  background: none;
+  color: #111827;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+
+  &:disabled {
+    color: #9ca3af;
+    text-decoration: none;
+    cursor: not-allowed;
+  }
+`;
+
+const CodeLabel = styled.p`
+  margin: 0.9rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+`;
+
+const BackLink = styled(LinkButton)`
+  align-self: center;
+  margin-top: 1.25rem;
+  color: #6b7280;
+  font-weight: 600;
+`;
+
+const Spinner = styled.span`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  vertical-align: -3px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: ${spin} 700ms linear infinite;
 `;
 
 const Button = styled.button`
   /* Specific to phone auth part */
   width: 100%;
   min-height: 54px;
+  margin-top: 1.25rem;
   padding: 0.9rem 1rem;
   background-color: #111827;
   color: white;
@@ -343,11 +489,11 @@ const Button = styled.button`
 
 const Message = styled.div`
   /* Base for Success/Error messages in phone auth */
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 8px;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 `;
 
 const ErrorMessage = styled(Message)`
@@ -365,16 +511,15 @@ const SuccessMessage = styled(Message)`
 const HelpText = styled.p`
   font-size: 0.92rem;
   color: #6b7280;
-  margin-top: -0.5rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
+  margin: 0.6rem 0 0;
+  text-align: left;
 `;
 
 const ValidationMessage = styled.p`
-  font-size: 1rem;
+  font-size: 0.92rem;
   color: #d93025;
-  margin-top: -0.5rem;
-  margin-bottom: 1.5rem;
+  margin: 0.6rem 0 0;
+  text-align: left;
 `;
 
 // Styled Components for Choice Buttons (from original auth.tsx)
@@ -445,11 +590,18 @@ function AuthContent() {
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [verificationId, setVerificationId] = useState<boolean>(false); // true once OTP sent
-  const [loading, setLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  // Blocks the whole screen only while we resolve an existing session on mount.
+  // OTP send/verify stay inline so the form never disappears mid-flow.
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [busy, setBusy] = useState<null | "send" | "verify">(null);
+  const [resendIn, setResendIn] = useState(0); // seconds left on the resend cooldown
   const [errorState, setErrorState] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isValidPhoneNumber, setIsValidPhoneNumber] = useState(false);
+  const codeInputRef = useRef<HTMLInputElement | null>(null);
+  // Remembers the code we last fired off so the auto-submit effect can't resend it.
+  const submittedCodeRef = useRef<string | null>(null);
 
   // Handle Kakao Login Click — Supabase native Kakao OAuth
   const handleKakaoLoginClick = async () => {
@@ -523,7 +675,7 @@ function AuthContent() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) redirectOnSession();
-      else setLoading(false);
+      else setCheckingSession(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session) redirectOnSession();
@@ -531,144 +683,251 @@ function AuthContent() {
     return () => sub.subscription.unsubscribe();
   }, [router, searchParams]);
 
-  const onSignInSubmit = () => {
-    if (!isValidPhoneNumber || loading) return;
-    sendVerificationCode();
-  };
+  // Countdown for the resend link. Mirrors RESEND_MIN_INTERVAL_MS in app/lib/otp/service.ts,
+  // so the link only re-enables once the server would actually accept another send.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
 
   // Custom phone OTP delivered via Kakao AlimTalk (see app/api/phone-otp/*).
   // Free-plan alternative to Supabase's Pro-only Send SMS auth hook.
-  const sendVerificationCode = async () => {
-    setLoading(true);
-    setErrorState(null);
-    try {
-      const res = await fetch("/api/phone-otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber }),
-      });
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: "" }));
-        throw new Error(error || "인증번호 전송에 실패했습니다");
+  const sendVerificationCode = useCallback(
+    async (isResend: boolean) => {
+      setBusy("send");
+      setErrorState(null);
+      setMessage(null);
+      try {
+        const res = await fetch("/api/phone-otp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: phoneNumber }),
+        });
+        if (!res.ok) {
+          const { error } = await res.json().catch(() => ({ error: "" }));
+          throw new Error(error || "인증번호 전송에 실패했습니다");
+        }
+        setCodeSent(true);
+        setResendIn(30);
+        setVerificationCode("");
+        submittedCodeRef.current = null;
+        setMessage(
+          isResend
+            ? "인증번호를 다시 보내드렸어요."
+            : "인증번호를 보내드렸어요. 카카오 알림톡(또는 문자)을 확인해주세요."
+        );
+        // Focus lands on the newly revealed field instead of making the user tap it.
+        window.setTimeout(() => codeInputRef.current?.focus(), 60);
+      } catch (err: unknown) {
+        setErrorState(
+          err instanceof Error ? err.message : "인증번호 전송에 실패했습니다"
+        );
+      } finally {
+        setBusy(null);
       }
-      setVerificationId(true);
-      setMessage("인증번호가 전송되었습니다!");
-    } catch (err: unknown) {
-      setErrorState(err instanceof Error ? err.message : "인증번호 전송에 실패했습니다");
-    } finally {
-      setLoading(false);
-    }
+    },
+    [phoneNumber]
+  );
+
+  const verifyCode = useCallback(
+    async (code: string) => {
+      if (!codeSent || code.length !== 6) return;
+      submittedCodeRef.current = code;
+      setBusy("verify");
+      setErrorState(null);
+      setMessage(null);
+      try {
+        const res = await fetch("/api/phone-otp/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: phoneNumber, code }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "인증코드 확인에 실패했습니다");
+        // Establish the Supabase session from the server-minted tokens; the
+        // onAuthStateChange effect above then handles the redirect. Stay "busy"
+        // so the button doesn't flip back to idle during the redirect.
+        const { error } = await supabase.auth.setSession({
+          access_token: body.access_token,
+          refresh_token: body.refresh_token,
+        });
+        if (error) throw error;
+        setMessage("로그인 성공! 이동 중이에요...");
+      } catch (err: unknown) {
+        setErrorState(
+          err instanceof Error ? err.message : "인증코드 확인에 실패했습니다"
+        );
+        setBusy(null);
+        codeInputRef.current?.focus();
+      }
+    },
+    [codeSent, phoneNumber]
+  );
+
+  const handleVerificationCodeChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    // The server requires exactly 6 digits, so keep the field to that shape.
+    setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
   };
 
-  const verifyCode = async () => {
-    if (!verificationId) return;
-    setLoading(true);
+  // Submitting a 6-digit code is the only thing the user could do next, so do it
+  // for them rather than making them reach for the button.
+  useEffect(() => {
+    if (!codeSent || busy) return;
+    if (verificationCode.length !== 6) return;
+    if (submittedCodeRef.current === verificationCode) return;
+    verifyCode(verificationCode);
+  }, [codeSent, busy, verificationCode, verifyCode]);
+
+  // Back to editing the number without losing the screen.
+  const handleEditPhoneNumber = () => {
+    setCodeSent(false);
+    setVerificationCode("");
+    setResendIn(0);
+    submittedCodeRef.current = null;
     setErrorState(null);
-    try {
-      const res = await fetch("/api/phone-otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber, code: verificationCode }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "인증코드 확인에 실패했습니다");
-      // Establish the Supabase session from the server-minted tokens; the
-      // onAuthStateChange effect above then handles the redirect.
-      const { error } = await supabase.auth.setSession({
-        access_token: body.access_token,
-        refresh_token: body.refresh_token,
-      });
-      if (error) throw error;
-      setMessage("로그인 성공!");
-    } catch (err: unknown) {
-      setErrorState(err instanceof Error ? err.message : "인증코드 확인에 실패했습니다");
-    } finally {
-      setLoading(false);
-    }
+    setMessage(null);
   };
+
+  const handleBackToChoices = () => {
+    setShowPhoneAuth(false);
+    handleEditPhoneNumber();
+  };
+
+  const handlePrimaryAction = () => {
+    if (busy) return;
+    if (!codeSent) {
+      if (isValidPhoneNumber) sendVerificationCode(false);
+      return;
+    }
+    verifyCode(verificationCode);
+  };
+
+  if (checkingSession) return <GlobalLoadingScreen />;
+
+  const primaryDisabled =
+    !!busy ||
+    (codeSent ? verificationCode.length !== 6 : !isValidPhoneNumber);
 
   return (
-    <>
-      {loading && <GlobalLoadingScreen />}
+    <AuthLayout>
+      {showPhoneAuth ? (
+        <>
+          <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
+          <Description>
+            {codeSent
+              ? "받으신 6자리 인증번호를 입력해주세요."
+              : "인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오 알림톡(또는 문자)으로 발송됩니다."}
+          </Description>
+        </>
+      ) : (
+        <SignInGreeting />
+      )}
 
-      <AuthLayout>
-        {showPhoneAuth ? (
-          <>
-            <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
-            <Description>
-              인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오
-              알림톡(또는 문자)으로 발송됩니다.
-            </Description>
-          </>
-        ) : (
-          <SignInGreeting />
-        )}
-
-        {!showPhoneAuth ? (
-          <SignInChoices>
-            <PhoneButton onClick={handlePhoneAuthClick}>
-              <DevicePhoneMobileIcon />
-              전화번호로 시작하기
-            </PhoneButton>
-            <KakaoButton onClick={handleKakaoLoginClick}>
-              <img src="/images/kakao_btn.png" alt="Kakao Login" />
-              카카오로 시작하기
-            </KakaoButton>
-          </SignInChoices>
-        ) : (
-          <FormContainer>
-            {!verificationId ? (
-              <>
-                <Input
-                  type="tel"
-                  placeholder="휴대폰 번호 (예: 01012345678)"
-                  value={phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  disabled={loading}
-                />
-                {phoneNumber && !isValidPhoneNumber ? (
-                  <ValidationMessage>
-                    올바른 휴대폰 번호를 입력해주세요 (예: 01012345678)
-                  </ValidationMessage>
-                ) : (
-                  <HelpText>
-                    공백이나 대시(-) 없이 번호만 입력해주세요.
-                  </HelpText>
-                )}
-                <Button
-                  id="send-code-button"
-                  onClick={onSignInSubmit}
-                  disabled={!isValidPhoneNumber || loading}
-                >
-                  {loading ? "전송 중..." : "인증번호 전송"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Input
-                  type="text"
-                  placeholder="인증번호 입력"
-                  value={verificationCode}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setVerificationCode(e.target.value)
-                  }
-                  disabled={loading}
-                />
-                <Button
-                  onClick={verifyCode}
-                  disabled={!verificationCode || loading}
-                >
-                  {loading ? "확인 중..." : "인증번호 확인"}
-                </Button>
-              </>
+      {!showPhoneAuth ? (
+        <SignInChoices>
+          <PhoneButton onClick={handlePhoneAuthClick}>
+            <DevicePhoneMobileIcon />
+            전화번호로 시작하기
+          </PhoneButton>
+          <KakaoButton onClick={handleKakaoLoginClick}>
+            <img src="/images/kakao_btn.png" alt="Kakao Login" />
+            카카오로 시작하기
+          </KakaoButton>
+        </SignInChoices>
+      ) : (
+        <PhoneForm
+          onSubmit={(e) => {
+            e.preventDefault();
+            handlePrimaryAction();
+          }}
+        >
+          {/* The number stays on screen through the whole flow — sending the code
+              reveals the next field below it instead of swapping the view. */}
+          <Field>
+            <Input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              placeholder="휴대폰 번호 (예: 01012345678)"
+              value={phoneNumber}
+              onChange={handlePhoneNumberChange}
+              readOnly={codeSent}
+              $hasInlineAction={codeSent}
+            />
+            {codeSent && (
+              <InlineAction
+                type="button"
+                onClick={handleEditPhoneNumber}
+                disabled={!!busy}
+              >
+                번호 변경
+              </InlineAction>
             )}
+          </Field>
 
-            {errorState && <ErrorMessage>{errorState}</ErrorMessage>}
-            {message && <SuccessMessage>{message}</SuccessMessage>}
-          </FormContainer>
-        )}
-      </AuthLayout>
-    </>
+          {!codeSent &&
+            (phoneNumber && !isValidPhoneNumber ? (
+              <ValidationMessage>
+                올바른 휴대폰 번호를 입력해주세요 (예: 01012345678)
+              </ValidationMessage>
+            ) : (
+              <HelpText>공백이나 대시(-) 없이 번호만 입력해주세요.</HelpText>
+            ))}
+
+          {codeSent && (
+            <CodeStep>
+              <CodeLabel>인증번호 6자리</CodeLabel>
+              <CodeInput
+                ref={codeInputRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="000000"
+                value={verificationCode}
+                onChange={handleVerificationCodeChange}
+                disabled={busy === "verify"}
+              />
+              <StepRow>
+                <span>인증번호를 받지 못하셨나요?</span>
+                <LinkButton
+                  type="button"
+                  onClick={() => sendVerificationCode(true)}
+                  disabled={!!busy || resendIn > 0}
+                >
+                  {resendIn > 0 ? `재전송 (${resendIn}초)` : "재전송"}
+                </LinkButton>
+              </StepRow>
+            </CodeStep>
+          )}
+
+          <Button
+            id="send-code-button"
+            type="submit"
+            disabled={primaryDisabled}
+          >
+            {busy && <Spinner aria-hidden="true" />}
+            {busy === "send"
+              ? "전송 중..."
+              : busy === "verify"
+              ? "확인 중..."
+              : codeSent
+              ? "인증하고 시작하기"
+              : "인증번호 전송"}
+          </Button>
+
+          {errorState && <ErrorMessage role="alert">{errorState}</ErrorMessage>}
+          {message && <SuccessMessage role="status">{message}</SuccessMessage>}
+
+          <BackLink type="button" onClick={handleBackToChoices}>
+            다른 방법으로 로그인
+          </BackLink>
+        </PhoneForm>
+      )}
+    </AuthLayout>
   );
 }
 
