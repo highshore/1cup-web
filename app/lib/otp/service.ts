@@ -218,11 +218,19 @@ export async function verifyCodeAndMintSession(
     }
   }
 
-  // Make sure this auth user resolves to the existing profile. Without the link row,
-  // current_uid() returns null for the session and RLS hides the user's own data.
+  // Make sure this auth user resolves to a profile. Without the link row, current_uid()
+  // returns null for the session and RLS hides the user's own data.
+  //
+  // ignoreDuplicates is load-bearing: if this auth user is ALREADY linked, that link
+  // wins. Overwriting it is what stranded a paying member — a Kakao login had created a
+  // second profile carrying her number, so the users.phone lookup above resolved to the
+  // new empty profile and the upsert moved her original phone identity onto it.
   await db
     .from("user_auth_identities")
-    .upsert({ auth_id: authId, uid: existingUid ?? authId }, { onConflict: "auth_id" });
+    .upsert(
+      { auth_id: authId, uid: existingUid ?? authId },
+      { onConflict: "auth_id", ignoreDuplicates: true },
+    );
 
   // Sign in server-side with a throwaway anon client to obtain real tokens
   // (proper access + refresh, unlike a hand-signed JWT).
