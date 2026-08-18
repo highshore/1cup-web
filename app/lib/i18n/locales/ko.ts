@@ -742,6 +742,15 @@ const ko = {
       cancel: "취소",
       deleteTemplate: "선택한 템플릿 삭제",
       deleteTemplateConfirm: "이 게시물 템플릿을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+      // GrowthDashboard still renders the per-weekday assignment panel, so these keys
+      // have to exist for the build to typecheck. Drop them together with that panel
+      // when the scheduler rework removes it.
+      templateAssignments: "요일별 템플릿",
+      templateAssignmentsDescription:
+        "선택한 요일마다 고파스에 게시할 저장된 템플릿을 지정하세요.",
+      assignTemplatePlaceholder: "템플릿 선택",
+      assignTemplatesHint:
+        "일정을 저장하기 전에 선택한 모든 요일에 템플릿을 지정해 주세요.",
       scheduleTitle: "선택한 템플릿의 게시 일정 (KST)",
       scheduleDescription:
         "이 템플릿을 자동 게시할 시, 분, 요일을 설정하세요. 크론 문법을 알 필요 없이 같은 방식으로 동작합니다.",

@@ -742,6 +742,15 @@ const en = {
       cancel: "Cancel",
       deleteTemplate: "Delete selected template",
       deleteTemplateConfirm: "Delete this post template? This cannot be undone.",
+      // GrowthDashboard still renders the per-weekday assignment panel, so these keys
+      // have to exist for the build to typecheck. Drop them together with that panel
+      // when the scheduler rework removes it.
+      templateAssignments: "Template by weekday",
+      templateAssignmentsDescription:
+        "Choose the saved template that Gopas should use on each scheduled weekday.",
+      assignTemplatePlaceholder: "Choose template",
+      assignTemplatesHint:
+        "Choose a template for every selected weekday before saving the schedule.",
       scheduleTitle: "Selected template schedule (KST)",
       scheduleDescription:
         "Set this template's hour, minute, and weekdays for automated posting. This works like a cron schedule without requiring cron syntax.",
