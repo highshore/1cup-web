@@ -149,8 +149,8 @@ const Button = styled.button`
 
 export default function StatsSection({ stats }: StatsSectionProps) {
   const { t } = useI18n();
-  const meetupCount = stats?.totalMeetups || 30;
-  const memberCount = stats?.totalMembers || 50;
+  const meetupCount = stats?.totalMeetups ?? 0;
+  const memberCount = stats?.totalMembers ?? 0;
 
   return (
     <SectionContainer>

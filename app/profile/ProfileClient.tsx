@@ -29,6 +29,7 @@ import {
   SparklesIcon,
   TrashIcon,
   UserCircleIcon,
+  UserGroupIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
@@ -3308,6 +3309,13 @@ export default function ProfileClient() {
                 >
                   <EyeIcon />
                   {t.profile.viewPublicProfile}
+                </NbPillButton>
+                <NbPillButton
+                  type="button"
+                  onClick={() => router.push("/profile/connections")}
+                >
+                  <UserGroupIcon />
+                  {t.profile.viewConnections}
                 </NbPillButton>
                 <NbPillButton
                   type="button"

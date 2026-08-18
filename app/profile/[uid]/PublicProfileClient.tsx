@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import {
   AcademicCapIcon,
   BriefcaseIcon,
+  HeartIcon,
+  LinkIcon,
   MapPinIcon,
   SparklesIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
+import { useAuth } from "../../lib/contexts/auth_context";
+import {
+  type ProfileConnection,
+  toggleProfileLike,
+} from "../../lib/features/profile/services/profile_connections";
+import { shareMatchedProfileViaKakao } from "../../lib/features/profile/services/kakao_profile_share";
 
 interface PublicProfile {
   uid: string;
   displayName: string;
   photoURL?: string | null;
   isPublic?: boolean;
+  detailsVisible: boolean;
+  connection: ProfileConnection;
   bio?: string;
   work?: string;
   school?: string;
@@ -122,6 +134,82 @@ const Tagline = styled.p`
   font-size: 1rem;
   font-style: italic;
   line-height: 1.4;
+`;
+
+const HeroActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+
+  @media (max-width: 640px) {
+    justify-content: center;
+  }
+`;
+
+const MessageButton = styled.button`
+  border: 2px solid #050505;
+  border-radius: 10px;
+  background: #f47a4a;
+  padding: 0.5rem 0.8rem;
+  color: #050505;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 rgba(5, 5, 5, 0.9);
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.7;
+  }
+`;
+
+const LikeButton = styled(MessageButton)<{ $active?: boolean; $mutual?: boolean }>`
+  background: ${({ $mutual, $active }) =>
+    $mutual ? "#050505" : $active ? "#fff0e8" : "#ffffff"};
+  color: ${({ $mutual }) => ($mutual ? "#ffffff" : "#050505")};
+
+  svg {
+    width: 17px;
+    height: 17px;
+    fill: ${({ $active }) => ($active ? "currentColor" : "none")};
+  }
+`;
+
+const KakaoButton = styled(MessageButton)`
+  background: #fee500;
+
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+`;
+
+const ConnectionHint = styled.p`
+  width: 100%;
+  margin: 0.1rem 0 0;
+  color: rgba(5, 5, 5, 0.62);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.45;
+
+  @media (max-width: 640px) {
+    text-align: center;
+  }
+`;
+
+const DetailsLockedCard = styled.section`
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #fff8dc;
+  padding: 1.15rem 1.2rem;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
 `;
 
 const StatsGrid = styled.div`
@@ -331,37 +419,34 @@ const toChips = (value?: string): string[] =>
 
 export default function PublicProfileClient({ uid }: { uid: string }) {
   const { locale, t } = useI18n();
+  const router = useRouter();
+  const { currentUser } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState("");
+  const [isUpdatingLike, setIsUpdatingLike] = useState(false);
+  const [likeError, setLikeError] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/public-profile/${encodeURIComponent(uid)}`,
+        { cache: "no-store" },
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || t.profile.loadError);
+      }
+      setProfile(payload);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.profile.loadError);
+    }
+  }, [t.profile.loadError, uid]);
 
   useEffect(() => {
-    let ignore = false;
-
-    const loadProfile = async () => {
-      try {
-        const response = await fetch(
-          `/api/public-profile/${encodeURIComponent(uid)}`,
-          { cache: "no-store" }
-        );
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload?.error || "프로필을 불러오지 못했습니다.");
-        }
-        if (!ignore) setProfile(payload);
-      } catch (err) {
-        if (!ignore) {
-          setError(
-            err instanceof Error ? err.message : "프로필을 불러오지 못했습니다."
-          );
-        }
-      }
-    };
-
-    loadProfile();
-    return () => {
-      ignore = true;
-    };
-  }, [uid]);
+    void loadProfile();
+  }, [loadProfile]);
 
   if (error) return <Centered>{error}</Centered>;
   if (!profile) return <Centered>{t.profile.loading}</Centered>;
@@ -374,6 +459,62 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
       )
     : "—";
   const hasAbout = profile.work || profile.school || profile.location;
+
+  const handleToggleLike = async () => {
+    if (!currentUser) {
+      router.push(`/auth?redirect=${encodeURIComponent(`/profile/${profile.uid}`)}`);
+      return;
+    }
+
+    setIsUpdatingLike(true);
+    setLikeError("");
+    try {
+      const connection = await toggleProfileLike(profile.uid);
+      setProfile((current) =>
+        current ? { ...current, connection } : current,
+      );
+      await loadProfile();
+    } catch {
+      setLikeError(t.profile.likeFailed);
+    } finally {
+      setIsUpdatingLike(false);
+    }
+  };
+
+  const handleKakaoShare = async () => {
+    setShareMessage("");
+    const shareText = `${profile.displayName}\nhttps://1cupenglish.com/profile/${encodeURIComponent(profile.uid)}`;
+    try {
+      const shared = await shareMatchedProfileViaKakao({
+        uid: profile.uid,
+        displayName: profile.displayName,
+        locale,
+      });
+      if (shared) {
+        setShareMessage(t.profile.kakaoShareOpened);
+        return;
+      }
+      await navigator.clipboard.writeText(shareText);
+      setShareMessage(t.profile.kakaoShareCopied);
+    } catch {
+      setShareMessage(t.profile.kakaoShareFailed);
+    }
+  };
+
+  const likeLabel = profile.connection.isMutual
+    ? t.profile.mutualFriend
+    : profile.connection.likesMe
+      ? t.profile.likeBack
+      : profile.connection.likedByMe
+        ? t.profile.likedMember
+        : t.profile.likeMember;
+  const connectionHint = profile.connection.isMutual
+    ? t.profile.mutualConnectionHint
+    : profile.connection.likesMe
+      ? t.profile.likesYouHint
+      : profile.connection.likedByMe
+        ? t.profile.likeSentHint
+        : "";
 
   return (
     <Page>
@@ -398,6 +539,36 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
               ? `“${profile.bio.split(/(?<=[.!?。])\s/)[0]}”`
               : `“${t.profile.taglineDefault}”`}
           </Tagline>
+          {currentUser?.uid !== profile.uid && (
+            <HeroActions>
+              <LikeButton
+                type="button"
+                onClick={() => void handleToggleLike()}
+                disabled={isUpdatingLike}
+                $active={profile.connection.likedByMe}
+                $mutual={profile.connection.isMutual}
+                aria-pressed={profile.connection.likedByMe}
+              >
+                <HeartIcon />
+                {isUpdatingLike ? t.profile.likingMember : likeLabel}
+              </LikeButton>
+              {profile.connection.isMutual && (
+                <>
+                  <KakaoButton type="button" onClick={() => void handleKakaoShare()}>
+                    <LinkIcon />
+                    {t.profile.kakaoMessage}
+                  </KakaoButton>
+                  <MessageButton type="button" onClick={() => router.push("/profile/connections")}>
+                    <UserGroupIcon />
+                    {t.profile.viewConnections}
+                  </MessageButton>
+                </>
+              )}
+              {connectionHint && <ConnectionHint>{connectionHint}</ConnectionHint>}
+              {likeError && <ConnectionHint role="alert">{likeError}</ConnectionHint>}
+              {shareMessage && <ConnectionHint role="status">{shareMessage}</ConnectionHint>}
+            </HeroActions>
+          )}
         </HeroText>
       </Hero>
 
@@ -424,6 +595,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
         </StatCard>
       </StatsGrid>
 
+      {profile.detailsVisible ? (
       <Grid>
         <Col>
           <Card>
@@ -486,6 +658,14 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           </InfoCard>
         </Col>
       </Grid>
+      ) : (
+        <DetailsLockedCard>
+          <CardHeading>
+            <UserGroupIcon /> {t.profile.detailsLockedTitle}
+          </CardHeading>
+          <BodyText>{t.profile.detailsLockedBody}</BodyText>
+        </DetailsLockedCard>
+      )}
     </Page>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { admin } from "../../../lib/supabase/server";
+import { admin, createServerClientRSC } from "../../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,6 +32,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   try {
     const sb = admin();
+    const viewerClient = await createServerClientRSC();
+    const {
+      data: { user: authUser },
+    } = await viewerClient.auth.getUser();
+    const { data: viewerRows } = authUser
+      ? await viewerClient.rpc("current_user_row")
+      : { data: null };
+    const viewer = Array.isArray(viewerRows) ? viewerRows[0] : null;
+    const viewerUid = typeof viewer?.uid === "string" ? viewer.uid : null;
 
     const { data, error: userError } = await sb
       .from("users")
@@ -47,9 +56,31 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // Name, avatar, badges and stats stay visible even for private profiles (they
-    // appear in meetups/leaderboards); only the detailed personal fields are hidden.
+    // Name, avatar, badges and stats stay visible in member surfaces. Detailed profile
+    // fields require both people to like each other, while preserving the owner's
+    // existing opt-in privacy setting.
     const isPublic = data.profile_public !== false;
+    let connection = {
+      likedByMe: false,
+      likesMe: false,
+      isMutual: false,
+    };
+
+    if (viewerUid && viewerUid !== uid) {
+      const { data: connectionRows } = await viewerClient.rpc("profile_like_state", {
+        p_profile_user_id: uid,
+      });
+      const connectionRow = Array.isArray(connectionRows)
+        ? connectionRows[0]
+        : connectionRows;
+      connection = {
+        likedByMe: connectionRow?.liked_by_me === true,
+        likesMe: connectionRow?.likes_me === true,
+        isMutual: connectionRow?.mutual === true,
+      };
+    }
+
+    const detailsVisible = viewerUid === uid || (isPublic && connection.isMutual);
 
     // The users/{uid}/speaking_reports subcollection is now a top-level table keyed by user_id.
     const { data: reports } = await sb
@@ -82,12 +113,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       displayName: data.display_name || `Member ${uid.slice(0, 6)}`,
       photoURL: toHttps(data.photo_url) || null,
       isPublic,
-      // Detailed fields are withheld for private profiles.
-      bio: isPublic ? data.bio || "" : "",
-      work: isPublic ? data.work || "" : "",
-      school: isPublic ? data.school || "" : "",
-      location: isPublic ? data.location || "" : "",
-      interests: isPublic ? data.interests || "" : "",
+      detailsVisible,
+      connection,
+      // Only mutual connections (or the owner) receive detailed personal fields.
+      bio: detailsVisible ? data.bio || "" : "",
+      work: detailsVisible ? data.work || "" : "",
+      school: detailsVisible ? data.school || "" : "",
+      location: detailsVisible ? data.location || "" : "",
+      interests: detailsVisible ? data.interests || "" : "",
       badges: {
         gdgMember: data.gdg_member === true,
         activeMember: data.has_active_subscription === true,

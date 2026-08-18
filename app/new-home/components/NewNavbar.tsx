@@ -16,6 +16,7 @@ import styled, { css } from "styled-components";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { appLayout } from "../../lib/constants/app_layout";
 import { useI18n } from "../../lib/i18n/I18nProvider";
+import NotificationDropdown from "../../lib/features/chat/components/NotificationDropdown";
 
 const NAV_COLLAPSE_BREAKPOINT = "920px";
 
@@ -39,6 +40,7 @@ const Nav = styled.nav<{ $isTransparent: boolean }>`
 const NavTrack = styled.div`
   --nav-control-height: 60px;
   --nav-item-height: 38px;
+  --nav-action-size: 38px;
 
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -57,6 +59,10 @@ const NavTrack = styled.div`
     display: flex;
     flex-wrap: nowrap;
     padding: 0 ${appLayout.pageGutterMobile};
+  }
+
+  @media (max-width: 520px) {
+    --nav-action-size: 44px;
   }
 `;
 
@@ -164,7 +170,7 @@ const RightActions = styled.div`
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
@@ -174,14 +180,17 @@ const RightActions = styled.div`
 
 const LanguageButton = styled.button<{ $isTransparent: boolean }>`
   display: inline-flex;
-  min-height: var(--nav-item-height);
+  box-sizing: border-box;
+  width: var(--nav-action-size);
+  height: var(--nav-action-size);
+  min-height: var(--nav-action-size);
+  flex: 0 0 var(--nav-action-size);
   align-items: center;
   justify-content: center;
-  gap: 6px;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  padding: 6px 9px;
+  padding: 0;
   color: ${({ $isTransparent }) =>
     $isTransparent ? "rgba(255, 255, 255, 0.88)" : "#475569"};
   font-family: inherit;
@@ -195,15 +204,6 @@ const LanguageButton = styled.button<{ $isTransparent: boolean }>`
     color: ${({ $isTransparent }) => ($isTransparent ? "#ffffff" : "#0f172a")};
   }
 
-  @media (max-width: 520px) {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 8px 10px;
-
-    span {
-      display: none;
-    }
-  }
 `;
 
 const LangIcon = styled.img<{ $isTransparent: boolean }>`
@@ -259,16 +259,16 @@ const JoinButton = styled.button<{ $isTransparent: boolean }>`
   }
 `;
 
-type AvatarVariant = "gdg" | "active" | "inactive" | "default";
+type AvatarVariant = "active" | "inactive" | "default";
 
 const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
   position: relative;
-  width: var(--nav-item-height);
-  height: var(--nav-item-height);
+  box-sizing: border-box;
+  width: var(--nav-action-size);
+  height: var(--nav-action-size);
+  flex: 0 0 var(--nav-action-size);
   border: ${({ $variant }) => {
     switch ($variant) {
-      case "gdg":
-        return "0";
       case "active":
         return "2px solid #22c55e";
       case "inactive":
@@ -278,17 +278,12 @@ const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
     }
   }};
   border-radius: 50%;
-  background: ${({ $variant }) =>
-    $variant === "gdg"
-      ? "conic-gradient(from 90deg, #4285f4, #db4437, #fbbc05, #34a853, #4285f4)"
-      : "#ffffff"};
-  padding: ${({ $variant }) => ($variant === "gdg" ? "2px" : "0")};
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  padding: 0;
+  box-shadow: none;
   cursor: pointer;
 
-  &:hover {
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
-  }
+  &:hover { background: #f8fafc; }
 `;
 
 const AvatarInner = styled.div`
@@ -438,7 +433,7 @@ const NewNavbar: React.FC = () => {
   const { locale, setLocale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, logout, hasActiveSubscription, isGdgMember } = useAuth();
+  const { currentUser, logout, hasActiveSubscription } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const isTransparent = pathname === "/" && !isScrolled;
   const logoSrc = isTransparent
@@ -447,10 +442,7 @@ const NewNavbar: React.FC = () => {
   const avatarSrc = currentUser?.photoURL || "/images/logos/1cup_logo_new.svg";
   const avatarInitial =
     currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
-  // GDG ring lives ONLY in the global nav (removed from all other avatars).
-  const avatarVariant: AvatarVariant = isGdgMember
-    ? "gdg"
-    : hasActiveSubscription === true
+  const avatarVariant: AvatarVariant = hasActiveSubscription === true
     ? "active"
     : currentUser
     ? "inactive"
@@ -542,28 +534,30 @@ const NewNavbar: React.FC = () => {
               alt={locale}
               $isTransparent={isTransparent}
             />
-            <span>{locale === "en" ? "ENG" : "한국어"}</span>
           </LanguageButton>
 
           {isLoggedIn ? (
-            <AvatarButton
-              onClick={handleProfileNav}
-              aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"}
-              $variant={avatarVariant}
-            >
-              <AvatarInner>
-                {currentUser?.photoURL ? (
-                  <AvatarImage
-                    src={avatarSrc}
-                    alt="profile"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <AvatarFallback>{avatarInitial}</AvatarFallback>
-                )}
-              </AvatarInner>
-              {avatarVariant === "active" && <AvatarStatusDot />}
-            </AvatarButton>
+            <>
+              <NotificationDropdown isTransparent={isTransparent} />
+              <AvatarButton
+                onClick={handleProfileNav}
+                aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"}
+                $variant={avatarVariant}
+              >
+                <AvatarInner>
+                  {currentUser?.photoURL ? (
+                    <AvatarImage
+                      src={avatarSrc}
+                      alt="profile"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <AvatarFallback>{avatarInitial}</AvatarFallback>
+                  )}
+                </AvatarInner>
+                {avatarVariant === "active" && <AvatarStatusDot />}
+              </AvatarButton>
+            </>
           ) : (
             <JoinButton onClick={handleJoin} $isTransparent={isTransparent}>
               <UserCircleIcon />

@@ -8,12 +8,11 @@ export interface HomeStats {
 
 export const fetchHomeStats = async (): Promise<HomeStats> => {
   try {
-    // The old `cache/homeStats` doc + count logic is now the `home_stats` VIEW.
-    // Read it directly instead of counting collections client-side.
-    const { data, error } = await admin()
-      .from("home_stats")
-      .select("*")
-      .maybeSingle();
+    const sb = admin();
+    // The server-owned view applies the exact purchase-history definition used by
+    // the admin dashboard. Keeping the aggregation in Postgres avoids downloading
+    // every member row merely to calculate one homepage number.
+    const { data, error } = await sb.from("home_stats").select("*").maybeSingle();
 
     if (error) {
       console.error("Error fetching home stats:", error);

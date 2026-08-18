@@ -70,6 +70,7 @@ const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
 
 const MEMBER_COMPANY_LOGOS = [
   { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", width: 260, height: 129, scale: 1.04 },
+  { label: "Samsung Foundry", src: "/assets/homepage/logos/samsung-foundry.svg", width: 640, height: 228, scale: 0.98 },
   { label: "PwC", src: "/assets/homepage/logos/pwc.webp", width: 600, height: 455, scale: 0.9 },
   { label: "쿠팡", src: "/assets/homepage/logos/coupang.webp", width: 320, height: 73, scale: 1.02 },
   { label: "SAP", src: "/assets/homepage/logos/sap.webp", width: 220, height: 109, scale: 0.94 },
@@ -79,7 +80,7 @@ const MEMBER_COMPANY_LOGOS = [
   { label: "연세대학교 MBA", src: "/assets/homepage/logos/yonsei-university.webp", width: 280, height: 86, scale: 1 },
 ] as const;
 
-const MEMBER_LOGO_GRID_LIMIT = 8;
+const MEMBER_LOGO_PAGE_SIZE = 8;
 
 type LeaderLocation = "anam" | "yeouido";
 const LEADER_LOCATIONS: LeaderLocation[] = ["anam", "yeouido"];
@@ -269,9 +270,21 @@ const MemberLogoViewport = styled.div`
   }
 `;
 
-const MemberLogoTrack = styled.div<{ $columns: number }>`
+const MemberLogoCarousel = styled.div<{ $isSliding: boolean }>`
+  display: flex;
+  width: 200%;
+  transform: translateX(${({ $isSliding }) => ($isSliding ? "-50%" : "0")});
+  transition: transform 620ms cubic-bezier(0.22, 0.72, 0.24, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+const MemberLogoPage = styled.div`
   display: grid;
-  grid-template-columns: repeat(${({ $columns }) => $columns}, minmax(0, 1fr));
+  width: 50%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.8rem;
 
   @media (max-width: 900px) {
@@ -279,7 +292,6 @@ const MemberLogoTrack = styled.div<{ $columns: number }>`
   }
 
   @media (max-width: 520px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
   }
 `;
@@ -312,60 +324,6 @@ const MemberLogoTile = styled.div`
 
     span {
       font-size: 0.72rem;
-    }
-  }
-`;
-
-const MemberLogoOverflow = styled.div`
-  margin-top: 0.75rem;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-`;
-
-const MemberLogoOverflowTile = styled.div`
-  display: inline-flex;
-  min-height: 48px;
-  min-width: 0;
-  justify-content: center;
-  align-items: center;
-  gap: 0.55rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0.45rem 0.7rem;
-
-  img {
-    display: block;
-    width: auto;
-    height: 22px;
-    max-width: 72px;
-    object-fit: contain;
-  }
-
-  span {
-    color: #222222;
-    font-size: 0.72rem;
-    font-weight: 760;
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 768px) {
-    min-height: 42px;
-    padding: 0.4rem 0.58rem;
-
-    img {
-      height: 19px;
-      max-width: 64px;
-    }
-
-    span {
-      font-size: 0.68rem;
     }
   }
 `;
@@ -1721,6 +1679,7 @@ const StackCardWrapper = styled.div<{
 }>`
   position: relative;
   grid-area: 1 / 1;
+  border-radius: 20px;
   transform-origin: center top;
   transform: ${({ $position }) => {
     switch ($position) {
@@ -1734,6 +1693,7 @@ const StackCardWrapper = styled.div<{
   }};
 
   @media (max-width: 768px) {
+    border-radius: 18px;
     transform: ${({ $position }) => {
       switch ($position) {
         case 0:
@@ -2951,6 +2911,8 @@ export default function NewHomeClient({
   const [homeStats, setHomeStats] = useState<HomeStats | undefined>(
     initialStats
   );
+  const [logoOffset, setLogoOffset] = useState(0);
+  const [isLogoSliding, setIsLogoSliding] = useState(false);
   
   // Cache for user profiles
   const [userProfilesMap, setUserProfilesMap] = useState<Record<string, UserProfile>>({});
@@ -3090,6 +3052,22 @@ export default function NewHomeClient({
   }, [initialStats]);
 
   useEffect(() => {
+    let settleTimeout: number | null = null;
+    const interval = window.setInterval(() => {
+      setIsLogoSliding(true);
+      settleTimeout = window.setTimeout(() => {
+        setLogoOffset((offset) => (offset + 1) % MEMBER_COMPANY_LOGOS.length);
+        setIsLogoSliding(false);
+      }, 650);
+    }, 4600);
+
+    return () => {
+      window.clearInterval(interval);
+      if (settleTimeout !== null) window.clearTimeout(settleTimeout);
+    };
+  }, []);
+
+  useEffect(() => {
     let ignore = false;
 
     const fetchClientFallbackStats = async (): Promise<HomeStats | null> => {
@@ -3211,8 +3189,13 @@ export default function NewHomeClient({
       }),
     [t, locale, homeStats, upcomingEvents, initialTopics],
   );
-  const visibleMemberLogos = MEMBER_COMPANY_LOGOS.slice(0, MEMBER_LOGO_GRID_LIMIT);
-  const overflowMemberLogos = MEMBER_COMPANY_LOGOS.slice(MEMBER_LOGO_GRID_LIMIT);
+  const logoPage = (offset: number) =>
+    Array.from({ length: MEMBER_LOGO_PAGE_SIZE }, (_, index) => {
+      const logoIndex = (offset + index) % MEMBER_COMPANY_LOGOS.length;
+      return { ...MEMBER_COMPANY_LOGOS[logoIndex], logoIndex };
+    });
+  const currentLogoPage = logoPage(logoOffset);
+  const nextLogoPage = logoPage((logoOffset + 1) % MEMBER_COMPANY_LOGOS.length);
   const handleHomepageContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target;
 
@@ -3309,48 +3292,27 @@ export default function NewHomeClient({
                   </MemberBackgroundTitle>
                 </MemberBackgroundHeader>
                 <MemberLogoViewport>
-                  <MemberLogoTrack $columns={visibleMemberLogos.length <= 6 ? 3 : 4}>
-                    {visibleMemberLogos.map((company, index) => (
-                      <MemberLogoTile key={company.label}>
-                        <MemberLogoMark $scale={company.scale}>
-                          <Image
-                            src={company.src}
-                            alt={t.home.memberLogos.items[index] ?? company.label}
-                            width={company.width}
-                            height={company.height}
-                            sizes="(max-width: 768px) 96px, 112px"
-                            loading="lazy"
-                          />
-                        </MemberLogoMark>
-                        <span>{t.home.memberLogos.items[index] ?? company.label}</span>
-                      </MemberLogoTile>
+                  <MemberLogoCarousel $isSliding={isLogoSliding}>
+                    {[currentLogoPage, nextLogoPage].map((page, pageIndex) => (
+                      <MemberLogoPage key={`${logoOffset}-${pageIndex}`}>
+                        {page.map((company) => (
+                          <MemberLogoTile key={`${pageIndex}-${company.label}`}>
+                            <MemberLogoMark $scale={company.scale}>
+                              <Image
+                                src={company.src}
+                                alt={t.home.memberLogos.items[company.logoIndex] ?? company.label}
+                                width={company.width}
+                                height={company.height}
+                                sizes="(max-width: 768px) 96px, 112px"
+                                loading="lazy"
+                              />
+                            </MemberLogoMark>
+                            <span>{t.home.memberLogos.items[company.logoIndex] ?? company.label}</span>
+                          </MemberLogoTile>
+                        ))}
+                      </MemberLogoPage>
                     ))}
-                  </MemberLogoTrack>
-                  {overflowMemberLogos.length > 0 ? (
-                    <MemberLogoOverflow aria-label={t.home.memberLogos.additionalAria}>
-                      {overflowMemberLogos.map((company, index) => (
-                        <MemberLogoOverflowTile key={company.label}>
-                          <Image
-                            src={company.src}
-                            alt={
-                              t.home.memberLogos.items[
-                                visibleMemberLogos.length + index
-                              ] ?? company.label
-                            }
-                            width={company.width}
-                            height={company.height}
-                            sizes="72px"
-                            loading="lazy"
-                          />
-                          <span>
-                            {t.home.memberLogos.items[
-                              visibleMemberLogos.length + index
-                            ] ?? company.label}
-                          </span>
-                        </MemberLogoOverflowTile>
-                      ))}
-                    </MemberLogoOverflow>
-                  ) : null}
+                  </MemberLogoCarousel>
                 </MemberLogoViewport>
               </MemberBackgroundLayout>
             </MemberBackgroundSection>
