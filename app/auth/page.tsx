@@ -54,6 +54,70 @@ const spin = keyframes`
   }
 `;
 
+// Mirrors CODE_TTL_MS / RESEND_MIN_INTERVAL_MS in app/lib/otp/service.ts. The server
+// stays the authority; these only decide what the UI offers.
+const OTP_TTL_MS = 5 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+
+// The code arrives over KakaoTalk, so reading it means leaving the page — and the
+// KakaoTalk in-app browser routinely bins the tab. Without this the user came back to
+// the start screen holding a code that is still valid server-side but has no field to
+// go in, and a resend blocked by the 30s cooldown.
+//
+// localStorage, not sessionStorage: a discarded tab takes sessionStorage with it. Only
+// the number and the send time are stored — never the code — and the record is dropped
+// as soon as it is spent or expires, so a shared device keeps nothing.
+const PENDING_OTP_KEY = "pendingPhoneOtp";
+
+interface PendingOtp {
+  phone: string;
+  sentAt: number;
+}
+
+const readPendingOtp = (): PendingOtp | null => {
+  try {
+    const raw = localStorage.getItem(PENDING_OTP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PendingOtp>;
+    if (typeof parsed?.phone !== "string" || typeof parsed?.sentAt !== "number") {
+      return null;
+    }
+    if (Date.now() - parsed.sentAt >= OTP_TTL_MS) return null;
+    return { phone: parsed.phone, sentAt: parsed.sentAt };
+  } catch {
+    return null;
+  }
+};
+
+const writePendingOtp = (record: PendingOtp) => {
+  try {
+    localStorage.setItem(PENDING_OTP_KEY, JSON.stringify(record));
+  } catch {
+    // Private-mode quota errors must not break the sign-in itself.
+  }
+};
+
+const clearPendingOtp = () => {
+  try {
+    localStorage.removeItem(PENDING_OTP_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+const isPhoneNumberValid = (input: string) => {
+  // Deliberately loose (starts with 01, at least 10 digits) so a real number is never
+  // rejected client-side; app/lib/otp/service.ts does the strict check.
+  const digits = input.replace(/\D/g, "");
+  return digits.startsWith("01") && digits.length >= 10;
+};
+
+const formatCountdown = (totalSeconds: number) => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
 const sanitizeRedirectUrl = (value: string | null) => {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return null;
@@ -595,7 +659,11 @@ function AuthContent() {
   // OTP send/verify stay inline so the form never disappears mid-flow.
   const [checkingSession, setCheckingSession] = useState(true);
   const [busy, setBusy] = useState<null | "send" | "verify">(null);
-  const [resendIn, setResendIn] = useState(0); // seconds left on the resend cooldown
+  // When the current code was sent. Both countdowns derive from it, so they stay
+  // truthful across a backgrounded tab — the normal case here, since reading the code
+  // means switching to KakaoTalk and timers get throttled while we are hidden.
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [errorState, setErrorState] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isValidPhoneNumber, setIsValidPhoneNumber] = useState(false);
@@ -644,18 +712,7 @@ function AuthContent() {
 
   // Validate Korean phone number format
   const validatePhoneNumber = (input: string) => {
-    // Clean up the input (remove non-digits)
-    const cleanNumber = input.replace(/\D/g, "");
-
-    // Allow more flexible validation to avoid frustrating users
-    // Allow 10-11 digits Korean mobile numbers
-    // Starting with 01X where X is usually 0, 1, 6, 7, 8, or 9
-    const minLength = 10; // Minimum length for a valid Korean mobile number
-
-    // Basic check: starts with 01 and has at least 10 digits
-    setIsValidPhoneNumber(
-      cleanNumber.startsWith("01") && cleanNumber.length >= minLength
-    );
+    setIsValidPhoneNumber(isPhoneNumberValid(input));
   };
 
   // On an existing/new Supabase session, redirect. The handle_new_user trigger
@@ -683,13 +740,53 @@ function AuthContent() {
     return () => sub.subscription.unsubscribe();
   }, [router, searchParams]);
 
-  // Countdown for the resend link. Mirrors RESEND_MIN_INTERVAL_MS in app/lib/otp/service.ts,
-  // so the link only re-enables once the server would actually accept another send.
+  // One clock for both countdowns; each is recomputed from sentAt rather than counted
+  // down, so returning from KakaoTalk shows the real remaining time, not a stalled one.
   useEffect(() => {
-    if (resendIn <= 0) return;
-    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [resendIn]);
+    if (sentAt === null) return;
+    setNowMs(Date.now());
+    const ticker = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(ticker);
+  }, [sentAt]);
+
+  const elapsedSinceSend = sentAt === null ? null : nowMs - sentAt;
+  const resendIn =
+    elapsedSinceSend === null
+      ? 0
+      : Math.max(0, Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsedSinceSend) / 1000));
+  const codeValidFor =
+    elapsedSinceSend === null
+      ? 0
+      : Math.max(0, Math.ceil((OTP_TTL_MS - elapsedSinceSend) / 1000));
+
+  // Pick the flow back up if the tab was discarded while the code was still alive.
+  // Runs once: a restored code has to be typed, not re-requested.
+  useEffect(() => {
+    const pending = readPendingOtp();
+    if (!pending) return;
+    setShowPhoneAuth(true);
+    setPhoneNumber(pending.phone);
+    setIsValidPhoneNumber(isPhoneNumberValid(pending.phone));
+    setCodeSent(true);
+    setSentAt(pending.sentAt);
+    setMessage(
+      "이어서 진행할게요. 카카오 알림톡으로 받으신 인증번호를 입력해주세요."
+    );
+  }, []);
+
+  // The server drops the code at OTP_TTL_MS, so stop offering a field for it.
+  // Guard on sentAt as well: codeValidFor is 0 whenever it is null, and treating that
+  // as an expiry would wipe the step the instant it opened.
+  useEffect(() => {
+    if (!codeSent || sentAt === null || codeValidFor > 0) return;
+    clearPendingOtp();
+    setCodeSent(false);
+    setSentAt(null);
+    setVerificationCode("");
+    submittedCodeRef.current = null;
+    setMessage(null);
+    setErrorState("인증번호 유효시간이 지났습니다. 다시 요청해주세요.");
+  }, [codeSent, sentAt, codeValidFor]);
 
   // Custom phone OTP delivered via Kakao AlimTalk (see app/api/phone-otp/*).
   // Free-plan alternative to Supabase's Pro-only Send SMS auth hook.
@@ -708,8 +805,10 @@ function AuthContent() {
           const { error } = await res.json().catch(() => ({ error: "" }));
           throw new Error(error || "인증번호 전송에 실패했습니다");
         }
+        const sentNow = Date.now();
         setCodeSent(true);
-        setResendIn(30);
+        setSentAt(sentNow);
+        writePendingOtp({ phone: phoneNumber, sentAt: sentNow });
         setVerificationCode("");
         submittedCodeRef.current = null;
         setMessage(
@@ -753,6 +852,7 @@ function AuthContent() {
           refresh_token: body.refresh_token,
         });
         if (error) throw error;
+        clearPendingOtp();
         setMessage("로그인 성공! 이동 중이에요...");
       } catch (err: unknown) {
         setErrorState(
@@ -783,9 +883,10 @@ function AuthContent() {
 
   // Back to editing the number without losing the screen.
   const handleEditPhoneNumber = () => {
+    clearPendingOtp();
     setCodeSent(false);
     setVerificationCode("");
-    setResendIn(0);
+    setSentAt(null);
     submittedCodeRef.current = null;
     setErrorState(null);
     setMessage(null);
@@ -818,7 +919,7 @@ function AuthContent() {
           <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
           <Description>
             {codeSent
-              ? "받으신 6자리 인증번호를 입력해주세요."
+              ? "받으신 6자리 인증번호를 입력해주세요. 카카오톡을 확인하고 돌아오셔도 이 화면 그대로 이어집니다."
               : "인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오 알림톡(또는 문자)으로 발송됩니다."}
           </Description>
         </>
@@ -892,7 +993,11 @@ function AuthContent() {
                 disabled={busy === "verify"}
               />
               <StepRow>
-                <span>인증번호를 받지 못하셨나요?</span>
+                <span>
+                  {codeValidFor > 0
+                    ? `인증번호 유효시간 ${formatCountdown(codeValidFor)}`
+                    : "인증번호를 받지 못하셨나요?"}
+                </span>
                 <LinkButton
                   type="button"
                   onClick={() => sendVerificationCode(true)}

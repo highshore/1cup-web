@@ -1,9 +1,9 @@
 "use client";
 
-import { styled } from "styled-components";
+import { styled, keyframes } from "styled-components";
 import { supabase, invokeFunction } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
@@ -52,17 +52,6 @@ const TransparentCard = styled.div`
   border-radius: 20px;
   padding: 20px;
   width: 100%;
-  margin-bottom: 20px;
-  font-family: inherit; /* Ensure consistent font */
-`;
-
-// Set consistent card width according to layout's content width
-const Card = styled.div`
-  background-color: transparent;
-  border-radius: 8px;
-  padding: 20px;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
   font-family: inherit; /* Ensure consistent font */
 `;
@@ -447,16 +436,83 @@ const WordsList = styled.div`
   margin-top: 15px;
 `;
 
-const AlertCard = styled(Card).withConfig({
-  shouldForwardProp: (prop) => prop !== "type",
-})<{ type: "error" | "success" }>`
+const alertSlideIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+/* The subscription controls sit in the 4th of 5 sections, so an alert in normal
+   flow at the top of the shell lands off-screen for the person who triggered it.
+   Pin the alerts to the viewport instead, above ConfirmationOverlay (z-index 1000)
+   so failures raised while a dialog is still open stay readable. */
+const AlertLayer = styled.div`
+  position: fixed;
+  top: 86px;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem;
+  pointer-events: none;
+
+  @media (max-width: 768px) {
+    top: 80px;
+    padding: 0 1rem;
+  }
+`;
+
+const AlertCard = styled.div<{ $type: "error" | "success" }>`
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 560px;
+  padding: 0.85rem 1rem;
+  border: 2px solid #050505;
+  border-radius: 14px;
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
   background-color: ${(props) =>
-    props.type === "success" ? "#e8f5e9" : "#ffebee"};
-  margin-bottom: 1rem;
-  border-radius: 20px;
+    props.$type === "success" ? "#e8f5e9" : "#ffebee"};
+  animation: ${alertSlideIn} 200ms ease-out;
 
   p {
-    color: ${(props) => (props.type === "success" ? "#2e7d32" : "#c62828")};
+    flex: 1;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: left;
+    color: ${(props) => (props.$type === "success" ? "#1b5e20" : "#b71c1c")};
+  }
+`;
+
+const AlertDismiss = styled.button`
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    opacity: 1;
   }
 `;
 
@@ -2297,6 +2353,22 @@ const NbStatusPill = styled.span.withConfig({
   font-weight: 800;
 `;
 
+/* Says out loud, in the card the user just acted on, what state the subscription is
+   now in. Highlighted once billing is stopped or the membership has ended, so the
+   change is visible at the point of the action rather than only in a banner. */
+const NbSubscriptionNote = styled.p<{ $highlight?: boolean }>`
+  margin: 0.9rem 0 0;
+  padding: ${(props) => (props.$highlight ? "0.7rem 0.85rem" : "0")};
+  border: ${(props) => (props.$highlight ? "2px solid #050505" : "0")};
+  border-radius: 10px;
+  background: ${(props) => (props.$highlight ? "#fff3d1" : "transparent")};
+  font-size: 0.82rem;
+  font-weight: ${(props) => (props.$highlight ? 700 : 500)};
+  line-height: 1.55;
+  text-align: left;
+  color: ${(props) => (props.$highlight ? "#050505" : "rgba(5, 5, 5, 0.6)")};
+`;
+
 const NbCancelFooter = styled.button`
   width: 100%;
   margin-top: 1rem;
@@ -2905,6 +2977,17 @@ export default function ProfileClient() {
     }
   };
 
+  const dismissError = useCallback(() => setError(""), []);
+  const dismissSuccess = useCallback(() => setSuccessMessage(null), []);
+
+  // A pinned banner that never leaves is its own kind of noise, so retire successes
+  // on their own. Errors stay until dismissed — they usually need acting on.
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = window.setTimeout(() => setSuccessMessage(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [successMessage]);
+
   const handleStopNextBilling = async () => {
     // Show survey first
     setShowCancellationOptions(false);
@@ -2944,6 +3027,11 @@ export default function ProfileClient() {
           billingCancelled: true, // Billing is cancelled but key is preserved
           nextBillingDate: null, // No next billing date since billing is cancelled
         }));
+        // The subscription card reads some rows off userData, so it has to move too —
+        // otherwise the card contradicts itself until the next reload.
+        setUserData((prev) =>
+          prev ? { ...prev, billingCancelled: true } : prev
+        );
 
         setSuccessMessage((result as any).message);
         setShowCancellationSurvey(false);
@@ -3002,6 +3090,9 @@ export default function ProfileClient() {
           nextBillingDate,
         };
       });
+      setUserData((prev) =>
+        prev ? { ...prev, billingCancelled: false } : prev
+      );
 
       setSuccessMessage(
         "결제가 성공적으로 재활성화되었습니다. 다음 결제일부터 정기결제가 재개됩니다."
@@ -3047,11 +3138,15 @@ export default function ProfileClient() {
       console.log("Subscription cancellation result:", result);
 
       if (result && (result as any).success) {
+        const cancelledAt = new Date();
+
         // Update local state
         setSubscriptionData((prev) => ({
           ...prev,
           status: "canceled",
-          cancelledDate: new Date(),
+          cancelledDate: cancelledAt,
+          billingCancelled: false,
+          nextBillingDate: null,
         }));
 
         // Update user data
@@ -3059,9 +3154,22 @@ export default function ProfileClient() {
           .from("users")
           .update({
             has_active_subscription: false,
-            subscription_end_date: new Date().toISOString(),
+            subscription_end_date: cancelledAt.toISOString(),
           })
           .eq("uid", user.uid);
+
+        // The "구독 여부" pill renders off userData, not subscriptionData. Without this
+        // it kept reading 구독중 next to a 비활성 회원 상태 until the page was reloaded.
+        setUserData((prev) =>
+          prev
+            ? {
+                ...prev,
+                hasActiveSubscription: false,
+                subscriptionEndDate: cancelledAt,
+                billingCancelled: false,
+              }
+            : prev
+        );
 
         setSuccessMessage("구독이 성공적으로 해지되고 환불 처리되었습니다.");
         setShowRefundSurvey(false);
@@ -3159,13 +3267,22 @@ export default function ProfileClient() {
         ? "결제 재활성화하기"
         : "멤버십 중지하기"
       : "멤버십 시작하기";
+  // True once the membership has been stopped or ended — i.e. the states a user
+  // arrives at by cancelling, which is exactly when the note has to be noticed.
+  const hasEndedSubscription =
+    subscriptionData.status !== "active" && !!subscriptionData.startDate;
   const subscriptionActionNote = isManagedMembership
     ? "리더 또는 GDG 멤버십은 별도 결제 관리가 필요하지 않습니다."
     : subscriptionData.status === "active" && subscriptionData.billingCancelled
       ? "다음 결제가 중단되었습니다. 현재 구독 기간 만료 시까지 서비스를 이용할 수 있습니다."
       : subscriptionData.status === "active"
         ? "다음 결제 중단 또는 환불 요청을 진행할 수 있습니다."
-        : "멤버십을 시작하면 영어 한잔 서비스를 이용할 수 있습니다.";
+        : hasEndedSubscription
+          ? "구독이 해지되었습니다. 언제든지 멤버십을 다시 시작하실 수 있습니다."
+          : "멤버십을 시작하면 영어 한잔 서비스를 이용할 수 있습니다.";
+  const subscriptionNoteHighlight =
+    !isManagedMembership &&
+    (subscriptionData.billingCancelled || hasEndedSubscription);
 
   const handleSubscriptionAction = () => {
     if (isManagedMembership) return;
@@ -3186,20 +3303,39 @@ export default function ProfileClient() {
   return (
     <>
       {isLoading && <GlobalLoadingScreen />}
+
+      {(error || successMessage) && (
+        <AlertLayer>
+          {error && (
+            <AlertCard $type="error" role="alert">
+              <p>{error}</p>
+              <AlertDismiss
+                type="button"
+                aria-label="알림 닫기"
+                onClick={dismissError}
+              >
+                <XMarkIcon />
+              </AlertDismiss>
+            </AlertCard>
+          )}
+          {successMessage && (
+            <AlertCard $type="success" role="status">
+              <p>{successMessage}</p>
+              <AlertDismiss
+                type="button"
+                aria-label="알림 닫기"
+                onClick={dismissSuccess}
+              >
+                <XMarkIcon />
+              </AlertDismiss>
+            </AlertCard>
+          )}
+        </AlertLayer>
+      )}
+
       <Wrapper>
         <NbPageBackground>
           <NbShell>
-            {error && (
-              <AlertCard type="error">
-                <p>{error}</p>
-              </AlertCard>
-            )}
-            {successMessage && (
-              <AlertCard type="success">
-                <p>{successMessage}</p>
-              </AlertCard>
-            )}
-
             {/* 1. PROFILE CARD */}
             <NbProfileCard>
               <NbAvatarFrame>
@@ -3511,6 +3647,10 @@ export default function ProfileClient() {
                   </NbStatusPill>
                 </span>
               </NbManageRow>
+
+              <NbSubscriptionNote $highlight={subscriptionNoteHighlight}>
+                {subscriptionActionNote}
+              </NbSubscriptionNote>
 
               {isManagedMembership ? null : subscriptionData.status ===
                   "active" && !subscriptionData.billingCancelled ? (
