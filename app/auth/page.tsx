@@ -112,6 +112,15 @@ const isPhoneNumberValid = (input: string) => {
   return digits.startsWith("01") && digits.length >= 10;
 };
 
+// A restored record belongs to whoever used this browser last, which on a shared
+// desktop is not necessarily the person looking at it now. Show enough for the owner
+// to recognise their own number and no more.
+const maskPhone = (input: string) => {
+  const digits = input.replace(/\D/g, "");
+  if (digits.length < 8) return digits;
+  return `${digits.slice(0, 3)}${"*".repeat(digits.length - 7)}${digits.slice(-4)}`;
+};
+
 const formatCountdown = (totalSeconds: number) => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -664,6 +673,9 @@ function AuthContent() {
   // means switching to KakaoTalk and timers get throttled while we are hidden.
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  // True while the step on screen was rebuilt from storage rather than sent in this
+  // page's lifetime. Drives how much of the number we show and what "번호 변경" clears.
+  const [restoredPending, setRestoredPending] = useState(false);
   const [errorState, setErrorState] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isValidPhoneNumber, setIsValidPhoneNumber] = useState(false);
@@ -749,7 +761,7 @@ function AuthContent() {
     return () => window.clearInterval(ticker);
   }, [sentAt]);
 
-  const elapsedSinceSend = sentAt === null ? null : nowMs - sentAt;
+  const elapsedSinceSend = sentAt === null ? null : Math.max(0, nowMs - sentAt);
   const resendIn =
     elapsedSinceSend === null
       ? 0
@@ -769,6 +781,7 @@ function AuthContent() {
     setIsValidPhoneNumber(isPhoneNumberValid(pending.phone));
     setCodeSent(true);
     setSentAt(pending.sentAt);
+    setRestoredPending(true);
     setMessage(
       "이어서 진행할게요. 카카오 알림톡으로 받으신 인증번호를 입력해주세요."
     );
@@ -808,6 +821,7 @@ function AuthContent() {
         const sentNow = Date.now();
         setCodeSent(true);
         setSentAt(sentNow);
+        if (!isResend) setRestoredPending(false);
         writePendingOtp({ phone: phoneNumber, sentAt: sentNow });
         setVerificationCode("");
         submittedCodeRef.current = null;
@@ -887,6 +901,14 @@ function AuthContent() {
     setCodeSent(false);
     setVerificationCode("");
     setSentAt(null);
+    // Handing back a masked number in an editable field would just un-mask it, and
+    // whoever abandons someone else's restored step is starting over anyway. A number
+    // typed in this page's lifetime is kept, so fixing a typo still works.
+    if (restoredPending) {
+      setPhoneNumber("");
+      setIsValidPhoneNumber(false);
+      setRestoredPending(false);
+    }
     submittedCodeRef.current = null;
     setErrorState(null);
     setMessage(null);
@@ -953,7 +975,9 @@ function AuthContent() {
               inputMode="numeric"
               autoComplete="tel"
               placeholder="휴대폰 번호 (예: 01012345678)"
-              value={phoneNumber}
+              value={
+                codeSent && restoredPending ? maskPhone(phoneNumber) : phoneNumber
+              }
               onChange={handlePhoneNumberChange}
               readOnly={codeSent}
               $hasInlineAction={codeSent}
