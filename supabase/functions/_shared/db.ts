@@ -40,3 +40,12 @@ export function env(name: string): string {
   if (!v) throw new Error(`missing env ${name}`);
   return v;
 }
+
+// pg_cron invokes scheduled Edge Function actions with the project service-role
+// bearer token. Those actions must not be reachable by arbitrary public callers
+// just because the same function also serves a public webhook or user request.
+export function hasServiceRoleAuthorization(req: Request): boolean {
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) return false;
+  return req.headers.get("Authorization") === `Bearer ${serviceRoleKey}`;
+}

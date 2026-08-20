@@ -59,7 +59,7 @@ export const fetchUserProfile = async (
   }
 };
 
-// Fetch multiple user profiles by UIDs from Firestore
+// Fetch multiple user profiles by UID through the Supabase-backed public profile route.
 export const fetchUserProfiles = async (
   uids: string[]
 ): Promise<UserProfile[]> => {

@@ -41,6 +41,17 @@ const toPhotos = (value: unknown): MarketingTemplatePhoto[] =>
         .filter((p) => p.url)
     : [];
 
+const toSchedule = (value: unknown): MarketingCronSchedule => {
+  const schedule = (value ?? {}) as Record<string, unknown>;
+  return {
+    minute: toNumber(schedule.minute, DEFAULT_MARKETING_CRON_SETTINGS.schedule.minute),
+    hour: toNumber(schedule.hour, DEFAULT_MARKETING_CRON_SETTINGS.schedule.hour),
+    daysOfWeek: Array.isArray(schedule.daysOfWeek)
+      ? (schedule.daysOfWeek as unknown[]).map((day) => toNumber(day))
+      : [],
+  };
+};
+
 const toSettings = (row: Record<string, unknown> | null): MarketingCronSettings => {
   if (!row) return DEFAULT_MARKETING_CRON_SETTINGS;
   const schedule = (row.schedule ?? {}) as Record<string, unknown>;
@@ -50,15 +61,13 @@ const toSettings = (row: Record<string, unknown> | null): MarketingCronSettings 
     schedule: {
       minute: toNumber(schedule.minute, DEFAULT_MARKETING_CRON_SETTINGS.schedule.minute),
       hour: toNumber(schedule.hour, DEFAULT_MARKETING_CRON_SETTINGS.schedule.hour),
+      // An explicitly empty list is a saved, disabled schedule. Only a legacy row
+      // without this field should receive the original weekday default.
       daysOfWeek: Array.isArray(schedule.daysOfWeek)
         ? (schedule.daysOfWeek as unknown[]).map((d) => toNumber(d))
         : DEFAULT_MARKETING_CRON_SETTINGS.schedule.daysOfWeek,
     },
     templateId: typeof row.template_id === "string" ? row.template_id : "",
-    templateAssignments:
-      row.template_assignments && typeof row.template_assignments === "object"
-        ? (row.template_assignments as Record<string, string>)
-        : {},
     destinationUrl:
       typeof row.destination_url === "string" && row.destination_url
         ? row.destination_url
@@ -84,6 +93,10 @@ const toTemplate = (row: Record<string, unknown>): MarketingTemplate => ({
   copy: typeof row.copy === "string" ? row.copy : "",
   callToAction: typeof row.call_to_action === "string" ? row.call_to_action : "",
   photos: toPhotos(row.photos),
+  scheduleEnabled: row.schedule_enabled === true,
+  schedule: toSchedule(row.schedule),
+  nextRunAt: toDate(row.next_run_at),
+  lastRunAt: toDate(row.last_run_at),
   createdAt: toDate(row.created_at),
   updatedAt: toDate(row.updated_at),
 });
@@ -183,13 +196,12 @@ export const subscribeToMarketingTemplates = (
 
 // ---- writes: all through the edge function, which re-checks admin server-side ----
 
-export const saveMarketingCronSettings = async (settings: {
-  enabled: boolean;
-  schedule: MarketingCronSchedule;
+export const saveMarketingTemplateSchedule = async (settings: {
   templateId: string;
-  templateAssignments: Record<string, string>;
+  scheduleEnabled: boolean;
+  schedule: MarketingCronSchedule;
 }): Promise<void> => {
-  await invokeFunction("marketing", { action: "save-settings", settings });
+  await invokeFunction("marketing", { action: "save-template-schedule", settings });
 };
 
 export const createMarketingTemplate = async (template: {
@@ -199,6 +211,8 @@ export const createMarketingTemplate = async (template: {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
+  scheduleEnabled: boolean;
+  schedule: MarketingCronSchedule;
 }): Promise<string> => {
   const result = await invokeFunction<{ templateId: string }>("marketing", {
     action: "create-template",
@@ -218,6 +232,6 @@ export const deleteMarketingTemplate = async (templateId: string): Promise<void>
   await invokeFunction("marketing", { action: "delete-template", templateId });
 };
 
-export const runMarketingCronNow = async (): Promise<void> => {
-  await invokeFunction("marketing", { action: "run-now" });
+export const runMarketingCronNow = async (templateId: string): Promise<void> => {
+  await invokeFunction("marketing", { action: "run-now", templateId });
 };

@@ -34,6 +34,10 @@ export interface MarketingTemplate {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
+  scheduleEnabled: boolean;
+  schedule: MarketingCronSchedule;
+  nextRunAt: Date | null;
+  lastRunAt: Date | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 }
@@ -43,7 +47,6 @@ export interface MarketingCronSettings {
   nextRunAt: Date | null;
   schedule: MarketingCronSchedule;
   templateId: string;
-  templateAssignments: Record<string, string>;
   destinationUrl: string;
   title: string;
   copy: string;
@@ -96,7 +99,6 @@ export const DEFAULT_MARKETING_CRON_SETTINGS: MarketingCronSettings = {
     daysOfWeek: [1, 2, 3, 4, 5],
   },
   templateId: "",
-  templateAssignments: {},
   destinationUrl: "https://1cupenglish.com/payment",
   title: "",
   copy: "",

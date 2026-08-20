@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import { supabase } from "../supabase/client";
@@ -46,6 +47,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [isGdgMember, setIsGdgMember] = useState<boolean | null>(null);
+  // Supabase can emit SIGNED_IN again when a persisted browser session is recovered
+  // after a tab becomes visible. Keep the identity we have already hydrated so that
+  // recovery does not replace the context value and remount protected screens.
+  const hydratedAuthIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +58,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     async function hydrate(authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null) {
       if (!authUser) {
         if (!active) return;
+        hydratedAuthIdRef.current = null;
         setCurrentUser(null);
         setHasActiveSubscription(null);
         setAccountStatus(null);
@@ -68,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const row = Array.isArray(rows) ? rows[0] : rows;
       if (!active) return;
 
+      hydratedAuthIdRef.current = authUser.id;
       const meta = authUser.user_metadata ?? {};
       setCurrentUser({
         uid: row?.uid ?? authUser.id,
@@ -103,8 +110,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     start();
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      hydrate(session?.user ?? null);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Token refreshes are normal when a tab is restored or regains focus. They do not
+      // change the signed-in person or their account status, but rehydrating here used
+      // to replace currentUser with a fresh object and remount admin screens. Validate
+      // the session once in start(), then only rehydrate on an actual sign-in/out.
+      if (event === "SIGNED_OUT") {
+        void hydrate(null);
+        return;
+      }
+
+      // Some browsers report a recovered persisted session as SIGNED_IN when the
+      // tab is focused. Only resolve profile data if the signed-in identity changed.
+      if (event === "SIGNED_IN" && session?.user.id !== hydratedAuthIdRef.current) {
+        void hydrate(session?.user ?? null);
+      }
     });
 
     return () => { active = false; sub.subscription.unsubscribe(); };

@@ -1,5 +1,4 @@
 import { admin } from "../../../supabase/server";
-import { FEATURED_ARTICLE_IDS } from "./featured_articles";
 
 export interface HomeTopicArticle {
   id: string;
@@ -11,49 +10,41 @@ export interface HomeTopicArticle {
   timestampISO: string;
 }
 
-// Server-side fetch using Supabase service-role client - fetches specific articles by ID
+// Server-side fetch using Supabase as the source of truth. The old Firebase document
+// IDs were a fixed list, which left the home carousel pointing at stale records after
+// the migration instead of the articles currently published in Supabase.
 export const fetchHomeTopics = async (): Promise<HomeTopicArticle[]> => {
   try {
-    // Fetch all featured articles in a single round-trip via .in()
     const { data, error } = await admin()
       .from("articles")
       .select("*")
-      .in("id", FEATURED_ARTICLE_IDS);
+      .eq("publication_status", "published")
+      .order("timestamp", { ascending: false, nullsFirst: false })
+      .limit(7);
 
     if (error) {
       console.error("Error batch-fetching home topics:", error);
       return [];
     }
 
-    const rows = data ?? [];
-
-    // Preserve the original featured order (IN does not guarantee ordering).
-    const byId = new Map(rows.map((row) => [row.id, row]));
-
-    const topics: HomeTopicArticle[] = FEATURED_ARTICLE_IDS.filter((id) => {
-      if (!byId.has(id)) {
-        console.warn(`Article ${id} not found in Supabase`);
-        return false;
-      }
-      return true;
-    }).map((id) => {
-      const row = byId.get(id) as Record<string, any>;
-      const title = row.title || {};
-      const content = row.content || {};
+    const topics: HomeTopicArticle[] = (data ?? []).map((row) => {
+      const article = row as Record<string, any>;
+      const title = article.title || {};
+      const content = article.content || {};
       const contentEnglish: string[] = content?.english || [];
       // `summary`/`excerpt` are not columns; fall back to first English paragraph.
       const excerpt = contentEnglish[0] || "";
 
-      const timestampRaw = row.timestamp;
+      const timestampRaw = article.timestamp;
 
       return {
-        id: row.id,
+        id: article.id,
         titleEnglish: title?.english || "",
         titleKorean: title?.korean || "",
-        imageUrl: row.image_url || "",
+        imageUrl: article.image_url || "",
         excerpt: excerpt.slice(0, 140),
-        keywords: Array.isArray(row.pronunciation_keywords)
-          ? row.pronunciation_keywords.slice(0, 5)
+        keywords: Array.isArray(article.pronunciation_keywords)
+          ? article.pronunciation_keywords.slice(0, 5)
           : [],
         timestampISO: timestampRaw
           ? new Date(timestampRaw).toISOString()

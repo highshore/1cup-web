@@ -532,7 +532,7 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
         status: formData.status,
       };
 
-      // Only include fields that have values - avoid undefined values which Firestore rejects
+      // Only include fields that have values; the database payload must not contain undefined.
       if (formData.excerpt.trim()) {
         postData.excerpt = formData.excerpt.trim();
       }

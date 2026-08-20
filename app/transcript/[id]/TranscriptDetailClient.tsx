@@ -1792,7 +1792,7 @@ export default function TranscriptDetailClient() {
   const transcriptionError = sonioxError;
   const isSocketOpen = isSonioxSocketOpen;
 
-  // Firestore transcript data (source of truth for saved transcript)
+  // Persisted transcript data (source of truth for saved transcript)
   const [savedTranscriptData, setSavedTranscriptData] = useState<any[]>([]);
 
   // Audio recording state
@@ -2074,7 +2074,7 @@ export default function TranscriptDetailClient() {
     return currentFinalTranscript.slice(savedDataLength);
   }, [finalTranscript, savedTranscriptData.length]);
 
-  // Combine saved Firestore data with new live data
+  // Combine saved data with new live data
   const combinedFinalTranscript = useMemo(() => {
     return [...savedTranscriptData, ...newLiveData];
   }, [savedTranscriptData, newLiveData]);
@@ -3171,7 +3171,7 @@ Respond in JSON format:
 
     // Immediately save transcript when recording stops
     setTimeout(() => {
-      saveTranscriptToFirestore();
+      saveTranscriptToDatabase();
     }, 1000); // Give a moment for final transcript to be processed
   };
 
@@ -3262,7 +3262,7 @@ Respond in JSON format:
   };
 
   // Auto-save transcript to the database with comprehensive data
-  const saveTranscriptToFirestore = useCallback(async () => {
+  const saveTranscriptToDatabase = useCallback(async () => {
     if (!transcriptId || !combinedFinalTranscript) return;
 
     try {
@@ -3687,12 +3687,12 @@ Respond in JSON format:
     if (isRecording && !isPaused && newLiveData.length > 0) {
       // Save every 2 seconds during active recording when there's new live data
       const saveTimer = setTimeout(() => {
-        saveTranscriptToFirestore();
+        saveTranscriptToDatabase();
       }, 2000);
 
       return () => clearTimeout(saveTimer);
     }
-  }, [newLiveData.length, saveTranscriptToFirestore, isRecording, isPaused]);
+  }, [newLiveData.length, saveTranscriptToDatabase, isRecording, isPaused]);
 
   // Generate qualitative analysis after transcript data is loaded and stable
   useEffect(() => {

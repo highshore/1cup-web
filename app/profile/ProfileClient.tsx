@@ -2412,6 +2412,74 @@ const NbPrimaryButton = styled.button`
   }
 `;
 
+const NbDeleteAccountButton = styled.button`
+  width: 100%;
+  border: 1px solid #d73a49;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #b42331;
+  padding: 0.8rem 1rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+
+  &:hover {
+    background: #fff1f2;
+  }
+`;
+
+const AccountDeletionDialog = styled(ConfirmationDialog)`
+  display: grid;
+  gap: 0.9rem;
+  border: 2px solid #050505;
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    color: #b42331;
+    font-size: 1.2rem;
+  }
+
+  p {
+    color: #4b5563;
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+`;
+
+const AccountDeletionPhrase = styled.code`
+  width: fit-content;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  padding: 0.28rem 0.45rem;
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 800;
+`;
+
+const AccountDeletionInput = styled.input`
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+
+  &:focus {
+    outline: 2px solid #d73a49;
+    outline-offset: 1px;
+    border-color: #d73a49;
+  }
+`;
+
 const NbInlineEditCard = styled(NbCard)`
   display: grid;
   gap: 0.7rem;
@@ -2532,6 +2600,9 @@ export default function ProfileClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [referralGenerating, setReferralGenerating] = useState(false);
   const [kakaoReady, setKakaoReady] = useState(false);
+  const [showAccountDeletionDialog, setShowAccountDeletionDialog] = useState(false);
+  const [accountDeletionConfirmation, setAccountDeletionConfirmation] = useState("");
+  const [accountDeletionInProgress, setAccountDeletionInProgress] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -2812,6 +2883,52 @@ export default function ProfileClient() {
     } catch (error) {
       console.error("Error signing out:", error);
       setError("Failed to sign out. Please try again.");
+    }
+  };
+
+  const accountDeletionPhrase = t.profile.deleteAccountPhrase;
+  const accountDeletionNeedsBillingStop =
+    userData?.hasActiveSubscription === true && !userData.billingCancelled;
+
+  const closeAccountDeletionDialog = () => {
+    if (accountDeletionInProgress) return;
+    setShowAccountDeletionDialog(false);
+    setAccountDeletionConfirmation("");
+  };
+
+  const handleAccountDeletion = async () => {
+    if (!user) return;
+
+    if (accountDeletionNeedsBillingStop) {
+      setError(t.profile.deleteAccountBillingRequired);
+      return;
+    }
+
+    if (accountDeletionConfirmation !== accountDeletionPhrase) {
+      setError(t.profile.deleteAccountMismatch);
+      return;
+    }
+
+    setAccountDeletionInProgress(true);
+    setError("");
+
+    try {
+      await invokeFunction("account-delete", {
+        confirmation: accountDeletionConfirmation,
+      });
+      // Deleting the Auth users invalidates the remote session. Clear the local cookie
+      // regardless, since Supabase may reject sign-out after the user is gone.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      router.replace("/");
+      router.refresh();
+    } catch (deletionError) {
+      console.error("Account deletion failed:", deletionError);
+      setError(
+        deletionError instanceof Error && deletionError.message
+          ? deletionError.message
+          : t.profile.deleteAccountFailed,
+      );
+      setAccountDeletionInProgress(false);
     }
   };
 
@@ -3679,8 +3796,69 @@ export default function ProfileClient() {
             >
               {isEditingDetails ? t.profile.cancel : t.profile.editProfile}
             </NbPrimaryButton>
+            <NbDeleteAccountButton
+              type="button"
+              onClick={() => setShowAccountDeletionDialog(true)}
+            >
+              {t.profile.deleteAccount}
+            </NbDeleteAccountButton>
           </NbShell>
         </NbPageBackground>
+
+        {showAccountDeletionDialog && (
+          <ConfirmationOverlay onClick={closeAccountDeletionDialog}>
+            <AccountDeletionDialog onClick={(event) => event.stopPropagation()}>
+              <h2>{t.profile.deleteAccountTitle}</h2>
+              <p>{t.profile.deleteAccountDescription}</p>
+              <p>{t.profile.deleteAccountHistory}</p>
+              {accountDeletionNeedsBillingStop ? (
+                <p role="alert">{t.profile.deleteAccountBillingRequired}</p>
+              ) : (
+                <>
+                  <p>
+                    {t.profile.deleteAccountConfirmation.replace(
+                      "{phrase}",
+                      accountDeletionPhrase,
+                    )}
+                  </p>
+                  <AccountDeletionPhrase>{accountDeletionPhrase}</AccountDeletionPhrase>
+                  <AccountDeletionInput
+                    value={accountDeletionConfirmation}
+                    onChange={(event) => setAccountDeletionConfirmation(event.target.value)}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-label={t.profile.deleteAccountConfirmation.replace(
+                      "{phrase}",
+                      accountDeletionPhrase,
+                    )}
+                    disabled={accountDeletionInProgress}
+                  />
+                </>
+              )}
+              <ButtonGroup>
+                <CancelButton type="button" onClick={closeAccountDeletionDialog}>
+                  {t.profile.cancel}
+                </CancelButton>
+                {!accountDeletionNeedsBillingStop && (
+                  <DangerButton
+                    type="button"
+                    disabled={
+                      accountDeletionInProgress ||
+                      accountDeletionConfirmation !== accountDeletionPhrase
+                    }
+                    onClick={handleAccountDeletion}
+                  >
+                    {accountDeletionInProgress
+                      ? t.profile.deleteAccountDeleting
+                      : t.profile.deleteAccountConfirm}
+                  </DangerButton>
+                )}
+              </ButtonGroup>
+            </AccountDeletionDialog>
+          </ConfirmationOverlay>
+        )}
 
         {showPublicPreview && (
           <ConfirmationOverlay onClick={() => setShowPublicPreview(false)}>

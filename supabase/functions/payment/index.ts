@@ -18,7 +18,7 @@
 // phone/displayName reads are replaced with public.users.phone / public.users.display_name.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin, callerUid } from "../_shared/db.ts";
+import { admin, callerUid, hasServiceRoleAuthorization } from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
 
 // -------------------------------------------------------------------
@@ -1461,11 +1461,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case "check-referral":
         return json(req, await checkReferralCode(body));
 
-      case "log-credentials":
+      case "log-credentials": {
+        if (!hasServiceRoleAuthorization(req)) {
+          return json(req, { success: false, message: "Internal scheduler authorization required" }, 403);
+        }
         return json(req, logCredentials());
+      }
 
       case "process-recurring": {
-        // Scheduled billing job (invoke via cron / scheduler). No caller auth required.
+        // Scheduled billing is internal. This function remains public only for
+        // Payple's callback route above.
+        if (!hasServiceRoleAuthorization(req)) {
+          return json(req, { success: false, message: "Internal scheduler authorization required" }, 403);
+        }
         return json(req, await processRecurringPayments());
       }
 

@@ -89,6 +89,46 @@ interface DiscussionVoteResult {
   score: number;
 }
 
+const stringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+
+// Firestore imports and newly processed Supabase articles use slightly different
+// optional fields. Normalize at the boundary so a nullable JSONB field cannot crash
+// the reading experience for an otherwise valid migrated article.
+const articleFromRow = (row: Record<string, unknown>): ArticleData => {
+  const rawContent =
+    row.content && typeof row.content === "object"
+      ? (row.content as Record<string, unknown>)
+      : {};
+  const rawTitle =
+    row.title && typeof row.title === "object"
+      ? (row.title as Record<string, unknown>)
+      : {};
+
+  return {
+    ...row,
+    content: {
+      english: stringArray(rawContent.english),
+      korean: stringArray(rawContent.korean),
+    },
+    title: {
+      english: typeof rawTitle.english === "string" ? rawTitle.english : "",
+      korean: typeof rawTitle.korean === "string" ? rawTitle.korean : "",
+    },
+    // New pipeline records use `keywords`; imported records use
+    // `pronunciation_keywords`. Prefer the former but preserve the latter.
+    keywords: stringArray(row.keywords).length
+      ? stringArray(row.keywords)
+      : stringArray(row.pronunciation_keywords),
+    discussion_topics: stringArray(row.discussion_topics),
+    discussion_topic_ids: stringArray(row.discussion_topic_ids),
+    figures: Array.isArray(row.figures) ? (row.figures as ArticleFigure[]) : [],
+    publicationStatus: row.publication_status as ArticleData["publicationStatus"],
+  } as ArticleData;
+};
+
 const discussionTopicEntriesFor = (article: ArticleData | null): DiscussionTopicEntry[] =>
   (article?.discussion_topics || []).flatMap((topic, originalIndex) => {
     const text = typeof topic === "string" ? topic.trim() : "";
@@ -1332,7 +1372,7 @@ const getWordDefinition = async (
       return cached.definition;
     }
 
-    // If not found in Firestore, call the GPT API
+    // If no saved answer is found, call the GPT API.
     const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error("OpenAI API key not configured");
@@ -2225,10 +2265,7 @@ const Article = () => {
           .maybeSingle();
 
         if (articleRow) {
-          const data = {
-            ...articleRow,
-            publicationStatus: (articleRow as any).publication_status,
-          } as unknown as ArticleData;
+          const data = articleFromRow(articleRow as Record<string, unknown>);
           if (
             data.publicationStatus === "processing" ||
             data.publicationStatus === "failed"
@@ -2721,7 +2758,7 @@ const Article = () => {
     setIsSaving(true);
 
     try {
-      // saved_words is a text[] column; Firestore's arrayUnion/arrayRemove become a
+      // saved_words is a text[] column; legacy array mutation becomes a
       // read-modify-write against the list already held in component state.
       const nextWords = savedWords.includes(word)
         ? savedWords.filter((w) => w !== word)

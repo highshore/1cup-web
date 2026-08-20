@@ -1,8 +1,8 @@
 // marketing — port of functions/src/marketingCron.ts (Gopas advert scheduler).
 //
-// Admin actions (save-settings / create-template / ensure-default-template /
+// Admin actions (save-template-schedule / create-template / ensure-default-template /
 // delete-template / run-now) plus the scheduled tick, which pg_cron calls with the
-// service-role key as { action: "tick" }.
+// a private scheduler header as { action: "tick" }.
 //
 // Two things changed shape in the move off Firestore:
 //   * The run lease was a transaction on the config document. Here it is a conditional
@@ -143,7 +143,6 @@ const validSchedule = (value: unknown): CronSchedule => {
   }
   const days = Array.isArray(data.daysOfWeek) ? data.daysOfWeek.map(Number) : [];
   const daysOfWeek = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
-  if (!daysOfWeek.length) throw new Error("Pick at least one day of the week.");
   return { minute, hour, daysOfWeek: daysOfWeek.sort() };
 };
 
@@ -152,19 +151,6 @@ const validTemplateId = (value: unknown, field = "templateId"): string => {
     throw new Error(`${field} is invalid.`);
   }
   return value;
-};
-
-const validTemplateAssignments = (
-  value: unknown,
-  schedule: CronSchedule,
-): Record<string, string> => {
-  const data = (value ?? {}) as Record<string, unknown>;
-  const assignments: Record<string, string> = {};
-  for (const day of schedule.daysOfWeek) {
-    const raw = data[String(day)];
-    if (typeof raw === "string" && raw) assignments[String(day)] = validTemplateId(raw, "template");
-  }
-  return assignments;
 };
 
 // ------------------------------------------------------------------ schedule
@@ -349,16 +335,21 @@ type RunSettings = {
   photos: TemplatePhoto[];
 };
 
-const clearRunLease = async (extra: Record<string, unknown> = {}) => {
+const clearRunLease = async (templateId: string | null, completedAt: string) => {
   await admin()
     .from("growth_config")
     .update({
       active_run_id: null,
       active_run_lease_until: null,
-      updated_at: new Date().toISOString(),
-      ...extra,
+      updated_at: completedAt,
     })
     .eq("id", CONFIG_ROW);
+  if (templateId) {
+    await admin()
+      .from("marketing_templates")
+      .update({ last_run_at: completedAt, updated_at: completedAt })
+      .eq("id", templateId);
+  }
 };
 
 const executeRun = async (runId: string) => {
@@ -371,6 +362,7 @@ const executeRun = async (runId: string) => {
   if (!run) return;
 
   const settings = (run.settings ?? {}) as RunSettings;
+  const templateId = typeof run.template_id === "string" ? run.template_id : null;
   const scheduledForMillis = run.scheduled_for ? new Date(run.scheduled_for).getTime() : Date.now();
   const startedAt = new Date().toISOString();
 
@@ -404,7 +396,7 @@ const executeRun = async (runId: string) => {
           error: "A matching advert is already on the first Gopas free-ad page.",
         })
         .eq("id", runId);
-      await clearRunLease({ last_run_at: completedAt });
+      await clearRunLease(templateId, completedAt);
       return;
     }
 
@@ -463,7 +455,7 @@ const executeRun = async (runId: string) => {
           error: "Gopas publisher is not configured.",
         })
         .eq("id", runId);
-      await clearRunLease({ last_run_at: completedAt });
+      await clearRunLease(templateId, completedAt);
       return;
     }
 
@@ -495,7 +487,7 @@ const executeRun = async (runId: string) => {
         error: "",
       })
       .eq("id", runId);
-    await clearRunLease({ last_run_at: completedAt });
+    await clearRunLease(templateId, completedAt);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const completedAt = new Date().toISOString();
@@ -503,47 +495,52 @@ const executeRun = async (runId: string) => {
       .from("marketing_cron_runs")
       .update({ status: "failed", completed_at: completedAt, error: message })
       .eq("id", runId);
-    await clearRunLease({ last_run_at: completedAt });
+    await clearRunLease(templateId, completedAt);
   }
 };
 
 // Claim the right to run. The lease check and the write happen in one statement, so a
 // scheduled tick and a manual run cannot both win.
-const claimRun = async (trigger: "schedule" | "manual"): Promise<string | null> => {
+const claimRun = async (
+  trigger: "schedule" | "manual",
+  requestedTemplateId?: string,
+): Promise<string | null> => {
   const a = admin();
   const now = new Date();
   const nowIso = now.toISOString();
 
-  const { data: config } = await a
-    .from("growth_config")
-    .select("*")
-    .eq("id", CONFIG_ROW)
-    .maybeSingle();
-  if (!config) return null;
+  let template: Record<string, unknown> | null = null;
+  let scheduledFor = now;
 
-  const schedule = (config.schedule ?? {}) as CronSchedule;
-  const assignments = (config.template_assignments ?? {}) as Record<string, string>;
-  const nextRunMillis = config.next_run_at ? new Date(config.next_run_at).getTime() : 0;
-  const isDue = nextRunMillis <= now.getTime();
+  if (trigger === "schedule") {
+    const { data } = await a
+      .from("marketing_templates")
+      .select("*")
+      .eq("schedule_enabled", true)
+      .not("next_run_at", "is", null)
+      .lte("next_run_at", nowIso)
+      .order("next_run_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    template = data as Record<string, unknown>;
+    scheduledFor = new Date(String(template.next_run_at));
+  } else {
+    const templateId = validTemplateId(requestedTemplateId);
+    const { data } = await a
+      .from("marketing_templates")
+      .select("*")
+      .eq("id", templateId)
+      .maybeSingle();
+    if (!data) return null;
+    template = data as Record<string, unknown>;
+  }
 
-  if (trigger === "schedule" && (!config.enabled || !isDue)) return null;
+  const templateId = String(template.id ?? "");
+  const schedule = validSchedule(template.schedule);
 
-  const scheduledFor =
-    trigger === "schedule" && config.next_run_at ? new Date(config.next_run_at) : now;
-  const templateId =
-    trigger === "schedule"
-      ? assignments[String(koreaWeekday(scheduledFor.getTime()))]
-      : config.template_id;
-  if (!templateId) return null;
-
-  const { data: template } = await a
-    .from("marketing_templates")
-    .select("*")
-    .eq("id", templateId)
-    .maybeSingle();
-  if (!template) return null;
-
-  // Atomic lease: only succeeds while no live lease exists.
+  // All templates share one publisher, so this short global lease prevents two
+  // independent template schedules from posting concurrently.
   const leaseUntil = new Date(now.getTime() + RUN_LEASE_MS).toISOString();
   const runId = crypto.randomUUID();
   const { data: leased } = await a
@@ -551,9 +548,6 @@ const claimRun = async (trigger: "schedule" | "manual"): Promise<string | null> 
     .update({
       active_run_id: runId,
       active_run_lease_until: leaseUntil,
-      ...(trigger === "schedule"
-        ? { next_run_at: nextScheduledAt(schedule, now.getTime()).toISOString() }
-        : {}),
       updated_at: nowIso,
     })
     .eq("id", CONFIG_ROW)
@@ -561,16 +555,30 @@ const claimRun = async (trigger: "schedule" | "manual"): Promise<string | null> 
     .select("active_run_id");
   if (!leased || leased.length === 0) return null;
 
+  if (trigger === "schedule") {
+    const nextRunAt = nextScheduledAt(schedule, now.getTime()).toISOString();
+    const { error } = await a
+      .from("marketing_templates")
+      .update({ next_run_at: nextRunAt, updated_at: nowIso })
+      .eq("id", templateId)
+      .eq("next_run_at", template.next_run_at);
+    if (error) {
+      await clearRunLease(null, nowIso);
+      throw new Error(error.message);
+    }
+  }
+
   const runSettings: RunSettings = {
-    destinationUrl: template.destination_url,
-    title: template.title,
-    copy: template.copy,
-    callToAction: template.call_to_action,
+    destinationUrl: String(template.destination_url ?? ""),
+    title: String(template.title ?? ""),
+    copy: String(template.copy ?? ""),
+    callToAction: String(template.call_to_action ?? ""),
     photos: (template.photos ?? []) as TemplatePhoto[],
   };
 
-  await a.from("marketing_cron_runs").insert({
+  const { error: insertError } = await a.from("marketing_cron_runs").insert({
     id: runId,
+    template_id: templateId,
     channel: KOREAPAS_CHANNEL,
     trigger,
     status: "queued",
@@ -579,6 +587,10 @@ const claimRun = async (trigger: "schedule" | "manual"): Promise<string | null> 
     performance: { trackedPosts: 0, ...emptyMetrics() },
     created_at: nowIso,
   });
+  if (insertError) {
+    await clearRunLease(null, nowIso);
+    throw new Error(insertError.message);
+  }
 
   return runId;
 };
@@ -601,8 +613,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const a = admin();
 
   try {
-    // pg_cron calls this with the service-role key and no user session.
+    // pg_cron calls this with the private scheduler header and no user session.
     if (action === "tick") {
+      const { data: schedulerSecret, error: schedulerSecretError } = await a.rpc(
+        "marketing_scheduler_secret",
+      );
+      if (
+        schedulerSecretError ||
+        typeof schedulerSecret !== "string" ||
+        !schedulerSecret ||
+        req.headers.get("x-marketing-scheduler-secret") !== schedulerSecret
+      ) {
+        return json(req, { error: "permission-denied" }, 403);
+      }
       const runId = await claimRun("schedule");
       if (!runId) return json(req, { ran: false });
       await executeRun(runId);
@@ -611,35 +634,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     await requireAdmin(req);
 
-    if (action === "save-settings") {
+    if (action === "save-template-schedule") {
       const s = (body.settings ?? {}) as Record<string, unknown>;
-      if (typeof s.enabled !== "boolean") throw new Error("enabled must be a boolean.");
-      const schedule = validSchedule(s.schedule);
+      if (typeof s.scheduleEnabled !== "boolean") {
+        throw new Error("scheduleEnabled must be a boolean.");
+      }
       const templateId = validTemplateId(s.templateId);
-      const templateAssignments = validTemplateAssignments(s.templateAssignments, schedule);
-
-      const ids = [...new Set([templateId, ...Object.values(templateAssignments)])];
-      const { data: found } = await a.from("marketing_templates").select("id").in("id", ids);
-      if ((found ?? []).length !== ids.length) throw new Error("Unknown template selected.");
-
-      const nextRunAt = s.enabled
+      const schedule = validSchedule(s.schedule);
+      const isScheduled = schedule.daysOfWeek.length > 0;
+      const scheduleEnabled = s.scheduleEnabled && isScheduled;
+      const nextRunAt = scheduleEnabled
         ? nextScheduledAt(schedule, Date.now()).toISOString()
         : null;
 
       const { error } = await a
-        .from("growth_config")
-        .upsert(
-          {
-            id: CONFIG_ROW,
-            enabled: s.enabled,
-            schedule,
-            template_id: templateId,
-            template_assignments: templateAssignments,
-            next_run_at: nextRunAt,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" },
-        );
+        .from("marketing_templates")
+        .update({
+          schedule_enabled: scheduleEnabled,
+          schedule,
+          next_run_at: nextRunAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", templateId);
       if (error) throw new Error(error.message);
       return json(req, { ok: true, nextRunAt });
     }
@@ -648,6 +664,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const t = (body.template ?? {}) as Record<string, unknown>;
       const templateId = crypto.randomUUID();
       const now = new Date().toISOString();
+      const schedule = validSchedule(t.schedule);
+      const scheduleEnabled = t.scheduleEnabled === true && schedule.daysOfWeek.length > 0;
       const { error } = await a.from("marketing_templates").insert({
         id: templateId,
         name: textField(t.name, "Template name", 120),
@@ -656,6 +674,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         copy: textField(t.copy, "Copy", 20000),
         call_to_action: typeof t.callToAction === "string" ? t.callToAction.trim() : "",
         photos: validPhotos(t.photos),
+        schedule_enabled: scheduleEnabled,
+        schedule,
+        next_run_at: scheduleEnabled ? nextScheduledAt(schedule, Date.now()).toISOString() : null,
         created_at: now,
         updated_at: now,
       });
@@ -674,6 +695,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         await a.from("marketing_templates").insert({
           id: ORIGINAL_TEMPLATE_ID,
           ...ORIGINAL_GOPAS_TEMPLATE,
+          schedule_enabled: false,
+          schedule: { minute: 0, hour: 19, daysOfWeek: [] },
           created_at: now,
           updated_at: now,
         });
@@ -689,7 +712,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     if (action === "run-now") {
-      const runId = await claimRun("manual");
+      const runId = await claimRun("manual", validTemplateId(body.templateId));
       if (!runId) {
         return json(req, { ran: false, message: "Another run is already in progress." });
       }

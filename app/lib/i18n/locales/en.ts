@@ -527,6 +527,17 @@ const en = {
     roleAdmin: "Admin",
     notSet: "Not set",
     nextBilling: "Next Payment",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete your account?",
+    deleteAccountDescription: "This permanently removes your sign-in access and profile. Your avatar, contact details, public profile, saved learning data, and private messages will be erased or anonymized.",
+    deleteAccountHistory: "De-identified event and payment records are retained only where needed for community and accounting history.",
+    deleteAccountBillingRequired: "Stop recurring billing before deleting your account. You can delete the account once the billing stop is confirmed.",
+    deleteAccountConfirmation: "To continue, type {phrase} exactly.",
+    deleteAccountPhrase: "DELETE ACCOUNT",
+    deleteAccountConfirm: "Permanently delete account",
+    deleteAccountDeleting: "Deleting account…",
+    deleteAccountMismatch: "Enter the confirmation phrase exactly to continue.",
+    deleteAccountFailed: "We couldn't delete your account. Please try again.",
   },
   admin: {
     dashboard: {

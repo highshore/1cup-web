@@ -520,7 +520,8 @@ export default function PaymentResultClient() {
         let userId: string;
 
         if (!sessionInfo) {
-          // Use the actual Firebase UID from PCD_USER_DEFINE1 (NOT PCD_PAYER_NO which is just a sequential number)
+          // Use the actual legacy user UID from PCD_USER_DEFINE1 (NOT PCD_PAYER_NO,
+          // which is only a sequential number).
           if (paymentParams.PCD_USER_DEFINE1) {
             userId = paymentParams.PCD_USER_DEFINE1;
           } else {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
@@ -16,35 +16,32 @@ export type AdminSection =
   | "dashboard"
   | "members"
   | "articles"
-  | "marketing";
+  | "marketing"
+  | "notifications";
 
 interface AdminClientProps {
   section?: AdminSection;
 }
 
 const ADMIN_SECTIONS: Array<{
-  id: AdminSection;
-  label: string;
+  id: Exclude<AdminSection, "dashboard">;
   path: string;
-  description: string;
 }> = [
   {
     id: "members",
-    label: "Members",
     path: "/admin/members",
-    description: "Manage members and active subscriptions.",
   },
   {
     id: "articles",
-    label: "Articles",
     path: "/admin/articles",
-    description: "Review and manage published learning articles.",
   },
   {
     id: "marketing",
-    label: "Marketing",
     path: "/admin/marketing",
-    description: "Schedule Gopas posts and review their performance.",
+  },
+  {
+    id: "notifications",
+    path: "/admin/notifications",
   },
 ];
 
@@ -111,25 +108,19 @@ const StatSubtext = styled.div`
   margin-top: 4px;
 `;
 
-const QuickActionsSection = styled.section`
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  border: 3px solid #050505;
-`;
-
-const QuickActionsTitle = styled.h2`
-  margin: 0 0 18px;
-  font-size: 20px;
-  font-weight: 900;
-  color: #050505;
-`;
-
 const QuickActionsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+  margin-bottom: 10px;
+
+  @media (max-width: 980px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const QuickAction = styled.button`
@@ -187,6 +178,50 @@ const SectionTitle = styled.h2`
   font-size: 16px;
   font-weight: 900;
   margin-bottom: 20px;
+`;
+
+const MembersHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  ${SectionTitle} {
+    height: 36px;
+    margin: 0;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  @media (max-width: 560px) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+`;
+
+const MembersTabs = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1.5px solid rgba(5, 5, 5, 0.22);
+`;
+
+const MembersTab = styled.button<{ $active: boolean }>`
+  border: 0;
+  border-bottom: 3px solid ${({ $active }) => ($active ? "#050505" : "transparent")};
+  margin-bottom: -1.5px;
+  padding: 7px 10px 8px;
+  background: transparent;
+  color: ${({ $active }) => ($active ? "#050505" : "rgba(5, 5, 5, 0.58)")};
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid #f47a4a;
+    outline-offset: 2px;
+  }
 `;
 
 const UsersList = styled.div`
@@ -261,7 +296,7 @@ const UserDate = styled.div`
 const FeedbackList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 `;
 
 const FeedbackCard = styled.div`
@@ -347,22 +382,22 @@ const FeedbackOther = styled.div`
 const ArticlesList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 `;
 
 const ArticleCard = styled.article`
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 18px 20px;
-  border-radius: 12px;
-  border: 2px solid #050505;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #050505;
   background: #ffffff;
   color: #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
 
   &:hover {
-    box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   }
 `;
 
@@ -370,7 +405,7 @@ const ArticleOpenButton = styled.button<{ $ready: boolean }>`
   display: flex;
   width: 100%;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -432,15 +467,15 @@ const ProgressHint = styled.span`
 const ArticleCardFooter = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 6px;
 `;
 
 const ArticleActions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 8px;
 `;
 
 const ArticleHeader = styled.div`
@@ -454,6 +489,7 @@ const ArticleTitle = styled.div`
   font-size: 16px;
   font-weight: 800;
   color: #050505;
+  line-height: 1.35;
 `;
 
 const ArticleSubtitle = styled.div`
@@ -464,9 +500,11 @@ const ArticleSubtitle = styled.div`
 const ArticleMeta = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
   font-size: 12px;
   color: rgba(5, 5, 5, 0.6);
+  text-align: right;
 `;
 
 const ArticleActionButton = styled.button<{ $variant?: "danger" }>`
@@ -504,22 +542,20 @@ const ArticleActionButton = styled.button<{ $variant?: "danger" }>`
 
 const MembersToolbar = styled.div`
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 18px;
-  gap: 12px;
 `;
 
 const MembersActionButton = styled.button`
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 22px;
+  height: 36px;
+  gap: 6px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 2px solid #050505;
   background: #f47a4a;
   color: #050505;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.14s ease;
@@ -538,8 +574,8 @@ const MembersActionButton = styled.button`
   }
 
   svg {
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
   }
 `;
 
@@ -571,6 +607,7 @@ interface UserData {
   subscriptionEndDate?: Date | string;
   account_status?: string;
   gdg_member?: boolean;
+  isPlaceholder?: boolean;
 }
 
 interface FeedbackData {
@@ -669,6 +706,7 @@ export default function AdminClient({
   const [deletingArticleId, setDeletingArticleId] = useState<string | null>(
     null
   );
+  const [membersTab, setMembersTab] = useState<"members" | "feedback">("members");
   const [extendingSubscriptions, setExtendingSubscriptions] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -680,6 +718,7 @@ export default function AdminClient({
   });
   const router = useRouter();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
+  const loadedAuthIdRef = useRef<string | null>(null);
 
   const usersById = useMemo(() => {
     const entries = new Map<string, UserData>();
@@ -690,7 +729,9 @@ export default function AdminClient({
   }, [users]);
 
   const activeMembersCount = useMemo(() => {
-    return users.filter((user) => user.hasActiveSubscription).length;
+    return users.filter(
+      (user) => user.hasActiveSubscription && user.account_status !== "admin",
+    ).length;
   }, [users]);
 
   useEffect(() => {
@@ -707,6 +748,10 @@ export default function AdminClient({
       return;
     }
     setAuthChecking(false);
+    // Admin data is session-scoped. Do not reload the whole portal merely because
+    // Supabase re-emits the same recovered browser session on tab focus.
+    if (loadedAuthIdRef.current === currentUser.authId) return;
+    loadedAuthIdRef.current = currentUser.authId;
     loadDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, currentUser, accountStatus, authLoading]);
@@ -764,18 +809,21 @@ export default function AdminClient({
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      return (data || []).map((row: any) => ({
-        id: row.uid,
-        email: row.email ?? undefined,
-        displayName: row.display_name ?? undefined,
-        createdAt: row.created_at ?? undefined,
-        hasActiveSubscription: row.has_active_subscription ?? false,
-        billingCancelled: row.billing_cancelled ?? false,
-        subscriptionStartDate: row.subscription_start_date ?? undefined,
-        subscriptionEndDate: row.subscription_end_date ?? undefined,
-        account_status: row.account_status ?? undefined,
-        gdg_member: row.gdg_member ?? false,
-      }));
+      return (data || [])
+        .map((row: any) => ({
+          id: row.uid,
+          email: row.email ?? undefined,
+          displayName: row.display_name ?? undefined,
+          createdAt: row.created_at ?? undefined,
+          hasActiveSubscription: row.has_active_subscription ?? false,
+          billingCancelled: row.billing_cancelled ?? false,
+          subscriptionStartDate: row.subscription_start_date ?? undefined,
+          subscriptionEndDate: row.subscription_end_date ?? undefined,
+          account_status: row.account_status ?? undefined,
+          gdg_member: row.gdg_member ?? false,
+          isPlaceholder: row.is_placeholder === true,
+        }))
+        .filter((user) => !user.isPlaceholder);
     } catch (error) {
       console.error("Error fetching users:", error);
       return [];
@@ -835,8 +883,9 @@ export default function AdminClient({
   const calculateStats = (usersData: UserData[], totalEvents: number) => {
      const now = new Date();
      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+     const memberUsers = usersData.filter((user) => user.account_status !== "admin");
  
-    const purchasingMembers = usersData.filter((user) =>
+    const purchasingMembers = memberUsers.filter((user) =>
       Boolean(
         user.hasActiveSubscription ||
           user.subscriptionStartDate ||
@@ -845,11 +894,11 @@ export default function AdminClient({
     ).length;
 
     const newStats: DashboardStats = {
-      totalMembers: usersData.length,
-      activeSubscriptions: usersData.filter((u) => u.hasActiveSubscription)
+      totalMembers: memberUsers.length,
+      activeSubscriptions: memberUsers.filter((u) => u.hasActiveSubscription)
         .length,
-      cancelledBilling: usersData.filter((u) => u.billingCancelled).length,
-      newMembersThisMonth: usersData.filter((u) => {
+      cancelledBilling: memberUsers.filter((u) => u.billingCancelled).length,
+      newMembersThisMonth: memberUsers.filter((u) => {
         const createdAtDate = resolveToDate(u.createdAt);
         if (!createdAtDate) {
           return false;
@@ -883,17 +932,17 @@ export default function AdminClient({
   };
 
   const handleExtendActiveMembers = async () => {
-    const activeUsers = users.filter((user) => user.hasActiveSubscription);
+    const activeUsers = users.filter(
+      (user) => user.hasActiveSubscription && user.account_status !== "admin",
+    );
 
     if (activeUsers.length === 0) {
-      window.alert("No active members found to extend.");
+      window.alert(t.admin.members.noActiveFound);
       return;
     }
 
     const confirmed = window.confirm(
-      `Extend the subscription end date by 14 days for ${activeUsers.length} active ${
-        activeUsers.length === 1 ? "member" : "members"
-      }?`
+      t.admin.members.extendConfirm.replace("{count}", String(activeUsers.length))
     );
 
     if (!confirmed) {
@@ -903,9 +952,8 @@ export default function AdminClient({
     setExtendingSubscriptions(true);
 
     try {
-      // Firestore batched 400 writes at a time. PostgREST has no batch update with
-      // per-row values, so each member is updated individually; the counts here are in
-      // the dozens, and RLS (is_admin) is enforced per statement either way.
+      // PostgREST has no batch update with per-row values, so each member is updated
+      // individually. RLS (is_admin) is enforced per statement either way.
       for (const user of activeUsers) {
         const baseDate =
           resolveToDate(user.subscriptionEndDate) ||
@@ -924,10 +972,10 @@ export default function AdminClient({
       const updatedUsers = await fetchUsers();
       setUsers(updatedUsers);
       calculateStats(updatedUsers, stats.totalEvents);
-      window.alert("Extended all active subscriptions by 14 days.");
+      window.alert(t.admin.members.extendSuccess);
     } catch (error) {
       console.error("Error extending active subscriptions:", error);
-      window.alert("Failed to extend active subscriptions. Please try again.");
+      window.alert(t.admin.members.extendError);
     } finally {
       setExtendingSubscriptions(false);
     }
@@ -975,7 +1023,7 @@ export default function AdminClient({
   const formatDate = (value?: Date | string) => {
     const date = resolveToDate(value);
     if (!date) {
-      return "-";
+      return t.admin.dashboard.unavailable;
     }
 
     return format(date, "yyyy.MM.dd", {
@@ -986,7 +1034,7 @@ export default function AdminClient({
   const formatDateTime = (value?: Date | string) => {
     const date = resolveToDate(value);
     if (!date) {
-      return "-";
+      return t.admin.dashboard.unavailable;
     }
 
     return format(date, "yyyy.MM.dd HH:mm", {
@@ -996,57 +1044,54 @@ export default function AdminClient({
 
   const renderDashboard = () => (
     <>
-      <QuickActionsSection>
-        <QuickActionsTitle>Manage 1Cup English</QuickActionsTitle>
-        <QuickActionsGrid>
-          {ADMIN_SECTIONS.map(({ id, label, path, description }) => (
+      <QuickActionsGrid aria-label={t.admin.dashboard.title}>
+          {ADMIN_SECTIONS.map(({ id, path }) => (
             <QuickAction key={id} type="button" onClick={() => router.push(path)}>
-              <QuickActionLabel>{label}</QuickActionLabel>
-              <QuickActionDescription>{description}</QuickActionDescription>
+              <QuickActionLabel>{t.admin.dashboard.sections[id].label}</QuickActionLabel>
+              <QuickActionDescription>{t.admin.dashboard.sections[id].description}</QuickActionDescription>
             </QuickAction>
           ))}
-        </QuickActionsGrid>
-      </QuickActionsSection>
+      </QuickActionsGrid>
 
       <Header>
-        <Title>Welcome to the Admin Portal</Title>
+        <Title>{t.admin.dashboard.title}</Title>
       </Header>
 
       <StatsGrid>
         <StatCard>
           <StatNumber>{stats.totalMembers}</StatNumber>
-          <StatLabel>Total Members</StatLabel>
-          <StatSubtext>All registered users</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.totalMembers.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.totalMembers.description}</StatSubtext>
         </StatCard>
 
         <StatCard>
           <StatNumber>{stats.activeSubscriptions}</StatNumber>
-          <StatLabel>Active Subscriptions</StatLabel>
-          <StatSubtext>Currently subscribed members</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.activeSubscriptions.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.activeSubscriptions.description}</StatSubtext>
         </StatCard>
 
         <StatCard>
           <StatNumber>{stats.cancelledBilling}</StatNumber>
-          <StatLabel>Cancelled Billing</StatLabel>
-          <StatSubtext>Members who stopped billing</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.cancelledBilling.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.cancelledBilling.description}</StatSubtext>
         </StatCard>
 
         <StatCard>
           <StatNumber>{stats.newMembersThisMonth}</StatNumber>
-          <StatLabel>New This Month</StatLabel>
-          <StatSubtext>New members this month</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.newMembers.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.newMembers.description}</StatSubtext>
         </StatCard>
 
         <StatCard>
           <StatNumber>{stats.totalEvents}</StatNumber>
-          <StatLabel>Total Events</StatLabel>
-          <StatSubtext>Events hosted overall</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.totalEvents.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.totalEvents.description}</StatSubtext>
         </StatCard>
 
         <StatCard>
           <StatNumber>{stats.purchasingMembers}</StatNumber>
-          <StatLabel>Paying Members</StatLabel>
-          <StatSubtext>Users with purchase history</StatSubtext>
+          <StatLabel>{t.admin.dashboard.stats.payingMembers.label}</StatLabel>
+          <StatSubtext>{t.admin.dashboard.stats.payingMembers.description}</StatSubtext>
         </StatCard>
       </StatsGrid>
 
@@ -1054,18 +1099,19 @@ export default function AdminClient({
   );
 
   const renderMembers = () => {
+    const copy = t.admin.members;
+    const withCount = (template: string, count: number) =>
+      template.replace("{count}", String(count));
     const extendButtonLabel = extendingSubscriptions
-      ? "Extending..."
+      ? copy.extending
       : activeMembersCount > 0
-      ? `Extend ${activeMembersCount} Active ${
-          activeMembersCount === 1 ? "Member" : "Members"
-        } (+14 days)`
-      : "No Active Members to Extend";
+      ? withCount(copy.extendActive, activeMembersCount)
+      : copy.noActiveMembers;
 
     return (
-      <>
-        <ContentSection>
-          <SectionTitle>Member Management ({users.length} members)</SectionTitle>
+      <ContentSection>
+        <MembersHeader>
+          <SectionTitle>{withCount(copy.title, users.length)}</SectionTitle>
           <MembersToolbar>
             <MembersActionButton
               type="button"
@@ -1076,23 +1122,51 @@ export default function AdminClient({
               {extendButtonLabel}
             </MembersActionButton>
           </MembersToolbar>
-          <UsersList>
+        </MembersHeader>
+
+        <MembersTabs role="tablist" aria-label={copy.tabListLabel}>
+          <MembersTab
+            type="button"
+            role="tab"
+            id="members-tab"
+            aria-controls="members-panel"
+            aria-selected={membersTab === "members"}
+            $active={membersTab === "members"}
+            onClick={() => setMembersTab("members")}
+          >
+            {withCount(copy.tabMembers, users.length)}
+          </MembersTab>
+          <MembersTab
+            type="button"
+            role="tab"
+            id="feedback-tab"
+            aria-controls="feedback-panel"
+            aria-selected={membersTab === "feedback"}
+            $active={membersTab === "feedback"}
+            onClick={() => setMembersTab("feedback")}
+          >
+            {withCount(copy.tabFeedback, feedback.length)}
+          </MembersTab>
+        </MembersTabs>
+
+        {membersTab === "members" ? (
+          <UsersList id="members-panel" role="tabpanel" aria-labelledby="members-tab">
             {users.map((user) => (
               <UserCard key={user.id}>
                 <UserInfo>
                   <div>
-                    <UserName>{user.displayName || "No Name"}</UserName>
+                    <UserName>{user.displayName || copy.noName}</UserName>
                     <UserEmail>{user.email}</UserEmail>
                   </div>
 
                   <div>
                     <GdgStatus $isMember={user.gdg_member === true}>
-                      {user.gdg_member ? "GDG Member" : "Non-GDG"}
+                      {user.gdg_member ? copy.gdgMember : copy.nonGdg}
                     </GdgStatus>
                   </div>
 
                   <UserStatus active={!!user.hasActiveSubscription}>
-                    {user.hasActiveSubscription ? "Active" : "Inactive"}
+                    {user.hasActiveSubscription ? copy.active : copy.inactive}
                   </UserStatus>
 
                   <div>
@@ -1104,7 +1178,7 @@ export default function AdminClient({
                           fontWeight: "500",
                         }}
                       >
-                        Billing Stopped
+                        {copy.billingStopped}
                       </div>
                     )}
                   </div>
@@ -1114,18 +1188,19 @@ export default function AdminClient({
               </UserCard>
             ))}
           </UsersList>
-        </ContentSection>
-        {renderFeedback()}
-      </>
+        ) : (
+          <div id="feedback-panel" role="tabpanel" aria-labelledby="feedback-tab">
+            {renderFeedback()}
+          </div>
+        )}
+      </ContentSection>
     );
   };
 
   const renderFeedback = () => (
-     <ContentSection>
-       <SectionTitle>User Feedback ({feedback.length} items)</SectionTitle>
        <FeedbackList>
          {feedback.length === 0 ? (
-           <EmptyState>No feedback yet.</EmptyState>
+           <EmptyState>{t.admin.members.noFeedback}</EmptyState>
          ) : (
            feedback.map((item) => {
              const linkedUser = usersById.get(item.userId);
@@ -1136,8 +1211,8 @@ export default function AdminClient({
                  <FeedbackHeader>
                    <FeedbackCategory category={item.category}>
                      {item.category === "cancellation"
-                       ? "Subscription Stop"
-                       : "Refund Request"}
+                       ? t.admin.members.subscriptionStop
+                       : t.admin.members.refundRequest}
                    </FeedbackCategory>
                    <FeedbackDate>{formatDateTime(item.timestamp)}</FeedbackDate>
                  </FeedbackHeader>
@@ -1145,11 +1220,11 @@ export default function AdminClient({
                  <FeedbackUser>
                    {linkedDisplayName
                      ? `${linkedDisplayName} (${item.userId})`
-                     : `User ID: ${item.userId}`}
+                     : t.admin.members.userId.replace("{id}", item.userId)}
                  </FeedbackUser>
  
                  <FeedbackReasons>
-                   <strong>Selected Reasons:</strong>
+                   <strong>{t.admin.members.selectedReasons}</strong>
                    <ReasonsList>
                      {item.reasons.map((reason, index) => (
                        <ReasonItem key={index}>{reason}</ReasonItem>
@@ -1159,7 +1234,7 @@ export default function AdminClient({
  
                  {item.otherReason && (
                    <FeedbackOther>
-                     <strong>Additional Comments:</strong>
+                     <strong>{t.admin.members.additionalComments}</strong>
                      <br />
                      {item.otherReason}
                    </FeedbackOther>
@@ -1169,7 +1244,6 @@ export default function AdminClient({
            })
          )}
        </FeedbackList>
-     </ContentSection>
    );
 
   const renderArticles = () => {
@@ -1258,6 +1332,7 @@ export default function AdminClient({
                         <ArticleTitle>{primaryTitle}</ArticleTitle>
                         <ArticleMeta>
                           <span>{formatDateTime(article.publishedAt)}</span>
+                          <span>{copy.articleId.replace("{id}", article.id)}</span>
                         </ArticleMeta>
                       </ArticleHeader>
 
@@ -1265,14 +1340,13 @@ export default function AdminClient({
                         <ArticleSubtitle>{article.titleKorean}</ArticleSubtitle>
                       )}
 
-                      <ArticleMeta>
-                        <span>ID: {article.id}</span>
-                      </ArticleMeta>
-
                       <ArticleCardFooter>
                         <ArticleStatus $tone={statusTone}>
-                          {processingLabel(article)}
-                          {!isReady && !isFailed ? " · " + progress + "%" : ""}
+                          {!isReady && !isFailed
+                            ? copy.processingProgress
+                                .replace("{status}", processingLabel(article))
+                                .replace("{progress}", String(progress))
+                            : processingLabel(article)}
                         </ArticleStatus>
                         {!isReady && (
                           <>
@@ -1311,7 +1385,7 @@ export default function AdminClient({
   if (authChecking) {
     return (
       <Wrapper>
-        <LoadingSpinner>Checking admin privileges...</LoadingSpinner>
+        <LoadingSpinner>{t.admin.dashboard.checkingAccess}</LoadingSpinner>
       </Wrapper>
     );
   }
@@ -1319,7 +1393,7 @@ export default function AdminClient({
   if (loading) {
     return (
       <Wrapper>
-        <LoadingSpinner>Loading data...</LoadingSpinner>
+        <LoadingSpinner>{t.admin.dashboard.loading}</LoadingSpinner>
       </Wrapper>
     );
   }
@@ -1331,7 +1405,7 @@ export default function AdminClient({
           <Title>
             {section === "articles"
               ? t.admin.articles.pageTitle
-              : ADMIN_SECTIONS.find(({ id }) => id === section)?.label || "Admin"}
+              : t.admin.dashboard.sections[section].label}
           </Title>
         </Header>
       )}

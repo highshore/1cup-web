@@ -48,6 +48,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         "uid, display_name, photo_url, bio, work, school, location, interests, profile_public, gdg_member, has_active_subscription, account_status, created_at"
       )
       .eq("uid", uid)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (userError) throw userError;

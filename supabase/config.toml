@@ -416,7 +416,10 @@ verify_jwt = true           # members only; membership re-checked inside
 verify_jwt = false          # admin actions check the caller; pg_cron calls it with no user JWT
 
 [functions.admin-article]
-verify_jwt = true           # admins only; re-checked inside
+verify_jwt = false          # custom admin + private scheduler checks inside
+
+[functions.account-delete]
+verify_jwt = true           # self-service action; the function also resolves the caller server-side
 
 [analytics]
 enabled = true

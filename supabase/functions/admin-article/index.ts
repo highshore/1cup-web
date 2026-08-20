@@ -1,10 +1,10 @@
 // admin-article — port of functions/src/createAdminArticle.ts.
 //
 // The Cloud Function split the work in two: a callable enqueued the article, and a
-// Firestore onCreate trigger ran the Gemini pipeline. Supabase has no document trigger,
-// so this function does both — it responds as soon as the article and job rows exist and
-// finishes the pipeline in a background task, which keeps the admin form's behaviour
-// (returns immediately, progress watched through Realtime on `articles`).
+// Firestore onCreate trigger ran the Gemini pipeline. The Supabase port persists the
+// source in a server-only queue and a private pg_net/pg_cron worker invokes process-next.
+// This retains the quick browser response without tying article processing to the lifetime
+// of a single Edge Function request.
 //
 // Three seams differ from the original and nothing else does; the Gemini prompts and the
 // refine → summarize → topics → vocabulary → translate → polish → cover-image sequence
@@ -21,7 +21,7 @@ import { admin, callerUid } from "../_shared/db.ts";
 const MAX_BODY_LENGTH = 30_000;
 const MAX_PHOTOS = 6;
 const VERTEX_LOCATION = "global";
-const GEMINI_TEXT_MODEL = "gemini-3.7-flash";
+const GEMINI_TEXT_MODEL = "gemini-3.6-flash";
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-lite-image";
 const GOOGLE_CLOUD_PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
 const GENERATED_IMAGE_BUCKET = "assets";
@@ -153,11 +153,12 @@ type CreateArticleInput = {
 };
 
 type ArticleProcessingJob = {
-  articleId?: unknown;
+  article_id?: unknown;
   title?: unknown;
-  sourceUrl?: unknown;
-  body?: unknown;
-  imageUrls?: unknown;
+  source_url?: unknown;
+  source_body?: unknown;
+  image_urls?: unknown;
+  attempt_count?: unknown;
 };
 
 const textValue = (value: unknown, field: string, maxLength: number): string => {
@@ -804,18 +805,48 @@ const updateArticleProgress = async (
     model: GEMINI_TEXT_MODEL,
     workflow: "admin-article-ingest-v4",
   };
-  await db
-    .from("articles")
-    .update({
-      publication_status: "processing",
-      processing,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", articleId);
-  await db
-    .from("article_processing_jobs")
-    .update({ status: "processing", stage, progress, updated_at: new Date().toISOString() })
-    .eq("article_id", articleId);
+  const now = new Date().toISOString();
+  const [articleResult, jobResult] = await Promise.all([
+    db
+      .from("articles")
+      .update({ publication_status: "processing", processing, updated_at: now })
+      .eq("id", articleId),
+    db
+      .from("article_processing_jobs")
+      .update({ status: "processing", stage, progress, updated_at: now })
+      .eq("article_id", articleId),
+  ]);
+  if (articleResult.error) throw new Error(articleResult.error.message);
+  if (jobResult.error) throw new Error(jobResult.error.message);
+};
+
+const markArticleFailed = async (articleId: string, error: unknown) => {
+  const db = admin();
+  const message = error instanceof Error ? error.message : "Unknown error";
+  const failedAt = new Date().toISOString();
+  const [articleResult, jobResult] = await Promise.all([
+    db
+      .from("articles")
+      .update({
+        publication_status: "failed",
+        processing: { state: "failed", stage: "failed", progress: 100 },
+        updated_at: failedAt,
+      })
+      .eq("id", articleId),
+    db
+      .from("article_processing_jobs")
+      .update({
+        status: "failed",
+        stage: "failed",
+        progress: 100,
+        error: message.slice(0, 500),
+        updated_at: failedAt,
+      })
+      .eq("article_id", articleId),
+  ]);
+
+  if (articleResult.error) console.error("Unable to mark article as failed:", articleResult.error.message);
+  if (jobResult.error) console.error("Unable to mark article job as failed:", jobResult.error.message);
 };
 
 // The Gemini pipeline, previously the onDocumentCreated trigger.
@@ -828,43 +859,55 @@ const processArticle = async (articleId: string, input: {
   const db = admin();
   try {
     await updateArticleProgress(articleId, "refining", 15);
-    const refined = await refineArticle(input.title, input.body);
+    const refined = await refineArticle(input.title, input.sourceUrl, input.body);
     const paragraphs = splitRefinedParagraphs(refined.article);
 
     await updateArticleProgress(articleId, "summarizing", 35);
     const summary = await summarizeArticle(refined.title, paragraphs);
 
-    await updateArticleProgress(articleId, "draftingDiscussion", 50);
+    await updateArticleProgress(articleId, "extractingVocabulary", 45);
+    const advancedVocabulary = await extractC1Vocabulary(refined.title, paragraphs);
+
+    await updateArticleProgress(articleId, "draftingDiscussion", 55);
     const topics = await extractDiscussionTopics(refined.title, paragraphs);
 
-    await updateArticleProgress(articleId, "extractingVocabulary", 62);
+    await updateArticleProgress(articleId, "identifyingTerms", 63);
     const terms = await extractAtypicalTerms(refined.title, paragraphs);
 
     await updateArticleProgress(articleId, "translating", 75);
-    const korean = await translateArticleToKorean(refined.title, paragraphs);
-    const polished = await polishKoreanArticle(korean.title, korean.paragraphs);
+    const subtitle = summary[0];
+    const korean = await translateArticleToKorean(refined.title, subtitle, paragraphs, summary);
 
-    await updateArticleProgress(articleId, "illustrating", 88);
-    let imageUrl = input.imageUrls[0] ?? "";
-    if (!imageUrl) {
-      try {
-        imageUrl = await generateArticleHeroImage(articleId, refined.title, summary);
-      } catch (imageError) {
-        // A missing cover image is not worth failing the whole ingest over.
-        console.warn("Cover image generation failed:", imageError);
-      }
-    }
+    await updateArticleProgress(articleId, "polishingKorean", 82);
+    const polished = await polishKoreanArticle(refined.title, subtitle, paragraphs, summary, korean);
+
+    if (input.imageUrls.length) await updateArticleProgress(articleId, "placingFigures", 86);
+    const figures = articleFiguresFor(input.imageUrls, paragraphs.length);
+
+    await updateArticleProgress(articleId, "illustrating", 92);
+    // Pasted figures remain inline. Every completed article receives a separate,
+    // generated cover image so the article contract is consistent.
+    const imageUrl = await generateArticleHeroImage(articleId, refined.title, summary);
 
     const completedAt = new Date().toISOString();
-    await db
+    const articleResult = await db
       .from("articles")
       .update({
         title: { english: refined.title, korean: polished.title },
+        subtitle: { english: subtitle, korean: polished.subtitle },
         content: { english: paragraphs, korean: polished.paragraphs },
+        keywords: advancedVocabulary.map((item) => item.term),
+        advanced_vocabulary: advancedVocabulary,
+        atypical_terms: terms,
         discussion_topics: topics,
-        discussion_topic_ids: topics.map((_, index) => "topic-" + index),
-        pronunciation_keywords: terms,
+        discussion_topic_ids: topics.map(() => crypto.randomUUID()),
+        pronunciation_keywords: [],
+        summary: { english: summary, korean: polished.summary },
+        url: input.sourceUrl,
+        source_url: input.sourceUrl,
         image_url: imageUrl,
+        cover_image: { provider: "vertex-ai", model: GEMINI_IMAGE_MODEL },
+        figures,
         publication_status: "published",
         processing: {
           state: "completed",
@@ -877,7 +920,9 @@ const processArticle = async (articleId: string, input: {
         updated_at: completedAt,
       })
       .eq("id", articleId);
-    await db
+    if (articleResult.error) throw new Error(articleResult.error.message);
+
+    const jobResult = await db
       .from("article_processing_jobs")
       .update({
         status: "completed",
@@ -886,23 +931,93 @@ const processArticle = async (articleId: string, input: {
         updated_at: completedAt,
       })
       .eq("article_id", articleId);
+    if (jobResult.error) throw new Error(jobResult.error.message);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Admin article processing failed:", message);
-    const failedAt = new Date().toISOString();
-    await db
-      .from("articles")
-      .update({
-        publication_status: "failed",
-        processing: { state: "failed", stage: "failed", progress: 100 },
-        updated_at: failedAt,
-      })
-      .eq("id", articleId);
-    await db
-      .from("article_processing_jobs")
-      .update({ status: "failed", error: message.slice(0, 500), updated_at: failedAt })
-      .eq("article_id", articleId);
+    await markArticleFailed(articleId, error);
   }
+};
+
+const validSchedulerRequest = async (req: Request, db: ReturnType<typeof admin>) => {
+  const { data: schedulerSecret, error } = await db.rpc("article_processing_scheduler_secret");
+  return (
+    !error &&
+    typeof schedulerSecret === "string" &&
+    schedulerSecret.length > 0 &&
+    req.headers.get("x-article-processing-scheduler-secret") === schedulerSecret
+  );
+};
+
+const processNextArticle = async () => {
+  const db = admin();
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
+
+  // A platform interruption can leave a job marked as processing. Requeue only jobs
+  // with no progress heartbeat for 20 minutes; normal processing updates updated_at
+  // after every stage.
+  const { error: requeueError } = await db
+    .from("article_processing_jobs")
+    .update({ status: "queued", stage: "queued", progress: 5, updated_at: now.toISOString() })
+    .eq("status", "processing")
+    .lt("updated_at", staleBefore);
+  if (requeueError) throw new Error(requeueError.message);
+
+  const { data: queued, error: queuedError } = await db
+    .from("article_processing_jobs")
+    .select("article_id, title, source_url, source_body, image_urls, attempt_count")
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (queuedError) throw new Error(queuedError.message);
+  if (!queued) return null;
+
+  const queuedJob = queued as ArticleProcessingJob;
+  const attemptCount =
+    typeof queuedJob.attempt_count === "number" && Number.isFinite(queuedJob.attempt_count)
+      ? queuedJob.attempt_count
+      : 0;
+  const { data: claimed, error: claimError } = await db
+    .from("article_processing_jobs")
+    .update({
+      status: "processing",
+      stage: "queued",
+      progress: 5,
+      attempt_count: attemptCount + 1,
+      updated_at: now.toISOString(),
+    })
+    .eq("article_id", queuedJob.article_id as string)
+    .eq("status", "queued")
+    .select("article_id, title, source_url, source_body, image_urls")
+    .maybeSingle();
+  if (claimError) throw new Error(claimError.message);
+  if (!claimed) return null;
+
+  const claimedJob = claimed as ArticleProcessingJob;
+  const articleId = textValue(claimedJob.article_id, "Article ID", 240);
+  try {
+    const input = {
+      title: textValue(claimedJob.title, "Title", 200),
+      sourceUrl: validHttpUrl(textValue(claimedJob.source_url, "Source URL", 2_000), "Source URL"),
+      body: textValue(claimedJob.source_body, "Article body", MAX_BODY_LENGTH),
+      imageUrls: normalizeStringList(claimedJob.image_urls, MAX_PHOTOS, 2_000).map((url) =>
+        validHttpUrl(url, "Photo URL"),
+      ),
+    };
+    await processArticle(articleId, input);
+  } catch (error) {
+    console.error("Unable to prepare queued article:", error);
+    await markArticleFailed(articleId, error);
+  } finally {
+    // The article row carries all user-visible status. Remove the short-lived job so
+    // its copied source text is never exposed or retained after processing.
+    const { error } = await db.from("article_processing_jobs").delete().eq("article_id", articleId);
+    if (error) console.error("Unable to clear article processing job:", error.message);
+  }
+
+  return articleId;
 };
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -910,10 +1025,41 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (pre) return pre;
   if (req.method !== "POST") return json(req, { error: "method_not_allowed" }, 405);
 
+  const data = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const action = typeof data.action === "string" ? data.action : "create";
+  const db = admin();
+
+  if (action === "process-next") {
+    if (!(await validSchedulerRequest(req, db))) {
+      return json(req, { error: "permission-denied" }, 403);
+    }
+    const work = processNextArticle().catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Unable to process the article queue:", message);
+    });
+    // The scheduler only needs to dispatch a durable queued job, not wait for the
+    // Vertex pipeline. The job's progress heartbeat makes an interrupted worker eligible
+    // for a later retry, while waitUntil keeps a healthy worker running after this fast
+    // response has been returned.
+    const runtime = (globalThis as {
+      EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void };
+    }).EdgeRuntime;
+    if (runtime?.waitUntil) {
+      runtime.waitUntil(work);
+      return json(req, { accepted: true });
+    }
+
+    await work;
+    return json(req, { accepted: true });
+  }
+
+  if (action !== "create") {
+    return json(req, { error: "invalid-argument", message: "Unknown action." }, 400);
+  }
+
   const uid = await callerUid(req);
   if (!uid) return json(req, { error: "unauthenticated", message: "Sign in is required." }, 401);
 
-  const db = admin();
   const { data: user } = await db
     .from("users")
     .select("account_status")
@@ -924,7 +1070,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const data = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     const title = requiredText(data.title, "Title", 200);
     const sourceUrl = validHttpUrl(data.sourceUrl, "Source URL");
     const body = requiredText(data.body, "Article body", MAX_BODY_LENGTH);
@@ -957,9 +1102,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     });
     if (articleError) throw new Error(articleError.message);
 
-    await db.from("article_processing_jobs").insert({
+    const { error: jobError } = await db.from("article_processing_jobs").insert({
       article_id: articleId,
       title,
+      source_url: sourceUrl,
+      source_body: body,
+      image_urls: imageUrls,
       status: "queued",
       stage: "queued",
       progress: 5,
@@ -968,13 +1116,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       workflow: "admin-article-ingest-v4",
       created_by: uid,
     });
-
-    // Keep working after the response goes out; the client watches Realtime for progress.
-    const runtime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } })
-      .EdgeRuntime;
-    const work = processArticle(articleId, { title, sourceUrl, body, imageUrls });
-    if (runtime?.waitUntil) runtime.waitUntil(work);
-    else void work;
+    if (jobError) throw new Error(jobError.message);
 
     return json(req, { articleId });
   } catch (error) {

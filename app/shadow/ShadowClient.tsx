@@ -1349,7 +1349,7 @@ const ShadowClient: React.FC = () => {
     context: string
   ): Promise<string> => {
     try {
-      // For shadow page, we'll use a simpler approach without Firestore caching
+      // For the shadow page, use a simpler approach without local caching.
       const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
       if (!apiKey) {
         return "API 키가 설정되지 않았습니다.";

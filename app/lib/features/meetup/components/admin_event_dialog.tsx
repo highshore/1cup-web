@@ -12,6 +12,7 @@ import {
   validateImageFiles,
   deleteMeetupImage,
 } from "../services/image_upload_service";
+import { invokeFunction } from "../../../supabase/client";
 
 interface AdminEventDialogProps {
   isOpen: boolean;
@@ -634,7 +635,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     return htmlText.replace(/<[^>]*>/g, "");
   };
 
-  // Naver Local Search via the /api/naver-local server proxy
+  // Naver Local Search through the Supabase Edge proxy.
   const performSearchWithNaver = async (query: string) => {
     if (!query.trim()) {
       setResults([]);
@@ -646,40 +647,28 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     setErrorMessage("");
 
     try {
-      // Server-side proxy to Naver Local Search (replaces the old Firebase Cloud Run fn).
-      const functionUrl = `/api/naver-local?query=${encodeURIComponent(
-        query
-      )}&display=5&start=1&sort=random`;
-
-      const response = await fetch(functionUrl, {
-        method: "GET",
+      const data = await invokeFunction<{ items?: unknown[] }>("proxy", {
+        target: "naver",
+        query,
+        display: "5",
+        start: "1",
+        sort: "random",
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        const mappedResults = data.items.map((item: any) => ({
+          title: removeHtmlTags(item.title || ""),
+          address: removeHtmlTags(item.roadAddress || item.address || ""),
+          link: item.link || "",
+          mapx: item.mapx?.toString() || "0",
+          mapy: item.mapy?.toString() || "0",
+        }));
 
-        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-          // Check if items exist and has length
-          const mappedResults = data.items.map((item: any) => ({
-            // Renamed to avoid conflict
-            title: removeHtmlTags(item.title || ""),
-            address: removeHtmlTags(item.roadAddress || item.address || ""),
-            link: item.link || "",
-            mapx: item.mapx?.toString() || "0",
-            mapy: item.mapy?.toString() || "0",
-          }));
-
-          setResults(mappedResults);
-          setErrorMessage("");
-        } else {
-          setResults([]); // Clear previous results
-          setErrorMessage("No results found for your search."); // More specific message
-        }
+        setResults(mappedResults);
+        setErrorMessage("");
       } else {
-        const errorText = await response.text(); // Get error text for better debugging
-        setErrorMessage(
-          `Search error: ${response.status} ${response.statusText}. Details: ${errorText}`
-        );
+        setResults([]);
+        setErrorMessage("No results found for your search.");
       }
     } catch (error) {
       setErrorMessage(

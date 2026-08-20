@@ -527,6 +527,17 @@ const ko = {
     roleAdmin: "관리자",
     notSet: "미입력",
     nextBilling: "다음 결제",
+    deleteAccount: "계정 삭제",
+    deleteAccountTitle: "계정을 삭제할까요?",
+    deleteAccountDescription: "로그인 접근과 프로필이 영구 삭제됩니다. 프로필 사진, 연락처, 공개 프로필, 저장한 학습 데이터, 비공개 메시지는 삭제하거나 익명 처리합니다.",
+    deleteAccountHistory: "커뮤니티 및 회계 이력에 필요한 밋업·결제 기록은 개인을 식별할 수 없도록 처리해 보관합니다.",
+    deleteAccountBillingRequired: "계정을 삭제하기 전에 정기 결제를 중단해 주세요. 결제 중단이 확인되면 계정을 삭제할 수 있습니다.",
+    deleteAccountConfirmation: "계속하려면 {phrase}를 정확히 입력하세요.",
+    deleteAccountPhrase: "계정 삭제",
+    deleteAccountConfirm: "계정 영구 삭제",
+    deleteAccountDeleting: "계정 삭제 중…",
+    deleteAccountMismatch: "계속하려면 확인 문구를 정확히 입력해 주세요.",
+    deleteAccountFailed: "계정을 삭제하지 못했습니다. 다시 시도해 주세요.",
   },
   admin: {
     dashboard: {

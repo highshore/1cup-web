@@ -1,5 +1,4 @@
 import { supabase } from "../../../supabase/client";
-import { FEATURED_ARTICLE_IDS } from "./featured_articles";
 
 export interface HomeTopicArticle {
   id: string;
@@ -11,45 +10,39 @@ export interface HomeTopicArticle {
   timestampISO: string;
 }
 
-// Client-side fetch using the Supabase browser client - fetches specific articles by ID
+// Client-side fallback mirrors the server query so a static or failed initial render
+// cannot revive the retired Firebase featured-ID list.
 export const fetchHomeTopicsClient = async (): Promise<HomeTopicArticle[]> => {
   try {
     const { data, error } = await supabase
       .from("articles")
       .select("*")
-      .in("id", FEATURED_ARTICLE_IDS);
+      .eq("publication_status", "published")
+      .order("timestamp", { ascending: false, nullsFirst: false })
+      .limit(7);
 
     if (error) {
       console.error("Error fetching home topics (client):", error);
       return [];
     }
 
-    const rows = data ?? [];
-    const byId = new Map(rows.map((row) => [row.id, row]));
-
-    const topics: HomeTopicArticle[] = FEATURED_ARTICLE_IDS.filter((id) => {
-      if (!byId.has(id)) {
-        console.warn(`Article ${id} not found in Supabase`);
-        return false;
-      }
-      return true;
-    }).map((id) => {
-      const row = byId.get(id) as Record<string, any>;
-      const title = row.title || {};
-      const content = row.content || {};
+    const topics: HomeTopicArticle[] = (data ?? []).map((row) => {
+      const article = row as Record<string, any>;
+      const title = article.title || {};
+      const content = article.content || {};
       const contentEnglish: string[] = content?.english || [];
       // `summary`/`excerpt` are not columns; fall back to first English paragraph.
       const excerpt = contentEnglish[0] || "";
-      const timestampRaw = row.timestamp;
+      const timestampRaw = article.timestamp;
 
       return {
-        id: row.id,
+        id: article.id,
         titleEnglish: title?.english || "",
         titleKorean: title?.korean || "",
-        imageUrl: row.image_url || "",
+        imageUrl: article.image_url || "",
         excerpt: excerpt.slice(0, 140),
-        keywords: Array.isArray(row.pronunciation_keywords)
-          ? row.pronunciation_keywords.slice(0, 5)
+        keywords: Array.isArray(article.pronunciation_keywords)
+          ? article.pronunciation_keywords.slice(0, 5)
           : [],
         timestampISO: timestampRaw
           ? new Date(timestampRaw).toISOString()

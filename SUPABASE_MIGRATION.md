@@ -17,6 +17,12 @@ SQL **views**. See `../1cup-db-migration/MIGRATION_ERD.md`.
 
 ## Status
 
+### ✅ Firebase Functions retired (2026-08-19)
+- All deployed Firebase Cloud Functions, including the scheduled billing, daily message,
+  CEFR, marketing, and home-stat jobs, have been deleted after their Supabase Edge Function
+  equivalents and pg_cron schedules were verified.
+- Firebase Storage remains enabled solely for legacy article-media URLs.
+
 ### ✅ Backend (in `../1cup-db-migration`, applied to the live project)
 - Schema (30 tables + views), all data loaded & verified (0 orphan FKs).
 - Auth migrated: `auth.users` seeded, every `public.users` linked via `auth_id`,

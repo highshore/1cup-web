@@ -22,7 +22,7 @@ import {
   fetchMarketingCronSettings,
   fetchMarketingTemplates,
   runMarketingCronNow,
-  saveMarketingCronSettings,
+  saveMarketingTemplateSchedule,
   subscribeToMarketingCronRuns,
   subscribeToMarketingTemplates,
 } from "../services/growth_service";
@@ -41,7 +41,6 @@ type SettingsDraft = {
   enabled: boolean;
   schedule: MarketingCronSchedule;
   templateId: string;
-  templateAssignments: Record<string, string>;
   destinationUrl: string;
   title: string;
   copy: string;
@@ -53,7 +52,6 @@ const toDraft = (settings: MarketingCronSettings): SettingsDraft => ({
   enabled: settings.enabled,
   schedule: settings.schedule,
   templateId: settings.templateId,
-  templateAssignments: settings.templateAssignments,
   destinationUrl: settings.destinationUrl,
   title: settings.title,
   copy: settings.copy,
@@ -355,20 +353,6 @@ const DayButton = styled.button<{ $active: boolean }>`
   &:focus-visible {
     outline: 3px solid #f47a4a;
     outline-offset: 2px;
-  }
-`;
-
-const AssignmentGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
-
-  @media (max-width: 740px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 460px) {
-    grid-template-columns: 1fr;
   }
 `;
 
@@ -845,7 +829,9 @@ export default function GrowthDashboard() {
         fetchMarketingTemplates(),
       ]);
       if (!mounted) return;
-      const initialTemplateId = settings.templateId || defaultTemplateId;
+      const initialTemplateId = nextTemplates.some((template) => template.id === settings.templateId)
+        ? settings.templateId
+        : defaultTemplateId;
       const savedTemplate = nextTemplates.find(
         (template) => template.id === initialTemplateId
       );
@@ -859,6 +845,8 @@ export default function GrowthDashboard() {
               copy: savedTemplate.copy,
               callToAction: savedTemplate.callToAction,
               photos: savedTemplate.photos,
+              enabled: savedTemplate.scheduleEnabled,
+              schedule: savedTemplate.schedule,
             }
           : toDraft(settings)
       );
@@ -921,6 +909,8 @@ export default function GrowthDashboard() {
             copy: template.copy,
             callToAction: template.callToAction,
             photos: template.photos,
+            enabled: template.scheduleEnabled,
+            schedule: template.schedule,
           }
         : { ...current, templateId: "" }
     );
@@ -937,15 +927,6 @@ export default function GrowthDashboard() {
       schedule: { ...current.schedule, daysOfWeek: next },
     }));
   };
-
-  const updateTemplateAssignment = (day: number, templateId: string) =>
-    setDraft((current) => ({
-      ...current,
-      templateAssignments: {
-        ...current.templateAssignments,
-        [String(day)]: templateId,
-      },
-    }));
 
   const handlePhotoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -1010,11 +991,11 @@ export default function GrowthDashboard() {
     setSaving(true);
     setMessage(null);
     try {
-      await saveMarketingCronSettings({
-        enabled: draft.enabled,
-        schedule: draft.schedule,
+      if (!draft.templateId) throw new Error("Select a template first.");
+      await saveMarketingTemplateSchedule({
         templateId: draft.templateId,
-        templateAssignments: draft.templateAssignments,
+        scheduleEnabled: draft.enabled,
+        schedule: draft.schedule,
       });
       setMessage({ text: marketing.settingsSaved });
     } catch (error) {
@@ -1036,12 +1017,27 @@ export default function GrowthDashboard() {
         copy: draft.copy,
         callToAction: draft.callToAction,
         photos: draft.photos,
+        scheduleEnabled: draft.enabled,
+        schedule: draft.schedule,
       });
       setTemplateName("");
       setTemplateDialogOpen(false);
       const nextTemplates = await fetchMarketingTemplates();
       setTemplates(nextTemplates);
-      updateDraft("templateId", templateId);
+      const saved = nextTemplates.find((template) => template.id === templateId);
+      if (saved) {
+        setDraft((current) => ({
+          ...current,
+          templateId,
+          destinationUrl: saved.destinationUrl,
+          title: saved.title,
+          copy: saved.copy,
+          callToAction: saved.callToAction,
+          photos: saved.photos,
+          enabled: saved.scheduleEnabled,
+          schedule: saved.schedule,
+        }));
+      }
       setMessage({ text: marketing.templateSaved });
     } catch (error) {
       console.error("Unable to create marketing template:", error);
@@ -1067,10 +1063,14 @@ export default function GrowthDashboard() {
   };
 
   const handleRunNow = async () => {
+    if (!draft.templateId) {
+      setMessage({ text: marketing.runNowError, error: true });
+      return;
+    }
     setRunningNow(true);
     setMessage(null);
     try {
-      await runMarketingCronNow();
+      await runMarketingCronNow(draft.templateId);
       const nextRuns = await fetchMarketingCronRuns();
       setRuns(nextRuns);
     } catch (error) {
@@ -1120,12 +1120,8 @@ export default function GrowthDashboard() {
       selectedTemplate.callToAction !== draft.callToAction ||
       JSON.stringify(selectedTemplate.photos) !== JSON.stringify(draft.photos)
     : hasTemplateContent;
-  const hasAssignmentsForSchedule = draft.schedule.daysOfWeek.every((day) =>
-    Boolean(draft.templateAssignments[String(day)])
-  );
   const scheduleHasDays = draft.schedule.daysOfWeek.length > 0;
-  const canSaveSchedule =
-    Boolean(draft.templateId) && !isTemplateDirty && hasAssignmentsForSchedule;
+  const canSaveSchedule = Boolean(draft.templateId) && !isTemplateDirty;
 
   return (
     <>
@@ -1143,6 +1139,24 @@ export default function GrowthDashboard() {
 
         <form onSubmit={handleSave}>
           <FormGrid>
+            <TemplatePicker>
+              <PanelTitle>{marketing.templateEditorTitle}</PanelTitle>
+              <PanelDescription>{marketing.templateEditorDescription}</PanelDescription>
+              <CompactField>
+                {marketing.templateSelect}
+                <Select
+                  value={draft.templateId}
+                  onChange={(event) => selectTemplate(event.target.value)}
+                >
+                  <option value="">{marketing.templatePlaceholder}</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </Select>
+              </CompactField>
+            </TemplatePicker>
             <SchedulePanel>
               <ScheduleHeading>
                 <div>
@@ -1194,33 +1208,8 @@ export default function GrowthDashboard() {
                   </DayList>
                 </DayField>
               </ScheduleGrid>
-              <div>
-                <PanelTitle>{marketing.templateAssignments}</PanelTitle>
-                <PanelDescription>{marketing.templateAssignmentsDescription}</PanelDescription>
-              </div>
-              <AssignmentGrid>
-                {draft.schedule.daysOfWeek.map((day) => (
-                  <CompactField key={day}>
-                    {weekdays[day]}
-                    <Select
-                      value={draft.templateAssignments[String(day)] || ""}
-                      onChange={(event) => updateTemplateAssignment(day, event.target.value)}
-                    >
-                      <option value="">{marketing.assignTemplatePlaceholder}</option>
-                      {templates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </CompactField>
-                ))}
-              </AssignmentGrid>
               {draft.schedule.daysOfWeek.length === 0 && (
                 <FieldHint>{marketing.scheduleDisabledWithoutDays}</FieldHint>
-              )}
-              {!hasAssignmentsForSchedule && (
-                <FieldHint>{marketing.assignTemplatesHint}</FieldHint>
               )}
               <RuleList>
                 <PanelTitle>{marketing.otherRulesTitle}</PanelTitle>
@@ -1228,24 +1217,6 @@ export default function GrowthDashboard() {
                 <PanelDescription>{marketing.duplicateRuleDescription}</PanelDescription>
               </RuleList>
             </SchedulePanel>
-            <TemplatePicker>
-              <PanelTitle>{marketing.templateEditorTitle}</PanelTitle>
-              <PanelDescription>{marketing.templateEditorDescription}</PanelDescription>
-              <CompactField>
-                {marketing.templateSelect}
-                <Select
-                  value={draft.templateId}
-                  onChange={(event) => selectTemplate(event.target.value)}
-                >
-                  <option value="">{marketing.templatePlaceholder}</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </Select>
-              </CompactField>
-            </TemplatePicker>
             <Field $full>
               {marketing.destinationUrl}
               <Input

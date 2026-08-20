@@ -19,7 +19,7 @@
 // "meetup-reminder"). The article-link + received_articles update logic is preserved.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin } from "../_shared/db.ts";
+import { admin, callerUid, hasServiceRoleAuthorization } from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
 
 // ---------------------------------------------------------------------------
@@ -488,6 +488,23 @@ async function handleUserNames(
   return { displayNames, phoneNumbers };
 }
 
+async function callerHasStaffRole(req: Request): Promise<boolean> {
+  const uid = await callerUid(req);
+  if (!uid) return false;
+
+  const { data, error } = await admin()
+    .from("users")
+    .select("account_status")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (error) {
+    console.error("Unable to verify messaging caller:", error.message);
+    return false;
+  }
+
+  return data?.account_status === "admin" || data?.account_status === "leader";
+}
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -510,9 +527,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   try {
     switch (action) {
-      case "meetup-reminder":
+      case "meetup-reminder": {
+        if (!(await callerHasStaffRole(req))) {
+          return json(req, { success: false, error: "Staff access is required" }, 403);
+        }
         return json(req, await handleMeetupReminder(body as { eventId?: string }));
-      case "send-links":
+      }
+      case "send-links": {
+        if (!hasServiceRoleAuthorization(req)) {
+          return json(req, { success: false, error: "Internal scheduler authorization required" }, 403);
+        }
         return json(
           req,
           {
@@ -522,10 +546,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
             ),
           },
         );
-      case "gdg-members":
+      }
+      case "gdg-members": {
+        if (!(await callerHasStaffRole(req))) {
+          return json(req, { success: false, error: "Staff access is required" }, 403);
+        }
         return json(req, await handleGdgMembers());
-      case "user-names":
+      }
+      case "user-names": {
+        if (!(await callerHasStaffRole(req))) {
+          return json(req, { success: false, error: "Staff access is required" }, 403);
+        }
         return json(req, await handleUserNames(body as { userIds?: unknown }));
+      }
       default:
         return json(
           req,
