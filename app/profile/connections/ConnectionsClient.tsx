@@ -164,6 +164,11 @@ export default function ConnectionsClient() {
     };
   }, [authLoading, currentUser, router, t.profile.connectionsLoadFailed]);
 
+  const networkTitle = locale === "ko" ? "내 네트워크" : t.profile.connectionsTitle;
+  const networkSubtitle = locale === "ko"
+    ? "서로 좋아요를 누른 멤버가 내 네트워크에 표시됩니다."
+    : t.profile.connectionsSubtitle;
+
   return (
     <Page>
       <Header>
@@ -174,9 +179,9 @@ export default function ConnectionsClient() {
           </BackButton>
           <Heading>
             <UserGroupIcon />
-            {t.profile.connectionsTitle}
+            {networkTitle}
           </Heading>
-          <Subtitle>{t.profile.connectionsSubtitle}</Subtitle>
+          <Subtitle>{networkSubtitle}</Subtitle>
         </div>
       </Header>
 
