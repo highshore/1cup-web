@@ -25,7 +25,7 @@ const Page = styled.main`
   min-height: calc(100vh - 72px);
   display: grid;
   place-items: center;
-  background: #faf8f4;
+  background: transparent;
   padding: 1rem;
 `;
 
@@ -180,24 +180,45 @@ const Benefit = styled.div`
 
 const Footer = styled.div`
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 1rem;
-  align-items: center;
+  align-items: end;
   margin-top: 1rem;
   border-top: 2px solid #050505;
   padding-top: 1rem;
 
-  @media (max-width: 620px) {
+  @media (max-width: 720px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const Policy = styled.p`
-  margin: 0;
+const PolicyGroup = styled.div`
+  display: grid;
+  gap: 0.55rem;
   color: rgba(5, 5, 5, 0.65);
   font-size: 0.76rem;
-  font-weight: 650;
-  line-height: 1.55;
+  line-height: 1.45;
+
+  p {
+    margin: 0;
+  }
+
+  strong {
+    color: #050505;
+    font-weight: 850;
+  }
+
+  a {
+    color: #f47a4a;
+    font-weight: 850;
+    text-decoration: underline;
+  }
+`;
+
+const PolicyTitle = styled.div`
+  color: #050505;
+  font-size: 0.82rem;
+  font-weight: 950;
 `;
 
 const PayButton = styled.button`
@@ -276,7 +297,6 @@ export default function CompactPaymentClient() {
           .select("has_active_subscription")
           .eq("uid", currentUser.uid)
           .maybeSingle();
-
         setAlreadySubscribed(Boolean(data?.has_active_subscription));
       } finally {
         setLoading(false);
@@ -286,7 +306,15 @@ export default function CompactPaymentClient() {
 
   useEffect(() => {
     const urlRef = searchParams?.get("ref")?.trim();
+    const urlRegion = searchParams?.get("region");
     if (urlRef) setReferralCode(urlRef);
+    if (urlRegion === "yeouido" || urlRegion === "anam") setRegion(urlRegion);
+
+    if (typeof window !== "undefined") {
+      const storedRef = sessionStorage.getItem("referralCodePrefill")?.trim();
+      if (!urlRef && storedRef) setReferralCode(storedRef);
+      if (storedRef) sessionStorage.removeItem("referralCodePrefill");
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -348,36 +376,36 @@ export default function CompactPaymentClient() {
   const checkReferral = async () => {
     const code = referralCode.trim();
     if (!code) return;
+
+    if (!currentUser) {
+      setReferralPrice(null);
+      setReferralMessage("로그인 후 추천 코드를 확인할 수 있습니다.");
+      return;
+    }
+
     setCheckingReferral(true);
     setReferralMessage("");
     setReferralPrice(null);
 
     try {
-      const data = (await invokeFunction("payment", {
-        action: "check-referral",
-        code,
-      })) as any;
+      const { data, error: referralError } = await supabase.rpc(
+        "check_referral_code_for_current_user",
+        { p_code: code },
+      );
+      if (referralError) throw referralError;
 
-      if (!data?.valid) {
-        setReferralMessage(data?.message || "유효하지 않은 코드입니다.");
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result?.valid) {
+        setReferralMessage(result?.message || "유효하지 않은 코드입니다.");
         return;
       }
 
-      if (currentUser) {
-        const { data: ownReferral } = await supabase
-          .from("referral_codes")
-          .select("referrer")
-          .eq("code", code)
-          .maybeSingle();
-        if (ownReferral?.referrer === currentUser.uid) {
-          setReferralMessage("본인의 추천 코드는 사용할 수 없습니다.");
-          return;
-        }
-      }
-
-      const price = normalizeReferralPrice(Number(data.discount || 0), String(data.discountType || "fixed_price"));
+      const price = normalizeReferralPrice(
+        Number(result.discount || 0),
+        String(result.discount_type || "fixed_price"),
+      );
       setReferralPrice(price);
-      setReferralMessage(data.message || "추천 코드가 적용되었습니다.");
+      setReferralMessage(result.message || "추천 코드가 적용되었습니다.");
     } catch {
       setReferralMessage("코드 확인 중 오류가 발생했습니다.");
     } finally {
@@ -493,10 +521,13 @@ export default function CompactPaymentClient() {
         </BenefitRow>
 
         <Footer>
-          <div>
-            <Policy>결제 후 7일 이내 전액 환불 가능. 이후에는 미사용 기간을 일할 계산해 환불합니다.</Policy>
+          <PolicyGroup>
+            <PolicyTitle>결제 및 환불 정책</PolicyTitle>
+            <p><strong>자동 결제</strong> · 30일마다 자동으로 결제됩니다. 재결제 시 알림톡을 드리며 언제든지 취소할 수 있습니다.</p>
+            <p><strong>7일 체험 기간 및 환불 정책</strong> · 결제일로부터 <strong>7일 이내 전액 환불</strong>이 가능합니다. 7일 이후에는 사용하지 않은 기간에 대해 일할 계산으로 환불됩니다. 또한, 운영진 판단에 의거 정책 위반이나 원활한 서비스 제공이 어려울 경우 일방적으로 환불 처리를 해드릴 수 있습니다.</p>
+            <p><strong>구독 관리</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 구독을 관리하실 수 있습니다.</p>
             {error ? <Message $error>{error}</Message> : null}
-          </div>
+          </PolicyGroup>
           <PayButton type="button" onClick={handlePayment} disabled={processing}>
             {processing ? "결제 준비 중..." : discounted ? `${totalAmount.toLocaleString()}원으로 시작하기` : "9,700원으로 시작하기"}
           </PayButton>
