@@ -113,6 +113,74 @@ async function generateNumericPayerNo(
   }
 }
 
+// Payple's documented caps on the fields we fill. Exceeding one is rejected in the
+// payment window, where we have no server-side visibility, so check before sending and
+// say so in the log rather than waiting for a member to report the error code.
+const PAYPLE_FIELD_LIMITS: Record<string, number> = {
+  PCD_PAYER_NO: 18,
+  PCD_PAYER_NAME: 20,
+  PCD_PAYER_EMAIL: 50,
+  PCD_PAYER_HP: 20,
+  PCD_PAY_GOODS: 50,
+  PCD_PAY_OID: 30,
+};
+
+// Logs the shape of what we are about to send — lengths, never the values, since this
+// object carries a member's name, email and phone. Returns the violations so the caller
+// can persist them alongside the order.
+function auditPaypleParams(params: Record<string, unknown>): string[] {
+  const violations: string[] = [];
+  const shape: Record<string, number> = {};
+  for (const [key, limit] of Object.entries(PAYPLE_FIELD_LIMITS)) {
+    const value = params[key];
+    if (value === undefined || value === null) continue;
+    const length = String(value).length;
+    shape[key] = length;
+    if (length > limit) violations.push(`${key}=${length}>${limit}`);
+  }
+  if (violations.length > 0) {
+    logError("Payple field limit exceeded before send:", { violations, shape });
+  } else {
+    logInfo("Payple outbound param lengths:", shape);
+  }
+  return violations;
+}
+
+// Writes a window/verify-stage failure onto the order so it is queryable. Every failure
+// before this went to the function log and nowhere else, which left `pending_auth` rows
+// that could equally mean "abandoned", "card declined" or "rejected by Payple".
+async function recordOrderFailure(
+  orderNumber: string | undefined,
+  userId: string,
+  errorCode: string,
+  errorMessage: string,
+  response?: Record<string, unknown>,
+): Promise<void> {
+  logError("Payment failure recorded:", {
+    orderNumber,
+    userId,
+    errorCode,
+    errorMessage,
+  });
+  if (!orderNumber) return;
+  try {
+    const a = admin();
+    await a
+      .from("payment_orders")
+      .update({
+        status: "failed",
+        error_code: errorCode,
+        error_message: errorMessage,
+        payple_response: response ?? null,
+        failed_at: new Date().toISOString(),
+      })
+      .eq("order_number", orderNumber);
+  } catch (e) {
+    // Never let bookkeeping mask the original failure.
+    logError("Could not persist payment failure:", e);
+  }
+}
+
 // date-fns `format` replacement for the two patterns actually used.
 function formatYyyyMMdd(d: Date): string {
   const y = d.getFullYear().toString();
@@ -341,6 +409,8 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     PCD_USER_DEFINE2: JSON.stringify(selected_categories || {}),
   };
 
+  const limitViolations = auditPaypleParams(paymentParams);
+
   // Store the order (status pending_auth). Firestore->Postgres field mapping applied.
   const a = admin();
   const { error: insErr } = await a.from("payment_orders").insert({
@@ -353,11 +423,39 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     type: "subscription_init",
     payple_params_attempted: paymentParams,
     selected_categories: selected_categories || {},
+    // Recorded even though the window has not opened yet: if Payple rejects the
+    // parameters there is no callback, so this is the only trace that would exist.
+    error_code: limitViolations.length > 0 ? "param_limit_exceeded" : null,
+    error_message:
+      limitViolations.length > 0 ? limitViolations.join(", ") : null,
   });
   if (insErr) throw new ApiError(insErr.message, 500, "internal");
 
   logInfo(`Payment window parameters prepared for user ${uid}`);
   return { success: true, paymentParams };
+}
+
+// -------------------------------------------------------------------
+// reportPaymentFailure  ->  action "report-failure"
+// -------------------------------------------------------------------
+// Payple validates the parameters before the window opens, and that rejection never
+// reaches PaypleCpayCallback — which is why nine failed attempts left no reason behind
+// anywhere. The browser calls this so the order carries what the member actually saw.
+async function reportPaymentFailure(uid: string, body: Record<string, unknown>) {
+  const orderNumber = body.orderNumber as string | undefined;
+  const stage = (body.stage as string) || "unknown";
+  const errorCode = (body.errorCode as string) || "client_reported";
+  const errorMessage = (body.errorMessage as string) || "결제창에서 오류가 발생했습니다.";
+  const response = (body.response as Record<string, unknown>) ?? undefined;
+
+  await recordOrderFailure(
+    orderNumber,
+    uid,
+    errorCode,
+    `[${stage}] ${errorMessage}`,
+    response,
+  );
+  return { success: true };
 }
 
 // -------------------------------------------------------------------
@@ -401,11 +499,15 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
     if (paymentParams.PCD_PAY_RST !== "success") {
       const errorCode = paymentParams.PCD_PAY_CODE || "unknown";
       const errorMsg = paymentParams.PCD_PAY_MSG || "Unknown error";
-      logError("Payment verification failed:", {
-        code: errorCode,
-        message: errorMsg,
-        orderNumber: paymentParams.PCD_PAY_OID,
-      });
+      // Used to log and throw, so the order stayed `pending_auth` and the reason lived
+      // only in the function log. Put it on the row.
+      await recordOrderFailure(
+        paymentParams.PCD_PAY_OID as string | undefined,
+        userId,
+        errorCode,
+        errorMsg,
+        paymentParams,
+      );
       throw new ApiError(
         `Payment failed: ${errorMsg} (Code: ${errorCode})`,
         400,
@@ -1478,6 +1580,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       case "window":
       case "verify":
+      case "report-failure":
       case "cancel":
       case "stop":
       case "generate-referral": {
@@ -1494,6 +1597,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
             return json(req, await getPaymentWindow(uid, body));
           case "verify":
             return json(req, await verifyPaymentResult(uid, body));
+          case "report-failure":
+            return json(req, await reportPaymentFailure(uid, body));
           case "cancel":
             return json(req, await cancelSubscription(uid, body));
           case "stop":
