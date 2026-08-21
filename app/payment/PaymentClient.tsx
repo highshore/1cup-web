@@ -702,8 +702,10 @@ export default function PaymentClient() {
         userId: currentUser.uid,
         userEmail: currentUser.email || "",
         userName: currentUser.displayName || "사용자",
-        userPhone:
-          currentUser.phoneNumber?.slice(-8) || Date.now().toString().slice(-8),
+        // Whole number, not a fragment. This used to send the last 8 digits (or an
+        // 8-digit timestamp), which reached Payple as PCD_PAYER_HP and could not
+        // receive the auth SMS. The server prefers its own record anyway.
+        userPhone: currentUser.phoneNumber || "",
         pcd_amount: totalAmount, // Pass calculated amount
         pcd_good_name: selectedProductName, // Pass selected items description
         selected_categories: {

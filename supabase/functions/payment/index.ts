@@ -250,29 +250,23 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
 
   // Resolve phone/displayName. Original preferred request data, then Auth, then Firestore.
   // Here Auth is replaced by public.users.phone / public.users.display_name.
-  let payerPhoneNumber = userPhone || "";
-  let displayName = userName || "구독자";
+  // The DB number is authoritative: the client used to send only the last 8 digits, and
+  // every branch below then truncated to 8 as well, so PCD_PAYER_HP was never a number
+  // the SMS step could reach. Take the first candidate that is a whole KR mobile.
+  const dbName = ((userData.display_name as string) || "").trim();
+  const displayName = userName.trim() || dbName || "구독자";
+
+  const isKrMobile = (v: string) => /^01\d{8,9}$/.test(v);
+  const payerPhoneNumber =
+    [krPhone((userData.phone as string) || ""), userPhone.replace(/\D/g, "")].find(
+      isKrMobile,
+    ) ?? "";
 
   if (!payerPhoneNumber) {
-    const dbPhone = (userData.phone as string) || "";
-    if (dbPhone) {
-      payerPhoneNumber = krPhone(dbPhone);
-      if (payerPhoneNumber.length < 10) {
-        payerPhoneNumber = payerPhoneNumber.slice(-8).padStart(8, "0");
-      }
-    }
-    const dbName = (userData.display_name as string) || "";
-    if (dbName && dbName.trim() !== "") displayName = dbName;
-  } else {
-    payerPhoneNumber = payerPhoneNumber.replace(/\D/g, "");
-    if (payerPhoneNumber.length < 10) {
-      payerPhoneNumber = payerPhoneNumber.slice(-8).padStart(8, "0");
-    }
-  }
-
-  if (!payerPhoneNumber) {
-    payerPhoneNumber = Date.now().toString().slice(-8);
-    logWarn(`No phone number found, using timestamp-based number: ${payerPhoneNumber}`);
+    // Kakao does not always release a phone number, so some members genuinely have none.
+    // Send nothing and let Payple collect it — the timestamp this used to invent was a
+    // number that could never receive the auth SMS.
+    logWarn(`No usable phone for user ${uid}; leaving PCD_PAYER_HP empty.`);
   }
 
   // Validate referral code (amount comes from the frontend-calculated price).
@@ -331,7 +325,11 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     PCD_PAY_OID: orderNumber,
     PCD_PAY_YEAR: orderDate.getFullYear().toString(),
     PCD_PAY_MONTH: orderMonth,
-    PCD_PAYER_NO: uid,
+    // Payple caps PCD_PAYER_NO at 18 numeric characters (error cpc0034). uid is a
+    // 28-char Firebase id for migrated members and a 36-char UUID for everyone who
+    // signed up on Supabase, so this used to ship the raw id and blow the limit. Same
+    // derivation the recurring charge already uses, so both agree on the member number.
+    PCD_PAYER_NO: await generateNumericPayerNo(uid),
     PCD_PAYER_NAME: displayName,
     PCD_PAYER_EMAIL: email,
     PCD_PAYER_HP: payerPhoneNumber,
@@ -514,8 +512,9 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
         PCD_SIMPLE_FLAG: "Y",
         PCD_PAY_TOTAL: originalAmount,
         PCD_PAY_OID: orderNumber,
-        PCD_PAYER_NO:
-          paymentParams.PCD_PAYER_NO || Date.now().toString().slice(-8),
+        // Derived, not echoed: whatever comes back in the callback is only as valid as
+        // what we sent, and a timestamp fallback would not match the CERT registration.
+        PCD_PAYER_NO: await generateNumericPayerNo(uid),
         PCD_PAY_YEAR: new Date().getFullYear().toString(),
         PCD_PAY_MONTH: (new Date().getMonth() + 1).toString().padStart(2, "0"),
         PCD_PAY_ISTAX: "Y",
