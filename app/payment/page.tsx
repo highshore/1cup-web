@@ -1,17 +1,15 @@
 import { Metadata } from "next";
-import PaymentClient from "./PaymentClient";
 import { Suspense } from "react";
+import CompactPaymentClient from "./CompactPaymentClient";
 
 export const metadata: Metadata = {
   title: "영어 한잔 멤버십 | OneCup English",
   description:
-    "원하는 카테고리를 선택하고 멤버십을 시작하세요. 밋업 참여 티켓 및 프리미엄 기능을 이용할 수 있습니다.",
+    "여의도 또는 안암 지역을 선택하고 영어 한잔 멤버십을 시작하세요.",
 };
 
 // Kill-switch for the payment feature during the Supabase migration/cutover.
-// Payment is DISABLED unless PAYMENT_ENABLED === "true" (server env). This blocks
-// every subscribe entry point (they all route here), so no window/verify can fire.
-// Re-enable by setting PAYMENT_ENABLED=true once the Supabase payment fn is live.
+// Payment is DISABLED unless PAYMENT_ENABLED === "true" (server env).
 const PAYMENT_ENABLED = process.env.PAYMENT_ENABLED === "true";
 
 export default function PaymentPage() {
@@ -27,9 +25,10 @@ export default function PaymentPage() {
       </div>
     );
   }
+
   return (
     <Suspense fallback={null}>
-      <PaymentClient />
+      <CompactPaymentClient />
     </Suspense>
   );
 }
