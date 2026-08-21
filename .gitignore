@@ -46,6 +46,8 @@ functions/.env.one-cup-eng
 .vscode/*
 !.vscode/extensions.json
 .idea
+.cursor/rules/
+.kilo/
 .DS_Store
 *.suo
 *.ntvs*
