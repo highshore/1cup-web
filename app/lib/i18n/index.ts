@@ -5,7 +5,14 @@ export type SupportedLocale = "en" | "ko";
 
 const dictionaries = {
   en,
-  ko,
+  ko: {
+    ...ko,
+    profile: {
+      ...ko.profile,
+      viewConnections: "내 네트워크",
+      connectionsTitle: "내 네트워크",
+    },
+  },
 };
 
 export const getDictionary = (locale: SupportedLocale) =>
