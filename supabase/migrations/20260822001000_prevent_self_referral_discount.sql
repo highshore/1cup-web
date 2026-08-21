@@ -1,6 +1,6 @@
 -- Prevent a member from using their own referral code to discount a payment.
--- The payment edge function already ignores self-referral attribution, but the
--- browser-supplied amount also needs a DB-side guard before verification reads it.
+-- The browser performs an early check when possible, but this trigger is the
+-- authoritative boundary and also protects against modified/direct clients.
 
 create or replace function public.enforce_no_self_referral_payment()
 returns trigger
@@ -19,8 +19,8 @@ begin
     where rc.code = new.referral_code
       and rc.referrer = new.user_id
   ) then
-    new.referral_code := null;
-    new.amount := 9700;
+    raise exception '본인의 추천 코드는 사용할 수 없습니다.'
+      using errcode = 'P0001';
   end if;
 
   return new;
@@ -35,4 +35,4 @@ for each row
 execute function public.enforce_no_self_referral_payment();
 
 comment on function public.enforce_no_self_referral_payment() is
-  'Removes self-referral attribution and restores the standard 9,700 KRW membership price.';
+  'Rejects payment orders that attempt to use the payer''s own referral code.';
