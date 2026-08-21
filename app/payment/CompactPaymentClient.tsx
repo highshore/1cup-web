@@ -269,13 +269,19 @@ export default function CompactPaymentClient() {
       return;
     }
 
-    void supabase
-      .from("users")
-      .select("has_active_subscription")
-      .eq("uid", currentUser.uid)
-      .maybeSingle()
-      .then(({ data }) => setAlreadySubscribed(Boolean(data?.has_active_subscription)))
-      .finally(() => setLoading(false));
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("has_active_subscription")
+          .eq("uid", currentUser.uid)
+          .maybeSingle();
+
+        setAlreadySubscribed(Boolean(data?.has_active_subscription));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [currentUser]);
 
   useEffect(() => {
