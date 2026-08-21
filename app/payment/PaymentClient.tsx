@@ -28,6 +28,30 @@ if (typeof window !== "undefined" && !window.PaypleCpayCallback) {
   window.PaypleCpayCallback = [];
 }
 
+// Best-effort: a failure we cannot describe is worse than a slow one, but never let
+// the report itself surface as the error the member sees.
+async function reportPaymentFailure(
+  orderNumber: string | undefined,
+  stage: string,
+  errorMessage: string,
+  response?: unknown
+) {
+  try {
+    await invokeFunction("payment", {
+      action: "report-failure",
+      orderNumber,
+      stage,
+      errorCode:
+        (response as Record<string, string> | undefined)?.PCD_PAY_CODE ||
+        "client_reported",
+      errorMessage,
+      response,
+    });
+  } catch {
+    // swallowed on purpose
+  }
+}
+
 // Add our callback handler to the array
 if (typeof window !== "undefined") {
   window.PaypleCpayCallback.push(function (response: any) {
@@ -38,6 +62,17 @@ if (typeof window !== "undefined") {
         "paypleCallbackResponse",
         JSON.stringify(response)
       );
+
+      // A non-success result is the common case we were blind to: verify() throws on
+      // it, so nothing reached the order row.
+      if (response?.PCD_PAY_RST && response.PCD_PAY_RST !== "success") {
+        void reportPaymentFailure(
+          response.PCD_PAY_OID,
+          "callback",
+          response.PCD_PAY_MSG || "결제가 완료되지 않았습니다.",
+          response
+        );
+      }
 
       // Get the session info
       const sessionInfo = sessionStorage.getItem("paymentSessionInfo");
@@ -702,8 +737,10 @@ export default function PaymentClient() {
         userId: currentUser.uid,
         userEmail: currentUser.email || "",
         userName: currentUser.displayName || "사용자",
-        userPhone:
-          currentUser.phoneNumber?.slice(-8) || Date.now().toString().slice(-8),
+        // Whole number, not a fragment. This used to send the last 8 digits (or an
+        // 8-digit timestamp), which reached Payple as PCD_PAYER_HP and could not
+        // receive the auth SMS. The server prefers its own record anyway.
+        userPhone: currentUser.phoneNumber || "",
         pcd_amount: totalAmount, // Pass calculated amount
         pcd_good_name: selectedProductName, // Pass selected items description
         selected_categories: {
@@ -747,13 +784,25 @@ export default function PaymentClient() {
         );
       }
 
-      window.PaypleCpayAuthCheck(paymentData.paymentParams);
+      // Payple validates the parameters before the window renders and reports that
+      // rejection here, not through PaypleCpayCallback — so without this the reason
+      // never left the member's browser.
+      try {
+        window.PaypleCpayAuthCheck(paymentData.paymentParams);
+      } catch (windowErr) {
+        void reportPaymentFailure(
+          paymentData.paymentParams?.PCD_PAY_OID,
+          "window_open",
+          windowErr instanceof Error ? windowErr.message : String(windowErr)
+        );
+        throw windowErr;
+      }
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "결제 초기화 중 오류가 발생했습니다."
-      );
+          : "결제 초기화 중 오류가 발생했습니다.";
+      setError(message);
       setIsProcessing(false);
     }
   };
