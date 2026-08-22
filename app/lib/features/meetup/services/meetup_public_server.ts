@@ -1,9 +1,6 @@
 import "server-only";
 
 import { admin } from "../../../supabase/server";
-import {
-  convertFirestoreToMeetupEvent,
-} from "../utils/meetup_helpers";
 import type {
   MeetupEvent,
   MeetupLeaderboardEntry,
@@ -12,6 +9,7 @@ import type {
 
 const QUERY_TIMEOUT_MS = 7_000;
 const MAX_PAGE_SIZE = 50;
+const SEOUL_TIME_ZONE = "Asia/Seoul";
 
 type UserLeaderboardProfile = {
   uid: string;
@@ -36,6 +34,58 @@ function resolveDate(value: unknown): Date | null {
   if (value instanceof Date) return value;
   const parsed = new Date(String(value));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatSeoulDateTime(value: unknown) {
+  const date = resolveDate(value) ?? new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SEOUL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value || "";
+
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
+function rowToMeetupEvent(
+  row: Record<string, unknown>,
+  participants: string[],
+  leaders: string[],
+  articles: string[],
+): MeetupEvent {
+  const { date, time } = formatSeoulDateTime(row.date_time);
+  return {
+    id: String(row.id),
+    title: String(row.title || ""),
+    date,
+    time,
+    description: String(row.description || ""),
+    location_name: String(row.location_name || ""),
+    location_address: String(row.location_address || ""),
+    location_map_url: String(row.location_map_url || ""),
+    latitude: Number(row.latitude || 0),
+    longitude: Number(row.longitude || 0),
+    location_extra_info: String(row.location_extra_info || ""),
+    duration_minutes: Number(row.duration_minutes || 0),
+    lockdown_minutes: Number(row.lockdown_minutes || 0),
+    max_participants: Number(row.max_participants || 0),
+    participants,
+    leaders,
+    image_urls: Array.isArray(row.image_urls) ? row.image_urls.map(String) : [],
+    topics: Array.isArray(row.topics)
+      ? (row.topics as { topic_id: string }[])
+      : [],
+    articles,
+  };
 }
 
 function isExcludedLeaderboardUser(profile?: UserLeaderboardProfile) {
@@ -168,13 +218,12 @@ export async function fetchMeetupEventsPageServer(
   const events = meetupRows.map((row) => {
     const id = String(row.id);
     const bucket = people.get(id) || { participants: [], leaders: [] };
-    return convertFirestoreToMeetupEvent({
-      ...row,
-      id,
-      participants: bucket.participants,
-      leaders: bucket.leaders,
-      articles: articles.get(id) || [],
-    });
+    return rowToMeetupEvent(
+      row,
+      bucket.participants,
+      bucket.leaders,
+      articles.get(id) || [],
+    );
   });
 
   return {
@@ -225,9 +274,11 @@ export async function fetchMeetupLeaderboardsServer(
   if (meetupResult.error) throw meetupResult.error;
   if (usersResult.error) throw usersResult.error;
   if (participantsResult.error) throw participantsResult.error;
-  // Payment history is enrichment, not a reason to take the whole leaderboard down.
   if (paidResult.error) {
-    console.warn("Unable to load first-paid dates for leaderboard", paidResult.error.message);
+    console.warn(
+      "Unable to load first-paid dates for leaderboard",
+      paidResult.error.message,
+    );
   }
 
   const firstPaidByUser = new Map<string, Date>();
@@ -317,7 +368,7 @@ export async function fetchMeetupLeaderboardsServer(
 
   const monthLabel = new Intl.DateTimeFormat("en-US", {
     month: "long",
-    timeZone: "Asia/Seoul",
+    timeZone: SEOUL_TIME_ZONE,
   }).format(now);
 
   return {
