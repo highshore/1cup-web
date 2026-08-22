@@ -18,33 +18,8 @@ const DEFAULT_GOODS_CODE = process.env.GIFTISHOW_DEFAULT_GOODS_CODE?.trim() || "
 const SEND_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-const GIFT_HISTORY_COLUMNS = [
-  "id",
-  "tr_id",
-  "member_id",
-  "recipient_name",
-  "recipient_phone_last4",
-  "goods_code",
-  "goods_name",
-  "brand_name",
-  "goods_image_url",
-  "sale_price",
-  "purchase_price",
-  "mms_title",
-  "mms_message",
-  "order_no",
-  "provider_code",
-  "provider_message",
-  "status",
-  "created_at",
-  "sent_at",
-].join(", ");
-
 export class AdminGiftError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
+  constructor(message: string, readonly status: number) {
     super(message);
   }
 }
@@ -52,18 +27,10 @@ export class AdminGiftError extends Error {
 class GiftishowTimeoutError extends Error {}
 
 class GiftishowProviderError extends Error {
-  constructor(
-    message: string,
-    readonly code: string | null = null,
-  ) {
+  constructor(message: string, readonly code: string | null = null) {
     super(message);
   }
 }
-
-type CurrentProfile = {
-  uid?: unknown;
-  account_status?: unknown;
-};
 
 type ProviderConfig = {
   authCode: string;
@@ -75,8 +42,6 @@ type ProviderConfig = {
   missing: string[];
   configured: boolean;
 };
-
-type GiftHistoryRow = Record<string, unknown>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -140,9 +105,7 @@ async function requireAdminProfile(): Promise<string> {
     error: authError,
   } = await client.auth.getUser();
 
-  if (authError || !user) {
-    throw new AdminGiftError("Authentication is required.", 401);
-  }
+  if (authError || !user) throw new AdminGiftError("Authentication is required.", 401);
 
   const { data, error } = await client.rpc("current_user_row");
   if (error) {
@@ -150,12 +113,12 @@ async function requireAdminProfile(): Promise<string> {
     throw new AdminGiftError("Unable to verify administrator access.", 500);
   }
 
-  const profile = (Array.isArray(data) ? data[0] : data) as CurrentProfile | null;
+  const rawProfile = Array.isArray(data) ? data[0] : data;
+  const profile = isRecord(rawProfile) ? rawProfile : null;
   const uid = stringValue(profile?.uid);
   if (!uid || profile?.account_status !== "admin") {
     throw new AdminGiftError("Administrator access is required.", 403);
   }
-
   return uid;
 }
 
@@ -175,9 +138,9 @@ function maskPhone(phone: string): string {
   return `***-****-${phone.slice(-4)}`;
 }
 
-function maskLast4(last4: unknown): string | null {
-  const value = stringValue(last4);
-  return value && /^\d{4}$/.test(value) ? `***-****-${value}` : null;
+function maskLast4(value: unknown): string | null {
+  const last4 = stringValue(value);
+  return last4 && /^\d{4}$/.test(last4) ? `***-****-${last4}` : null;
 }
 
 function providerMessage(payload: Record<string, unknown>): string | null {
@@ -232,9 +195,7 @@ async function postGiftishow(
       const message = isRecord(parsed) ? providerMessage(parsed) : null;
       throw new GiftishowProviderError(message || `Giftishow returned HTTP ${response.status}.`);
     }
-    if (!isRecord(parsed)) {
-      throw new GiftishowProviderError("Giftishow returned an invalid response.");
-    }
+    if (!isRecord(parsed)) throw new GiftishowProviderError("Giftishow returned an invalid response.");
     return parsed;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -250,9 +211,7 @@ function toProduct(payload: Record<string, unknown>): AdminGiftProduct {
   assertOuterSuccess(payload);
   const result = isRecord(payload.result) ? payload.result : null;
   const detail = result && isRecord(result.goodsDetail) ? result.goodsDetail : null;
-  if (!detail) {
-    throw new GiftishowProviderError("Giftishow did not return product details.");
-  }
+  if (!detail) throw new GiftishowProviderError("Giftishow did not return product details.");
 
   const goodsCode = stringValue(detail.goodsCode);
   const goodsName = stringValue(detail.goodsName);
@@ -277,7 +236,6 @@ async function fetchProduct(goodsCode: string, config: ProviderConfig): Promise<
   if (!/^[A-Z0-9]{6,20}$/.test(normalizedCode)) {
     throw new AdminGiftError("Please enter a valid Giftishow product code.", 400);
   }
-
   const payload = await postGiftishow(
     `/goods/${encodeURIComponent(normalizedCode)}`,
     "0111",
@@ -295,23 +253,24 @@ async function fetchBalance(config: ProviderConfig): Promise<number> {
     config,
   );
   assertOuterSuccess(payload);
-  const balance = integerValue(payload.balance) ??
-    (isRecord(payload.result) ? integerValue(payload.result.balance) : null);
+  const result = isRecord(payload.result) ? payload.result : null;
+  const balance = integerValue(payload.balance) ?? integerValue(result?.balance);
   if (balance === null) {
     throw new GiftishowProviderError("Giftishow did not return the Bizmoney balance.");
   }
   return balance;
 }
 
-function toHistoryItem(row: GiftHistoryRow): AdminGiftHistoryItem | null {
-  const id = stringValue(row.id);
-  const trId = stringValue(row.tr_id);
-  const goodsCode = stringValue(row.goods_code);
-  const goodsName = stringValue(row.goods_name);
-  const mmsTitle = stringValue(row.mms_title);
-  const mmsMessage = stringValue(row.mms_message);
-  const createdAt = stringValue(row.created_at);
-  const rawStatus = stringValue(row.status);
+function toHistoryItem(value: unknown): AdminGiftHistoryItem | null {
+  if (!isRecord(value)) return null;
+  const id = stringValue(value.id);
+  const trId = stringValue(value.tr_id);
+  const goodsCode = stringValue(value.goods_code);
+  const goodsName = stringValue(value.goods_name);
+  const mmsTitle = stringValue(value.mms_title);
+  const mmsMessage = stringValue(value.mms_message);
+  const createdAt = stringValue(value.created_at);
+  const rawStatus = stringValue(value.status);
   const validStatuses: GiftSendStatus[] = [
     "pending",
     "sent",
@@ -320,7 +279,7 @@ function toHistoryItem(row: GiftHistoryRow): AdminGiftHistoryItem | null {
     "timeout_unknown",
   ];
   const status = rawStatus && validStatuses.includes(rawStatus as GiftSendStatus)
-    ? rawStatus as GiftSendStatus
+    ? (rawStatus as GiftSendStatus)
     : null;
 
   if (!id || !trId || !goodsCode || !goodsName || !mmsTitle || !mmsMessage || !createdAt || !status) {
@@ -330,36 +289,37 @@ function toHistoryItem(row: GiftHistoryRow): AdminGiftHistoryItem | null {
   return {
     id,
     trId,
-    memberId: stringValue(row.member_id),
-    recipientName: stringValue(row.recipient_name),
-    recipientPhoneMasked: maskLast4(row.recipient_phone_last4),
+    memberId: stringValue(value.member_id),
+    recipientName: stringValue(value.recipient_name),
+    recipientPhoneMasked: maskLast4(value.recipient_phone_last4),
     goodsCode,
     goodsName,
-    brandName: stringValue(row.brand_name),
-    goodsImageUrl: stringValue(row.goods_image_url),
-    salePrice: integerValue(row.sale_price),
-    purchasePrice: integerValue(row.purchase_price),
+    brandName: stringValue(value.brand_name),
+    goodsImageUrl: stringValue(value.goods_image_url),
+    salePrice: integerValue(value.sale_price),
+    purchasePrice: integerValue(value.purchase_price),
     mmsTitle,
     mmsMessage,
-    orderNo: stringValue(row.order_no),
-    providerCode: stringValue(row.provider_code),
-    providerMessage: stringValue(row.provider_message),
+    orderNo: stringValue(value.order_no),
+    providerCode: stringValue(value.provider_code),
+    providerMessage: stringValue(value.provider_message),
     status,
     createdAt,
-    sentAt: stringValue(row.sent_at),
+    sentAt: stringValue(value.sent_at),
   };
 }
 
-function toRecipient(row: Record<string, unknown>): AdminGiftRecipient | null {
-  const id = stringValue(row.uid);
-  if (!id || row.is_placeholder === true || row.account_status === "admin") return null;
-  const phone = stringValue(row.phone);
-  const normalized = phone ? normalizeKoreanPhone(phone) : null;
+function toRecipient(value: unknown): AdminGiftRecipient | null {
+  if (!isRecord(value)) return null;
+  const id = stringValue(value.uid);
+  if (!id || value.is_placeholder === true || value.account_status === "admin") return null;
+  const rawPhone = stringValue(value.phone);
+  const phone = rawPhone ? normalizeKoreanPhone(rawPhone) : null;
   return {
     id,
-    displayName: stringValue(row.display_name),
-    maskedPhone: normalized ? maskPhone(normalized) : null,
-    hasPhone: Boolean(normalized),
+    displayName: stringValue(value.display_name),
+    maskedPhone: phone ? maskPhone(phone) : null,
+    hasPhone: Boolean(phone),
   };
 }
 
@@ -372,19 +332,19 @@ async function updateGiftHistory(
     .from("gift_sends")
     .update(values)
     .eq("id", id)
-    .select(GIFT_HISTORY_COLUMNS)
+    .select("*")
     .single();
 
   if (error) {
     console.error("Unable to update gift history:", error);
     throw new AdminGiftError("The gift was processed, but its audit record could not be updated.", 500);
   }
-  const mapped = toHistoryItem(data as GiftHistoryRow);
+  const mapped = toHistoryItem(data);
   if (!mapped) throw new AdminGiftError("The gift audit record is invalid.", 500);
   return mapped;
 }
 
-function sendOutcome(payload: Record<string, unknown>): {
+function parseSendOutcome(payload: Record<string, unknown>): {
   orderNo: string | null;
   providerCode: string;
   providerMessage: string | null;
@@ -393,16 +353,13 @@ function sendOutcome(payload: Record<string, unknown>): {
   const outerCode = stringValue(payload.code) || "0000";
   const outerMessage = providerMessage(payload);
   const envelope = isRecord(payload.result) ? payload.result : null;
-  if (!envelope) {
-    return { orderNo: null, providerCode: outerCode, providerMessage: outerMessage };
-  }
+  if (!envelope) return { orderNo: null, providerCode: outerCode, providerMessage: outerMessage };
 
   const innerCode = stringValue(envelope.code);
   const innerMessage = stringValue(envelope.message);
   if (innerCode && innerCode !== "0000") {
     throw new GiftishowProviderError(innerMessage || "Giftishow could not send the coupon.", innerCode);
   }
-
   const result = isRecord(envelope.result) ? envelope.result : envelope;
   return {
     orderNo: stringValue(result.orderNo),
@@ -438,7 +395,7 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
       .limit(1000),
     db
       .from("gift_sends")
-      .select(GIFT_HISTORY_COLUMNS)
+      .select("*")
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(50),
@@ -468,9 +425,7 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
         ? balanceResult.reason.message
         : "Unable to load Bizmoney balance.";
     }
-    if (productResult.status === "fulfilled") {
-      defaultProduct = productResult.value;
-    }
+    if (productResult.status === "fulfilled") defaultProduct = productResult.value;
   }
 
   return {
@@ -481,11 +436,11 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
     balance,
     balanceError,
     recipients: (recipientsResult.data ?? [])
-      .map((row) => toRecipient(row as Record<string, unknown>))
-      .filter((row): row is AdminGiftRecipient => row !== null),
+      .map(toRecipient)
+      .filter((item): item is AdminGiftRecipient => item !== null),
     history: (historyResult.data ?? [])
-      .map((row) => toHistoryItem(row as GiftHistoryRow))
-      .filter((row): row is AdminGiftHistoryItem => row !== null),
+      .map(toHistoryItem)
+      .filter((item): item is AdminGiftHistoryItem => item !== null),
     defaultProduct,
   };
 }
@@ -523,7 +478,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
       .select("uid, display_name, phone, is_placeholder")
       .eq("uid", memberId)
       .maybeSingle();
-    if (error || !data || data.is_placeholder === true) {
+    if (error || !isRecord(data) || data.is_placeholder === true) {
       throw new AdminGiftError("The selected member is unavailable.", 400);
     }
     const storedPhone = stringValue(data.phone);
@@ -533,9 +488,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     phone = normalizeKoreanPhone(input.phoneNumber);
   }
 
-  if (!phone) {
-    throw new AdminGiftError("Enter a valid Korean recipient phone number.", 400);
-  }
+  if (!phone) throw new AdminGiftError("Enter a valid Korean recipient phone number.", 400);
 
   const callbackNo = normalizeCallbackNumber(config.callbackNo);
   if (!callbackNo) {
@@ -575,12 +528,12 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     .select("id")
     .single();
 
-  if (insertError || !inserted?.id) {
+  if (insertError || !isRecord(inserted) || !stringValue(inserted.id)) {
     console.error("Unable to create gift audit record:", insertError);
     throw new AdminGiftError("Unable to create the gift audit record. Nothing was sent.", 500);
   }
-
   const giftId = String(inserted.id);
+
   const sendParameters: Record<string, string> = {
     goods_code: product.goodsCode,
     mms_msg: mmsMessage,
@@ -603,7 +556,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
       config,
       SEND_TIMEOUT_MS,
     );
-    const outcome = sendOutcome(payload);
+    const outcome = parseSendOutcome(payload);
     historyItem = await updateGiftHistory(giftId, {
       status: "sent",
       order_no: outcome.orderNo,
@@ -622,12 +575,11 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
       } catch (cancelError) {
         console.error("Unable to cancel timed-out Giftishow send:", cancelError);
       }
-      await updateGiftHistory(giftId, {
-        status,
-        provider_message: message,
-      });
+      await updateGiftHistory(giftId, { status, provider_message: message });
       throw new AdminGiftError(message, 504);
     }
+
+    if (error instanceof AdminGiftError) throw error;
 
     const providerError = error instanceof GiftishowProviderError ? error : null;
     const message = providerError?.message || "Giftishow could not send the coupon.";
