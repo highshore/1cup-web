@@ -18,6 +18,7 @@ const PUBLIC_GET_PREFIXES = [
   "/api/public-profile/",
   "/api/meetup/events",
   "/api/meetup/leaderboards",
+  "/api/celebrations",
   "/auth",
 ] as const;
 
