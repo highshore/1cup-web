@@ -24,31 +24,34 @@ type Deck = {
   theme: string;
   visibility: "private" | "public";
   is_official: boolean;
+  system_key: string | null;
   item_count: number;
   follower_count: number;
 };
 
 const copyByLocale = {
   ko: {
-    back: "단어장으로",
+    back: "단어장 페이지로",
     eyebrow: "ANKI-STYLE STUDY",
-    title: "어떤 모음집을 학습할까요?",
-    subtitle: "모음집을 고르면 복습일과 학습 상태에 맞춰 카드를 보여줍니다.",
-    mine: "내 모음집",
-    mineHint: "직접 만든 모음집",
-    following: "팔로우한 모음집",
-    followingHint: "다른 멤버나 1 Cup English의 공개 모음집",
-    recommended: "공개 모음집",
-    recommendedHint: "바로 학습하거나 팔로우할 수 있는 모음집",
+    title: "어떤 단어장을 학습할까요?",
+    subtitle: "단어장을 고르면 복습일과 학습 상태에 맞춰 카드를 보여줍니다.",
+    mine: "내 단어장",
+    mineHint: "내 기본 단어장과 직접 만든 단어장",
+    added: "추가한 단어장",
+    addedHint: "다른 멤버나 1 Cup English의 공개 단어장",
+    recommended: "공개 단어장",
+    recommendedHint: "바로 학습하거나 추가할 수 있는 단어장",
     start: "학습 시작",
     items: "개 카드",
-    followers: "팔로워",
+    addedUsers: "추가한 유저",
     official: "공식",
-    emptyMine: "아직 만든 모음집이 없습니다.",
-    emptyFollowing: "아직 팔로우한 모음집이 없습니다.",
-    emptyPublic: "공개 모음집이 없습니다.",
-    loading: "모음집을 불러오는 중...",
-    error: "학습할 모음집을 불러오지 못했습니다.",
+    emptyMine: "아직 내 단어장이 없습니다.",
+    emptyAdded: "아직 추가한 공개 단어장이 없습니다.",
+    emptyPublic: "공개 단어장이 없습니다.",
+    loading: "단어장을 불러오는 중...",
+    error: "학습할 단어장을 불러오지 못했습니다.",
+    personalName: "내 단어장",
+    personalDescription: "내가 저장한 모든 단어와 표현이 자동으로 모이는 기본 단어장입니다.",
   },
   en: {
     back: "Back to vocabulary",
@@ -56,20 +59,22 @@ const copyByLocale = {
     title: "Which deck do you want to study?",
     subtitle: "Pick a deck and we'll serve cards based on their due dates and learning state.",
     mine: "My decks",
-    mineHint: "Decks you created",
-    following: "Following",
-    followingHint: "Public decks from members and 1 Cup English",
+    mineHint: "Your built-in deck and decks you created",
+    added: "Added decks",
+    addedHint: "Public decks from members and 1 Cup English",
     recommended: "Public decks",
-    recommendedHint: "Decks you can study or follow right away",
+    recommendedHint: "Decks you can study or add right away",
     start: "Start studying",
     items: "cards",
-    followers: "followers",
+    addedUsers: "added users",
     official: "Official",
-    emptyMine: "You have not created a deck yet.",
-    emptyFollowing: "You are not following a deck yet.",
+    emptyMine: "You do not have any decks yet.",
+    emptyAdded: "You have not added a public deck yet.",
     emptyPublic: "There are no public decks yet.",
     loading: "Loading decks...",
     error: "We could not load study decks.",
+    personalName: "My Vocabulary",
+    personalDescription: "Your built-in deck containing every word and expression you save.",
   },
 } as const;
 
@@ -264,6 +269,7 @@ function mapDeck(row: Record<string, unknown>): Deck {
     theme: String(row.theme || "orange"),
     visibility: row.visibility === "public" ? "public" : "private",
     is_official: Boolean(row.is_official),
+    system_key: typeof row.system_key === "string" ? String(row.system_key) : null,
     item_count: Number(row.item_count || 0),
     follower_count: Number(row.follower_count || 0),
   };
@@ -275,7 +281,7 @@ export default function StudyDeckPicker() {
   const { locale } = useI18n();
   const copy = copyByLocale[locale];
   const [ownDecks, setOwnDecks] = useState<Deck[]>([]);
-  const [followedDecks, setFollowedDecks] = useState<Deck[]>([]);
+  const [addedDecks, setAddedDecks] = useState<Deck[]>([]);
   const [publicDecks, setPublicDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -285,10 +291,11 @@ export default function StudyDeckPicker() {
     setLoading(true);
     setError(false);
     try {
+      await supabase.rpc("ensure_personal_vocabulary_deck");
       const [ownResult, followResult, publicResult] = await Promise.all([
         supabase
           .from("vocabulary_decks")
-          .select("id,owner_user_id,name,description,icon,theme,visibility,is_official,item_count,follower_count")
+          .select("id,owner_user_id,name,description,icon,theme,visibility,is_official,system_key,item_count,follower_count")
           .eq("owner_user_id", currentUser.uid)
           .order("updated_at", { ascending: false }),
         supabase
@@ -297,7 +304,7 @@ export default function StudyDeckPicker() {
           .eq("user_id", currentUser.uid),
         supabase
           .from("vocabulary_decks")
-          .select("id,owner_user_id,name,description,icon,theme,visibility,is_official,item_count,follower_count")
+          .select("id,owner_user_id,name,description,icon,theme,visibility,is_official,system_key,item_count,follower_count")
           .eq("visibility", "public")
           .order("follower_count", { ascending: false })
           .order("updated_at", { ascending: false })
@@ -309,11 +316,12 @@ export default function StudyDeckPicker() {
       if (publicResult.error) throw publicResult.error;
 
       const own = (ownResult.data || []).map((row) => mapDeck(row as Record<string, unknown>));
+      own.sort((a, b) => Number(!a.system_key?.startsWith("personal:")) - Number(!b.system_key?.startsWith("personal:")));
       const publicRows = (publicResult.data || []).map((row) => mapDeck(row as Record<string, unknown>));
-      const followedIds = new Set((followResult.data || []).map((row) => String(row.deck_id)));
+      const addedIds = new Set((followResult.data || []).map((row) => String(row.deck_id)));
       setOwnDecks(own);
       setPublicDecks(publicRows);
-      setFollowedDecks(publicRows.filter((deck) => followedIds.has(deck.id)));
+      setAddedDecks(publicRows.filter((deck) => addedIds.has(deck.id)));
     } catch (loadFailure) {
       console.error("Unable to load study decks:", loadFailure);
       setError(true);
@@ -333,29 +341,32 @@ export default function StudyDeckPicker() {
 
   const publicSuggestions = useMemo(() => {
     const ownIds = new Set(ownDecks.map((deck) => deck.id));
-    const followedIds = new Set(followedDecks.map((deck) => deck.id));
-    return publicDecks.filter((deck) => !ownIds.has(deck.id) && !followedIds.has(deck.id));
-  }, [followedDecks, ownDecks, publicDecks]);
+    const addedIds = new Set(addedDecks.map((deck) => deck.id));
+    return publicDecks.filter((deck) => !ownIds.has(deck.id) && !addedIds.has(deck.id));
+  }, [addedDecks, ownDecks, publicDecks]);
 
-  const renderDeck = (deck: Deck) => (
-    <DeckCard key={deck.id}>
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", alignItems: "flex-start" }}>
-          <DeckIcon>{deck.icon}</DeckIcon>
-          {deck.is_official && <Badge>{copy.official}</Badge>}
+  const renderDeck = (deck: Deck) => {
+    const isPersonal = deck.system_key?.startsWith("personal:");
+    return (
+      <DeckCard key={deck.id}>
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", alignItems: "flex-start" }}>
+            <DeckIcon>{deck.icon}</DeckIcon>
+            {deck.is_official && <Badge>{copy.official}</Badge>}
+          </div>
+          <DeckName>{isPersonal ? copy.personalName : deck.name}</DeckName>
+          <Description>{isPersonal ? copy.personalDescription : deck.description}</Description>
+          <Meta>
+            <span>{deck.item_count} {copy.items}</span>
+            {deck.visibility === "public" && <span>{deck.follower_count} {copy.addedUsers}</span>}
+          </Meta>
         </div>
-        <DeckName>{deck.name}</DeckName>
-        <Description>{deck.description}</Description>
-        <Meta>
-          <span>{deck.item_count} {copy.items}</span>
-          {deck.visibility === "public" && <span>{deck.follower_count} {copy.followers}</span>}
-        </Meta>
-      </div>
-      <StudyLink href={`/vocabulary/study/${deck.id}`}>
-        <AcademicCapIcon />{copy.start}
-      </StudyLink>
-    </DeckCard>
-  );
+        <StudyLink href={`/vocabulary/study/${deck.id}`}>
+          <AcademicCapIcon />{copy.start}
+        </StudyLink>
+      </DeckCard>
+    );
+  };
 
   if (authLoading || loading) {
     return <Page><Shell><StateBox>{copy.loading}</StateBox></Shell></Page>;
@@ -382,9 +393,9 @@ export default function StudyDeckPicker() {
         </Section>
 
         <Section>
-          <SectionTitle>{copy.following}</SectionTitle>
-          <SectionHint>{copy.followingHint}</SectionHint>
-          {followedDecks.length > 0 ? <DeckGrid>{followedDecks.map(renderDeck)}</DeckGrid> : <StateBox><BookOpenIcon /><div>{copy.emptyFollowing}</div></StateBox>}
+          <SectionTitle>{copy.added}</SectionTitle>
+          <SectionHint>{copy.addedHint}</SectionHint>
+          {addedDecks.length > 0 ? <DeckGrid>{addedDecks.map(renderDeck)}</DeckGrid> : <StateBox><BookOpenIcon /><div>{copy.emptyAdded}</div></StateBox>}
         </Section>
 
         <Section>
