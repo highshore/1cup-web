@@ -32,23 +32,23 @@ const copyByLocale = {
   ko: {
     back: "단어장으로",
     eyebrow: "ANKI-STYLE STUDY",
-    title: "어떤 덱을 학습할까요?",
-    subtitle: "덱을 고르면 복습일과 학습 상태에 맞춰 카드를 보여줍니다.",
-    mine: "내 덱",
-    mineHint: "직접 만든 덱",
-    following: "팔로우한 덱",
-    followingHint: "다른 멤버나 1 Cup English의 공개 덱",
-    recommended: "공개 덱",
-    recommendedHint: "바로 학습하거나 팔로우할 수 있는 덱",
+    title: "어떤 모음집을 학습할까요?",
+    subtitle: "모음집을 고르면 복습일과 학습 상태에 맞춰 카드를 보여줍니다.",
+    mine: "내 모음집",
+    mineHint: "직접 만든 모음집",
+    following: "팔로우한 모음집",
+    followingHint: "다른 멤버나 1 Cup English의 공개 모음집",
+    recommended: "공개 모음집",
+    recommendedHint: "바로 학습하거나 팔로우할 수 있는 모음집",
     start: "학습 시작",
     items: "개 카드",
     followers: "팔로워",
     official: "공식",
-    emptyMine: "아직 만든 덱이 없습니다.",
-    emptyFollowing: "아직 팔로우한 덱이 없습니다.",
-    emptyPublic: "공개 덱이 없습니다.",
-    loading: "덱을 불러오는 중...",
-    error: "학습할 덱을 불러오지 못했습니다.",
+    emptyMine: "아직 만든 모음집이 없습니다.",
+    emptyFollowing: "아직 팔로우한 모음집이 없습니다.",
+    emptyPublic: "공개 모음집이 없습니다.",
+    loading: "모음집을 불러오는 중...",
+    error: "학습할 모음집을 불러오지 못했습니다.",
   },
   en: {
     back: "Back to vocabulary",
@@ -76,7 +76,7 @@ const copyByLocale = {
 const Page = styled.main`
   width: 100%;
   min-height: 100vh;
-  background: #faf8f4;
+  background: transparent;
   padding: 1.25rem ${appLayout.pageGutterDesktop} 4rem;
 
   @media (max-width: 768px) {
@@ -214,7 +214,7 @@ const Badge = styled.span`
   width: fit-content;
   border: 1.5px solid #050505;
   border-radius: 999px;
-  background: #fff0e8;
+  background: #ffffff;
   padding: 0.25rem 0.45rem;
   color: #050505;
   font-size: 0.63rem;
