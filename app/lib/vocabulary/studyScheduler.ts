@@ -57,6 +57,8 @@ export const DEFAULT_STUDY_PREFERENCES: StudyPreferences = {
 const RATINGS: StudyRating[] = ["again", "hard", "good", "easy"];
 const DAY_SECONDS = 24 * 60 * 60;
 
+type FsrsStep = `${number}m` | `${number}h` | `${number}d`;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -95,6 +97,13 @@ function parseStepMinutes(value: string | undefined, fallback: number) {
   if (unit === "m") return amount;
   if (unit === "h") return amount * 60;
   return amount * 24 * 60;
+}
+
+function toFsrsSteps(values: string[], fallback: FsrsStep[]): FsrsStep[] {
+  const valid = values
+    .map((value) => value.trim().toLowerCase())
+    .filter((value): value is FsrsStep => /^(\d+(?:\.\d+)?)(m|h|d)$/.test(value));
+  return valid.length > 0 ? valid.slice(0, 8) : fallback;
 }
 
 function normalizePreferences(input: StudyPreferences): StudyPreferences {
@@ -198,8 +207,8 @@ function createFsrsScheduler(preferences: StudyPreferences) {
     maximum_interval: prefs.maximumIntervalDays,
     enable_fuzz: prefs.enableFuzz,
     enable_short_term: true,
-    learning_steps: prefs.learningSteps,
-    relearning_steps: prefs.relearningSteps,
+    learning_steps: toFsrsSteps(prefs.learningSteps, ["1m", "10m"]),
+    relearning_steps: toFsrsSteps(prefs.relearningSteps, ["10m"]),
   });
 }
 
