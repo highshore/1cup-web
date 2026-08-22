@@ -15,13 +15,14 @@
 //   * The generated cover image goes to the Supabase `assets` bucket rather than Firebase
 //     Storage. Existing article images stay where they are — only new ones land here.
 //   * Progress writes go to public.articles / public.article_processing_jobs.
+import { jsonrepair } from "npm:jsonrepair@3.13.1";
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid } from "../_shared/db.ts";
 
 const MAX_BODY_LENGTH = 30_000;
 const MAX_PHOTOS = 6;
 const VERTEX_LOCATION = "global";
-const GEMINI_TEXT_MODEL = "gemini-3.6-flash";
+const GEMINI_TEXT_MODEL = "gemini-3.7-flash";
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-lite-image";
 const GOOGLE_CLOUD_PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
 const GENERATED_IMAGE_BUCKET = "assets";
@@ -297,8 +298,7 @@ const splitRefinedParagraphs = (article: string): string[] => {
     .filter(Boolean);
 
   if (paragraphs.length < 3 || paragraphs.length > 12) {
-    throw new Error("The refined article must contain between 3 and 12 coherent paragraphs."
-    );
+    throw new Error("The refined article must contain between 3 and 12 coherent paragraphs.");
   }
   return paragraphs.map((paragraph) => paragraph.slice(0, 1_200));
 };
@@ -723,18 +723,16 @@ const articleFiguresFor = (
   imageUrls: string[],
   paragraphCount: number
 ) =>
-  imageUrls.map((url, index) => {
-    return {
-      kind: "figure",
-      display_url: url,
-      original_url: url,
-      is_hero: false,
-      // Figures follow the editor-selected order and are spaced through the
-      // article. They are intentionally never sent to an AI model for OCR or
-      // visual analysis.
-      after_paragraph: defaultFigureParagraph(index, imageUrls.length, paragraphCount),
-    };
-  });
+  imageUrls.map((url, index) => ({
+    kind: "figure",
+    display_url: url,
+    original_url: url,
+    is_hero: false,
+    // Figures follow the editor-selected order and are spaced through the
+    // article. They are intentionally never sent to an AI model for OCR or
+    // visual analysis.
+    after_paragraph: defaultFigureParagraph(index, imageUrls.length, paragraphCount),
+  }));
 
 const generateArticleHeroImage = async (
   articleId: string,
@@ -779,17 +777,11 @@ const processorErrorDetails = (error: unknown) => {
     error && typeof error === "object" ? (error as Record<string, unknown>) : {};
   return {
     errorName: error instanceof Error ? error.name : "UnknownError",
-    errorCode:
-      error instanceof Error
-        ? error.code
-        : typeof candidate.code === "string"
-        ? candidate.code
-        : "internal",
+    errorCode: typeof candidate.code === "string" ? candidate.code : "internal",
     errorStatus: typeof candidate.status === "number" ? candidate.status : undefined,
     processorError: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500),
   };
 };
-
 
 const updateArticleProgress = async (
   articleId: string,
@@ -822,14 +814,26 @@ const updateArticleProgress = async (
 
 const markArticleFailed = async (articleId: string, error: unknown) => {
   const db = admin();
-  const message = error instanceof Error ? error.message : "Unknown error";
+  const details = processorErrorDetails(error);
   const failedAt = new Date().toISOString();
   const [articleResult, jobResult] = await Promise.all([
     db
       .from("articles")
       .update({
         publication_status: "failed",
-        processing: { state: "failed", stage: "failed", progress: 100 },
+        processing: {
+          state: "failed",
+          stage: "failed",
+          progress: 100,
+          provider: "vertex-ai",
+          model: GEMINI_TEXT_MODEL,
+          workflow: "admin-article-ingest-v4",
+          error: {
+            errorName: details.errorName,
+            errorCode: details.errorCode,
+            errorStatus: details.errorStatus,
+          },
+        },
         updated_at: failedAt,
       })
       .eq("id", articleId),
@@ -839,7 +843,7 @@ const markArticleFailed = async (articleId: string, error: unknown) => {
         status: "failed",
         stage: "failed",
         progress: 100,
-        error: message.slice(0, 500),
+        error: details.processorError,
         updated_at: failedAt,
       })
       .eq("article_id", articleId),
@@ -869,7 +873,7 @@ const processArticle = async (articleId: string, input: {
     const advancedVocabulary = await extractC1Vocabulary(refined.title, paragraphs);
 
     await updateArticleProgress(articleId, "draftingDiscussion", 55);
-    const topics = await extractDiscussionTopics(refined.title, paragraphs);
+    const topics = await extractDiscussionTopics(refined.title, summary);
 
     await updateArticleProgress(articleId, "identifyingTerms", 63);
     const terms = await extractAtypicalTerms(refined.title, paragraphs);
@@ -916,6 +920,7 @@ const processArticle = async (articleId: string, input: {
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
           workflow: "admin-article-ingest-v4",
+          completedAt,
         },
         updated_at: completedAt,
       })
@@ -999,7 +1004,7 @@ const processNextArticle = async () => {
   const articleId = textValue(claimedJob.article_id, "Article ID", 240);
   try {
     const input = {
-      title: textValue(claimedJob.title, "Title", 200),
+      title: textValue(claimedJob.title, "Title", 240),
       sourceUrl: validHttpUrl(textValue(claimedJob.source_url, "Source URL", 2_000), "Source URL"),
       body: textValue(claimedJob.source_body, "Article body", MAX_BODY_LENGTH),
       imageUrls: normalizeStringList(claimedJob.image_urls, MAX_PHOTOS, 2_000).map((url) =>
@@ -1070,9 +1075,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const title = requiredText(data.title, "Title", 200);
-    const sourceUrl = validHttpUrl(data.sourceUrl, "Source URL");
-    const body = requiredText(data.body, "Article body", MAX_BODY_LENGTH);
+    const title = textValue(data.title, "Title", 240);
+    const sourceUrl = validHttpUrl(
+      textValue(data.sourceUrl, "Source URL", 2_000),
+      "Source URL",
+    );
+    const rawBody = textValue(data.body, "Article body", MAX_BODY_LENGTH);
+    const body = cleanSourceBody(rawBody);
+    if (body.length < 120) {
+      throw new Error("Article body is too short after cleaning.");
+    }
     const imageUrls = normalizeStringList(data.imageUrls, MAX_PHOTOS, 2_000).map((url) =>
       validHttpUrl(url, "Photo URL"),
     );
@@ -1116,11 +1128,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
       workflow: "admin-article-ingest-v4",
       created_by: uid,
     });
-    if (jobError) throw new Error(jobError.message);
+    if (jobError) {
+      const { error: cleanupError } = await db.from("articles").delete().eq("id", articleId);
+      if (cleanupError) {
+        console.error("Unable to clean up article after queue insert failure:", cleanupError.message);
+      }
+      throw new Error(jobError.message);
+    }
 
     return json(req, { articleId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Unable to queue admin article:", message);
     return json(req, { error: "invalid-argument", message }, 400);
   }
 });
