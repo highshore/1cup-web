@@ -1,6 +1,5 @@
 import { Metadata } from "next";
-import AdminClient from "./AdminClient";
-import AdminGiftShortcut from "./AdminGiftShortcut";
+import AdminDashboardClient from "./AdminDashboardClient";
 
 export const metadata: Metadata = {
   title: "Admin Portal - OneCup English",
@@ -8,10 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return (
-    <>
-      <AdminGiftShortcut />
-      <AdminClient />
-    </>
-  );
+  return <AdminDashboardClient />;
 }
