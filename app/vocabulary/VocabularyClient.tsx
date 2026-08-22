@@ -32,6 +32,7 @@ type Deck = {
   icon: string;
   theme: DeckTheme;
   isOfficial: boolean;
+  systemKey: string | null;
   itemCount: number;
   followerCount: number;
   updatedAt: string;
@@ -39,56 +40,58 @@ type Deck = {
 
 const copyByLocale = {
   ko: {
-    myCollections: "내 모음집",
-    myCollectionsHint: "내가 만든 모음집과 팔로우 중인 공개 모음집입니다.",
-    publicCollections: "공개 모음집",
-    publicCollectionsHint: "1 Cup English와 다른 멤버가 만든 공개 모음집을 둘러보세요.",
-    createCollection: "새 모음집 만들기",
-    noCollections: "아직 내 모음집이 없습니다.",
-    noCollectionsHint: "직접 만들거나 아래 공개 모음집을 팔로우해 보세요.",
-    noPublicCollections: "공개 모음집이 없습니다.",
-    searchPublic: "공개 모음집 검색",
+    myCollections: "내 단어장",
+    myCollectionsHint: "내가 만든 단어장과 추가한 공개 단어장입니다.",
+    publicCollections: "공개 단어장",
+    publicCollectionsHint: "1 Cup English와 다른 멤버가 만든 공개 단어장을 둘러보세요.",
+    createCollection: "새 단어장 만들기",
+    noCollections: "아직 내 단어장이 없습니다.",
+    noCollectionsHint: "직접 만들거나 아래 공개 단어장을 추가해 보세요.",
+    noPublicCollections: "공개 단어장이 없습니다.",
+    searchPublic: "공개 단어장 검색",
     official: "공식",
-    own: "내 모음집",
-    following: "팔로우 중",
-    follow: "팔로우",
-    unfollow: "팔로우 해제",
-    followers: "팔로워",
+    own: "내 단어장",
+    added: "추가됨",
+    add: "추가",
+    remove: "제거",
+    addedUsers: "추가한 유저",
     items: "개 표현",
     public: "공개",
     private: "비공개",
-    createTitle: "새 모음집 만들기",
-    name: "모음집 이름",
+    createTitle: "새 단어장 만들기",
+    name: "단어장 이름",
     namePlaceholder: "예: 회의에서 자주 쓰는 표현",
     description: "설명",
-    descriptionPlaceholder: "이 모음집을 어떤 목적으로 만들었는지 적어주세요.",
+    descriptionPlaceholder: "이 단어장을 어떤 목적으로 만들었는지 적어주세요.",
     visibility: "공개 설정",
-    publicDescription: "다른 멤버가 검색하고 팔로우할 수 있습니다.",
+    publicDescription: "다른 멤버가 검색하고 추가할 수 있습니다.",
     privateDescription: "나만 볼 수 있습니다.",
     cancel: "취소",
     create: "만들기",
-    loading: "모음집을 불러오는 중...",
-    loadError: "모음집을 불러오지 못했습니다. 다시 시도해 주세요.",
-    createError: "모음집을 만들지 못했습니다.",
-    followError: "팔로우 상태를 변경하지 못했습니다.",
+    loading: "단어장을 불러오는 중...",
+    loadError: "단어장을 불러오지 못했습니다. 다시 시도해 주세요.",
+    createError: "단어장을 만들지 못했습니다.",
+    followError: "단어장 추가 상태를 변경하지 못했습니다.",
     retry: "다시 시도",
+    personalName: "내 단어장",
+    personalDescription: "내가 저장한 모든 단어와 표현이 자동으로 모이는 기본 단어장입니다.",
   },
   en: {
     myCollections: "My decks",
-    myCollectionsHint: "Decks you own and public decks you follow.",
+    myCollectionsHint: "Decks you own and public decks you added.",
     publicCollections: "Public decks",
     publicCollectionsHint: "Explore public decks made by 1 Cup English and other members.",
     createCollection: "Create deck",
     noCollections: "You do not have any decks yet.",
-    noCollectionsHint: "Create one or follow a public deck below.",
+    noCollectionsHint: "Create one or add a public deck below.",
     noPublicCollections: "There are no public decks yet.",
     searchPublic: "Search public decks",
     official: "Official",
     own: "Mine",
-    following: "Following",
-    follow: "Follow",
-    unfollow: "Unfollow",
-    followers: "followers",
+    added: "Added",
+    add: "Add",
+    remove: "Remove",
+    addedUsers: "added users",
     items: "items",
     public: "Public",
     private: "Private",
@@ -98,15 +101,17 @@ const copyByLocale = {
     description: "Description",
     descriptionPlaceholder: "What is this deck for?",
     visibility: "Visibility",
-    publicDescription: "Other members can discover and follow it.",
+    publicDescription: "Other members can discover and add it.",
     privateDescription: "Only you can see it.",
     cancel: "Cancel",
     create: "Create",
     loading: "Loading decks...",
     loadError: "We could not load the decks. Please try again.",
     createError: "We could not create that deck.",
-    followError: "We could not update the follow state.",
+    followError: "We could not update the added state.",
     retry: "Try again",
+    personalName: "My Vocabulary",
+    personalDescription: "Your built-in deck containing every word and expression you save.",
   },
 } as const;
 
@@ -135,12 +140,6 @@ const Shell = styled.div`
   margin: 0 auto;
 `;
 
-const TopActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.9rem;
-`;
-
 const PrimaryButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -156,6 +155,7 @@ const PrimaryButton = styled.button`
   font-weight: 900;
   cursor: pointer;
   box-shadow: 3px 3px 0 #050505;
+  white-space: nowrap;
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
   svg { width: 17px; height: 17px; }
@@ -174,6 +174,7 @@ const SecondaryButton = styled.button<{ $active?: boolean }>`
   font-size: 0.72rem;
   font-weight: 900;
   cursor: pointer;
+  white-space: nowrap;
 
   &:disabled { opacity: 0.48; cursor: not-allowed; }
   svg { width: 14px; height: 14px; }
@@ -181,19 +182,26 @@ const SecondaryButton = styled.button<{ $active?: boolean }>`
 
 const Section = styled.section`
   margin-top: 1.4rem;
+
+  &:first-of-type { margin-top: 0.35rem; }
 `;
 
 const SectionTop = styled.div`
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
   margin-bottom: 0.75rem;
 
   @media (max-width: 640px) {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
+`;
+
+const SectionText = styled.div`
+  min-width: 0;
+  flex: 1;
 `;
 
 const SectionTitle = styled.h1`
@@ -244,7 +252,6 @@ const DeckLink = styled(Link)`
   color: inherit;
   text-decoration: none;
   display: block;
-
   &:hover { color: inherit; text-decoration: none; }
 `;
 
@@ -290,6 +297,7 @@ const DeckName = styled.h2`
 
 const DeckDescription = styled.p`
   margin: 0;
+  min-height: 2.2em;
   color: rgba(5, 5, 5, 0.62);
   font-size: 0.77rem;
   line-height: 1.45;
@@ -325,7 +333,6 @@ const SearchWrap = styled.label`
   border-radius: 999px;
   background: #ffffff;
   padding: 0 0.75rem;
-
   svg { width: 18px; height: 18px; flex: 0 0 auto; }
 `;
 
@@ -346,7 +353,6 @@ const StateBox = styled.div`
   background: #ffffff;
   text-align: center;
   color: rgba(5, 5, 5, 0.62);
-
   svg { width: 34px; height: 34px; color: #050505; }
   strong { display: block; margin-top: 0.55rem; color: #050505; }
   p { margin: 0.3rem 0 0; line-height: 1.5; font-size: 0.78rem; }
@@ -441,7 +447,6 @@ const ChoiceGrid = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
   margin-top: 0.4rem;
-
   @media (max-width: 520px) { grid-template-columns: 1fr; }
 `;
 
@@ -456,7 +461,6 @@ const VisibilityChoice = styled.button<{ $active: boolean }>`
   padding: 0.75rem;
   text-align: left;
   cursor: pointer;
-
   svg { width: 18px; height: 18px; flex: 0 0 auto; }
 `;
 
@@ -476,6 +480,7 @@ const mapDeck = (row: any): Deck => ({
   icon: String(row.icon || "📚"),
   theme: (["orange", "blue", "green", "purple", "pink"].includes(row.theme) ? row.theme : "orange") as DeckTheme,
   isOfficial: Boolean(row.is_official),
+  systemKey: typeof row.system_key === "string" ? row.system_key : null,
   itemCount: Number(row.item_count || 0),
   followerCount: Number(row.follower_count || 0),
   updatedAt: String(row.updated_at || row.created_at || ""),
@@ -505,6 +510,9 @@ export default function VocabularyClient() {
     setLoading(true);
     setError(null);
     try {
+      const { error: ensureError } = await supabase.rpc("ensure_personal_vocabulary_deck");
+      if (ensureError) throw ensureError;
+
       const [ownResult, publicResult, followResult] = await Promise.all([
         supabase
           .from("vocabulary_decks")
@@ -528,7 +536,13 @@ export default function VocabularyClient() {
       if (publicResult.error) throw publicResult.error;
       if (followResult.error) throw followResult.error;
 
-      setOwnDecks((ownResult.data || []).map(mapDeck));
+      const mappedOwn = (ownResult.data || []).map(mapDeck).sort((a, b) => {
+        const aPersonal = a.systemKey?.startsWith("personal:") ? 0 : 1;
+        const bPersonal = b.systemKey?.startsWith("personal:") ? 0 : 1;
+        if (aPersonal !== bPersonal) return aPersonal - bPersonal;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
+      setOwnDecks(mappedOwn);
       setPublicDecks((publicResult.data || []).map(mapDeck));
       setFollowedDeckIds(new Set((followResult.data || []).map((row: any) => String(row.deck_id))));
     } catch (loadFailure) {
@@ -573,12 +587,17 @@ export default function VocabularyClient() {
     );
   }, [publicDecks, query]);
 
+  const displayName = (deck: Deck) =>
+    deck.systemKey?.startsWith("personal:") ? copy.personalName : deck.name;
+  const displayDescription = (deck: Deck) =>
+    deck.systemKey?.startsWith("personal:") ? copy.personalDescription : deck.description;
+
   const toggleFollow = async (deck: Deck) => {
     if (!currentUser || deck.ownerUserId === currentUser.uid || deck.visibility !== "public") return;
-    const isFollowing = followedDeckIds.has(deck.id);
+    const isAdded = followedDeckIds.has(deck.id);
     setUpdatingDeckId(deck.id);
     try {
-      if (isFollowing) {
+      if (isAdded) {
         const { error: followError } = await supabase
           .from("vocabulary_deck_follows")
           .delete()
@@ -593,7 +612,7 @@ export default function VocabularyClient() {
       }
       await loadDecks();
     } catch (followFailure) {
-      console.error("Unable to update deck follow:", followFailure);
+      console.error("Unable to update deck added state:", followFailure);
       window.alert(copy.followError);
     } finally {
       setUpdatingDeckId(null);
@@ -623,11 +642,8 @@ export default function VocabularyClient() {
       setNewDeckName("");
       setNewDeckDescription("");
       setNewDeckVisibility("private");
-      if (data?.id) {
-        router.push(`/vocabulary/decks/${data.id}`);
-      } else {
-        await loadDecks();
-      }
+      if (data?.id) router.push(`/vocabulary/decks/${data.id}`);
+      else await loadDecks();
     } catch (createFailure) {
       console.error("Unable to create vocabulary deck:", createFailure);
       window.alert(copy.createError);
@@ -638,7 +654,8 @@ export default function VocabularyClient() {
 
   const renderDeck = (deck: Deck) => {
     const isMine = deck.ownerUserId === currentUser?.uid;
-    const isFollowing = followedDeckIds.has(deck.id);
+    const isAdded = followedDeckIds.has(deck.id);
+    const isPersonal = deck.systemKey?.startsWith("personal:");
     return (
       <DeckCard key={deck.id}>
         <Accent $theme={deck.theme} />
@@ -647,28 +664,28 @@ export default function VocabularyClient() {
             <DeckIcon>{deck.icon}</DeckIcon>
             <Badges>
               {deck.isOfficial && <Badge>{copy.official}</Badge>}
-              {isMine && <Badge>{copy.own}</Badge>}
-              {!isMine && isFollowing && <Badge>{copy.following}</Badge>}
+              {isMine && <Badge>{isPersonal ? copy.personalName : copy.own}</Badge>}
+              {!isMine && isAdded && <Badge>{copy.added}</Badge>}
               {deck.visibility === "private" && <Badge>{copy.private}</Badge>}
             </Badges>
           </CardTop>
-          <DeckName>{deck.name}</DeckName>
-          <DeckDescription>{deck.description}</DeckDescription>
+          <DeckName>{displayName(deck)}</DeckName>
+          <DeckDescription>{displayDescription(deck)}</DeckDescription>
         </DeckLink>
         <DeckFooter>
           <DeckMeta>
             <span>{deck.itemCount} {copy.items}</span>
-            {deck.visibility === "public" && <span>{deck.followerCount} {copy.followers}</span>}
+            {deck.visibility === "public" && <span>{deck.followerCount} {copy.addedUsers}</span>}
           </DeckMeta>
           {!isMine && deck.visibility === "public" && (
             <SecondaryButton
               type="button"
-              $active={isFollowing}
+              $active={isAdded}
               disabled={updatingDeckId === deck.id}
               onClick={() => void toggleFollow(deck)}
             >
               <UserGroupIcon />
-              {isFollowing ? copy.unfollow : copy.follow}
+              {isAdded ? copy.remove : copy.add}
             </SecondaryButton>
           )}
         </DeckFooter>
@@ -682,34 +699,22 @@ export default function VocabularyClient() {
 
   if (error) {
     return (
-      <Page>
-        <Shell>
-          <StateBox>
-            <strong>{error}</strong>
-            <PrimaryButton style={{ marginTop: "0.85rem" }} onClick={() => void loadDecks()}>
-              {copy.retry}
-            </PrimaryButton>
-          </StateBox>
-        </Shell>
-      </Page>
+      <Page><Shell><StateBox><strong>{error}</strong><PrimaryButton style={{ marginTop: "0.85rem" }} onClick={() => void loadDecks()}>{copy.retry}</PrimaryButton></StateBox></Shell></Page>
     );
   }
 
   return (
     <Page>
       <Shell>
-        <TopActions>
-          <PrimaryButton type="button" onClick={() => setCreateOpen(true)}>
-            <FolderPlusIcon />{copy.createCollection}
-          </PrimaryButton>
-        </TopActions>
-
         <Section>
           <SectionTop>
-            <div>
+            <SectionText>
               <SectionTitle>{copy.myCollections}</SectionTitle>
               <SectionHint>{copy.myCollectionsHint}</SectionHint>
-            </div>
+            </SectionText>
+            <PrimaryButton type="button" onClick={() => setCreateOpen(true)}>
+              <FolderPlusIcon />{copy.createCollection}
+            </PrimaryButton>
           </SectionTop>
           {personalDecks.length > 0 ? (
             <DeckGrid>{personalDecks.map(renderDeck)}</DeckGrid>
@@ -724,26 +729,19 @@ export default function VocabularyClient() {
 
         <Section>
           <SectionTop>
-            <div>
+            <SectionText>
               <SectionTitle>{copy.publicCollections}</SectionTitle>
               <SectionHint>{copy.publicCollectionsHint}</SectionHint>
-            </div>
+            </SectionText>
             <SearchWrap>
               <MagnifyingGlassIcon />
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={copy.searchPublic}
-              />
+              <SearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.searchPublic} />
             </SearchWrap>
           </SectionTop>
           {filteredPublicDecks.length > 0 ? (
             <DeckGrid>{filteredPublicDecks.map(renderDeck)}</DeckGrid>
           ) : (
-            <StateBox>
-              <BookOpenIcon />
-              <strong>{copy.noPublicCollections}</strong>
-            </StateBox>
+            <StateBox><BookOpenIcon /><strong>{copy.noPublicCollections}</strong></StateBox>
           )}
         </Section>
       </Shell>
@@ -753,44 +751,22 @@ export default function VocabularyClient() {
           <Modal onClick={(event) => event.stopPropagation()}>
             <ModalHeader>
               <ModalTitle>{copy.createTitle}</ModalTitle>
-              <IconButton type="button" onClick={() => setCreateOpen(false)} aria-label={copy.cancel}>
-                <XMarkIcon />
-              </IconButton>
+              <IconButton type="button" onClick={() => setCreateOpen(false)} aria-label={copy.cancel}><XMarkIcon /></IconButton>
             </ModalHeader>
 
             <Field>{copy.name}
-              <Input
-                value={newDeckName}
-                maxLength={80}
-                onChange={(event) => setNewDeckName(event.target.value)}
-                placeholder={copy.namePlaceholder}
-              />
+              <Input value={newDeckName} maxLength={80} onChange={(event) => setNewDeckName(event.target.value)} placeholder={copy.namePlaceholder} />
             </Field>
             <Field>{copy.description}
-              <Textarea
-                value={newDeckDescription}
-                maxLength={500}
-                onChange={(event) => setNewDeckDescription(event.target.value)}
-                placeholder={copy.descriptionPlaceholder}
-              />
+              <Textarea value={newDeckDescription} maxLength={500} onChange={(event) => setNewDeckDescription(event.target.value)} placeholder={copy.descriptionPlaceholder} />
             </Field>
             <Field>{copy.visibility}</Field>
             <ChoiceGrid>
-              <VisibilityChoice
-                type="button"
-                $active={newDeckVisibility === "private"}
-                onClick={() => setNewDeckVisibility("private")}
-              >
-                <EyeSlashIcon />
-                <div><strong>{copy.private}</strong><div>{copy.privateDescription}</div></div>
+              <VisibilityChoice type="button" $active={newDeckVisibility === "private"} onClick={() => setNewDeckVisibility("private")}>
+                <EyeSlashIcon /><div><strong>{copy.private}</strong><div>{copy.privateDescription}</div></div>
               </VisibilityChoice>
-              <VisibilityChoice
-                type="button"
-                $active={newDeckVisibility === "public"}
-                onClick={() => setNewDeckVisibility("public")}
-              >
-                <EyeIcon />
-                <div><strong>{copy.public}</strong><div>{copy.publicDescription}</div></div>
+              <VisibilityChoice type="button" $active={newDeckVisibility === "public"} onClick={() => setNewDeckVisibility("public")}>
+                <EyeIcon /><div><strong>{copy.public}</strong><div>{copy.publicDescription}</div></div>
               </VisibilityChoice>
             </ChoiceGrid>
 
