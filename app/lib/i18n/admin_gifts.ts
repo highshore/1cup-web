@@ -147,6 +147,6 @@ const adminGifts = {
       retry: "다시 시도",
     },
   },
-} as const;
+};
 
 export default adminGifts;
