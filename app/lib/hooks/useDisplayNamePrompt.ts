@@ -10,9 +10,43 @@ export function useDisplayNamePrompt() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    let authGeneration = 0;
+
+    async function refreshDisplayNamePrompt(generation: number) {
+      try {
+        // Run Supabase work after the auth-state callback has returned. Calling another
+        // Supabase method from inside onAuthStateChange can contend with the auth
+        // client's session lock, which is especially visible on slower mobile browsers.
+        const { data: rows, error } = await supabase.rpc("current_user_row");
+        if (!active || generation !== authGeneration) return;
+
+        if (error) {
+          console.error("Error checking display name prompt status:", error.message);
+          setShouldShowPrompt(false);
+          return;
+        }
+
+        const userData = Array.isArray(rows) ? rows[0] : rows;
+        const hasDisplayName =
+          !!userData?.display_name && userData.display_name.trim() !== "";
+
+        setShouldShowPrompt(!hasDisplayName);
+      } catch (error) {
+        if (!active || generation !== authGeneration) return;
+        console.error("Error checking display name prompt status:", error);
+        setShouldShowPrompt(false);
+      } finally {
+        if (active && generation === authGeneration) {
+          setLoading(false);
+        }
+      }
+    }
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const generation = ++authGeneration;
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
 
@@ -22,33 +56,17 @@ export function useDisplayNamePrompt() {
         return;
       }
 
-      try {
-        // Check whether the user already has a display_name set.
-        // current_user_row() resolves through the auth-identity link table, so it works
-        // for whichever login method this session used.
-        const { data: rows } = await supabase.rpc("current_user_row");
-        const userData = Array.isArray(rows) ? rows[0] : rows;
-
-        const hasDisplayName =
-          !!userData?.display_name && userData.display_name.trim() !== "";
-
-        if (hasDisplayName) {
-          setShouldShowPrompt(false);
-          setLoading(false);
-          return;
-        }
-
-        // Show prompt if user has no display_name.
-        setShouldShowPrompt(true);
-      } catch (error) {
-        console.error("Error checking display name prompt status:", error);
-        setShouldShowPrompt(false);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(true);
+      // Keep the auth callback synchronous so sign-in/session refresh can release the
+      // internal Supabase lock before the profile RPC starts.
+      window.setTimeout(() => void refreshDisplayNamePrompt(generation), 0);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      authGeneration += 1;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const hidePrompt = () => {
