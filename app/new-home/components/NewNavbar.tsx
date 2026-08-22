@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
+  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   NewspaperIcon,
   TrophyIcon,
@@ -79,13 +80,9 @@ const BrandButton = styled.button`
   padding: 4px 0;
   cursor: pointer;
 
-  &:hover {
-    opacity: 0.82;
-  }
+  &:hover { opacity: 0.82; }
 
-  @media (max-width: 420px) {
-    padding: 4px 0;
-  }
+  @media (max-width: 420px) { padding: 4px 0; }
 `;
 
 const LogoImage = styled.img`
@@ -102,9 +99,7 @@ const NavLinks = styled.div`
   justify-self: center;
   gap: 3px;
 
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: none;
-  }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
 `;
 
 const NavLinkButton = styled.button<{
@@ -123,8 +118,7 @@ const NavLinkButton = styled.button<{
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease,
-    box-shadow 140ms ease;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 
   ${({ $active, $isTransparent }) =>
     $isTransparent
@@ -137,11 +131,7 @@ const NavLinkButton = styled.button<{
         : css`
             background: transparent;
             color: rgba(255, 255, 255, 0.88);
-
-            &:hover {
-              background: rgba(255, 255, 255, 0.14);
-              color: #ffffff;
-            }
+            &:hover { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
           `
       : $active
       ? css`
@@ -152,17 +142,10 @@ const NavLinkButton = styled.button<{
       : css`
           background: transparent;
           color: #475569;
-
-          &:hover {
-            background: #f1f5f9;
-            color: #0f172a;
-          }
+          &:hover { background: #f1f5f9; color: #0f172a; }
         `}
 
-  svg {
-    width: 16px;
-    height: 16px;
-  }
+  svg { width: 16px; height: 16px; }
 `;
 
 const RightActions = styled.div`
@@ -173,9 +156,7 @@ const RightActions = styled.div`
   gap: 4px;
   min-width: 0;
 
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    margin-left: auto;
-  }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { margin-left: auto; }
 `;
 
 const LanguageButton = styled.button<{ $isTransparent: boolean }>`
@@ -191,19 +172,16 @@ const LanguageButton = styled.button<{ $isTransparent: boolean }>`
   border-radius: 999px;
   background: transparent;
   padding: 0;
-  color: ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255, 255, 255, 0.88)" : "#475569"};
+  color: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.88)" : "#475569"};
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
 
   &:hover {
-    background: ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f8fafc"};
-    color: ${({ $isTransparent }) => ($isTransparent ? "#ffffff" : "#0f172a")};
+    background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f8fafc"};
+    color: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   }
-
 `;
 
 const LangIcon = styled.img<{ $isTransparent: boolean }>`
@@ -211,14 +189,8 @@ const LangIcon = styled.img<{ $isTransparent: boolean }>`
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid
-    ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255, 255, 255, 0.58)" : "#e2e8f0"};
-
-  @media (max-width: 520px) {
-    width: 22px;
-    height: 22px;
-  }
+  border: 1px solid ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.58)" : "#e2e8f0"};
+  @media (max-width: 520px) { width: 22px; height: 22px; }
 `;
 
 const JoinButton = styled.button<{ $isTransparent: boolean }>`
@@ -227,14 +199,11 @@ const JoinButton = styled.button<{ $isTransparent: boolean }>`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid
-    ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255, 255, 255, 0.92)" : "rgba(15, 23, 42, 0.92)"};
+  border: 1px solid ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.92)" : "rgba(15, 23, 42, 0.92)"};
   border-radius: 999px;
-  background: ${({ $isTransparent }) =>
-    $isTransparent ? "#ffffff" : "#0f172a"};
+  background: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   padding: 7px 15px;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#0f172a" : "#ffffff")};
+  color: ${({ $isTransparent }) => $isTransparent ? "#0f172a" : "#ffffff"};
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 800;
@@ -242,21 +211,12 @@ const JoinButton = styled.button<{ $isTransparent: boolean }>`
   cursor: pointer;
 
   &:hover {
-    background: ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255, 255, 255, 0.9)" : "#020617"};
-    box-shadow: 0 10px 24px
-      ${({ $isTransparent }) =>
-        $isTransparent ? "rgba(0, 0, 0, 0.18)" : "rgba(15, 23, 42, 0.18)"};
+    background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.9)" : "#020617"};
+    box-shadow: 0 10px 24px ${({ $isTransparent }) => $isTransparent ? "rgba(0, 0, 0, 0.18)" : "rgba(15, 23, 42, 0.18)"};
   }
 
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: none;
-  }
+  svg { width: 16px; height: 16px; }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
 `;
 
 type AvatarVariant = "active" | "inactive" | "default";
@@ -269,12 +229,9 @@ const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
   flex: 0 0 var(--nav-action-size);
   border: ${({ $variant }) => {
     switch ($variant) {
-      case "active":
-        return "2px solid #22c55e";
-      case "inactive":
-        return "2px solid #cbd5e1";
-      default:
-        return "2px solid rgba(15, 23, 42, 0.14)";
+      case "active": return "2px solid #22c55e";
+      case "inactive": return "2px solid #cbd5e1";
+      default: return "2px solid rgba(15, 23, 42, 0.14)";
     }
   }};
   border-radius: 50%;
@@ -282,7 +239,6 @@ const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
   padding: 0;
   box-shadow: none;
   cursor: pointer;
-
   &:hover { background: #f8fafc; }
 `;
 
@@ -330,22 +286,12 @@ const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#ffffff" : "#0f172a")};
+  color: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   cursor: pointer;
 
-  &:hover {
-    background: ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f1f5f9"};
-  }
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: inline-flex;
-  }
+  &:hover { background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f1f5f9"}; }
+  svg { width: 20px; height: 20px; }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: inline-flex; }
 `;
 
 const MobileMenu = styled.div`
@@ -380,26 +326,10 @@ const MobileNavButton = styled.button<{ $active?: boolean }>`
   font-weight: 750;
   cursor: pointer;
 
-  ${({ $active }) =>
-    $active
-      ? css`
-          background: #f1f5f9;
-          color: #0f172a;
-        `
-      : css`
-          background: transparent;
-          color: #475569;
-
-          &:hover {
-            background: #f1f5f9;
-            color: #0f172a;
-          }
-        `}
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
+  ${({ $active }) => $active
+    ? css`background: #f1f5f9; color: #0f172a;`
+    : css`background: transparent; color: #475569; &:hover { background: #f1f5f9; color: #0f172a; }`}
+  svg { width: 15px; height: 15px; }
 `;
 
 const MobileJoinButton = styled.button`
@@ -436,31 +366,19 @@ const NewNavbar: React.FC = () => {
   const { currentUser, logout, hasActiveSubscription } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const isTransparent = pathname === "/" && !isScrolled;
-  const logoSrc = isTransparent
-    ? "/images/logos/1cup_logo_new_white.svg"
-    : "/images/logos/1cup_logo_new.svg";
+  const logoSrc = isTransparent ? "/images/logos/1cup_logo_new_white.svg" : "/images/logos/1cup_logo_new.svg";
   const avatarSrc = currentUser?.photoURL || "/images/logos/1cup_logo_new.svg";
-  const avatarInitial =
-    currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
-  const avatarVariant: AvatarVariant = hasActiveSubscription === true
-    ? "active"
-    : currentUser
-    ? "inactive"
-    : "default";
+  const avatarInitial = currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
+  const avatarVariant: AvatarVariant = hasActiveSubscription === true ? "active" : currentUser ? "inactive" : "default";
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const toggleLanguage = () => {
-    setLocale(locale === "en" ? "ko" : "en");
-  };
+  const toggleLanguage = () => setLocale(locale === "en" ? "ko" : "en");
 
   const handleNavigate = (path: string) => {
     router.push(path);
@@ -468,21 +386,14 @@ const NewNavbar: React.FC = () => {
   };
 
   const handleJoin = () => {
-    const queryString =
-      typeof window !== "undefined" ? window.location.search.slice(1) : "";
+    const queryString = typeof window !== "undefined" ? window.location.search.slice(1) : "";
     const returnUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    const safeReturnUrl =
-      returnUrl.startsWith("/auth") || returnUrl.startsWith("/kakao_callback")
-        ? "/"
-        : returnUrl;
-
+    const safeReturnUrl = returnUrl.startsWith("/auth") || returnUrl.startsWith("/kakao_callback") ? "/" : returnUrl;
     localStorage.setItem("returnUrl", safeReturnUrl);
     handleNavigate(`/auth?redirect=${encodeURIComponent(safeReturnUrl)}`);
   };
 
-  const handleProfileNav = () => {
-    handleNavigate("/profile");
-  };
+  const handleProfileNav = () => handleNavigate("/profile");
 
   const handleLogout = async () => {
     try {
@@ -494,9 +405,7 @@ const NewNavbar: React.FC = () => {
     }
   };
 
-  const isActivePath = (path: string) => {
-    return pathname === path || pathname.startsWith(`${path}/`);
-  };
+  const isActivePath = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
   return (
     <Nav $isTransparent={isTransparent}>
@@ -508,52 +417,32 @@ const NewNavbar: React.FC = () => {
         <NavLinks>
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-
             return (
-              <NavLinkButton
-                key={item.path}
-                onClick={() => handleNavigate(item.path)}
-                $active={isActivePath(item.path)}
-                $isTransparent={isTransparent}
-              >
+              <NavLinkButton key={item.path} onClick={() => handleNavigate(item.path)} $active={isActivePath(item.path)} $isTransparent={isTransparent}>
                 <Icon />
                 {t.nav[item.labelKey]}
               </NavLinkButton>
             );
           })}
+          {isLoggedIn && (
+            <NavLinkButton onClick={() => handleNavigate("/vocabulary")} $active={isActivePath("/vocabulary")} $isTransparent={isTransparent}>
+              <BookOpenIcon />
+              {locale === "en" ? "Vocabulary" : "단어장"}
+            </NavLinkButton>
+          )}
         </NavLinks>
 
         <RightActions>
           <LanguageButton onClick={toggleLanguage} $isTransparent={isTransparent}>
-            <LangIcon
-              src={
-                locale === "en"
-                  ? "/images/flags/i18n_en.jpg"
-                  : "/images/flags/i18n_ko.jpg"
-              }
-              alt={locale}
-              $isTransparent={isTransparent}
-            />
+            <LangIcon src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"} alt={locale} $isTransparent={isTransparent} />
           </LanguageButton>
 
           {isLoggedIn ? (
             <>
               <NotificationDropdown isTransparent={isTransparent} />
-              <AvatarButton
-                onClick={handleProfileNav}
-                aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"}
-                $variant={avatarVariant}
-              >
+              <AvatarButton onClick={handleProfileNav} aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"} $variant={avatarVariant}>
                 <AvatarInner>
-                  {currentUser?.photoURL ? (
-                    <AvatarImage
-                      src={avatarSrc}
-                      alt="profile"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <AvatarFallback>{avatarInitial}</AvatarFallback>
-                  )}
+                  {currentUser?.photoURL ? <AvatarImage src={avatarSrc} alt="profile" referrerPolicy="no-referrer" /> : <AvatarFallback>{avatarInitial}</AvatarFallback>}
                 </AvatarInner>
                 {avatarVariant === "active" && <AvatarStatusDot />}
               </AvatarButton>
@@ -565,11 +454,7 @@ const NewNavbar: React.FC = () => {
             </JoinButton>
           )}
 
-          <MobileMenuButton
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
-            $isTransparent={isTransparent}
-          >
+          <MobileMenuButton onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"} $isTransparent={isTransparent}>
             {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
           </MobileMenuButton>
         </RightActions>
@@ -578,13 +463,8 @@ const NewNavbar: React.FC = () => {
           <MobileMenu>
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
-
               return (
-                <MobileNavButton
-                  key={item.path}
-                  onClick={() => handleNavigate(item.path)}
-                  $active={isActivePath(item.path)}
-                >
+                <MobileNavButton key={item.path} onClick={() => handleNavigate(item.path)} $active={isActivePath(item.path)}>
                   <Icon />
                   {t.nav[item.labelKey]}
                 </MobileNavButton>
@@ -593,21 +473,18 @@ const NewNavbar: React.FC = () => {
 
             {isLoggedIn ? (
               <>
-                <MobileNavButton
-                  onClick={handleProfileNav}
-                  $active={isActivePath("/profile")}
-                >
+                <MobileNavButton onClick={() => handleNavigate("/vocabulary")} $active={isActivePath("/vocabulary")}>
+                  <BookOpenIcon />
+                  {locale === "en" ? "Vocabulary" : "단어장"}
+                </MobileNavButton>
+                <MobileNavButton onClick={handleProfileNav} $active={isActivePath("/profile")}>
                   <UserCircleIcon />
                   {locale === "en" ? "My Account" : "내 계정"}
                 </MobileNavButton>
-                <MobileJoinButton onClick={handleLogout}>
-                  {locale === "en" ? "Logout" : "로그아웃"}
-                </MobileJoinButton>
+                <MobileJoinButton onClick={handleLogout}>{locale === "en" ? "Logout" : "로그아웃"}</MobileJoinButton>
               </>
             ) : (
-              <MobileJoinButton onClick={handleJoin}>
-                {t.nav.join}
-              </MobileJoinButton>
+              <MobileJoinButton onClick={handleJoin}>{t.nav.join}</MobileJoinButton>
             )}
           </MobileMenu>
         )}
