@@ -64,16 +64,14 @@ function codePointLength(value: string): number {
 function readProviderConfig(): ProviderConfig {
   const authCode = process.env.GIFTISHOW_AUTH_CODE?.trim() || "";
   const authToken = process.env.GIFTISHOW_AUTH_TOKEN?.trim() || "";
-  const userId = process.env.GIFTISHOW_USER_ID?.trim() || "";
-  const callbackNo = process.env.GIFTISHOW_CALLBACK_NO?.trim() || "";
+  const userId = process.env.GIFTISHOW_USER_ID?.trim() || "kyle.kim@nativept.kr";
+  const callbackNo = process.env.GIFTISHOW_CALLBACK_NO?.trim() || "15886474";
   const templateId = process.env.GIFTISHOW_TEMPLATE_ID?.trim() || null;
   const bannerId = process.env.GIFTISHOW_BANNER_ID?.trim() || null;
   const missing: string[] = [];
 
   if (!authCode) missing.push("GIFTISHOW_AUTH_CODE");
   if (!authToken) missing.push("GIFTISHOW_AUTH_TOKEN");
-  if (!userId) missing.push("GIFTISHOW_USER_ID");
-  if (!callbackNo) missing.push("GIFTISHOW_CALLBACK_NO");
 
   return {
     authCode,
