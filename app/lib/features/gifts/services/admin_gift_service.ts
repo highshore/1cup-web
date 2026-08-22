@@ -129,7 +129,7 @@ function normalizeKoreanPhone(value: string): string | null {
 function normalizeCallbackNumber(value: string): string | null {
   let digits = value.replace(/\D/g, "");
   if (digits.startsWith("82")) digits = `0${digits.slice(2)}`;
-  return /^0\d{8,10}$/.test(digits) ? digits : null;
+  return /^(?:0\d{8,10}|1[568]\d{6})$/.test(digits) ? digits : null;
 }
 
 function maskPhone(phone: string): string {
