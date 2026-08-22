@@ -329,6 +329,7 @@ export default function AdminArticlesClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const knownIdsRef = useRef(new Set<string>());
+  const locallyDeletingIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (authLoading) return;
@@ -427,9 +428,16 @@ export default function AdminArticlesClient() {
         { event: "DELETE", schema: "public", table: "articles" },
         (payload) => {
           const id = String((payload.old as Record<string, unknown>).id ?? "");
-          if (!id || !knownIdsRef.current.has(id)) return;
-          knownIdsRef.current.delete(id);
-          setArticles((current) => current.filter((article) => article.id !== id));
+          if (!id) return;
+          const wasKnown = knownIdsRef.current.has(id);
+          if (wasKnown) {
+            knownIdsRef.current.delete(id);
+            setArticles((current) => current.filter((article) => article.id !== id));
+          }
+          if (locallyDeletingIdsRef.current.has(id)) {
+            locallyDeletingIdsRef.current.delete(id);
+            return;
+          }
           setTotalCount((count) => Math.max(0, count - 1));
         },
       )
@@ -473,15 +481,17 @@ export default function AdminArticlesClient() {
   const handleDelete = async (articleId: string) => {
     if (!window.confirm(copy.deleteConfirm)) return;
     setDeletingId(articleId);
+    locallyDeletingIdsRef.current.add(articleId);
     try {
       const { error } = await supabase.from("articles").delete().eq("id", articleId);
       if (error) throw error;
       if (knownIdsRef.current.has(articleId)) {
         knownIdsRef.current.delete(articleId);
         setArticles((current) => current.filter((article) => article.id !== articleId));
-        setTotalCount((count) => Math.max(0, count - 1));
       }
+      setTotalCount((count) => Math.max(0, count - 1));
     } catch (error) {
+      locallyDeletingIdsRef.current.delete(articleId);
       console.error("Error deleting article:", error);
       window.alert(copy.deleteError);
     } finally {
