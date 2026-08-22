@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  ArrowPathIcon,
-  GiftIcon,
-  MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -43,23 +39,6 @@ const Heading = styled.header`
   margin: 0 0 1.35rem;
 `;
 
-const Eyebrow = styled.p`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.48rem;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
 const Title = styled.h1`
   margin: 0;
   color: #050505;
@@ -77,54 +56,9 @@ const Description = styled.p`
   line-height: 1.55;
 `;
 
-const ProviderStrip = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #fff8f4;
-  padding: 0.72rem 0.8rem;
-`;
-
-const ProviderInfo = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.55rem;
-`;
-
-const Pill = styled.span<{ $tone?: "ok" | "warn" | "error" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${({ $tone }) =>
-    $tone === "ok" ? "#dcfce7" : $tone === "error" ? "#fee2e2" : "#fff3cd"};
-  padding: 0.28rem 0.55rem;
-  color: #050505;
-  font-size: 0.72rem;
-  font-weight: 900;
-`;
-
-const Balance = styled.span`
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 850;
-`;
-
-const Layout = styled.div`
+const Stack = styled.div`
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-  align-items: start;
-  gap: 1.15rem;
-
-  @media (max-width: 820px) {
-    grid-template-columns: 1fr;
-  }
+  gap: 1.25rem;
 `;
 
 const Card = styled.section`
@@ -136,7 +70,15 @@ const Card = styled.section`
 `;
 
 const CardHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1.25rem 1.25rem 0;
+
+  @media (max-width: 680px) {
+    flex-direction: column;
+  }
 `;
 
 const CardTitle = styled.h2`
@@ -158,23 +100,63 @@ const CardBody = styled.div`
   padding: 1.05rem 1.25rem 1.25rem;
 `;
 
-const Warning = styled.div`
+const ProviderInfo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`;
+
+const Pill = styled.span<{ $tone?: "ok" | "warn" | "error" }>`
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: ${({ $tone }) =>
+    $tone === "ok" ? "#dcfce7" : $tone === "error" ? "#fee2e2" : "#fff3cd"};
+  padding: 0.28rem 0.55rem;
+  color: #050505;
+  font-size: 0.72rem;
+  font-weight: 900;
+`;
+
+const Balance = styled.span`
+  color: #050505;
+  font-size: 0.79rem;
+  font-weight: 850;
+`;
+
+const Notice = styled.div`
   margin-bottom: 1rem;
   border: 1.5px solid #050505;
   border-left: 5px solid #f47a4a;
   border-radius: 10px;
   background: #fff8f4;
-  padding: 0.75rem;
-  color: #050505;
-  font-size: 0.75rem;
+  padding: 0.72rem 0.78rem;
+  color: rgba(5, 5, 5, 0.74);
+  font-size: 0.74rem;
   font-weight: 650;
   line-height: 1.45;
 
   strong {
-    display: block;
-    margin-bottom: 0.2rem;
+    color: #050505;
     font-weight: 900;
   }
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+
+  @media (max-width: 820px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormColumn = styled.div`
+  min-width: 0;
 `;
 
 const Field = styled.label`
@@ -184,6 +166,10 @@ const Field = styled.label`
   color: #050505;
   font-size: 0.79rem;
   font-weight: 900;
+
+  &:first-child {
+    margin-top: 0;
+  }
 `;
 
 const Input = styled.input`
@@ -222,7 +208,7 @@ const Select = styled.select`
 
 const Textarea = styled.textarea`
   width: 100%;
-  min-height: 112px;
+  min-height: 150px;
   box-sizing: border-box;
   resize: vertical;
   border: 2px solid #050505;
@@ -343,7 +329,14 @@ const SubmitRow = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 1.1rem;
+  border-top: 1.5px solid rgba(5, 5, 5, 0.16);
+  padding-top: 1rem;
+
+  @media (max-width: 560px) {
+    align-items: stretch;
+    flex-direction: column;
+  }
 `;
 
 const SendButton = styled.button`
@@ -380,35 +373,58 @@ const InlineStatus = styled.p<{ $error?: boolean }>`
   line-height: 1.4;
 `;
 
-const HistoryList = styled.div`
+const HistoryWrap = styled.div`
+  overflow-x: auto;
+`;
+
+const HistoryTable = styled.div`
+  min-width: 880px;
+`;
+
+const HistoryRow = styled.div`
   display: grid;
-  gap: 0.68rem;
+  grid-template-columns: 150px minmax(150px, 1.05fr) minmax(220px, 1.5fr) 105px 125px minmax(170px, 1fr);
+  gap: 0.8rem;
+  align-items: center;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+  padding: 0.72rem 0;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 `;
 
-const HistoryItem = styled.article`
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.78rem;
-`;
-
-const HistoryHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-`;
-
-const HistoryTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.82rem;
+const HistoryHeaderRow = styled(HistoryRow)`
+  border-bottom: 2px solid #050505;
+  padding-top: 0;
+  color: rgba(5, 5, 5, 0.58);
+  font-size: 0.68rem;
   font-weight: 900;
+  letter-spacing: 0.03em;
+`;
+
+const HistoryPrimary = styled.div`
+  min-width: 0;
+  color: #050505;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.4;
+`;
+
+const HistorySecondary = styled.div`
+  margin-top: 0.15rem;
+  overflow: hidden;
+  color: rgba(5, 5, 5, 0.55);
+  font-size: 0.67rem;
+  font-weight: 650;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const Status = styled.span<{ $status: AdminGiftHistoryItem["status"] }>`
-  flex: 0 0 auto;
+  display: inline-flex;
+  width: fit-content;
   border: 1px solid #050505;
   border-radius: 999px;
   background: ${({ $status }) =>
@@ -419,37 +435,18 @@ const Status = styled.span<{ $status: AdminGiftHistoryItem["status"] }>`
         : $status === "cancelled_after_timeout"
           ? "#e0f2fe"
           : "#fee2e2"};
-  padding: 0.2rem 0.42rem;
+  padding: 0.22rem 0.44rem;
   color: #050505;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 900;
 `;
 
-const HistoryMeta = styled.p`
-  margin: 0.35rem 0 0;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.45;
-`;
-
-const HistoryMessage = styled.p`
-  display: -webkit-box;
-  margin: 0.42rem 0 0;
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.67);
-  font-size: 0.72rem;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-`;
-
-const ProviderError = styled.p`
-  margin: 0.42rem 0 0;
+const ProviderError = styled.div`
+  margin-top: 0.15rem;
   color: #991b1b;
-  font-size: 0.67rem;
+  font-size: 0.65rem;
   font-weight: 750;
-  line-height: 1.4;
+  line-height: 1.35;
 `;
 
 const EmptyState = styled.p`
@@ -639,156 +636,159 @@ export default function AdminGiftsClient() {
   return (
     <Page>
       <Heading>
-        <Eyebrow>
-          <GiftIcon />
-          {copy.eyebrow}
-        </Eyebrow>
         <Title>{copy.pageTitle}</Title>
         <Description>{copy.pageDescription}</Description>
-        {data && (
-          <ProviderStrip>
-            <ProviderInfo>
-              <Pill $tone={data.configured ? "ok" : "error"}>
-                {data.configured ? copy.providerReady : copy.providerNeedsSetup}
-              </Pill>
-              <Balance>
-                {copy.balanceLabel}: {formatMoney(data.balance)}
-              </Balance>
-              {data.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
-            </ProviderInfo>
-            <SecondaryButton type="button" onClick={() => void load()} disabled={isLoading}>
-              <ArrowPathIcon />
-              {copy.refresh}
-            </SecondaryButton>
-          </ProviderStrip>
-        )}
       </Heading>
 
       {loadError ? (
         <Card>
           <CardBody>
             <InlineStatus $error>{loadError}</InlineStatus>
-            <SecondaryButton type="button" onClick={() => void load()}>{copy.retry}</SecondaryButton>
+            <div style={{ marginTop: "0.8rem" }}>
+              <SecondaryButton type="button" onClick={() => void load()}>
+                <ArrowPathIcon />
+                {copy.retry}
+              </SecondaryButton>
+            </div>
           </CardBody>
         </Card>
       ) : (
-        <Layout>
+        <Stack>
           <Card>
             <CardHeader>
-              <CardTitle>{copy.sendCardTitle}</CardTitle>
-              <CardDescription>{copy.sendCardDescription}</CardDescription>
+              <div>
+                <CardTitle>{copy.sendCardTitle}</CardTitle>
+                <CardDescription>{copy.sendCardDescription}</CardDescription>
+              </div>
+              <ProviderInfo>
+                <Pill $tone={data?.configured ? "ok" : "error"}>
+                  {data?.configured ? copy.providerReady : copy.providerNeedsSetup}
+                </Pill>
+                <Balance>
+                  {copy.balanceLabel}: {formatMoney(data?.balance ?? null)}
+                </Balance>
+                {data?.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
+                <SecondaryButton type="button" onClick={() => void load()} disabled={isLoading}>
+                  <ArrowPathIcon />
+                  {copy.refresh}
+                </SecondaryButton>
+              </ProviderInfo>
             </CardHeader>
             <CardBody>
-              <Warning>
-                <strong>{copy.liveWarningTitle}</strong>
-                {copy.liveWarning}
-              </Warning>
+              <Notice>
+                <strong>{copy.liveWarningTitle}</strong> {copy.liveWarning}
+              </Notice>
 
               {!data?.configured && data?.configurationError && (
                 <InlineStatus $error>{data.configurationError}</InlineStatus>
               )}
 
-              <Field>
-                {copy.productCodeLabel}
-                <LookupRow>
-                  <Input
-                    value={goodsCode}
-                    onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
-                    placeholder={copy.productCodePlaceholder}
-                    autoCapitalize="characters"
-                  />
-                  <SecondaryButton
-                    type="button"
-                    disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
-                    onClick={() => void lookupProduct()}
-                  >
-                    <MagnifyingGlassIcon />
-                    {isLookingUp ? copy.lookingUp : copy.lookupProduct}
-                  </SecondaryButton>
-                </LookupRow>
-              </Field>
-
-              {product && (
-                <ProductCard>
-                  <ProductImage>
-                    {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
-                  </ProductImage>
-                  <div>
-                    <ProductName>{product.goodsName}</ProductName>
-                    <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
-                    <ProductMeta>
-                      {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
-                      {product.salePrice !== null && product.discountPrice !== product.salePrice
-                        ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}`
-                        : ""}
-                    </ProductMeta>
-                    <ProductMeta>
-                      {copy.productState}: {product.state || copy.unavailable}
-                      {product.limitDay !== null
-                        ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
-                        : ""}
-                    </ProductMeta>
-                  </div>
-                </ProductCard>
-              )}
-
-              <Field>
-                {copy.recipientLabel}
-                <Select value={recipientId} onChange={(event) => setRecipientId(event.target.value)}>
-                  <option value={CUSTOM_RECIPIENT}>{copy.customRecipient}</option>
-                  {availableRecipients.map((recipient) => (
-                    <option key={recipient.id} value={recipient.id}>
-                      {recipient.displayName || copy.memberFallback} · {recipient.maskedPhone}
-                    </option>
-                  ))}
-                </Select>
-                {(data?.recipients ?? []).some((recipient) => !recipient.hasPhone) && (
-                  <FieldHint>{copy.noPhoneHint}</FieldHint>
-                )}
-              </Field>
-
-              {recipientId === CUSTOM_RECIPIENT && (
-                <TwoColumns>
+              <FormGrid>
+                <FormColumn>
                   <Field>
-                    {copy.recipientNameLabel}
+                    {copy.productCodeLabel}
+                    <LookupRow>
+                      <Input
+                        value={goodsCode}
+                        onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
+                        placeholder={copy.productCodePlaceholder}
+                        autoCapitalize="characters"
+                      />
+                      <SecondaryButton
+                        type="button"
+                        disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
+                        onClick={() => void lookupProduct()}
+                      >
+                        <MagnifyingGlassIcon />
+                        {isLookingUp ? copy.lookingUp : copy.lookupProduct}
+                      </SecondaryButton>
+                    </LookupRow>
+                  </Field>
+
+                  {product && (
+                    <ProductCard>
+                      <ProductImage>
+                        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
+                      </ProductImage>
+                      <div>
+                        <ProductName>{product.goodsName}</ProductName>
+                        <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
+                        <ProductMeta>
+                          {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
+                          {product.salePrice !== null && product.discountPrice !== product.salePrice
+                            ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}`
+                            : ""}
+                        </ProductMeta>
+                        <ProductMeta>
+                          {copy.productState}: {product.state || copy.unavailable}
+                          {product.limitDay !== null
+                            ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
+                            : ""}
+                        </ProductMeta>
+                      </div>
+                    </ProductCard>
+                  )}
+
+                  <Field>
+                    {copy.recipientLabel}
+                    <Select value={recipientId} onChange={(event) => setRecipientId(event.target.value)}>
+                      <option value={CUSTOM_RECIPIENT}>{copy.customRecipient}</option>
+                      {availableRecipients.map((recipient) => (
+                        <option key={recipient.id} value={recipient.id}>
+                          {recipient.displayName || copy.memberFallback} · {recipient.maskedPhone}
+                        </option>
+                      ))}
+                    </Select>
+                    {(data?.recipients ?? []).some((recipient) => !recipient.hasPhone) && (
+                      <FieldHint>{copy.noPhoneHint}</FieldHint>
+                    )}
+                  </Field>
+
+                  {recipientId === CUSTOM_RECIPIENT && (
+                    <TwoColumns>
+                      <Field>
+                        {copy.recipientNameLabel}
+                        <Input
+                          value={customName}
+                          maxLength={120}
+                          onChange={(event) => setCustomName(event.target.value)}
+                          placeholder={copy.recipientNamePlaceholder}
+                        />
+                      </Field>
+                      <Field>
+                        {copy.phoneLabel}
+                        <Input
+                          value={customPhone}
+                          inputMode="tel"
+                          onChange={(event) => setCustomPhone(event.target.value)}
+                          placeholder={copy.phonePlaceholder}
+                        />
+                      </Field>
+                    </TwoColumns>
+                  )}
+                </FormColumn>
+
+                <FormColumn>
+                  <Field>
+                    {copy.mmsTitleLabel}
                     <Input
-                      value={customName}
-                      maxLength={120}
-                      onChange={(event) => setCustomName(event.target.value)}
-                      placeholder={copy.recipientNamePlaceholder}
+                      value={mmsTitle}
+                      maxLength={10}
+                      onChange={(event) => setMmsTitle(event.target.value)}
                     />
+                    <FieldHint>{copy.mmsTitleHint.replace("{count}", String([...mmsTitle].length))}</FieldHint>
                   </Field>
                   <Field>
-                    {copy.phoneLabel}
-                    <Input
-                      value={customPhone}
-                      inputMode="tel"
-                      onChange={(event) => setCustomPhone(event.target.value)}
-                      placeholder={copy.phonePlaceholder}
+                    {copy.messageLabel}
+                    <Textarea
+                      value={mmsMessage}
+                      maxLength={4000}
+                      onChange={(event) => setMmsMessage(event.target.value)}
                     />
+                    <FieldHint>{copy.messageHint}</FieldHint>
                   </Field>
-                </TwoColumns>
-              )}
-
-              <Field>
-                {copy.mmsTitleLabel}
-                <Input
-                  value={mmsTitle}
-                  maxLength={10}
-                  onChange={(event) => setMmsTitle(event.target.value)}
-                />
-                <FieldHint>{copy.mmsTitleHint.replace("{count}", String([...mmsTitle].length))}</FieldHint>
-              </Field>
-
-              <Field>
-                {copy.messageLabel}
-                <Textarea
-                  value={mmsMessage}
-                  maxLength={4000}
-                  onChange={(event) => setMmsMessage(event.target.value)}
-                />
-                <FieldHint>{copy.messageHint}</FieldHint>
-              </Field>
+                </FormColumn>
+              </FormGrid>
 
               <SubmitRow>
                 <div>
@@ -809,41 +809,55 @@ export default function AdminGiftsClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{copy.historyTitle}</CardTitle>
-              <CardDescription>{copy.historyDescription}</CardDescription>
+              <div>
+                <CardTitle>{copy.historyTitle}</CardTitle>
+                <CardDescription>{copy.historyDescription}</CardDescription>
+              </div>
             </CardHeader>
             <CardBody>
               {(data?.history ?? []).length === 0 ? (
                 <EmptyState>{copy.historyEmpty}</EmptyState>
               ) : (
-                <HistoryList>
-                  {(data?.history ?? []).map((gift) => (
-                    <HistoryItem key={gift.id}>
-                      <HistoryHeader>
-                        <HistoryTitle>{gift.goodsName}</HistoryTitle>
-                        <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
-                      </HistoryHeader>
-                      <HistoryMeta>
-                        {gift.recipientName || copy.customRecipient} · {gift.recipientPhoneMasked || copy.unavailable}
-                      </HistoryMeta>
-                      <HistoryMeta>
-                        {formatMoney(gift.purchasePrice)} · {formatDate(gift.createdAt)}
-                      </HistoryMeta>
-                      <HistoryMessage>{gift.mmsMessage}</HistoryMessage>
-                      <HistoryMeta>{copy.trId}: {gift.trId}</HistoryMeta>
-                      {gift.orderNo && <HistoryMeta>{copy.orderNo}: {gift.orderNo}</HistoryMeta>}
-                      {gift.providerMessage && gift.status !== "sent" && (
-                        <ProviderError>
-                          {copy.providerMessage}: {gift.providerMessage}
-                        </ProviderError>
-                      )}
-                    </HistoryItem>
-                  ))}
-                </HistoryList>
+                <HistoryWrap>
+                  <HistoryTable>
+                    <HistoryHeaderRow>
+                      <div>{copy.historyDate}</div>
+                      <div>{copy.historyRecipient}</div>
+                      <div>{copy.historyProduct}</div>
+                      <div>{copy.historyAmount}</div>
+                      <div>{copy.historyStatus}</div>
+                      <div>{copy.historyReference}</div>
+                    </HistoryHeaderRow>
+                    {(data?.history ?? []).map((gift) => (
+                      <HistoryRow key={gift.id}>
+                        <HistoryPrimary>{formatDate(gift.createdAt)}</HistoryPrimary>
+                        <div>
+                          <HistoryPrimary>{gift.recipientName || copy.customRecipient}</HistoryPrimary>
+                          <HistorySecondary>{gift.recipientPhoneMasked || copy.unavailable}</HistorySecondary>
+                        </div>
+                        <div>
+                          <HistoryPrimary>{gift.goodsName}</HistoryPrimary>
+                          <HistorySecondary>{gift.brandName || gift.goodsCode}</HistorySecondary>
+                        </div>
+                        <HistoryPrimary>{formatMoney(gift.purchasePrice)}</HistoryPrimary>
+                        <div>
+                          <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
+                          {gift.providerMessage && gift.status !== "sent" && (
+                            <ProviderError>{gift.providerMessage}</ProviderError>
+                          )}
+                        </div>
+                        <div>
+                          <HistoryPrimary>{gift.orderNo || copy.unavailable}</HistoryPrimary>
+                          <HistorySecondary>{copy.trId}: {gift.trId}</HistorySecondary>
+                        </div>
+                      </HistoryRow>
+                    ))}
+                  </HistoryTable>
+                </HistoryWrap>
               )}
             </CardBody>
           </Card>
-        </Layout>
+        </Stack>
       )}
     </Page>
   );
