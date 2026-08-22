@@ -52,6 +52,8 @@ export default function Footer() {
     <FooterContainer>
       <FooterContent>
         <div>
+          <FooterLink href="/vocabulary">내 단어장</FooterLink>
+          <FooterDivider>|</FooterDivider>
           <FooterLink href="/policy/privacy">개인정보 취급방침</FooterLink>
           <FooterDivider>|</FooterDivider>
           <FooterLink href="/policy/terms">이용약관</FooterLink>
