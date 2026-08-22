@@ -489,7 +489,9 @@ export default function AdminArticlesClient() {
         knownIdsRef.current.delete(articleId);
         setArticles((current) => current.filter((article) => article.id !== articleId));
       }
-      setTotalCount((count) => Math.max(0, count - 1));
+      if (locallyDeletingIdsRef.current.delete(articleId)) {
+        setTotalCount((count) => Math.max(0, count - 1));
+      }
     } catch (error) {
       locallyDeletingIdsRef.current.delete(articleId);
       console.error("Error deleting article:", error);
