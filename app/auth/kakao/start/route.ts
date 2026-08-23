@@ -61,27 +61,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(retry, 302);
   }
 
-  // iOS Safari/Chrome was reaching this route and receiving the external 302,
-  // but never issuing the subsequent request to Supabase /authorize. Commit the
-  // same-origin response (and PKCE verifier cookie) first, then perform a normal
-  // browser navigation. Meta refresh and the link are fallbacks if JS is restricted.
-  const providerUrl = data.url;
-  const safeProviderHref = escapeHtml(providerUrl);
-  const providerUrlForScript = JSON.stringify(providerUrl).replaceAll("<", "\\u003c");
+  // Some iOS browsers refuse to follow the cross-origin OAuth hop when it is
+  // triggered by a server redirect, meta refresh, or script after the original
+  // click. Render an explicit external link so the Supabase -> Kakao navigation
+  // happens from a fresh user gesture, after the PKCE verifier cookie is committed.
+  const providerHref = escapeHtml(data.url);
   const html = `<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="refresh" content="1;url=${safeProviderHref}" />
-    <title>카카오 로그인으로 이동 중</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>카카오 로그인</title>
   </head>
-  <body style="font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fff;color:#111">
-    <main style="text-align:center;padding:24px">
-      <p>카카오 로그인으로 이동 중입니다…</p>
-      <p><a href="${safeProviderHref}">계속하기</a></p>
+  <body style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:grid;place-items:center;min-height:100dvh;margin:0;background:#fff;color:#111;padding:24px;box-sizing:border-box">
+    <main style="width:min(100%,420px);text-align:center">
+      <div style="font-size:42px;margin-bottom:14px">💬</div>
+      <h1 style="font-size:24px;margin:0 0 10px">카카오 로그인을 계속해주세요</h1>
+      <p style="font-size:15px;line-height:1.6;color:#666;margin:0 0 28px">iPhone에서는 외부 로그인 화면을 열기 위해 한 번 더 눌러야 할 수 있습니다.</p>
+      <a href="${providerHref}" style="display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;box-sizing:border-box;border-radius:16px;background:#FEE500;color:#191919;text-decoration:none;font-size:17px;font-weight:700">카카오 로그인 열기</a>
+      <p style="font-size:13px;line-height:1.5;color:#888;margin:18px 0 0">버튼을 누르면 카카오 로그인 화면으로 이동합니다.</p>
     </main>
-    <script>window.location.replace(${providerUrlForScript});</script>
   </body>
 </html>`;
 
