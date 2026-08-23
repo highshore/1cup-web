@@ -1,4 +1,4 @@
-import VocabularyDeckV2Client from "./VocabularyDeckV2Client";
+import VocabularyDeckClient from "./VocabularyDeckClient";
 
 export default async function VocabularyDeckPage({
   params,
@@ -6,5 +6,5 @@ export default async function VocabularyDeckPage({
   params: Promise<{ deckId: string }>;
 }) {
   const { deckId } = await params;
-  return <VocabularyDeckV2Client deckId={deckId} />;
+  return <VocabularyDeckClient deckId={deckId} />;
 }
