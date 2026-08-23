@@ -11,12 +11,18 @@ function safeRedirect(value: string | null) {
 }
 
 function getKakaoClientId() {
-  return process.env.NEXT_KAKAO_CLIENT_ID ?? process.env.KAKAO_CLIENT_ID ?? null;
+  return (
+    process.env.NEXT_KAKAO_CLIENT_ID ??
+    process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID ??
+    process.env.KAKAO_CLIENT_ID ??
+    null
+  );
 }
 
 function getKakaoRedirectUri(origin: string) {
   return (
     process.env.NEXT_KAKAO_REDIRECT_URI ??
+    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI ??
     process.env.KAKAO_REDIRECT_URI ??
     `${origin}/kakao_callback`
   );
@@ -29,7 +35,9 @@ export async function GET(request: NextRequest) {
   const clientId = getKakaoClientId();
 
   if (!clientId) {
-    console.error("Direct Kakao OAuth is missing NEXT_KAKAO_CLIENT_ID/KAKAO_CLIENT_ID");
+    console.error(
+      "Direct Kakao OAuth is missing NEXT_KAKAO_CLIENT_ID/NEXT_PUBLIC_KAKAO_CLIENT_ID/KAKAO_CLIENT_ID",
+    );
     const retry = new URL("/auth", origin);
     retry.searchParams.set("error", "카카오 로그인 설정을 확인해주세요.");
     return NextResponse.redirect(retry, 302);
