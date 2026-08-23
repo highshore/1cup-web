@@ -13,6 +13,14 @@ type PendingCookie = {
   options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -53,10 +61,40 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(retry, 302);
   }
 
-  const response = NextResponse.redirect(data.url, 302);
+  // iOS Safari/Chrome was reaching this route and receiving the external 302,
+  // but never issuing the subsequent request to Supabase /authorize. Commit the
+  // same-origin response (and PKCE verifier cookie) first, then perform a normal
+  // browser navigation. Meta refresh and the link are fallbacks if JS is restricted.
+  const providerUrl = data.url;
+  const safeProviderHref = escapeHtml(providerUrl);
+  const providerUrlForScript = JSON.stringify(providerUrl).replaceAll("<", "\\u003c");
+  const html = `<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="refresh" content="1;url=${safeProviderHref}" />
+    <title>카카오 로그인으로 이동 중</title>
+  </head>
+  <body style="font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fff;color:#111">
+    <main style="text-align:center;padding:24px">
+      <p>카카오 로그인으로 이동 중입니다…</p>
+      <p><a href="${safeProviderHref}">계속하기</a></p>
+    </main>
+    <script>window.location.replace(${providerUrlForScript});</script>
+  </body>
+</html>`;
+
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
   pendingCookies.forEach(({ name, value, options }) =>
     response.cookies.set(name, value, options),
   );
-  response.headers.set("Cache-Control", "no-store");
   return response;
 }
