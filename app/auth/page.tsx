@@ -388,11 +388,16 @@ const Description = styled.p`
 `;
 
 const PhoneForm = styled.form`
-  /* Specific to phone auth part */
   display: flex;
   width: 100%;
   flex-direction: column;
   align-items: stretch;
+  margin-top: 0.35rem;
+  padding: 1rem;
+  border: 2px solid #050505;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 4px 4px 0 #050505;
 `;
 
 const Input = styled.input<{ $hasInlineAction?: boolean }>`
@@ -401,22 +406,23 @@ const Input = styled.input<{ $hasInlineAction?: boolean }>`
   min-height: 54px;
   padding: 0.95rem 1.1rem;
   padding-right: ${(props) => (props.$hasInlineAction ? "5rem" : "1.1rem")};
-  border: 1px solid #d1d5db;
-  border-radius: 16px;
+  border: 2px solid #050505;
+  border-radius: 12px;
   font-size: 1rem;
+  color: #050505;
   background: #ffffff;
   transition: border-color 140ms ease, box-shadow 140ms ease,
     background-color 140ms ease;
 
   &:focus {
     outline: none;
-    border-color: #111827;
-    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+    border-color: #050505;
+    box-shadow: 3px 3px 0 #f47a4a;
   }
 
   &:read-only {
-    background: #f9fafb;
-    color: #6b7280;
+    background: #f3f1ed;
+    color: rgba(5, 5, 5, 0.7);
   }
 `;
 
@@ -432,17 +438,17 @@ const InlineAction = styled.button`
   right: 0.6rem;
   transform: translateY(-50%);
   padding: 0.4rem 0.7rem;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #111827;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #050505;
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
 
   &:hover {
-    background: #f3f4f6;
+    background: #f47a4a;
   }
 
   &:disabled {
@@ -474,7 +480,7 @@ const StepRow = styled.div`
   width: 100%;
   margin-top: 0.6rem;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.62);
   text-align: left;
 `;
 
@@ -482,7 +488,7 @@ const LinkButton = styled.button`
   padding: 0;
   border: none;
   background: none;
-  color: #111827;
+  color: #050505;
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 700;
@@ -501,51 +507,53 @@ const CodeLabel = styled.p`
   margin: 0.9rem 0 0.5rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
+  color: #050505;
   text-align: left;
 `;
 
 const BackLink = styled(LinkButton)`
   align-self: center;
   margin-top: 1.25rem;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.68);
   font-weight: 600;
 `;
 
-const Spinner = styled.span`
+const Spinner = styled.span<{ $dark?: boolean }>`
   display: inline-block;
   width: 16px;
   height: 16px;
   margin-right: 0.5rem;
   vertical-align: -3px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
+  border: 2px solid ${(props) => (props.$dark ? "rgba(60, 30, 30, 0.28)" : "rgba(255, 255, 255, 0.35)")};
+  border-top-color: ${(props) => (props.$dark ? "#3c1e1e" : "#ffffff")};
   border-radius: 50%;
   animation: ${spin} 700ms linear infinite;
 `;
 
 const Button = styled.button`
-  /* Specific to phone auth part */
   width: 100%;
   min-height: 54px;
   margin-top: 1.25rem;
   padding: 0.9rem 1rem;
-  background-color: #111827;
-  color: white;
-  border: 1px solid #111827;
-  border-radius: 18px;
+  background-color: #f47a4a;
+  color: #050505;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #050505;
   cursor: pointer;
   font-weight: 760;
   font-size: 1rem;
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: #020617;
+    background-color: #ff8f65;
     transform: translateY(-1px);
   }
 
   &:disabled {
-    background-color: #ccc;
+    background-color: #e4e1dc;
+    color: rgba(5, 5, 5, 0.45);
+    box-shadow: none;
     cursor: not-allowed;
     transform: none;
   }
@@ -561,20 +569,20 @@ const Message = styled.div`
 `;
 
 const ErrorMessage = styled(Message)`
-  /* Specific to phone auth part */
-  background-color: #fdeded;
-  color: #5f2120;
+  border: 1.5px solid #a72121;
+  background-color: #fff1ef;
+  color: #8c1717;
 `;
 
 const SuccessMessage = styled(Message)`
-  /* Specific to phone auth part */
-  background-color: #edf7ed;
-  color: #1e4620;
+  border: 1.5px solid #1f6b41;
+  background-color: #eff9f1;
+  color: #155833;
 `;
 
 const HelpText = styled.p`
   font-size: 0.92rem;
-  color: #6b7280;
+  color: rgba(5, 5, 5, 0.62);
   margin: 0.6rem 0 0;
   text-align: left;
 `;
@@ -625,6 +633,12 @@ const ChoiceButton = styled.button`
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.66;
+    transform: none;
+  }
 `;
 
 const PhoneButton = styled(ChoiceButton)`
@@ -659,6 +673,7 @@ function AuthContent() {
   // OTP send/verify stay inline so the form never disappears mid-flow.
   const [checkingSession, setCheckingSession] = useState(true);
   const [busy, setBusy] = useState<null | "send" | "verify">(null);
+  const [kakaoPending, setKakaoPending] = useState(false);
   // When the current code was sent. Both countdowns derive from it, so they stay
   // truthful across a backgrounded tab — the normal case here, since reading the code
   // means switching to KakaoTalk and timers get throttled while we are hidden.
@@ -671,25 +686,17 @@ function AuthContent() {
   // Remembers the code we last fired off so the auto-submit effect can't resend it.
   const submittedCodeRef = useRef<string | null>(null);
 
-  // Handle Kakao Login Click — Supabase native Kakao OAuth
-  const handleKakaoLoginClick = async () => {
+  // Keep this browser path first-party: /auth/kakao/start sets state and then
+  // redirects straight to Kakao, avoiding browser navigation to Supabase Auth.
+  const handleKakaoLoginClick = () => {
+    if (kakaoPending) return;
+    setKakaoPending(true);
+    setErrorState(null);
     const redirectUrl = sanitizeRedirectUrl(searchParams.get("redirect"));
     if (redirectUrl) localStorage.setItem("returnUrl", redirectUrl);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: {
-        // Must land on the route handler that trades the PKCE code for a session —
-        // the /auth page only reads an existing one.
-        redirectTo: `${window.location.origin}/auth/callback${
-          redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""
-        }`,
-        // account_email/phone_number are what let us recognise a returning member.
-        // The number never appears in the id_token, but the scope puts it on the
-        // access token so the `kakao-login` hook can read it from kapi.kakao.com.
-        scopes: "profile_nickname profile_image account_email phone_number",
-      },
-    });
-    if (error) setErrorState(error.message);
+    const startUrl = new URL("/auth/kakao/start", window.location.origin);
+    if (redirectUrl) startUrl.searchParams.set("redirect", redirectUrl);
+    window.location.assign(startUrl.toString());
   };
 
   const handlePhoneAuthClick = () => {
@@ -929,12 +936,12 @@ function AuthContent() {
 
       {!showPhoneAuth ? (
         <SignInChoices>
-          <PhoneButton onClick={handlePhoneAuthClick}>
+          <PhoneButton onClick={handlePhoneAuthClick} disabled={kakaoPending}>
             <DevicePhoneMobileIcon />
             전화번호로 시작하기
           </PhoneButton>
-          <KakaoButton onClick={handleKakaoLoginClick}>
-            <img src="/images/kakao_btn.png" alt="Kakao Login" />
+          <KakaoButton onClick={handleKakaoLoginClick} disabled={kakaoPending} aria-busy={kakaoPending}>
+            {kakaoPending ? <Spinner $dark aria-hidden="true" /> : <img src="/images/kakao_btn.png" alt="Kakao Login" />}
             카카오로 시작하기
           </KakaoButton>
         </SignInChoices>
