@@ -75,10 +75,14 @@ const BrandButton = styled.button`
   justify-content: center;
   justify-self: start;
   border: 0;
+  border-radius: 0;
   background: transparent;
   padding: 4px 0;
   cursor: pointer;
+
   &:hover { opacity: 0.82; }
+
+  @media (max-width: 420px) { padding: 4px 0; }
 `;
 
 const LogoImage = styled.img`
@@ -94,10 +98,14 @@ const NavLinks = styled.div`
   justify-content: center;
   justify-self: center;
   gap: 3px;
+
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
 `;
 
-const NavLinkButton = styled.button<{ $active: boolean; $isTransparent: boolean }>`
+const NavLinkButton = styled.button<{
+  $active: boolean;
+  $isTransparent: boolean;
+}>`
   display: inline-flex;
   min-height: var(--nav-item-height);
   align-items: center;
@@ -115,11 +123,28 @@ const NavLinkButton = styled.button<{ $active: boolean; $isTransparent: boolean 
   ${({ $active, $isTransparent }) =>
     $isTransparent
       ? $active
-        ? css`background: rgba(255,255,255,0.18); color: #fff;`
-        : css`background: transparent; color: rgba(255,255,255,0.88); &:hover { background: rgba(255,255,255,0.14); color:#fff; }`
+        ? css`
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            box-shadow: none;
+          `
+        : css`
+            background: transparent;
+            color: rgba(255, 255, 255, 0.88);
+            &:hover { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
+          `
       : $active
-        ? css`background:#e2e8f0; color:#0f172a;`
-        : css`background:transparent; color:#475569; &:hover { background:#f1f5f9; color:#0f172a; }`}
+      ? css`
+          background: #e2e8f0;
+          color: #0f172a;
+          box-shadow: none;
+        `
+      : css`
+          background: transparent;
+          color: #475569;
+          &:hover { background: #f1f5f9; color: #0f172a; }
+        `}
+
   svg { width: 16px; height: 16px; }
 `;
 
@@ -130,6 +155,7 @@ const RightActions = styled.div`
   justify-self: end;
   gap: 4px;
   min-width: 0;
+
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { margin-left: auto; }
 `;
 
@@ -146,16 +172,15 @@ const LanguageButton = styled.button<{ $isTransparent: boolean }>`
   border-radius: 999px;
   background: transparent;
   padding: 0;
-  color: ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.88)" : "#475569"};
+  color: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.88)" : "#475569"};
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
+
   &:hover {
-    background: ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255,255,255,0.14)" : "#f8fafc"};
-    color: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
+    background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f8fafc"};
+    color: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   }
 `;
 
@@ -164,8 +189,7 @@ const LangIcon = styled.img<{ $isTransparent: boolean }>`
   height: 18px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.58)" : "#e2e8f0"};
+  border: 1px solid ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.58)" : "#e2e8f0"};
   @media (max-width: 520px) { width: 22px; height: 22px; }
 `;
 
@@ -175,20 +199,82 @@ const JoinButton = styled.button<{ $isTransparent: boolean }>`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.92)"};
+  border: 1px solid ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.92)" : "rgba(15, 23, 42, 0.92)"};
   border-radius: 999px;
-  background: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
+  background: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   padding: 7px 15px;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#0f172a" : "#fff")};
+  color: ${({ $isTransparent }) => $isTransparent ? "#0f172a" : "#ffffff"};
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 800;
-  box-shadow: 0 7px 16px rgba(15,23,42,0.14);
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.14);
   cursor: pointer;
-  &:hover { box-shadow: 0 10px 24px rgba(15,23,42,0.18); }
+
+  &:hover {
+    background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.9)" : "#020617"};
+    box-shadow: 0 10px 24px ${({ $isTransparent }) => $isTransparent ? "rgba(0, 0, 0, 0.18)" : "rgba(15, 23, 42, 0.18)"};
+  }
+
   svg { width: 16px; height: 16px; }
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
+`;
+
+type AvatarVariant = "active" | "inactive" | "default";
+
+const AvatarButton = styled.button<{ $variant: AvatarVariant }>`
+  position: relative;
+  box-sizing: border-box;
+  width: var(--nav-action-size);
+  height: var(--nav-action-size);
+  flex: 0 0 var(--nav-action-size);
+  border: ${({ $variant }) => {
+    switch ($variant) {
+      case "active": return "2px solid #22c55e";
+      case "inactive": return "2px solid #cbd5e1";
+      default: return "2px solid rgba(15, 23, 42, 0.14)";
+    }
+  }};
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 0;
+  box-shadow: none;
+  cursor: pointer;
+  &:hover { background: #f8fafc; }
+`;
+
+const AvatarInner = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #ffffff;
+`;
+
+const AvatarImage = styled.img`
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+`;
+
+const AvatarFallback = styled.span`
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+`;
+
+const AvatarStatusDot = styled.span`
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #22c55e;
 `;
 
 const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
@@ -200,15 +286,17 @@ const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
+  color: ${({ $isTransparent }) => $isTransparent ? "#ffffff" : "#0f172a"};
   cursor: pointer;
-  &:hover { background: ${({ $isTransparent }) => $isTransparent ? "rgba(255,255,255,0.14)" : "#f1f5f9"}; }
+
+  &:hover { background: ${({ $isTransparent }) => $isTransparent ? "rgba(255, 255, 255, 0.14)" : "#f1f5f9"}; }
   svg { width: 20px; height: 20px; }
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: inline-flex; }
 `;
 
 const MobileMenu = styled.div`
   display: none;
+
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
     display: grid;
     position: absolute;
@@ -216,10 +304,10 @@ const MobileMenu = styled.div`
     left: 0;
     right: 0;
     gap: 2px;
-    border: 1px solid rgba(226,232,240,0.9);
+    border: 1px solid rgba(226, 232, 240, 0.9);
     border-top: 0;
     border-radius: 0 0 14px 14px;
-    background: rgba(255,255,255,0.98);
+    background: rgba(255, 255, 255, 0.98);
     padding: 6px;
   }
 `;
@@ -237,9 +325,10 @@ const MobileNavButton = styled.button<{ $active?: boolean }>`
   font-size: 0.86rem;
   font-weight: 750;
   cursor: pointer;
+
   ${({ $active }) => $active
-    ? css`background:#f1f5f9; color:#0f172a;`
-    : css`background:transparent; color:#475569; &:hover { background:#f1f5f9; color:#0f172a; }`}
+    ? css`background: #f1f5f9; color: #0f172a;`
+    : css`background: transparent; color: #475569; &:hover { background: #f1f5f9; color: #0f172a; }`}
   svg { width: 15px; height: 15px; }
 `;
 
@@ -250,11 +339,11 @@ const MobileJoinButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(15,23,42,0.92);
+  border: 1px solid rgba(15, 23, 42, 0.92);
   border-radius: 999px;
   background: #0f172a;
   padding: 6px 12px;
-  color: #fff;
+  color: #ffffff;
   font-family: inherit;
   font-size: 0.86rem;
   font-weight: 800;
@@ -274,12 +363,13 @@ const NewNavbar: React.FC = () => {
   const { locale, setLocale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, hasActiveSubscription } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const isTransparent = pathname === "/" && !isScrolled;
-  const logoSrc = isTransparent
-    ? "/images/logos/1cup_logo_new_white.svg"
-    : "/images/logos/1cup_logo_new.svg";
+  const logoSrc = isTransparent ? "/images/logos/1cup_logo_new_white.svg" : "/images/logos/1cup_logo_new.svg";
+  const avatarSrc = currentUser?.photoURL || "/images/logos/1cup_logo_new.svg";
+  const avatarInitial = currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
+  const avatarVariant: AvatarVariant = hasActiveSubscription === true ? "active" : currentUser ? "inactive" : "default";
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -298,10 +388,7 @@ const NewNavbar: React.FC = () => {
   const handleJoin = () => {
     const queryString = typeof window !== "undefined" ? window.location.search.slice(1) : "";
     const returnUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    const safeReturnUrl =
-      returnUrl.startsWith("/auth") || returnUrl.startsWith("/kakao_callback")
-        ? "/"
-        : returnUrl;
+    const safeReturnUrl = returnUrl.startsWith("/auth") || returnUrl.startsWith("/kakao_callback") ? "/" : returnUrl;
     localStorage.setItem("returnUrl", safeReturnUrl);
     handleNavigate(`/auth?redirect=${encodeURIComponent(safeReturnUrl)}`);
   };
@@ -318,8 +405,7 @@ const NewNavbar: React.FC = () => {
     }
   };
 
-  const isActivePath = (path: string) =>
-    pathname === path || pathname.startsWith(`${path}/`);
+  const isActivePath = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
   return (
     <Nav $isTransparent={isTransparent}>
@@ -332,23 +418,14 @@ const NewNavbar: React.FC = () => {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <NavLinkButton
-                key={item.path}
-                onClick={() => handleNavigate(item.path)}
-                $active={isActivePath(item.path)}
-                $isTransparent={isTransparent}
-              >
+              <NavLinkButton key={item.path} onClick={() => handleNavigate(item.path)} $active={isActivePath(item.path)} $isTransparent={isTransparent}>
                 <Icon />
                 {t.nav[item.labelKey]}
               </NavLinkButton>
             );
           })}
           {isLoggedIn && (
-            <NavLinkButton
-              onClick={() => handleNavigate("/vocabulary")}
-              $active={isActivePath("/vocabulary")}
-              $isTransparent={isTransparent}
-            >
+            <NavLinkButton onClick={() => handleNavigate("/vocabulary")} $active={isActivePath("/vocabulary")} $isTransparent={isTransparent}>
               <BookOpenIcon />
               {locale === "en" ? "Vocabulary" : "단어장"}
             </NavLinkButton>
@@ -357,18 +434,19 @@ const NewNavbar: React.FC = () => {
 
         <RightActions>
           <LanguageButton onClick={toggleLanguage} $isTransparent={isTransparent}>
-            <LangIcon
-              src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"}
-              alt={locale}
-              $isTransparent={isTransparent}
-            />
+            <LangIcon src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"} alt={locale} $isTransparent={isTransparent} />
           </LanguageButton>
 
           {isLoggedIn ? (
-            // The profile photo is the single desktop account affordance. Notifications,
-            // profile navigation and logout live in its dropdown; unread state is shown
-            // directly on the photo so there is no competing bell icon in the navbar.
-            <NotificationDropdown isTransparent={isTransparent} />
+            <>
+              <NotificationDropdown isTransparent={isTransparent} />
+              <AvatarButton onClick={handleProfileNav} aria-label={locale === "en" ? "Go to profile" : "프로필로 이동"} $variant={avatarVariant}>
+                <AvatarInner>
+                  {currentUser?.photoURL ? <AvatarImage src={avatarSrc} alt="profile" referrerPolicy="no-referrer" /> : <AvatarFallback>{avatarInitial}</AvatarFallback>}
+                </AvatarInner>
+                {avatarVariant === "active" && <AvatarStatusDot />}
+              </AvatarButton>
+            </>
           ) : (
             <JoinButton onClick={handleJoin} $isTransparent={isTransparent}>
               <UserCircleIcon />
@@ -376,11 +454,7 @@ const NewNavbar: React.FC = () => {
             </JoinButton>
           )}
 
-          <MobileMenuButton
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
-            $isTransparent={isTransparent}
-          >
+          <MobileMenuButton onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"} $isTransparent={isTransparent}>
             {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
           </MobileMenuButton>
         </RightActions>
@@ -390,11 +464,7 @@ const NewNavbar: React.FC = () => {
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               return (
-                <MobileNavButton
-                  key={item.path}
-                  onClick={() => handleNavigate(item.path)}
-                  $active={isActivePath(item.path)}
-                >
+                <MobileNavButton key={item.path} onClick={() => handleNavigate(item.path)} $active={isActivePath(item.path)}>
                   <Icon />
                   {t.nav[item.labelKey]}
                 </MobileNavButton>
@@ -403,23 +473,15 @@ const NewNavbar: React.FC = () => {
 
             {isLoggedIn ? (
               <>
-                <MobileNavButton
-                  onClick={() => handleNavigate("/vocabulary")}
-                  $active={isActivePath("/vocabulary")}
-                >
+                <MobileNavButton onClick={() => handleNavigate("/vocabulary")} $active={isActivePath("/vocabulary")}>
                   <BookOpenIcon />
                   {locale === "en" ? "Vocabulary" : "단어장"}
                 </MobileNavButton>
-                <MobileNavButton
-                  onClick={handleProfileNav}
-                  $active={isActivePath("/profile")}
-                >
+                <MobileNavButton onClick={handleProfileNav} $active={isActivePath("/profile")}>
                   <UserCircleIcon />
                   {locale === "en" ? "My Account" : "내 계정"}
                 </MobileNavButton>
-                <MobileJoinButton onClick={handleLogout}>
-                  {locale === "en" ? "Logout" : "로그아웃"}
-                </MobileJoinButton>
+                <MobileJoinButton onClick={handleLogout}>{locale === "en" ? "Logout" : "로그아웃"}</MobileJoinButton>
               </>
             ) : (
               <MobileJoinButton onClick={handleJoin}>{t.nav.join}</MobileJoinButton>

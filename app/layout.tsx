@@ -6,7 +6,7 @@ import StyledComponentsRegistry from "./lib/styled-components/registry";
 import AuthProvider from "./lib/contexts/auth_context";
 import GlobalStyles from "./lib/components/GlobalStyles";
 import ConditionalLayoutWrapper from "./lib/components/ConditionalLayoutWrapper";
-import ServiceErrorProvider from "./lib/components/ServiceErrorProvider";
+// removed duplicate React import
 
 const siteUrl = "https://1cupenglish.com";
 const siteTitle = "영어 한잔 - 1 Cup English";
@@ -19,11 +19,23 @@ export const metadata: Metadata = {
   description: siteDescription,
   icons: {
     icon: [
-      { url: "/images/logos/1cup_logo.jpg", sizes: "32x32", type: "image/jpeg" },
-      { url: "/images/logos/1cup_logo.jpg", sizes: "16x16", type: "image/jpeg" },
+      {
+        url: "/images/logos/1cup_logo.jpg",
+        sizes: "32x32",
+        type: "image/jpeg",
+      },
+      {
+        url: "/images/logos/1cup_logo.jpg",
+        sizes: "16x16",
+        type: "image/jpeg",
+      },
     ],
     apple: [
-      { url: "/images/logos/1cup_logo.jpg", sizes: "180x180", type: "image/jpeg" },
+      {
+        url: "/images/logos/1cup_logo.jpg",
+        sizes: "180x180",
+        type: "image/jpeg",
+      },
     ],
   },
   openGraph: {
@@ -33,7 +45,14 @@ export const metadata: Metadata = {
     siteName: "영어 한잔",
     locale: "ko_KR",
     type: "website",
-    images: [{ url: socialImage, width: 1200, height: 630, alt: "영어 한잔 - 1 Cup English" }],
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: "영어 한잔 - 1 Cup English",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -43,14 +62,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ko">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Fonts: prefer link tags over @import */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap"
           rel="stylesheet"
@@ -59,11 +87,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning={true}>
         <StyledComponentsRegistry>
           <GlobalStyles />
-          <ServiceErrorProvider>
-            <AuthProvider>
-              <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
-            </AuthProvider>
-          </ServiceErrorProvider>
+          <AuthProvider>
+            <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
+          </AuthProvider>
         </StyledComponentsRegistry>
         <Analytics />
         <SpeedInsights />
