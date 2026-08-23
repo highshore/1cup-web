@@ -97,4 +97,4 @@ becomes the strategist's reward signal.
 - No secrets in source. Credentials come from env / Secret Manager.
 - **Rotate the koreapas password** — it was exposed in a chat transcript.
 - The agent writes via the Admin SDK (bypasses Firestore rules); the web
-  client is locked to admins by `firestore.rules`.
+  client is locked to admins by the retained legacy rules in `docs/migration/artifacts/legacy-firebase/firestore.rules`.

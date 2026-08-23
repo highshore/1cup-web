@@ -17,6 +17,12 @@ const nextConfig = {
       { protocol: "https", hostname: "k.kakaocdn.net" },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/home", destination: "/", permanent: true },
+      { source: "/new-home", destination: "/", permanent: true },
+    ];
+  },
   // Tree-shake large barrel packages so only used icons/utils are bundled.
   experimental: {
     optimizePackageImports: [

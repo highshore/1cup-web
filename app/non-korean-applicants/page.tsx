@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
+        url: "/images/url-share-thumbnail.jpg",
+        width: 960,
+        height: 540,
         alt: "1 Cup English",
       },
     ],
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     title: "For Non-Korean Applicants | 1 Cup English",
     description:
       "Application guide for long-term international inhabitants building a quality network in Korea.",
-    images: ["/opengraph-image"],
+    images: ["/images/url-share-thumbnail.jpg"],
   },
 };
 

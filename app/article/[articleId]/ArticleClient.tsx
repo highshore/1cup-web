@@ -147,6 +147,9 @@ const discussionTopicEntriesFor = (article: ArticleData | null): DiscussionTopic
   });
 
 interface WordData {
+  entryId: string;
+  selectedMeaningId: string | null;
+  meanings: DictionaryMeaning[];
   categories: {
     english: string[];
     korean: string[];
@@ -161,6 +164,24 @@ interface WordData {
   }>;
   synonyms: string[];
   antonyms: string[];
+}
+
+interface DictionaryMeaning {
+  id: string;
+  grammar_type: string;
+  definition_en: string;
+  definition_ko: string | null;
+  usage_labels: string[];
+  synonyms: string[];
+  antonyms: string[];
+  pronunciation_ipa: string | null;
+  example_en: string | null;
+  example_ko: string | null;
+}
+
+interface SavedVocabularyItem {
+  entryId: string;
+  meaningId: string | null;
 }
 
 const NAVBAR_MAX_WIDTH = 960;
@@ -2181,7 +2202,7 @@ const Article = () => {
   const [isQuickReading, setIsQuickReading] = useState(false);
   const [wordDetails, setWordDetails] = useState<Record<string, WordData>>({});
   const [wordLoading, setWordLoading] = useState<Record<string, boolean>>({});
-  const [savedWords, setSavedWords] = useState<string[]>([]);
+  const [savedVocabulary, setSavedVocabulary] = useState<SavedVocabularyItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Admin discussion topics editing state
@@ -2237,11 +2258,6 @@ const Article = () => {
     wiktionaryData: null as any | null,
     isWiktionaryLoading: false,
   });
-
-  // Add state for Wiktionary API data in keyword modal
-  const [selectedWordWiktionaryData, setSelectedWordWiktionaryData] = useState<
-    any | null
-  >(null);
 
   // Long-press detection for showing meaning modal
   const LONG_PRESS_MS = 500;
@@ -2384,31 +2400,34 @@ const Article = () => {
     };
   }, [article, articleId, currentUser]);
 
-  // Fetch user's saved words when user changes
+  // Fetch the member's saved dictionary meanings when user changes. The old
+  // users.saved_words string array is deliberately no longer part of this flow.
   useEffect(() => {
-    const fetchSavedWords = async () => {
+    const fetchSavedVocabulary = async () => {
       if (!currentUser) {
-        setSavedWords([]);
+        setSavedVocabulary([]);
         return;
       }
 
       try {
-        const { data: userRow } = await supabase
-          .from("users")
-          .select("saved_words")
-          .eq("uid", currentUser.uid)
-          .maybeSingle();
-
-        // The row always exists here — handle_new_user creates it at sign-up — so a
-        // miss just means no saved words yet.
-        setSavedWords(userRow?.saved_words || []);
+        const { data, error } = await supabase
+          .from("user_vocabulary")
+          .select("entry_id, meaning_id")
+          .eq("user_id", currentUser.uid);
+        if (error) throw error;
+        setSavedVocabulary(
+          (data || []).map((item: any) => ({
+            entryId: item.entry_id,
+            meaningId: item.meaning_id,
+          }))
+        );
       } catch (err) {
-        console.error("Error fetching saved words:", err);
-        setSavedWords([]);
+        console.error("Error fetching saved vocabulary:", err);
+        setSavedVocabulary([]);
       }
     };
 
-    fetchSavedWords();
+    fetchSavedVocabulary();
   }, [currentUser]);
 
   useEffect(() => {
@@ -2419,9 +2438,10 @@ const Article = () => {
     };
   }, []);
 
-  const fetchWordDetails = async (word: string) => {
+  const fetchWordDetails = async (word: string): Promise<WordData | null> => {
     // Skip if already fetched or currently fetching
-    if (wordDetails[word] || wordLoading[word]) return;
+    if (wordDetails[word]) return wordDetails[word];
+    if (wordLoading[word]) return null;
 
     setWordLoading((prev) => ({ ...prev, [word]: true }));
 
@@ -2438,19 +2458,60 @@ const Article = () => {
     }, 5000); // 5 seconds timeout
 
     try {
-      const { data: wordRow } = await supabase
-        .from("words")
-        .select("*")
-        .eq("word", word)
+      const normalizedTerm = word.trim().replace(/\s+/g, " ").toLowerCase();
+      const { data: entryRow, error: entryError } = await supabase
+        .from("dictionary_entries")
+        .select(
+          "id, term, dictionary_meanings(id, grammar_type, definition_en, definition_ko, usage_labels, synonyms, antonyms, pronunciation_ipa, example_en, example_ko, meaning_order)"
+        )
+        .eq("language_code", "en")
+        .eq("normalized_term", normalizedTerm)
         .maybeSingle();
+      if (entryError) throw entryError;
 
-      if (wordRow) {
-        setWordDetails((prev) => ({ ...prev, [word]: wordRow as WordData }));
-      } else {
-        console.error(`Word "${word}" not found in the database`);
-      }
+      if (!entryRow) return null;
+
+      const meanings = ((entryRow as any).dictionary_meanings || [])
+        .sort((left: any, right: any) => left.meaning_order - right.meaning_order) as DictionaryMeaning[];
+      const mappedMeanings = meanings.length
+        ? (
+            await supabase
+              .from("article_vocabulary")
+              .select("meaning_id")
+              .eq("article_id", articleId)
+              .in("meaning_id", meanings.map((meaning) => meaning.id))
+          )
+        : { data: [], error: null };
+      if (mappedMeanings.error) throw mappedMeanings.error;
+
+      const mappedMeaningIds = new Set(
+        (mappedMeanings.data || []).map((mapping: any) => mapping.meaning_id)
+      );
+      const selectedMeaning =
+        meanings.find((meaning) => mappedMeaningIds.has(meaning.id)) || meanings[0] || null;
+      const wordData: WordData = {
+        entryId: (entryRow as any).id,
+        selectedMeaningId: selectedMeaning?.id || null,
+        meanings,
+        categories: {
+          english: [...new Set(meanings.map((meaning) => meaning.grammar_type).filter(Boolean))],
+          korean: [],
+        },
+        definitions: {
+          english: selectedMeaning?.definition_en || "",
+          korean: selectedMeaning?.definition_ko || "",
+        },
+        examples: selectedMeaning?.example_en
+          ? [{ english: [selectedMeaning.example_en], korean: [selectedMeaning.example_ko || ""] }]
+          : [],
+        synonyms: selectedMeaning?.synonyms || [],
+        antonyms: selectedMeaning?.antonyms || [],
+      };
+      setWordDetails((prev) => ({ ...prev, [word]: wordData }));
+      return wordData;
     } catch (err) {
       console.error(`Error fetching word "${word}":`, err);
+      return null;
     } finally {
       clearTimeout(timeoutId); // Clear the timeout as the operation completed
       setWordLoading((prev) => ({ ...prev, [word]: false }));
@@ -2635,25 +2696,12 @@ const Article = () => {
 
   const openKeywordModal = async (word: string) => {
     setSelectedKeyword(word);
-    setSelectedWordWiktionaryData(null); // Reset Wiktionary data
-
-    // Get word details if not already loaded
-    if (!wordDetails[word]) {
-      await fetchWordDetails(word);
-    }
-
-    setSelectedWordData(wordDetails[word] || null);
+    setSelectedWordData(null);
     setIsModalOpen(true);
     document.body.style.overflow = "hidden";
 
-    // Fetch Wiktionary data in parallel
-    try {
-      const wiktionaryData = await fetchWordFromWiktionaryApi(word);
-      setSelectedWordWiktionaryData(wiktionaryData);
-    } catch (error) {
-      console.error("Error fetching Wiktionary data:", error);
-      setSelectedWordWiktionaryData(null);
-    }
+    const wordData = wordDetails[word] || (await fetchWordDetails(word));
+    setSelectedWordData(wordData || null);
   };
 
   const closeKeywordModal = () => {
@@ -2727,29 +2775,38 @@ const Article = () => {
     return `${minutes}분 ${seconds}초`;
   };
 
-  // Function to fetch word definition from Wiktionary API
-  const fetchWordFromWiktionaryApi = async (
-    word: string
-  ): Promise<any | null> => {
-    try {
-      const response = await fetch(
-        `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-      );
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn(
-            `No definitions found for "${word}" from Wiktionary API.`
-          );
-          return null;
-        }
-        throw new Error(`API error: ${response.status}`);
-      }
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Wiktionary API Error:", error);
-      return null;
-    }
+  // The reader never calls a third-party dictionary at runtime. Adapt the
+  // shared Supabase dictionary to the modal's existing presentation shape.
+  const fetchWordFromDictionary = async (word: string): Promise<any | null> => {
+    const wordData = wordDetails[word] || (await fetchWordDetails(word));
+    if (!wordData || !wordData.meanings.length) return null;
+
+    const meaningsByGrammar = new Map<string, DictionaryMeaning[]>();
+    wordData.meanings.forEach((meaning) => {
+      const grammar = meaning.grammar_type || "unknown";
+      meaningsByGrammar.set(grammar, [
+        ...(meaningsByGrammar.get(grammar) || []),
+        meaning,
+      ]);
+    });
+
+    return [
+      {
+        phonetics: wordData.meanings
+          .filter((meaning) => meaning.pronunciation_ipa)
+          .slice(0, 1)
+          .map((meaning) => ({ text: meaning.pronunciation_ipa })),
+        meanings: [...meaningsByGrammar.entries()].map(([grammar, meanings]) => ({
+          partOfSpeech: grammar,
+          definitions: meanings.map((meaning) => ({
+            definition: meaning.definition_en,
+            example: meaning.example_en,
+            synonyms: meaning.synonyms,
+            antonyms: meaning.antonyms,
+          })),
+        })),
+      },
+    ];
   };
 
   const handleSaveWord = async (word: string) => {
@@ -2758,18 +2815,41 @@ const Article = () => {
     setIsSaving(true);
 
     try {
-      // saved_words is a text[] column; legacy array mutation becomes a
-      // read-modify-write against the list already held in component state.
-      const nextWords = savedWords.includes(word)
-        ? savedWords.filter((w) => w !== word)
-        : [...savedWords, word];
-
-      const { error } = await supabase
-        .from("users")
-        .update({ saved_words: nextWords })
-        .eq("uid", currentUser.uid);
+      const wordData = wordDetails[word];
+      if (!wordData) throw new Error("Dictionary entry is not loaded");
+      const isSaved = savedVocabulary.some(
+        (item) =>
+          item.entryId === wordData.entryId &&
+          item.meaningId === wordData.selectedMeaningId
+      );
+      const { error } = isSaved
+        ? await supabase
+            .from("user_vocabulary")
+            .delete()
+            .eq("user_id", currentUser.uid)
+            .eq("entry_id", wordData.entryId)
+            .eq("meaning_id", wordData.selectedMeaningId)
+        : await supabase.rpc("save_vocabulary_term", {
+            p_term: word,
+            p_source_article_id: articleId,
+            p_meaning_id: wordData.selectedMeaningId,
+          });
       if (error) throw error;
-      setSavedWords(nextWords);
+      setSavedVocabulary((current) =>
+        isSaved
+          ? current.filter(
+              (item) =>
+                item.entryId !== wordData.entryId ||
+                item.meaningId !== wordData.selectedMeaningId
+            )
+          : [
+              ...current,
+              {
+                entryId: wordData.entryId,
+                meaningId: wordData.selectedMeaningId,
+              },
+            ]
+      );
     } catch (err) {
       console.error("Error saving word:", err);
       alert("단어 저장 중 오류가 발생했습니다.");
@@ -2889,9 +2969,9 @@ const Article = () => {
       }));
     }
 
-    // Fetch Wiktionary data in parallel
+    // Fetch shared dictionary data in parallel.
     try {
-      const wiktionaryData = await fetchWordFromWiktionaryApi(selectedWord);
+      const wiktionaryData = await fetchWordFromDictionary(selectedWord);
       setWordDefinitionModal((prev) => ({
         ...prev,
         wiktionaryData: wiktionaryData,
@@ -2917,7 +2997,7 @@ const Article = () => {
     document.body.style.overflow = "";
   };
 
-  // Open meaning modal from a target and point, fetching AI and Wiktionary together
+  // Open meaning modal from a target and point, fetching AI and dictionary data together.
   const openMeaningFromTargetAtPoint = async (
     targetEl: HTMLElement,
     clientX: number,
@@ -2966,7 +3046,7 @@ const Article = () => {
       if (!articleId) throw new Error("Article ID is missing");
       const [aiResult, wikiResult] = await Promise.allSettled([
         getWordDefinition(selectedWord, context, articleId as string),
-        fetchWordFromWiktionaryApi(selectedWord),
+        fetchWordFromDictionary(selectedWord),
       ]);
 
       const definition =
@@ -4271,7 +4351,11 @@ const Article = () => {
                 <WordTitleRow>
                   <ModalWord>{selectedKeyword}</ModalWord>
                   {currentUser ? (
-                    savedWords.includes(selectedKeyword) ? (
+                    savedVocabulary.some(
+                      (item) =>
+                        item.entryId === selectedWordData.entryId &&
+                        item.meaningId === selectedWordData.selectedMeaningId
+                    ) ? (
                       <SavedIndicator>저장됨</SavedIndicator>
                     ) : (
                       <SaveButton
@@ -4416,12 +4500,11 @@ const Article = () => {
                   )}
 
                 {/* Wiktionary Section */}
-                {selectedWordWiktionaryData &&
-                  selectedWordWiktionaryData.length > 0 && (
+                {selectedWordData.meanings.length > 1 && (
                     <ModalSection>
                       <ModalSectionTitle>Wiktionary</ModalSectionTitle>
-                      {selectedWordWiktionaryData[0].meanings
-                        ?.slice(0, 3)
+                      {selectedWordData.meanings
+                        .slice(0, 3)
                         .map((meaning: any, idx: number) => (
                           <div key={idx} style={{ marginBottom: "1.2rem" }}>
                             <div
@@ -4433,12 +4516,10 @@ const Article = () => {
                                 textTransform: "capitalize",
                               }}
                             >
-                              {meaning.partOfSpeech}
+                              {meaning.grammar_type}
                             </div>
 
-                            {meaning.definitions &&
-                              meaning.definitions.length > 0 && (
-                                <ul
+                            <ul
                                   style={{
                                     marginTop: "0.3rem",
                                     paddingLeft: "1.2rem",
@@ -4446,11 +4527,8 @@ const Article = () => {
                                     margin: "0 0 0.8rem 0",
                                   }}
                                 >
-                                  {meaning.definitions
-                                    .slice(0, 2)
-                                    .map((def: any, defIdx: number) => (
                                       <li
-                                        key={defIdx}
+                                        key={meaning.id}
                                         style={{
                                           marginBottom: "0.6rem",
                                           fontSize: "0.95rem",
@@ -4458,8 +4536,20 @@ const Article = () => {
                                           lineHeight: "1.5",
                                         }}
                                       >
-                                        {def.definition}
-                                        {def.example && (
+                                        {meaning.definition_en}
+                                        {meaning.definition_ko && (
+                                          <div
+                                            style={{
+                                              color: "rgba(5, 5, 5, 0.72)",
+                                              marginTop: "0.3rem",
+                                              fontSize: "0.9rem",
+                                              lineHeight: "1.4",
+                                            }}
+                                          >
+                                            {meaning.definition_ko}
+                                          </div>
+                                        )}
+                                        {meaning.example_en && (
                                           <div
                                             style={{
                                               fontStyle: "italic",
@@ -4469,11 +4559,11 @@ const Article = () => {
                                               lineHeight: "1.4",
                                             }}
                                           >
-                                            e.g. "{def.example}"
+                                            e.g. "{meaning.example_en}"
                                           </div>
                                         )}
-                                        {def.synonyms &&
-                                          def.synonyms.length > 0 && (
+                                        {meaning.synonyms &&
+                                          meaning.synonyms.length > 0 && (
                                             <div
                                               style={{
                                                 fontSize: "0.85rem",
@@ -4483,11 +4573,11 @@ const Article = () => {
                                               }}
                                             >
                                               <strong>Synonyms:</strong>{" "}
-                                              {def.synonyms.join(", ")}
+                                              {meaning.synonyms.join(", ")}
                                             </div>
                                           )}
-                                        {def.antonyms &&
-                                          def.antonyms.length > 0 && (
+                                        {meaning.antonyms &&
+                                          meaning.antonyms.length > 0 && (
                                             <div
                                               style={{
                                                 fontSize: "0.85rem",
@@ -4497,45 +4587,11 @@ const Article = () => {
                                               }}
                                             >
                                               <strong>Antonyms:</strong>{" "}
-                                              {def.antonyms.join(", ")}
+                                              {meaning.antonyms.join(", ")}
                                             </div>
                                           )}
                                       </li>
-                                    ))}
                                 </ul>
-                              )}
-
-                            {/* Display meaning-level synonyms */}
-                            {meaning.synonyms &&
-                              meaning.synonyms.length > 0 && (
-                                <div
-                                  style={{
-                                    fontSize: "0.85rem",
-                                    color: "rgba(5, 5, 5, 0.72)",
-                                    marginTop: "0.3rem",
-                                    lineHeight: "1.4",
-                                  }}
-                                >
-                                  <strong>Synonyms:</strong>{" "}
-                                  {meaning.synonyms.join(", ")}
-                                </div>
-                              )}
-
-                            {/* Display meaning-level antonyms */}
-                            {meaning.antonyms &&
-                              meaning.antonyms.length > 0 && (
-                                <div
-                                  style={{
-                                    fontSize: "0.85rem",
-                                    color: "rgba(5, 5, 5, 0.72)",
-                                    marginTop: "0.3rem",
-                                    lineHeight: "1.4",
-                                  }}
-                                >
-                                  <strong>Antonyms:</strong>{" "}
-                                  {meaning.antonyms.join(", ")}
-                                </div>
-                              )}
                           </div>
                         ))}
                     </ModalSection>

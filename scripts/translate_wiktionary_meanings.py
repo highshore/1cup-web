@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Translate unfilled English Wiktionary meanings to Korean using local TranslateGemma.
+
+The worker is deliberately idempotent: it selects only rows with a null
+definition_ko and each PATCH repeats that null guard. Stop it at any time and
+run it again to continue. It uses the existing MLX TranslateGemma runner and
+never sends dictionary text to a hosted inference API.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_PIPELINE_ROOT = Path("/Users/ksk/Desktop/1cup-article-pipeline")
+DEFAULT_MODEL_CACHE = Path(
+    "/Users/ksk/.cache/huggingface/models--mlx-community--translategemma-12b-it-4bit/snapshots"
+)
+HANGUL = re.compile(r"[가-힣]")
+
+
+def load_env(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+class SupabaseRest:
+    def __init__(self, base_url: str, service_key: str) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.headers = {
+            "apikey": service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "application/json",
+        }
+
+    def request(self, method: str, path: str, params: list[tuple[str, str]], payload: Any | None = None) -> Any:
+        query = urllib.parse.urlencode(params, safe="(),:*")
+        url = f"{self.base_url}/rest/v1/{path}?{query}" if query else f"{self.base_url}/rest/v1/{path}"
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
+        request = urllib.request.Request(url, data=body, headers=self.headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                content = response.read()
+                return json.loads(content) if content else None
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Supabase {method} {path} failed: HTTP {exc.code}: {detail}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Supabase {method} {path} failed: {exc.reason}") from exc
+
+    def untranslated_meanings(self, limit: int) -> list[dict[str, Any]]:
+        result = self.request(
+            "GET",
+            "dictionary_meanings",
+            [
+                ("select", "id,definition_en,grammar_type,entry:dictionary_entries(term)"),
+                ("source", "eq.wiktionary"),
+                ("definition_ko", "is.null"),
+                ("definition_en", "not.is.null"),
+                ("order", "id.asc"),
+                ("limit", str(limit)),
+            ],
+        )
+        return result if isinstance(result, list) else []
+
+    def save_translation(self, meaning_id: str, translation: str) -> None:
+        self.request(
+            "PATCH",
+            "dictionary_meanings",
+            [("id", f"eq.{meaning_id}"), ("definition_ko", "is.null")],
+            {"definition_ko": translation, "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())},
+        )
+
+
+def write_event(path: Path, event: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def model_path(value: str | None) -> str:
+    if value:
+        return value
+    snapshots = sorted(path for path in DEFAULT_MODEL_CACHE.iterdir() if path.is_dir())
+    if not snapshots:
+        raise RuntimeError(f"No local TranslateGemma snapshot found under {DEFAULT_MODEL_CACHE}")
+    return str(snapshots[-1])
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--batch-size", type=int, default=10, help="Meanings fetched per database batch.")
+    parser.add_argument("--max-meanings", type=int, default=0, help="Stop after this many attempted meanings (0 = all).")
+    parser.add_argument("--model", help="Local TranslateGemma snapshot path.")
+    parser.add_argument("--log", type=Path, default=Path("/tmp/one-cup-wiktionary/translation.log.jsonl"))
+    parser.add_argument("--errors", type=Path, default=Path("/tmp/one-cup-wiktionary/translation.errors.jsonl"))
+    parser.add_argument("--env-file", type=Path, default=Path(".env.local"))
+    args = parser.parse_args()
+
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if args.max_meanings < 0:
+        parser.error("--max-meanings cannot be negative")
+
+    env = load_env(args.env_file)
+    base_url = env.get("NEXT_PUBLIC_SUPABASE_URL")
+    service_key = env.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not base_url or not service_key:
+        raise RuntimeError(".env.local must contain NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+
+    sys.path.insert(0, str(DEFAULT_PIPELINE_ROOT / "src"))
+    from local_translategemma.retry import RetryPolicy
+    from local_translategemma.schemas import ModelConfig, TranslationTask
+    from local_translategemma.service import TranslateGemmaService
+
+    service = TranslateGemmaService(
+        ModelConfig(model_id=model_path(args.model), offline=True, max_tokens=384, chunk_input_tokens=768)
+    )
+    service.warmup()
+    database = SupabaseRest(base_url, service_key)
+
+    attempted = succeeded = failed = 0
+    while args.max_meanings == 0 or attempted < args.max_meanings:
+        remaining = args.max_meanings - attempted if args.max_meanings else args.batch_size
+        rows = database.untranslated_meanings(min(args.batch_size, remaining))
+        if not rows:
+            break
+
+        for row in rows:
+            if args.max_meanings and attempted >= args.max_meanings:
+                break
+            attempted += 1
+            meaning_id = str(row["id"])
+            definition = str(row.get("definition_en") or "").strip()
+            entry = row.get("entry") if isinstance(row.get("entry"), dict) else {}
+            term = str(entry.get("term") or "")
+            grammar = str(row.get("grammar_type") or "")
+            try:
+                result = service.translate(
+                    TranslationTask(
+                        line_number=attempted,
+                        record_id=meaning_id,
+                        source_lang_code="en",
+                        target_lang_code="ko",
+                        text=definition,
+                        metadata={"term": term, "grammar_type": grammar},
+                    )
+                    , retry_policy=RetryPolicy()
+                )
+                translation = result.translation.strip()
+                if not translation or not HANGUL.search(translation):
+                    raise RuntimeError("TranslateGemma returned no Korean text")
+                database.save_translation(meaning_id, translation)
+                succeeded += 1
+                write_event(args.log, {
+                    "status": "ok", "id": meaning_id, "term": term, "grammar_type": grammar,
+                    "translation": translation, "elapsed_seconds": round(result.elapsed_seconds, 3),
+                })
+            except Exception as exc:  # Keep the long-running batch moving past bad rows.
+                failed += 1
+                write_event(args.errors, {
+                    "status": "error", "id": meaning_id, "term": term, "grammar_type": grammar,
+                    "definition_en": definition, "error": str(exc),
+                })
+                print(f"Translation failed for {term!r} ({meaning_id}): {exc}", file=sys.stderr, flush=True)
+            if attempted % 10 == 0:
+                print(f"Attempted {attempted:,}; translated {succeeded:,}; failed {failed:,}", flush=True)
+
+    print(json.dumps({"attempted": attempted, "translated": succeeded, "failed": failed}, ensure_ascii=False))
+    return 0 if failed == 0 else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -50,7 +50,7 @@ export default function MainLayoutWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isHomePage = pathname === "/" || pathname === "/new-home";
+  const isHomePage = pathname === "/";
   const isArticlePage = pathname.startsWith("/article/");
 
   return (

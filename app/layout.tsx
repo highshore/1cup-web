@@ -9,13 +9,13 @@ import ConditionalLayoutWrapper from "./lib/components/ConditionalLayoutWrapper"
 import ServiceErrorProvider from "./lib/components/ServiceErrorProvider";
 
 const siteUrl = "https://1cupenglish.com";
-const siteTitle = "영어 한잔 - 1 Cup English";
-const siteDescription = "통역사 출신이 개발한 비즈니스 영어 습관 형성 서비스";
-const socialImage = "/opengraph-image";
+const siteTitle = "영어 한잔 | 1 Cup English";
+const siteDescription = "Business English Community hosted in Seoul";
+const socialImage = "/images/url-share-thumbnail.jpg";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "영어 한잔 - 1 Cup English",
+  title: "영어 한잔 | 1 Cup English",
   description: siteDescription,
   icons: {
     icon: [

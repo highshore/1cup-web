@@ -126,7 +126,7 @@ Collections in use (15): `users`, `payment_orders`, `cefr`, `referral_codes`,
   or BatchGetItem if transcriptId is the key.
 
 ### Composite queries needing GSIs (already have Firestore composite indexes)
-`firestore.indexes.json` maps almost 1:1 to DynamoDB GSIs:
+`docs/migration/artifacts/legacy-firebase/firestore.indexes.json` maps almost 1:1 to DynamoDB GSIs:
 
 | Query (Firestore) | DynamoDB GSI design |
 |---|---|
