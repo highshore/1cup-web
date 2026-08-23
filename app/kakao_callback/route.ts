@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const STATE_COOKIE = "onecup-kakao-oauth-state";
 const REDIRECT_COOKIE = "onecup-kakao-oauth-redirect";
+const SUPABASE_KAKAO_CLIENT_ID = "0caeab11362abda9d367a521bd18bc3d";
 
 function safeRedirect(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
@@ -11,20 +12,17 @@ function safeRedirect(value: string | null) {
 }
 
 function getKakaoClientId() {
-  return process.env.NEXT_KAKAO_CLIENT_ID ?? process.env.KAKAO_CLIENT_ID ?? null;
+  return process.env.KAKAO_DIRECT_CLIENT_ID ?? SUPABASE_KAKAO_CLIENT_ID;
 }
 
 function getKakaoClientSecret() {
-  // Intentionally server-only. Never fall back to NEXT_PUBLIC_* for a client secret.
-  return process.env.NEXT_KAKAO_CLIENT_SECRET ?? process.env.KAKAO_CLIENT_SECRET ?? null;
+  // This must be the client secret for the SAME Kakao app as the client ID above.
+  // It is intentionally server-only and never exposed through NEXT_PUBLIC_*.
+  return process.env.KAKAO_DIRECT_CLIENT_SECRET ?? null;
 }
 
 function getKakaoRedirectUri(origin: string) {
-  return (
-    process.env.NEXT_KAKAO_REDIRECT_URI ??
-    process.env.KAKAO_REDIRECT_URI ??
-    `${origin}/kakao_callback`
-  );
+  return process.env.KAKAO_DIRECT_REDIRECT_URI ?? `${origin}/kakao_callback`;
 }
 
 function authError(origin: string, message: string) {
@@ -81,19 +79,19 @@ export async function GET(request: NextRequest) {
 
   const clientId = getKakaoClientId();
   const clientSecret = getKakaoClientSecret();
-  if (!clientId) {
-    console.error("Direct Kakao OAuth callback is missing NEXT_KAKAO_CLIENT_ID/KAKAO_CLIENT_ID");
-    return authError(origin, "카카오 로그인 설정을 확인해주세요.");
+  if (!clientSecret) {
+    console.error("Direct Kakao OAuth is missing KAKAO_DIRECT_CLIENT_SECRET");
+    return authError(origin, "카카오 로그인 서버 설정이 완료되지 않았습니다.");
   }
 
   const redirectUri = getKakaoRedirectUri(origin);
   const tokenParams = new URLSearchParams({
     grant_type: "authorization_code",
     client_id: clientId,
+    client_secret: clientSecret,
     redirect_uri: redirectUri,
     code,
   });
-  if (clientSecret) tokenParams.set("client_secret", clientSecret);
 
   let tokenData: KakaoTokenResponse;
   try {
@@ -118,9 +116,8 @@ export async function GET(request: NextRequest) {
     return authError(origin, "카카오 인증 서버에 연결하지 못했습니다. 다시 시도해주세요.");
   }
 
-  // Catch a wrong Kakao application before involving Supabase. This was the exact
-  // failure in the previous direct-OIDC experiment: Kakao issued a valid token, but
-  // its aud belonged to another Kakao REST app.
+  // Catch a wrong Kakao application before involving Supabase. The earlier direct
+  // experiment failed specifically because the ID token came from another app.
   const tokenAudience = readAudience(tokenData.id_token);
   if (!tokenAudience?.includes(clientId)) {
     console.error("Kakao ID-token audience does not match direct OAuth client", {
