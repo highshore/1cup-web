@@ -2,18 +2,21 @@
 
 import { useEffect } from "react";
 
+import { supabase } from "../lib/supabase/client";
+
 function safeRedirect(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
   return value;
 }
 
-// Keep the Kakao CTA independent from the browser-side Supabase auth client.
-// On iOS Safari/Chrome the client auth lock can stall before Supabase ever starts
-// the provider redirect. Send the browser to a same-origin route synchronously;
-// that route creates the PKCE verifier cookie server-side and redirects to Kakao.
+// iOS browsers can occasionally leave Supabase's automatic OAuth navigation in the
+// current tab after the promise resolves. Capture the Kakao CTA and make the final
+// navigation explicit while still letting Supabase generate/store the PKCE verifier.
+// Keeping this in the auth segment also makes the workaround easy to remove once the
+// upstream browser behavior is no longer relevant.
 export default function KakaoOAuthNavigationGuard() {
   useEffect(() => {
-    const handleKakaoClick = (event: MouseEvent) => {
+    const handleKakaoClick = async (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       const button = target?.closest("button");
       const kakaoImage = button?.querySelector<HTMLImageElement>(
@@ -28,12 +31,41 @@ export default function KakaoOAuthNavigationGuard() {
 
       const current = new URL(window.location.href);
       const redirectUrl = safeRedirect(current.searchParams.get("redirect"));
-      const startUrl = new URL("/auth/kakao/start", window.location.origin);
-      if (redirectUrl) startUrl.searchParams.set("redirect", redirectUrl);
+      try {
+        if (redirectUrl) {
+          try {
+            window.localStorage.setItem("returnUrl", redirectUrl);
+          } catch {
+            // OAuth can still complete when storage is restricted; the callback query
+            // carries the same return path independently.
+          }
+        }
 
-      // Native same-origin navigation is deliberately synchronous: no Supabase JS,
-      // promises, Web Locks, or storage access are allowed to block this click.
-      window.location.assign(startUrl.toString());
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "kakao",
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback${
+              redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""
+            }`,
+            scopes: "profile_nickname profile_image account_email phone_number",
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) throw error;
+        if (!data.url) throw new Error("카카오 로그인 주소를 만들지 못했습니다.");
+
+        window.location.assign(data.url);
+      } catch (error) {
+        button.dataset.oauthBusy = "false";
+        button.removeAttribute("aria-busy");
+        const message =
+          error instanceof Error ? error.message : "카카오 로그인을 시작하지 못했습니다.";
+        const retryUrl = new URL("/auth", window.location.origin);
+        if (redirectUrl) retryUrl.searchParams.set("redirect", redirectUrl);
+        retryUrl.searchParams.set("error", message);
+        window.location.assign(retryUrl.toString());
+      }
     };
 
     document.addEventListener("click", handleKakaoClick, true);
