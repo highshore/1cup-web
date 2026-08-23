@@ -35,20 +35,15 @@ const sortCelebrations = (a: Celebration, b: Celebration): number => {
   return b.createdAt.getTime() - a.createdAt.getTime();
 };
 
-// Fetch public achievements through our own server endpoint. A stale/expired
-// Supabase browser JWT must never make this public section silently disappear.
+// Fetch all celebrations (public).
 export const fetchCelebrations = async (): Promise<Celebration[]> => {
   try {
-    const response = await fetch("/api/celebrations", {
-      method: "GET",
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    if (!response.ok) throw new Error(`Achievement request failed (${response.status})`);
-    const rows = (await response.json()) as any[];
-    return (Array.isArray(rows) ? rows : []).map(rowToCelebration).sort(sortCelebrations);
+    const { data, error } = await supabase.from(TABLE_NAME).select("*");
+    if (error) throw error;
+    return (data || []).map(rowToCelebration).sort(sortCelebrations);
   } catch (error) {
     console.error("Error fetching celebrations:", error);
+    // Return empty array instead of throwing if collection doesn't exist yet.
     return [];
   }
 };
