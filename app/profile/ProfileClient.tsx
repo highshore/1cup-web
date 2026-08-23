@@ -2369,6 +2369,51 @@ const NbSubscriptionNote = styled.p<{ $highlight?: boolean }>`
   color: ${(props) => (props.$highlight ? "#050505" : "rgba(5, 5, 5, 0.6)")};
 `;
 
+const NbIdentityRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
+  font-size: 0.9rem;
+  color: #050505;
+
+  & + & {
+    border-top: 1px dashed rgba(5, 5, 5, 0.12);
+  }
+`;
+
+const NbIdentityBadge = styled.span`
+  padding: 0.2rem 0.55rem;
+  border: 2px solid #050505;
+  border-radius: 8px;
+  background: #fff3d1;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+`;
+
+const NbLinkButton = styled.button`
+  width: 100%;
+  min-height: 46px;
+  margin-top: 0.9rem;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  background: #fee500;
+  color: #3c1e1e;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
+
+  &:disabled {
+    background: #f3f4f6;
+    color: rgba(5, 5, 5, 0.4);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+`;
+
 const NbCancelFooter = styled.button`
   width: 100%;
   margin-top: 1rem;
@@ -3094,6 +3139,49 @@ export default function ProfileClient() {
     }
   };
 
+  // Supabase's own identity list, not our link table: this card is about what GoTrue
+  // will accept as a login, which is exactly what auth.identities records.
+  const [identities, setIdentities] = useState<
+    { id: string; provider: string }[]
+  >([]);
+  const [linkingIdentity, setLinkingIdentity] = useState(false);
+
+  useEffect(() => {
+    supabase.auth
+      .getUserIdentities()
+      .then(({ data }) => {
+        setIdentities(
+          (data?.identities ?? []).map((i) => ({
+            id: i.identity_id ?? i.id,
+            provider: i.provider,
+          }))
+        );
+      })
+      .catch(() => setIdentities([]));
+  }, []);
+
+  // Manual linking only — the member is already signed in, so the account is proven.
+  // Automatic linking keys on a confirmed email and none of ours were ever verified.
+  const handleLinkKakao = async () => {
+    setLinkingIdentity(true);
+    setError("");
+    try {
+      const { error: linkError } = await supabase.auth.linkIdentity({
+        provider: "kakao",
+        options: { redirectTo: `${window.location.origin}/profile` },
+      });
+      if (linkError) throw linkError;
+      // A redirect to Kakao follows; nothing after this runs on success.
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "카카오 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+      );
+      setLinkingIdentity(false);
+    }
+  };
+
   const dismissError = useCallback(() => setError(""), []);
   const dismissSuccess = useCallback(() => setSuccessMessage(null), []);
 
@@ -3734,6 +3822,41 @@ export default function ProfileClient() {
                 </NbEditActions>
               </NbInlineEditCard>
             )}
+
+            {/* 3.5 LOGIN METHODS */}
+            <NbCard>
+              <NbManageTitle>로그인 수단</NbManageTitle>
+              <NbManageSub>
+                여러 방법으로 로그인해도 멤버십과 학습 기록은 하나로 유지됩니다.
+              </NbManageSub>
+              {identities.length === 0 ? (
+                <NbIdentityRow>불러오는 중...</NbIdentityRow>
+              ) : (
+                identities.map((identity) => (
+                  <NbIdentityRow key={identity.id}>
+                    <NbIdentityBadge>
+                      {identity.provider === "kakao"
+                        ? "카카오"
+                        : identity.provider === "phone"
+                          ? "휴대폰"
+                          : identity.provider === "email"
+                            ? "이메일"
+                            : identity.provider}
+                    </NbIdentityBadge>
+                    <span>연결됨</span>
+                  </NbIdentityRow>
+                ))
+              )}
+              {!identities.some((i) => i.provider === "kakao") && (
+                <NbLinkButton
+                  type="button"
+                  onClick={handleLinkKakao}
+                  disabled={linkingIdentity}
+                >
+                  {linkingIdentity ? "카카오로 이동 중..." : "카카오 계정 연결하기"}
+                </NbLinkButton>
+              )}
+            </NbCard>
 
             {/* 4. SUBSCRIPTION INFO */}
             <NbCard>

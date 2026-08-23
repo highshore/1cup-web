@@ -125,6 +125,45 @@ export interface SessionTokens {
   refresh_token: string;
 }
 
+// Checks a code and consumes it, without minting anything. Account linking needs the
+// proof of ownership but must keep the caller's existing session — signing them in as
+// the other account is the opposite of what they asked for.
+export async function consumeCode(rawPhone: string, code: string): Promise<string> {
+  assertConfigured();
+  const local = toLocal010(rawPhone);
+  if (!isValidKoreanMobile(local)) throw new OtpError("올바른 휴대폰 번호를 입력해주세요.", 400);
+  if (!/^\d{6}$/.test(code ?? "")) throw new OtpError("인증번호가 올바르지 않습니다.", 400);
+  const db = admin();
+
+  const { data: rows, error } = await db
+    .from("phone_otp")
+    .select("id, code_hash, expires_at, attempts")
+    .eq("phone", local)
+    .is("consumed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) throw new OtpError("인증에 실패했습니다.", 500);
+  const row = rows?.[0];
+  if (!row) throw new OtpError("코드가 만료되었거나 존재하지 않습니다.", 400);
+  if (new Date(row.expires_at as string).getTime() < Date.now()) {
+    throw new OtpError("코드가 만료되었습니다. 다시 요청해주세요.", 400);
+  }
+  if ((row.attempts as number) >= MAX_ATTEMPTS) {
+    await db.from("phone_otp").update({ consumed_at: new Date().toISOString() }).eq("id", row.id);
+    throw new OtpError("시도 횟수를 초과했습니다. 다시 요청해주세요.", 429);
+  }
+  const ok = crypto.timingSafeEqual(
+    Buffer.from(row.code_hash as string),
+    Buffer.from(hashCode(code, local)),
+  );
+  if (!ok) {
+    await db.from("phone_otp").update({ attempts: (row.attempts as number) + 1 }).eq("id", row.id);
+    throw new OtpError("인증번호가 올바르지 않습니다.", 400);
+  }
+  await db.from("phone_otp").update({ consumed_at: new Date().toISOString() }).eq("id", row.id);
+  return local;
+}
+
 export async function verifyCodeAndMintSession(
   rawPhone: string,
   code: string,
