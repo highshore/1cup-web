@@ -52,11 +52,17 @@ begin
     select u.uid into matched from public.users u where u.phone = norm_phone limit 1;
   end if;
 
+  -- The number may only exist on an *earlier auth user* (migrated profiles often have
+  -- public.users.phone empty). Resolve through the link table before giving up, or we
+  -- create a duplicate profile for somebody who already has one.
+  -- a.id <> new.id matters: this trigger fires after the row is inserted, so without it
+  -- a phone signup can match its own brand-new auth user and "find" itself.
   if matched is null and norm_phone is not null then
     select i.uid into matched
-      from public.user_auth_identities i
-      join auth.users a on a.id = i.auth_id
-     where regexp_replace(regexp_replace(coalesce(a.phone, ''), '\D', '', 'g'), '^82', '0') = norm_phone
+      from auth.users a
+      join public.user_auth_identities i on i.auth_id = a.id
+     where a.id <> new.id
+       and regexp_replace(regexp_replace(coalesce(a.phone, ''), '\D', '', 'g'), '^82', '0') = norm_phone
      limit 1;
   end if;
 
