@@ -1,5 +1,5 @@
-import VocabularyClient from "./VocabularyClient";
+import VocabularyHomeClient from "./VocabularyHomeClient";
 
 export default function VocabularyPage() {
-  return <VocabularyClient />;
+  return <VocabularyHomeClient />;
 }
