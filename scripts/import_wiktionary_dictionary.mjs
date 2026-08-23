@@ -4,7 +4,9 @@
  * Stream English Wiktionary data exported by Wiktextract/Kaikki into Supabase.
  *
  * The importer is intentionally idempotent. It upserts dictionary entries by
- * normalized term and meanings by (source, source_meaning_id). It also imports
+ * normalized term and meanings by (source, source_meaning_id). It stores
+ * inflected spellings (for example, ached -> ache) as entry forms instead of
+ * creating empty entries for Wiktionary's form-of records. It also imports
  * IPA, pronunciation audio and short editor-style examples when available.
  * External quotation examples are skipped because their copyright/license may
  * differ from Wiktionary's own text.
@@ -137,11 +139,23 @@ async function flushBatch() {
   const records = batch;
   batch = [];
 
-  const entriesByNormalized = new Map();
+  const recordsWithMeanings = [];
   for (const record of records) {
     const term = String(record.word || "").trim();
     const normalized = normalize(term);
     if (!term || !normalized) continue;
+    const usableSenses = (Array.isArray(record.senses) ? record.senses : []).flatMap((sense, order) => {
+      const tags = Array.isArray(sense?.tags) ? sense.tags.filter((tag) => typeof tag === "string") : [];
+      if (tags.includes("form-of") || tags.includes("alt-of")) return [];
+      const gloss = (Array.isArray(sense?.glosses) ? sense.glosses : []).find((value) => typeof value === "string" && value.trim())
+        || (Array.isArray(sense?.raw_glosses) ? sense.raw_glosses : []).find((value) => typeof value === "string" && value.trim());
+      return gloss ? [{ sense, order, tags, gloss: gloss.trim() }] : [];
+    });
+    if (usableSenses.length) recordsWithMeanings.push({ record, term, normalized, usableSenses });
+  }
+
+  const entriesByNormalized = new Map();
+  for (const { term, normalized } of recordsWithMeanings) {
     entriesByNormalized.set(normalized, {
       term,
       normalized_term: normalized,
@@ -178,19 +192,31 @@ async function flushBatch() {
   importedEntries += entries.length;
 
   const meanings = [];
-  for (const record of records) {
-    const term = String(record.word || "").trim();
-    const entryId = entryIds.get(normalize(term));
+  const formsByEntryKey = new Map();
+  const addForm = (entryId, canonicalNormalized, form, tags, metadata) => {
+    const normalizedForm = normalize(form);
+    if (!entryId || !normalizedForm || normalizedForm === canonicalNormalized) return;
+    const key = `${entryId}\u0000${normalizedForm}`;
+    formsByEntryKey.set(key, {
+      entry_id: entryId,
+      form: String(form).trim(),
+      normalized_form: normalizedForm,
+      language_code: "en",
+      form_tags: [...new Set(tags)],
+      source: "wiktionary",
+      source_metadata: {
+        ...(sourceRevision ? { source_revision: sourceRevision } : {}),
+        ...metadata,
+      },
+      updated_at: new Date().toISOString(),
+    });
+  };
+
+  for (const { record, term, normalized, usableSenses } of recordsWithMeanings) {
+    const entryId = entryIds.get(normalized);
     if (!entryId) continue;
     const { ipa, audioUrl, audioFilename } = firstPronunciation(record.sounds);
-    const senses = Array.isArray(record.senses) ? record.senses : [];
-
-    senses.forEach((sense, order) => {
-      const tags = Array.isArray(sense?.tags) ? sense.tags.filter((tag) => typeof tag === "string") : [];
-      if (tags.includes("form-of") || tags.includes("alt-of")) return;
-      const gloss = (Array.isArray(sense?.glosses) ? sense.glosses : []).find((value) => typeof value === "string" && value.trim())
-        || (Array.isArray(sense?.raw_glosses) ? sense.raw_glosses : []).find((value) => typeof value === "string" && value.trim());
-      if (!gloss) return;
+    for (const { sense, order, tags, gloss } of usableSenses) {
       const exampleEn = firstEditorExample(sense);
       const image = firstImage(record, sense);
 
@@ -224,7 +250,48 @@ async function flushBatch() {
         is_verified: false,
         updated_at: new Date().toISOString(),
       });
+    }
+
+    for (const form of Array.isArray(record.forms) ? record.forms : []) {
+      const formText = typeof form === "string" ? form : form?.form;
+      const formTags = Array.isArray(form?.tags) ? form.tags.filter((tag) => typeof tag === "string") : [];
+      addForm(entryId, normalized, formText, formTags, { wiktextract_relation: "headword-form" });
+    }
+  }
+
+  // Form-of rows have no standalone meaning, but usually identify a canonical
+  // term explicitly. Attach them when the canonical entry has already been
+  // imported; a later full pass can safely fill any forward references.
+  const formOfAliases = [];
+  for (const record of records) {
+    const form = String(record.word || "").trim();
+    if (!form) continue;
+    for (const sense of Array.isArray(record.senses) ? record.senses : []) {
+      const tags = Array.isArray(sense?.tags) ? sense.tags.filter((tag) => typeof tag === "string") : [];
+      if (!tags.includes("form-of") && !tags.includes("alt-of")) continue;
+      for (const target of Array.isArray(sense?.form_of) ? sense.form_of : []) {
+        const targetTerm = typeof target === "string" ? target : target?.word;
+        const targetNormalized = normalize(targetTerm);
+        if (targetNormalized) formOfAliases.push({ form, tags, targetNormalized });
+      }
+    }
+  }
+  const aliasTargets = [...new Set(formOfAliases.map((alias) => alias.targetNormalized))];
+  if (aliasTargets.length) {
+    const { data: targetRows, error: targetError } = await withRetry("form target lookup", async () => {
+      const result = await supabase
+        .from("dictionary_entries")
+        .select("id,normalized_term")
+        .eq("language_code", "en")
+        .in("normalized_term", aliasTargets);
+      if (result.error) throw result.error;
+      return result;
     });
+    if (targetError) throw targetError;
+    const targetIds = new Map((targetRows || []).map((row) => [row.normalized_term, row.id]));
+    for (const alias of formOfAliases) {
+      addForm(targetIds.get(alias.targetNormalized), alias.targetNormalized, alias.form, alias.tags, { wiktextract_relation: "form-of" });
+    }
   }
 
   // Kaikki occasionally repeats a sense key within adjacent source records.
@@ -243,6 +310,16 @@ async function flushBatch() {
       if (error) throw error;
     });
     importedMeanings += uniqueMeanings.length;
+  }
+
+  const forms = [...formsByEntryKey.values()];
+  if (forms.length) {
+    await withRetry("dictionary entry forms upsert", async () => {
+      const { error } = await supabase
+        .from("dictionary_entry_forms")
+        .upsert(forms, { onConflict: "entry_id,normalized_form" });
+      if (error) throw error;
+    });
   }
 
   console.log(`Processed ${processedRecords.toLocaleString()} records; upserted ${importedEntries.toLocaleString()} entries / ${importedMeanings.toLocaleString()} meanings`);
