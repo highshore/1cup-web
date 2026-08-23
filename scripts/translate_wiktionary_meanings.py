@@ -27,6 +27,7 @@ DEFAULT_MODEL_CACHE = Path(
     "/Users/ksk/.cache/huggingface/models--mlx-community--translategemma-12b-it-4bit/snapshots"
 )
 HANGUL = re.compile(r"[가-힣]")
+ASCII_LOWER_WORD = re.compile(r"\b[a-z][a-z-]{2,}\b")
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -49,7 +50,13 @@ class SupabaseRest:
             "Content-Type": "application/json",
         }
 
-    def request(self, method: str, path: str, params: list[tuple[str, str]], payload: Any | None = None) -> Any:
+    def request(
+        self,
+        method: str,
+        path: str,
+        params: list[tuple[str, str]],
+        payload: Any | None = None,
+    ) -> Any:
         query = urllib.parse.urlencode(params, safe="(),:*")
         url = f"{self.base_url}/rest/v1/{path}?{query}" if query else f"{self.base_url}/rest/v1/{path}"
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
@@ -69,15 +76,40 @@ class SupabaseRest:
             "GET",
             "dictionary_meanings",
             [
-                ("select", "id,definition_en,grammar_type,entry:dictionary_entries(term)"),
+                (
+                    "select",
+                    "id,definition_en,grammar_type,entry:dictionary_entries(term),"
+                    "translation_failure:dictionary_translation_failures!left(meaning_id)",
+                ),
                 ("source", "eq.wiktionary"),
                 ("definition_ko", "is.null"),
                 ("definition_en", "not.is.null"),
+                ("translation_failure", "is.null"),
                 ("order", "id.asc"),
                 ("limit", str(limit)),
             ],
         )
         return result if isinstance(result, list) else []
+
+    def failed_meanings(self, limit: int) -> list[dict[str, Any]]:
+        result = self.request(
+            "GET",
+            "dictionary_translation_failures",
+            [
+                (
+                    "select",
+                    "meaning_id,meaning:dictionary_meanings!inner("
+                    "id,definition_en,grammar_type,source,definition_ko,entry:dictionary_entries(term))",
+                ),
+                ("meaning.source", "eq.wiktionary"),
+                ("meaning.definition_ko", "is.null"),
+                ("order", "last_attempt_at.asc"),
+                ("limit", str(limit)),
+            ],
+        )
+        if not isinstance(result, list):
+            return []
+        return [row["meaning"] for row in result if isinstance(row.get("meaning"), dict)]
 
     def save_translation(self, meaning_id: str, translation: str) -> None:
         self.request(
@@ -86,6 +118,70 @@ class SupabaseRest:
             [("id", f"eq.{meaning_id}"), ("definition_ko", "is.null")],
             {"definition_ko": translation, "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())},
         )
+
+    def record_failure(self, meaning_id: str, error: str) -> None:
+        self.request(
+            "POST",
+            "rpc/record_dictionary_translation_failure",
+            [],
+            {"p_meaning_id": meaning_id, "p_error": error[:4000]},
+        )
+
+    def clear_failure(self, meaning_id: str) -> None:
+        self.request("DELETE", "dictionary_translation_failures", [("meaning_id", f"eq.{meaning_id}")])
+
+    def reset_logged_translations(self, log_path: Path) -> int:
+        if not log_path.exists():
+            return 0
+        ids: list[str] = []
+        seen: set[str] = set()
+        for line in log_path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            meaning_id = event.get("id") if event.get("status") == "ok" else None
+            if isinstance(meaning_id, str) and meaning_id not in seen:
+                seen.add(meaning_id)
+                ids.append(meaning_id)
+        for start in range(0, len(ids), 100):
+            chunk = ids[start : start + 100]
+            self.request(
+                "PATCH",
+                "dictionary_meanings",
+                [("id", f"in.({','.join(chunk)})"), ("source", "eq.wiktionary")],
+                {"definition_ko": None, "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())},
+            )
+        return len(ids)
+
+
+class DictionaryTranslateGemmaService:
+    """Adds the word and part of speech to the local model's translation context."""
+
+    def __init__(self, service: Any) -> None:
+        self._service = service
+
+    def translate(self, task: Any, *, retry_policy: Any) -> Any:
+        original_build_messages = self._service.build_messages
+
+        def build_messages(context_task: Any) -> list[dict[str, Any]]:
+            term = str(context_task.metadata.get("term") or "").strip()
+            grammar = str(context_task.metadata.get("grammar_type") or "").strip()
+            context = (
+                "Translate this English dictionary sense into concise, natural Korean. "
+                "Return only the Korean definition. Do not include labels, explanations, "
+                "or English words. Preserve the meaning for the given headword and part of speech.\n\n"
+                f"Headword: {term}\nPart of speech: {grammar}\nDefinition: {context_task.text}"
+            )
+            return [{"role": "user", "content": [{
+                "type": "text", "source_lang_code": "en", "target_lang_code": "ko", "text": context,
+            }]}]
+
+        self._service.build_messages = build_messages
+        try:
+            return self._service.translate(task, retry_policy=retry_policy)
+        finally:
+            self._service.build_messages = original_build_messages
 
 
 def write_event(path: Path, event: dict[str, Any]) -> None:
@@ -111,6 +207,16 @@ def main() -> int:
     parser.add_argument("--log", type=Path, default=Path("/tmp/one-cup-wiktionary/translation.log.jsonl"))
     parser.add_argument("--errors", type=Path, default=Path("/tmp/one-cup-wiktionary/translation.errors.jsonl"))
     parser.add_argument("--env-file", type=Path, default=Path(".env.local"))
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry rows previously quarantined after a failed local translation.",
+    )
+    parser.add_argument(
+        "--reset-previous-run",
+        action="store_true",
+        help="Clear translations listed in --log so they are regenerated with contextual prompting.",
+    )
     args = parser.parse_args()
 
     if args.batch_size < 1:
@@ -129,16 +235,25 @@ def main() -> int:
     from local_translategemma.schemas import ModelConfig, TranslationTask
     from local_translategemma.service import TranslateGemmaService
 
-    service = TranslateGemmaService(
-        ModelConfig(model_id=model_path(args.model), offline=True, max_tokens=384, chunk_input_tokens=768)
+    base_service = TranslateGemmaService(
+        ModelConfig(model_id=model_path(args.model), offline=True, max_tokens=128, chunk_input_tokens=512)
     )
-    service.warmup()
+    base_service.warmup()
+    service = DictionaryTranslateGemmaService(base_service)
     database = SupabaseRest(base_url, service_key)
+
+    if args.reset_previous_run:
+        reset_count = database.reset_logged_translations(args.log)
+        print(f"Cleared {reset_count:,} prior local translations for contextual regeneration.", flush=True)
 
     attempted = succeeded = failed = 0
     while args.max_meanings == 0 or attempted < args.max_meanings:
         remaining = args.max_meanings - attempted if args.max_meanings else args.batch_size
-        rows = database.untranslated_meanings(min(args.batch_size, remaining))
+        rows = (
+            database.failed_meanings(min(args.batch_size, remaining))
+            if args.retry_failed
+            else database.untranslated_meanings(min(args.batch_size, remaining))
+        )
         if not rows:
             break
 
@@ -166,7 +281,10 @@ def main() -> int:
                 translation = result.translation.strip()
                 if not translation or not HANGUL.search(translation):
                     raise RuntimeError("TranslateGemma returned no Korean text")
+                if ASCII_LOWER_WORD.search(translation):
+                    raise RuntimeError("TranslateGemma output still contains an English word")
                 database.save_translation(meaning_id, translation)
+                database.clear_failure(meaning_id)
                 succeeded += 1
                 write_event(args.log, {
                     "status": "ok", "id": meaning_id, "term": term, "grammar_type": grammar,
@@ -174,6 +292,14 @@ def main() -> int:
                 })
             except Exception as exc:  # Keep the long-running batch moving past bad rows.
                 failed += 1
+                try:
+                    database.record_failure(meaning_id, str(exc))
+                except Exception as record_error:
+                    print(
+                        f"Could not quarantine failed translation {meaning_id}: {record_error}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                 write_event(args.errors, {
                     "status": "error", "id": meaning_id, "term": term, "grammar_type": grammar,
                     "definition_en": definition, "error": str(exc),
