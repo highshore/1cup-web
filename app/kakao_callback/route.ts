@@ -60,6 +60,7 @@ type KakaoTokenResponse = {
 };
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
