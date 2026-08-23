@@ -1,20 +1,29 @@
-// Browser-side Supabase client (replaces app/lib/firebase/firebase.ts on the client).
-// Uses @supabase/ssr so the auth session is stored in cookies and shared with the server.
+// Browser-side Supabase client. All browser traffic stays on the first-party
+// 1cupenglish.com origin and is reverse-proxied to Supabase by Next/Vercel.
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Built lazily. createBrowserClient throws when the env vars are missing, and the root
-// layout pulls this module into every page, so constructing it at import time made
-// `next build` fail while prerendering — even for pages that never touch Supabase.
-// Deferring to first use keeps the build independent of runtime secrets while still
-// failing loudly if a real request comes in without configuration.
+const PROJECT_REF = "hetiycbotgjeluteicyk";
+const AUTH_STORAGE_KEY = `sb-${PROJECT_REF}-auth-token`;
+
 let browserClient: SupabaseClient | null = null;
 
 function getBrowserClient(): SupabaseClient {
   if (!browserClient) {
+    if (typeof window === "undefined") {
+      throw new Error("The browser Supabase client can only be created in the browser.");
+    }
+
     browserClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      window.location.origin,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        // Keep the existing cookie/storage key even though the transport hostname
+        // changes from *.supabase.co to 1cupenglish.com. This keeps browser and
+        // server SSR clients on the same session instead of silently forking it.
+        auth: { storageKey: AUTH_STORAGE_KEY },
+        cookieOptions: { name: AUTH_STORAGE_KEY },
+      },
     );
   }
   return browserClient;
@@ -27,10 +36,9 @@ export const supabase = new Proxy({} as SupabaseClient, {
   },
 });
 
-// Edge Functions base URL (replaces Firebase httpsCallable region client).
-export const FUNCTIONS_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1`;
+// Edge Functions are browser-facing through the same-origin proxy as well.
+export const FUNCTIONS_URL = "/functions/v1";
 
-// Invoke a deployed Edge Function with the caller's session (replaces httpsCallable).
 export async function invokeFunction<T = unknown>(name: string, body?: unknown): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>(name, { body: body ?? {} });
   if (error) throw error;

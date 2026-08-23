@@ -11,6 +11,15 @@ const isInvalidRefreshTokenError = (error: { code?: string } | null) =>
   error?.code === "refresh_token_not_found" ||
   error?.code === "refresh_token_already_used";
 
+const SUPABASE_PROXY_PREFIXES = [
+  "/rest/v1",
+  "/auth/v1",
+  "/functions/v1",
+  "/storage/v1",
+  "/realtime/v1",
+  "/graphql/v1",
+] as const;
+
 const PUBLIC_GET_PREFIXES = [
   "/meetup",
   "/leaderboard",
@@ -21,6 +30,12 @@ const PUBLIC_GET_PREFIXES = [
   "/api/celebrations",
   "/auth",
 ] as const;
+
+function isSupabaseProxyRequest(pathname: string) {
+  return SUPABASE_PROXY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 function canSkipAuthRefresh(request: NextRequest) {
   if (request.method !== "GET" && request.method !== "HEAD") return false;
@@ -35,6 +50,9 @@ function canSkipAuthRefresh(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // These paths are transport endpoints that Next/Vercel rewrites upstream to
+  // Supabase. Never run our own auth-refresh middleware around those requests.
+  if (isSupabaseProxyRequest(request.nextUrl.pathname)) return response;
   if (canSkipAuthRefresh(request)) return response;
 
   const supabase = createServerClient(
@@ -59,11 +77,6 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // getClaims validates the JWT signature locally (after the signing key is cached)
-  // instead of making a network /auth/v1/user request for every page navigation.
-  // This matters especially when the same member is signed in on desktop + mobile:
-  // each browser keeps its own valid Supabase session and should not contend on a
-  // redundant auth-server validation request for every asset and route.
   const { error } = await supabase.auth.getClaims();
   if (isInvalidRefreshTokenError(error)) {
     const staleAuthCookies = request.cookies
@@ -86,9 +99,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Skip static images, fonts, audio and video. The previous matcher still ran
-    // auth validation for homepage/blog MP4s, creating a burst of needless /user
-    // calls during mobile sign-in and simultaneous-device browsing.
     "/((?!_next/static|_next/image|favicon.ico|images/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mp3|wav|ogg|m4a|woff|woff2|ttf|otf)$).*)",
   ],
 };
