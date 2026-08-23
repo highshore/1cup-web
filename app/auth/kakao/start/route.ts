@@ -4,6 +4,10 @@ const STATE_COOKIE = "onecup-kakao-oauth-state";
 const REDIRECT_COOKIE = "onecup-kakao-oauth-redirect";
 const OAUTH_TTL_SECONDS = 10 * 60;
 
+// Public REST API key of the Kakao application currently configured in Supabase
+// Auth. Keeping the same app preserves existing Kakao identity continuity.
+const SUPABASE_KAKAO_CLIENT_ID = "0caeab11362abda9d367a521bd18bc3d";
+
 function safeRedirect(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
   if (value.startsWith("/auth") || value.startsWith("/kakao_callback")) return "/";
@@ -11,15 +15,11 @@ function safeRedirect(value: string | null) {
 }
 
 function getKakaoClientId() {
-  return process.env.NEXT_KAKAO_CLIENT_ID ?? process.env.KAKAO_CLIENT_ID ?? null;
+  return process.env.KAKAO_DIRECT_CLIENT_ID ?? SUPABASE_KAKAO_CLIENT_ID;
 }
 
 function getKakaoRedirectUri(origin: string) {
-  return (
-    process.env.NEXT_KAKAO_REDIRECT_URI ??
-    process.env.KAKAO_REDIRECT_URI ??
-    `${origin}/kakao_callback`
-  );
+  return process.env.KAKAO_DIRECT_REDIRECT_URI ?? `${origin}/kakao_callback`;
 }
 
 export const dynamic = "force-dynamic";
@@ -27,14 +27,6 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const clientId = getKakaoClientId();
-
-  if (!clientId) {
-    console.error("Direct Kakao OAuth is missing NEXT_KAKAO_CLIENT_ID/KAKAO_CLIENT_ID");
-    const retry = new URL("/auth", origin);
-    retry.searchParams.set("error", "카카오 로그인 설정을 확인해주세요.");
-    return NextResponse.redirect(retry, 302);
-  }
-
   const redirectUri = getKakaoRedirectUri(origin);
   const target = safeRedirect(request.nextUrl.searchParams.get("redirect"));
   const state = crypto.randomUUID().replaceAll("-", "");
