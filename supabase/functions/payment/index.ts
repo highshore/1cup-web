@@ -18,7 +18,12 @@
 // phone/displayName reads are replaced with public.users.phone / public.users.display_name.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin, callerUid, hasServiceRoleAuthorization } from "../_shared/db.ts";
+import {
+  admin,
+  callerUid,
+  hasServiceRoleAuthorization,
+  recordSchedulerHeartbeat,
+} from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
 
 // -------------------------------------------------------------------
@@ -824,7 +829,32 @@ async function processRecurringPayments() {
       .lte("subscription_end_date", kstEndOfDay.toISOString());
     if (selErr) throw new Error(selErr.message);
 
-    const list = usersToRenew ?? [];
+    // A charge and the subscription_end_date that retires it are two writes. If the card
+    // is charged and the second write does not land, the member still matches the query
+    // above and a later run bills them again. Membership of today's completed recurring
+    // orders is the record that survives that gap, so consult it before charging.
+    //
+    // This is what makes a second attempt on the same day safe, and the reason billing
+    // can now retry at all.
+    const { data: chargedToday, error: chargedErr } = await a
+      .from("payment_orders")
+      .select("user_id")
+      .eq("type", "subscription_recurring")
+      .eq("status", "completed")
+      .gte("completed_at", kstStartOfDay.toISOString())
+      .lte("completed_at", kstEndOfDay.toISOString());
+    if (chargedErr) throw new Error(chargedErr.message);
+    const alreadyCharged = new Set(
+      (chargedToday ?? []).map((o) => o.user_id as string),
+    );
+
+    const all = usersToRenew ?? [];
+    const list = all.filter((u) => !alreadyCharged.has(u.uid as string));
+    if (all.length !== list.length) {
+      logInfo(
+        `Skipping ${all.length - list.length} member(s) already charged today`,
+      );
+    }
     logInfo(`Found ${list.length} subscriptions to renew`);
 
     for (const userData of list) {
@@ -1575,7 +1605,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!hasServiceRoleAuthorization(req)) {
           return json(req, { success: false, message: "Internal scheduler authorization required" }, 403);
         }
-        return json(req, await processRecurringPayments());
+        const recurringResult = await processRecurringPayments();
+        // After the run, not before: a heartbeat written on entry would keep looking
+        // healthy while the billing itself threw.
+        await recordSchedulerHeartbeat("payment.process-recurring", {
+          result: recurringResult,
+        });
+        return json(req, recurringResult);
       }
 
       case "window":

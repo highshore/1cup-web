@@ -19,7 +19,12 @@
 // "meetup-reminder"). The article-link + received_articles update logic is preserved.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin, callerUid, hasServiceRoleAuthorization } from "../_shared/db.ts";
+import {
+  admin,
+  callerUid,
+  hasServiceRoleAuthorization,
+  recordSchedulerHeartbeat,
+} from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
 
 // ---------------------------------------------------------------------------
@@ -537,15 +542,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!hasServiceRoleAuthorization(req)) {
           return json(req, { success: false, error: "Internal scheduler authorization required" }, 403);
         }
-        return json(
-          req,
-          {
-            success: true,
-            stats: await handleSendLinks(
-              body as { category?: Category; testMode?: boolean },
-            ),
-          },
+        const sendStats = await handleSendLinks(
+          body as { category?: Category; testMode?: boolean },
         );
+        // Only the scheduled run reports in. A manual test send should not make a
+        // silently broken cron look alive.
+        if (!(body as { testMode?: boolean }).testMode) {
+          await recordSchedulerHeartbeat("messaging.send-links", { stats: sendStats });
+        }
+        return json(req, { success: true, stats: sendStats });
       }
       case "gdg-members": {
         if (!(await callerHasStaffRole(req))) {
