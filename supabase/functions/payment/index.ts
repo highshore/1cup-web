@@ -18,7 +18,12 @@
 // phone/displayName reads are replaced with public.users.phone / public.users.display_name.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin, callerUid, hasServiceRoleAuthorization } from "../_shared/db.ts";
+import {
+  admin,
+  callerUid,
+  hasServiceRoleAuthorization,
+  recordSchedulerHeartbeat,
+} from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
 
 // -------------------------------------------------------------------
@@ -1575,7 +1580,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!hasServiceRoleAuthorization(req)) {
           return json(req, { success: false, message: "Internal scheduler authorization required" }, 403);
         }
-        return json(req, await processRecurringPayments());
+        const recurringResult = await processRecurringPayments();
+        // After the run, not before: a heartbeat written on entry would keep looking
+        // healthy while the billing itself threw.
+        await recordSchedulerHeartbeat("payment.process-recurring", {
+          result: recurringResult,
+        });
+        return json(req, recurringResult);
       }
 
       case "window":
