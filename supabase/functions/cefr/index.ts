@@ -18,7 +18,13 @@
 //   * OpenAI key: NEXT_OPENAI_API_KEY. Model override: CEFR_MODEL_ID.
 
 import { preflight, json } from "../_shared/cors.ts";
-import { admin, callerUid, env, hasServiceRoleAuthorization } from "../_shared/db.ts";
+import {
+  admin,
+  callerUid,
+  env,
+  hasServiceRoleAuthorization,
+  recordSchedulerHeartbeat,
+} from "../_shared/db.ts";
 import OpenAI, { toFile } from "npm:openai";
 
 type CefrLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -507,7 +513,9 @@ Deno.serve(async (req) => {
       if (!hasServiceRoleAuthorization(req)) {
         return json(req, { error: "Internal scheduler authorization required" }, 403);
       }
-      return await handlePoll(req);
+      const pollResponse = await handlePoll(req);
+      await recordSchedulerHeartbeat("cefr.poll", null, "15 minutes");
+      return pollResponse;
     }
     if (action === "start") {
       if (!(await callerUid(req))) {

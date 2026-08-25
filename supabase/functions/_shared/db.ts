@@ -35,6 +35,29 @@ export async function callerUid(req: Request): Promise<string | null> {
   return row?.uid ?? data.user.id;
 }
 
+// Reports that a scheduled action finished its work. The health check reads the absence
+// of these rather than hunting for failures: a job that is rejected, crashes or is never
+// invoked at all leaves no failure to find, but it does stop reporting in.
+//
+// Best-effort by design — a monitoring write must never be the reason a billing run or a
+// message send is considered failed.
+export async function recordSchedulerHeartbeat(
+  jobName: string,
+  detail?: Record<string, unknown>,
+  expectedInterval = "25 hours",
+): Promise<void> {
+  try {
+    const { error } = await admin().rpc("record_scheduler_heartbeat", {
+      p_job_name: jobName,
+      p_detail: detail ?? null,
+      p_expected: expectedInterval,
+    });
+    if (error) console.error("heartbeat failed:", jobName, error.message);
+  } catch (e) {
+    console.error("heartbeat threw:", jobName, e);
+  }
+}
+
 export function env(name: string): string {
   const v = Deno.env.get(name);
   if (!v) throw new Error(`missing env ${name}`);
