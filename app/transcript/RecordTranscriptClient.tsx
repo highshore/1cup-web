@@ -705,6 +705,7 @@ export default function RecordTranscriptClient() {
   // Audio recording state
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isStarting, setIsStarting] = useState<boolean>(false);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   
   // Audio storage and playback state
@@ -722,6 +723,7 @@ export default function RecordTranscriptClient() {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
+  const isRecordingRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const lastAudioSentAtRef = useRef<number>(0);
@@ -763,7 +765,6 @@ export default function RecordTranscriptClient() {
     isThinking: isCopilotThinking,
   } = useTranscriptCopilot({
     finalTranscript,
-    activePartialSegment,
     isListening: isRecording,
   });
 
@@ -873,7 +874,7 @@ export default function RecordTranscriptClient() {
       const [track] = stream.getAudioTracks();
       if (track) {
         track.onended = async () => {
-          if (!isRecording) return;
+          if (!isRecordingRef.current) return;
           try {
             const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = newStream;
@@ -885,6 +886,14 @@ export default function RecordTranscriptClient() {
             mediaRecorderRef.current = newRecorder;
             newRecorder.ondataavailable = (e) => {
               if (e.data.size > 0) recordedAudioChunksRef.current.push(e.data);
+            };
+            newRecorder.onstop = () => {
+              const audioBlob = new Blob(recordedAudioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+              const audioUrl = URL.createObjectURL(audioBlob);
+              setRecordedAudioUrl((previousUrl) => {
+                if (previousUrl) URL.revokeObjectURL(previousUrl);
+                return audioUrl;
+              });
             };
             newRecorder.start();
           } catch (reErr) {
@@ -912,7 +921,10 @@ export default function RecordTranscriptClient() {
         // Create a single audio blob from all chunks
         const audioBlob = new Blob(recordedAudioChunksRef.current, { type: 'audio/webm;codecs=opus' });
         const audioUrl = URL.createObjectURL(audioBlob);
-        setRecordedAudioUrl(audioUrl);
+        setRecordedAudioUrl((previousUrl) => {
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          return audioUrl;
+        });
       };
       
       // Start continuous recording
@@ -924,7 +936,7 @@ export default function RecordTranscriptClient() {
       console.error('Error setting up audio processing:', error);
       return false;
     }
-  }, [sendSonioxAudio, isRecording]);
+  }, [sendSonioxAudio]);
 
   // Audio player control functions
   const toggleAudioPlayback = useCallback(() => {
@@ -986,46 +998,73 @@ export default function RecordTranscriptClient() {
   // Toggle recording function
   const toggleRecording = useCallback(async () => {
     if (isRecording) {
+      if (isStopping) return;
+
       // Stop recording
+      setIsStopping(true);
+      isRecordingRef.current = false;
       setIsRecording(false);
 
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
+      try {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== 'inactive') {
+          await new Promise<void>((resolve) => {
+            const previousOnStop = recorder.onstop;
+            recorder.onstop = (event) => {
+              previousOnStop?.call(recorder, event);
+              resolve();
+            };
+            try {
+              recorder.requestData();
+              recorder.stop();
+            } catch (error) {
+              console.error('Error stopping local audio recording:', error);
+              resolve();
+            }
+          });
+        }
+        mediaRecorderRef.current = null;
 
-      if (dbRafRef.current !== null) {
-        cancelAnimationFrame(dbRafRef.current);
-        dbRafRef.current = null;
-      }
-      if (analyserNodeRef.current) {
-        analyserNodeRef.current.disconnect();
-        analyserNodeRef.current = null;
-      }
-      setLiveLevel(0);
-      setLiveDb(-100);
+        if (dbRafRef.current !== null) {
+          cancelAnimationFrame(dbRafRef.current);
+          dbRafRef.current = null;
+        }
+        if (analyserNodeRef.current) {
+          analyserNodeRef.current.disconnect();
+          analyserNodeRef.current = null;
+        }
+        setLiveLevel(0);
+        setLiveDb(-100);
 
-      if (workletNodeRef.current) {
-        workletNodeRef.current.disconnect();
-        workletNodeRef.current = null;
-      }
+        if (workletNodeRef.current) {
+          // Send the final partial PCM buffer before ending the Soniox stream.
+          workletNodeRef.current.port.postMessage({ type: 'flush' });
+          await new Promise((resolve) => setTimeout(resolve, 60));
+          workletNodeRef.current.disconnect();
+          workletNodeRef.current = null;
+        }
 
-      if (audioContextRef.current) {
-        await audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
+        if (audioContextRef.current) {
+          await audioContextRef.current.close();
+          audioContextRef.current = null;
+        }
 
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-        mediaStreamRef.current = null;
-      }
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach(track => track.stop());
+          mediaStreamRef.current = null;
+        }
 
-      await stopSoniox(true);
-      if (keepAliveIntervalRef.current) {
-        clearInterval(keepAliveIntervalRef.current);
-        keepAliveIntervalRef.current = null;
+        await stopSoniox(true);
+        if (keepAliveIntervalRef.current) {
+          clearInterval(keepAliveIntervalRef.current);
+          keepAliveIntervalRef.current = null;
+        }
+      } finally {
+        setIsStopping(false);
       }
     } else {
       // Start recording
+      if (isStarting || isStopping) return;
       if (!hasPermission) {
         alert('Microphone permission is required for transcription.');
         return;
@@ -1042,6 +1081,7 @@ export default function RecordTranscriptClient() {
         let providerStarted = await startSoniox();
         
         if (!providerStarted) {
+          isRecordingRef.current = false;
           setIsStarting(false);
           return;
         }
@@ -1049,10 +1089,12 @@ export default function RecordTranscriptClient() {
         const audioSetup = await setupAudioProcessing();
         if (!audioSetup) {
           await stopSoniox(false);
+          isRecordingRef.current = false;
           setIsStarting(false);
           return;
         }
 
+        isRecordingRef.current = true;
         setIsRecording(true);
         setIsStarting(false);
 
@@ -1077,10 +1119,11 @@ export default function RecordTranscriptClient() {
         }, 800);
       } catch (error) {
         console.error('Error starting recording:', error);
+        isRecordingRef.current = false;
         setIsStarting(false);
       }
     }
-  }, [isRecording, hasPermission, startSoniox, setupAudioProcessing, stopSoniox, isSonioxSocketOpen, sendSonioxAudio]);
+  }, [isRecording, isStarting, isStopping, hasPermission, startSoniox, setupAudioProcessing, stopSoniox, isSonioxSocketOpen, sendSonioxAudio]);
 
   // Resume AudioContext when tab becomes visible
   useEffect(() => {
@@ -1340,9 +1383,14 @@ export default function RecordTranscriptClient() {
                   <RecordButton
                     $isRecording={isRecording}
                     onClick={toggleRecording}
-                    disabled={hasPermission === false || isStarting}
+                    disabled={hasPermission === false || isStarting || isStopping}
                   >
-                    {isStarting ? (
+                    {isStopping ? (
+                      <>
+                        <PulseIcon />
+                        Stopping...
+                      </>
+                    ) : isStarting ? (
                       <>
                         <PulseIcon />
                         Starting...

@@ -3,10 +3,11 @@
 import {
   ArrowRightOnRectangleIcon,
   BellAlertIcon,
+  BookOpenIcon,
+  MicrophoneIcon,
+  WrenchScrewdriverIcon,
   UserCircleIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
@@ -16,16 +17,9 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import { supabase } from "../../../supabase/client";
 import {
   getOrCreateSystemConversation,
-  getSystemNotifications,
   getUnreadNotificationCount,
-  markNotificationRead,
 } from "../services/chat_service";
-import {
-  type ChatMessage,
-  getSystemAction,
-  getSystemTitle,
-  toChatMessage,
-} from "../types";
+import { type ChatMessage, toChatMessage } from "../types";
 
 const Wrap = styled.div`
   position: relative;
@@ -44,27 +38,16 @@ const ProfileTrigger = styled.button<{
   min-height: var(--nav-action-size);
   flex: 0 0 var(--nav-action-size);
   overflow: visible;
-  border: 2px solid
-    ${({ $active, $isTransparent }) =>
-      $active
-        ? "#22c55e"
-        : $isTransparent
-          ? "rgba(255,255,255,0.78)"
-          : "#cbd5e1"};
+  border: 2px solid ${({ $active, $isTransparent }) =>
+    $active ? "#22c55e" : $isTransparent ? "rgba(255,255,255,0.78)" : "#cbd5e1"};
   border-radius: 50%;
   background: #ffffff;
   padding: 0;
   box-shadow: ${({ $open }) => ($open ? "0 0 0 3px rgba(244,122,74,0.25)" : "none")};
   cursor: pointer;
 
-  &:hover {
-    box-shadow: 0 0 0 3px rgba(244,122,74,0.18);
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
+  &:hover { box-shadow: 0 0 0 3px rgba(244,122,74,0.18); }
+  &:focus-visible { outline: 3px solid #f47a4a; outline-offset: 2px; }
 `;
 
 const AvatarInner = styled.span`
@@ -134,29 +117,6 @@ const AccountMenu = styled.div`
   box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.92);
 `;
 
-const AccountSummary = styled.div`
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.16);
-  padding: 0.78rem 0.85rem;
-`;
-
-const AccountName = styled.div`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const AccountEmail = styled.div`
-  overflow: hidden;
-  margin-top: 0.1rem;
-  color: rgba(5, 5, 5, 0.5);
-  font-size: 0.69rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
 const MenuItem = styled.button<{ $danger?: boolean }>`
   display: flex;
   width: 100%;
@@ -174,19 +134,9 @@ const MenuItem = styled.button<{ $danger?: boolean }>`
   text-align: left;
   cursor: pointer;
 
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  &:hover {
-    background: ${({ $danger }) => ($danger ? "#fff1f0" : "#fff5ef")};
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-  }
+  &:last-child { border-bottom: 0; }
+  &:hover { background: ${({ $danger }) => ($danger ? "#fff1f0" : "#fff5ef")}; }
+  svg { width: 18px; height: 18px; flex: 0 0 18px; }
 `;
 
 const MenuLabel = styled.span`
@@ -208,140 +158,6 @@ const MenuCount = styled.span`
   font-weight: 950;
 `;
 
-const Panel = styled.section`
-  position: fixed;
-  z-index: 70;
-  top: 72px;
-  left: 50%;
-  display: flex;
-  width: min(960px, calc(100vw - 2rem));
-  max-height: calc(100dvh - 88px);
-  flex-direction: column;
-  transform: translateX(-50%);
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.92);
-
-  @media (max-width: 640px) {
-    top: 68px;
-    width: calc(100vw - 2rem);
-    max-height: calc(100dvh - 84px);
-  }
-`;
-
-const PanelHeader = styled.div`
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 2px solid #050505;
-  padding: 0.75rem 0.85rem;
-`;
-
-const PanelTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 0.9rem;
-  font-weight: 900;
-`;
-
-const CloseButton = styled.button`
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-
-  &:hover { background: #f47a4a; }
-  svg { width: 17px; height: 17px; }
-`;
-
-const NotificationList = styled.div`
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-`;
-
-const Notification = styled.article`
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.24);
-  padding: 0.85rem;
-  &:last-child { border-bottom: 0; }
-`;
-
-const NotificationHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.6rem;
-`;
-
-const NotificationBody = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.76);
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1.48;
-  white-space: pre-wrap;
-`;
-
-const NotificationTitle = styled.h3`
-  margin: 0 0 0.22rem;
-  color: #050505;
-  font-size: 0.84rem;
-  font-weight: 900;
-  line-height: 1.35;
-`;
-
-const NotificationMeta = styled.time`
-  display: block;
-  margin-top: 0.35rem;
-  color: rgba(5, 5, 5, 0.5);
-  font-size: 0.7rem;
-`;
-
-const MarkReadButton = styled.button`
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 7px;
-  background: #ffffff;
-  padding: 0.24rem 0.38rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.69rem;
-  font-weight: 800;
-  &:hover { background: #f47a4a; }
-`;
-
-const ActionLink = styled(Link)`
-  display: inline-flex;
-  margin-top: 0.52rem;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #f47a4a;
-  padding: 0.34rem 0.52rem;
-  color: #050505;
-  font-size: 0.73rem;
-  font-weight: 800;
-  text-decoration: none;
-  &:hover { background: #f88d63; }
-`;
-
-const PanelState = styled.div`
-  padding: 2.2rem 1rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.45;
-  text-align: center;
-`;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -351,10 +167,7 @@ function messageFromBroadcast(payload: unknown): ChatMessage | null {
   const direct = toChatMessage(payload.record ?? payload.new);
   if (direct) return direct;
   if (isRecord(payload.payload)) {
-    const nested = toChatMessage(
-      payload.payload.record ?? payload.payload.new ?? payload.payload,
-    );
-    if (nested) return nested;
+    return toChatMessage(payload.payload.record ?? payload.payload.new ?? payload.payload);
   }
   if (isRecord(payload.data)) {
     return toChatMessage(payload.data.record ?? payload.data.new ?? payload.data);
@@ -362,34 +175,14 @@ function messageFromBroadcast(payload: unknown): ChatMessage | null {
   return null;
 }
 
-function formatNotificationTime(value: string, locale: "en" | "ko"): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
-export default function NotificationDropdown({
-  isTransparent,
-}: {
-  isTransparent: boolean;
-}) {
+export default function NotificationDropdown({ isTransparent }: { isTransparent: boolean }) {
   const { locale, t } = useI18n();
-  const { currentUser, hasActiveSubscription, logout } = useAuth();
+  const { currentUser, hasActiveSubscription, accountStatus, logout } = useAuth();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUnavailable, setIsUnavailable] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const notificationIdsRef = useRef<Set<string>>(new Set());
 
   const labels = locale === "ko"
     ? { account: "계정 메뉴", profile: "프로필", logout: "로그아웃" }
@@ -398,51 +191,28 @@ export default function NotificationDropdown({
   const triggerLabel = unreadCount > 0
     ? `${labels.account}, ${t.chat.unreadNotifications.replace("{count}", String(unreadCount))}`
     : labels.account;
-  const avatarInitial = currentUser?.displayName?.charAt(0).toUpperCase()
-    ?? currentUser?.email?.charAt(0).toUpperCase()
-    ?? "U";
+  const avatarInitial = currentUser?.displayName?.charAt(0).toUpperCase() ?? "U";
 
-  const loadNotifications = useCallback(async () => {
-    setIsLoading(true);
-    setIsUnavailable(false);
+  const loadBadge = useCallback(async () => {
     try {
-      const systemConversationId =
-        conversationId ?? (await getOrCreateSystemConversation());
-      const [messages, count] = await Promise.all([
-        getSystemNotifications(systemConversationId),
+      const [systemConversationId, count] = await Promise.all([
+        getOrCreateSystemConversation(),
         getUnreadNotificationCount(),
       ]);
       setConversationId(systemConversationId);
-      setNotifications(messages);
-      notificationIdsRef.current = new Set(messages.map((message) => message.id));
       setUnreadCount(count);
     } catch {
-      setIsUnavailable(true);
-    } finally {
-      setIsLoading(false);
+      // Notifications are optional navbar enrichment; never block navigation.
     }
-  }, [conversationId]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadBadge() {
-      try {
-        const systemConversationId = await getOrCreateSystemConversation();
-        const count = await getUnreadNotificationCount();
-        if (!active) return;
-        setConversationId(systemConversationId);
-        setUnreadCount(count);
-      } catch {
-        // Notifications are optional navbar enrichment; never block navigation.
-      }
-    }
-    void loadBadge();
-    return () => { active = false; };
   }, []);
 
+  useEffect(() => { void loadBadge(); }, [loadBadge]);
+
   useEffect(() => {
-    if (isNotificationsOpen) void loadNotifications();
-  }, [isNotificationsOpen, loadNotifications]);
+    const refreshBadge = () => void loadBadge();
+    window.addEventListener("notifications:updated", refreshBadge);
+    return () => window.removeEventListener("notifications:updated", refreshBadge);
+  }, [loadBadge]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -456,19 +226,10 @@ export default function NotificationDropdown({
       if (disposed) return;
 
       channel = supabase
-        .channel(`conversation:${conversationId}`, { config: { private: true } })
+        .channel(`notification-badge:${conversationId}`, { config: { private: true } })
         .on("broadcast", { event: "INSERT" }, (event) => {
           const incoming = messageFromBroadcast(event.payload);
           if (incoming?.conversationId !== conversationId) return;
-          if (notificationIdsRef.current.has(incoming.id)) return;
-          notificationIdsRef.current.add(incoming.id);
-          setNotifications((current) =>
-            [...current, incoming].sort(
-              (a, b) =>
-                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                || a.id.localeCompare(b.id),
-            ),
-          );
           if (incoming.type === "system" || incoming.type === "meetup") {
             setUnreadCount((count) => count + 1);
           }
@@ -485,13 +246,11 @@ export default function NotificationDropdown({
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      if (isNotificationsOpen) setIsNotificationsOpen(false);
-      else setIsMenuOpen(false);
+      if (event.key === "Escape") setIsMenuOpen(false);
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [isNotificationsOpen]);
+  }, []);
 
   useEffect(() => {
     const closeWhenOutside = (event: PointerEvent | FocusEvent) => {
@@ -506,23 +265,6 @@ export default function NotificationDropdown({
     };
   }, []);
 
-  const handleMarkRead = async (notification: ChatMessage) => {
-    if (notification.readAt) return;
-    try {
-      await markNotificationRead(notification.id);
-      setNotifications((current) =>
-        current.map((message) =>
-          message.id === notification.id
-            ? { ...message, readAt: new Date().toISOString() }
-            : message,
-        ),
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
-    } catch {
-      setIsUnavailable(true);
-    }
-  };
-
   const handleLogout = async () => {
     setIsMenuOpen(false);
     await logout();
@@ -536,7 +278,7 @@ export default function NotificationDropdown({
         onClick={() => setIsMenuOpen((open) => !open)}
         aria-label={triggerLabel}
         aria-expanded={isMenuOpen}
-        title={currentUser?.displayName || currentUser?.email || labels.account}
+        title={currentUser?.displayName || labels.account}
         $isTransparent={isTransparent}
         $open={isMenuOpen}
         $active={hasActiveSubscription === true}
@@ -554,30 +296,26 @@ export default function NotificationDropdown({
 
       {isMenuOpen && (
         <AccountMenu role="menu" aria-label={labels.account}>
-          <AccountSummary>
-            <AccountName>{currentUser?.displayName || labels.profile}</AccountName>
-            {currentUser?.email && <AccountEmail>{currentUser.email}</AccountEmail>}
-          </AccountSummary>
-          <MenuItem
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setIsMenuOpen(false);
-              setIsNotificationsOpen(true);
-            }}
-          >
+          <MenuItem type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); router.push("/notifications"); }}>
             <BellAlertIcon />
             <MenuLabel>{t.nav.notifications}</MenuLabel>
             {unreadCount > 0 && <MenuCount>{badgeLabel}</MenuCount>}
           </MenuItem>
-          <MenuItem
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setIsMenuOpen(false);
-              router.push("/profile");
-            }}
-          >
+          <MenuItem type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); router.push("/speaking-test"); }}>
+            <MicrophoneIcon />
+            <MenuLabel>{t.nav.speakingTest}</MenuLabel>
+          </MenuItem>
+          <MenuItem type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); router.push("/vocabulary"); }}>
+            <BookOpenIcon />
+            <MenuLabel>{t.nav.vocabulary}</MenuLabel>
+          </MenuItem>
+          {accountStatus === "admin" && (
+            <MenuItem type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); router.push("/admin"); }}>
+              <WrenchScrewdriverIcon />
+              <MenuLabel>{t.nav.admin}</MenuLabel>
+            </MenuItem>
+          )}
+          <MenuItem type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); router.push("/profile"); }}>
             <UserCircleIcon />
             <MenuLabel>{labels.profile}</MenuLabel>
           </MenuItem>
@@ -586,65 +324,6 @@ export default function NotificationDropdown({
             <MenuLabel>{labels.logout}</MenuLabel>
           </MenuItem>
         </AccountMenu>
-      )}
-
-      {isNotificationsOpen && (
-        <Panel aria-label={t.nav.notifications}>
-          <PanelHeader>
-            <PanelTitle>{t.chat.notificationsTitle}</PanelTitle>
-            <CloseButton
-              type="button"
-              onClick={() => setIsNotificationsOpen(false)}
-              aria-label={t.chat.closeNotifications}
-            >
-              <XMarkIcon />
-            </CloseButton>
-          </PanelHeader>
-          {isLoading ? (
-            <PanelState>{t.chat.notificationsLoading}</PanelState>
-          ) : isUnavailable ? (
-            <PanelState>{t.chat.notificationsUnavailable}</PanelState>
-          ) : notifications.length === 0 ? (
-            <PanelState>{t.chat.notificationsEmpty}</PanelState>
-          ) : (
-            <NotificationList>
-              {notifications.map((notification) => {
-                const action = getSystemAction(notification.metadata);
-                const title = getSystemTitle(notification.metadata);
-                return (
-                  <Notification key={notification.id}>
-                    <NotificationHeader>
-                      {title && <NotificationTitle>{title}</NotificationTitle>}
-                      {!notification.readAt && (
-                        <MarkReadButton
-                          type="button"
-                          onClick={() => void handleMarkRead(notification)}
-                        >
-                          {t.chat.markRead}
-                        </MarkReadButton>
-                      )}
-                    </NotificationHeader>
-                    <NotificationBody>{notification.body}</NotificationBody>
-                    <NotificationMeta dateTime={notification.createdAt}>
-                      {formatNotificationTime(notification.createdAt, locale)}
-                    </NotificationMeta>
-                    {action && (
-                      <ActionLink
-                        href={action.url}
-                        onClick={() => {
-                          void handleMarkRead(notification);
-                          setIsNotificationsOpen(false);
-                        }}
-                      >
-                        {action.label}
-                      </ActionLink>
-                    )}
-                  </Notification>
-                );
-              })}
-            </NotificationList>
-          )}
-        </Panel>
       )}
     </Wrap>
   );

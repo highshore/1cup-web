@@ -8,6 +8,7 @@ export type GiftSendStatus =
 export interface AdminGiftRecipient {
   id: string;
   displayName: string | null;
+  photoUrl: string | null;
   maskedPhone: string | null;
   hasPhone: boolean;
 }

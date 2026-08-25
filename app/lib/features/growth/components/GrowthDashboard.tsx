@@ -6,21 +6,29 @@ import {
   ArrowPathIcon,
   CalendarDaysIcon,
   CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClipboardDocumentIcon,
   ExclamationTriangleIcon,
   PhotoIcon,
   LinkIcon,
   PlayIcon,
+  PlusIcon,
+  SparklesIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 import { useI18n } from "../../../i18n/I18nProvider";
 import {
   createMarketingTemplate,
+  deleteMarketingCronRun,
   deleteMarketingTemplate,
   ensureDefaultMarketingTemplate,
   fetchMarketingCronRuns,
   fetchMarketingCronSettings,
   fetchMarketingTemplates,
+  MARKETING_RUN_PAGE_SIZE,
+  generateMarketingTemplate,
   runMarketingCronNow,
   saveMarketingTemplateSchedule,
   subscribeToMarketingCronRuns,
@@ -248,6 +256,12 @@ const TextArea = styled.textarea`
 const TemplatePicker = styled.div`
   display: grid;
   grid-column: 1 / -1;
+  gap: 8px;
+`;
+
+const TemplatePickerActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 `;
 
@@ -556,6 +570,13 @@ const RunTop = styled.div`
   padding: 18px 18px 14px;
 `;
 
+const RunTopActions = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+`;
+
 const RunLabel = styled.div`
   display: flex;
   align-items: center;
@@ -636,7 +657,7 @@ const InlineActions = styled.div`
   gap: 8px;
 `;
 
-const SmallButton = styled.button`
+const SmallButton = styled.button<{ $danger?: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -644,15 +665,15 @@ const SmallButton = styled.button`
   border: 1.5px solid #050505;
   border-radius: 999px;
   padding: 5px 9px;
-  background: #ffffff;
-  color: #050505;
+  background: ${({ $danger }) => ($danger ? "#fff1f0" : "#ffffff")};
+  color: ${({ $danger }) => ($danger ? "#9d1c10" : "#050505")};
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   font-weight: 900;
 
   &:hover:not(:disabled) {
-    background: #fff1e9;
+    background: ${({ $danger }) => ($danger ? "#fee2e2" : "#fff1e9")};
   }
 
   &:disabled {
@@ -774,6 +795,13 @@ const Empty = styled.div`
   text-align: center;
 `;
 
+const RunListFooter = styled.div`
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  padding: 4px;
+`;
+
 const Loading = styled.div`
   display: flex;
   align-items: center;
@@ -801,18 +829,26 @@ export default function GrowthDashboard() {
     toDraft(DEFAULT_MARKETING_CRON_SETTINGS)
   );
   const [runs, setRuns] = useState<MarketingCronRun[]>([]);
+  const [hasMoreRuns, setHasMoreRuns] = useState(false);
+  const [loadingMoreRuns, setLoadingMoreRuns] = useState(false);
   const [templates, setTemplates] = useState<MarketingTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [runningNow, setRunningNow] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [aiBrief, setAiBrief] = useState("");
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [copiedRunId, setCopiedRunId] = useState<string | null>(null);
+  const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(() => new Set());
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const moreRunsRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRunsRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -823,7 +859,7 @@ export default function GrowthDashboard() {
       } catch (error) {
         console.error("Unable to ensure the default Gopas template:", error);
       }
-      const [settings, nextRuns, nextTemplates] = await Promise.all([
+      const [settings, nextRunPage, nextTemplates] = await Promise.all([
         fetchMarketingCronSettings(),
         fetchMarketingCronRuns(),
         fetchMarketingTemplates(),
@@ -850,15 +886,20 @@ export default function GrowthDashboard() {
             }
           : toDraft(settings)
       );
-      setRuns(nextRuns);
+      setRuns(nextRunPage.runs);
+      setHasMoreRuns(nextRunPage.hasMore);
       setTemplates(nextTemplates);
       setLoading(false);
     };
 
     void load();
-    const unsubscribe = subscribeToMarketingCronRuns((nextRuns) => {
+    const unsubscribe = subscribeToMarketingCronRuns((nextRunPage) => {
       if (mounted) {
-        setRuns(nextRuns);
+        setRuns((current) => {
+          const refreshedIds = new Set(nextRunPage.runs.map((run) => run.id));
+          return [...nextRunPage.runs, ...current.filter((run) => !refreshedIds.has(run.id))];
+        });
+        setHasMoreRuns(nextRunPage.hasMore);
         setLoading(false);
       }
     });
@@ -872,6 +913,39 @@ export default function GrowthDashboard() {
       unsubscribeTemplates();
     };
   }, []);
+
+  const loadMoreRuns = async () => {
+    if (loadingMoreRunsRef.current || !hasMoreRuns) return;
+    loadingMoreRunsRef.current = true;
+    setLoadingMoreRuns(true);
+    try {
+      const nextPage = await fetchMarketingCronRuns(runs.length, MARKETING_RUN_PAGE_SIZE);
+      setRuns((current) => {
+        const existing = new Set(current.map((run) => run.id));
+        return [...current, ...nextPage.runs.filter((run) => !existing.has(run.id))];
+      });
+      setHasMoreRuns(nextPage.hasMore);
+    } catch (error) {
+      console.error("Unable to load more marketing runs:", error);
+      setMessage({ text: marketing.loadMoreRunsError, error: true });
+    } finally {
+      loadingMoreRunsRef.current = false;
+      setLoadingMoreRuns(false);
+    }
+  };
+
+  useEffect(() => {
+    const target = moreRunsRef.current;
+    if (!target || !hasMoreRuns) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMoreRuns();
+      },
+      { rootMargin: "360px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMoreRuns, runs.length]);
 
   const formatter = useMemo(
     () =>
@@ -914,6 +988,16 @@ export default function GrowthDashboard() {
           }
         : { ...current, templateId: "" }
     );
+  };
+
+  const startNewTemplate = () => {
+    setDraft({
+      ...toDraft(DEFAULT_MARKETING_CRON_SETTINGS),
+      destinationUrl: draft.destinationUrl || DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
+    });
+    setTemplateName("");
+    setAiBrief("");
+    setMessage(null);
   };
 
   const toggleWeekday = (day: number) => {
@@ -1047,6 +1131,39 @@ export default function GrowthDashboard() {
     }
   };
 
+  const handleGenerateTemplate = async () => {
+    if (!aiBrief.trim() || !draft.destinationUrl.trim()) {
+      setMessage({ text: marketing.aiTemplateError, error: true });
+      return;
+    }
+    setGeneratingTemplate(true);
+    setMessage(null);
+    try {
+      const generated = await generateMarketingTemplate({
+        brief: aiBrief,
+        destinationUrl: draft.destinationUrl,
+      });
+      setTemplateName(generated.name);
+      setDraft((current) => ({
+        ...current,
+        templateId: "",
+        title: generated.title,
+        copy: generated.copy,
+        callToAction: generated.callToAction,
+        schedule: generated.schedule,
+        // A generated draft never activates a schedule until the admin explicitly
+        // turns the toggle on before saving it as a template.
+        enabled: false,
+      }));
+      setMessage({ text: marketing.aiDraftReady });
+    } catch (error) {
+      console.error("Unable to generate marketing template:", error);
+      setMessage({ text: marketing.aiTemplateError, error: true });
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  };
+
   const handleDeleteTemplate = async () => {
     if (!draft.templateId || !window.confirm(marketing.deleteTemplateConfirm)) return;
     setDeletingTemplate(true);
@@ -1062,6 +1179,22 @@ export default function GrowthDashboard() {
     }
   };
 
+  const handleDeleteRun = async (runId: string) => {
+    if (!window.confirm(marketing.deleteRunConfirm)) return;
+    setDeletingRunId(runId);
+    setMessage(null);
+    try {
+      await deleteMarketingCronRun(runId);
+      setRuns((current) => current.filter((run) => run.id !== runId));
+      setMessage({ text: marketing.recordDeleted });
+    } catch (error) {
+      console.error("Unable to delete marketing run:", error);
+      setMessage({ text: marketing.recordDeleteError, error: true });
+    } finally {
+      setDeletingRunId(null);
+    }
+  };
+
   const handleRunNow = async () => {
     if (!draft.templateId) {
       setMessage({ text: marketing.runNowError, error: true });
@@ -1071,8 +1204,9 @@ export default function GrowthDashboard() {
     setMessage(null);
     try {
       await runMarketingCronNow(draft.templateId);
-      const nextRuns = await fetchMarketingCronRuns();
-      setRuns(nextRuns);
+      const nextRunPage = await fetchMarketingCronRuns();
+      setRuns(nextRunPage.runs);
+      setHasMoreRuns(nextRunPage.hasMore);
     } catch (error) {
       console.error("Unable to start marketing cron run:", error);
       setMessage({ text: marketing.runNowError, error: true });
@@ -1087,7 +1221,10 @@ export default function GrowthDashboard() {
       const invisibleMarker = run.hiddenPostId
         ? "\u2063" + zeroWidthMarker(run.hiddenPostId)
         : "";
-      await copyText(`${run.postCopy}\n\n${run.trackingUrl}${invisibleMarker}`);
+      const trackingSuffix = run.postCopy.includes(run.trackingUrl)
+        ? ""
+        : `\n\n${run.trackingUrl}`;
+      await copyText(`${run.postCopy}${trackingSuffix}${invisibleMarker}`);
       setCopiedRunId(run.id);
       window.setTimeout(() => setCopiedRunId(null), 1800);
     } catch (error) {
@@ -1156,6 +1293,31 @@ export default function GrowthDashboard() {
                   ))}
                 </Select>
               </CompactField>
+              <TemplatePickerActions>
+                <SmallButton type="button" onClick={startNewTemplate}>
+                  <PlusIcon width={15} /> {marketing.newTemplate}
+                </SmallButton>
+              </TemplatePickerActions>
+              <CompactField>
+                {marketing.aiTemplateBrief}
+                <TextArea
+                  value={aiBrief}
+                  maxLength={2000}
+                  placeholder={marketing.aiTemplateBriefPlaceholder}
+                  onChange={(event) => setAiBrief(event.target.value)}
+                />
+                <FieldHint>{marketing.aiTemplateDescription}</FieldHint>
+              </CompactField>
+              <TemplatePickerActions>
+                <SmallButton
+                  type="button"
+                  disabled={generatingTemplate}
+                  onClick={() => void handleGenerateTemplate()}
+                >
+                  {generatingTemplate ? <ArrowPathIcon width={15} /> : <SparklesIcon width={15} />}
+                  {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
+                </SmallButton>
+              </TemplatePickerActions>
             </TemplatePicker>
             <SchedulePanel>
               <ScheduleHeading>
@@ -1328,7 +1490,7 @@ export default function GrowthDashboard() {
                   onClick={() => setTemplateDialogOpen(true)}
                 >
                   <CheckIcon width={14} />
-                  {marketing.saveTemplateChanges}
+                  {draft.templateId ? marketing.saveTemplateChanges : marketing.saveTemplate}
                 </SmallButton>
               )}
               {draft.templateId && (
@@ -1430,6 +1592,10 @@ export default function GrowthDashboard() {
           {runs.map((run) => {
             const date = run.completedAt || run.startedAt || run.scheduledFor;
             const displayTitle = run.postTitle || marketing.koreapas;
+            const isExpanded = expandedRunIds.has(run.id);
+            const ctr = run.performance.impressions
+              ? `${((run.performance.clicks / run.performance.impressions) * 100).toFixed(1)}%`
+              : "—";
             return (
               <RunCard key={run.id}>
                 <RunTop>
@@ -1442,7 +1608,25 @@ export default function GrowthDashboard() {
                     </RunLabel>
                     <RunTitle>{displayTitle}</RunTitle>
                   </div>
-                  <Status $status={run.status}>{getStatusLabel(run.status)}</Status>
+                  <RunTopActions>
+                    <SmallButton
+                      type="button"
+                      onClick={() =>
+                        setExpandedRunIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(run.id)) next.delete(run.id);
+                          else next.add(run.id);
+                          return next;
+                        })
+                      }
+                      aria-expanded={isExpanded}
+                      aria-controls={`marketing-run-${run.id}`}
+                    >
+                      {isExpanded ? <ChevronUpIcon width={15} /> : <ChevronDownIcon width={15} />}
+                      {isExpanded ? marketing.collapseRun : marketing.expandRun}
+                    </SmallButton>
+                    <Status $status={run.status}>{getStatusLabel(run.status)}</Status>
+                  </RunTopActions>
                 </RunTop>
                 <RunMeta>
                   <span>{formatTemplate(marketing.scheduledFor, dateLabel(run.scheduledFor))}</span>
@@ -1453,7 +1637,8 @@ export default function GrowthDashboard() {
                     <span>{formatTemplate(marketing.started, dateLabel(run.startedAt))}</span>
                   )}
                 </RunMeta>
-                <Content>
+                {isExpanded && (
+                <Content id={`marketing-run-${run.id}`}>
                   {run.status === "awaitingPublisher" && (
                     <Notice>
                       <ExclamationTriangleIcon width={16} />
@@ -1503,13 +1688,25 @@ export default function GrowthDashboard() {
                       </Tracking>
                     </>
                   )}
+                  <InlineActions>
+                    <SmallButton
+                      type="button"
+                      $danger
+                      disabled={deletingRunId === run.id}
+                      onClick={() => void handleDeleteRun(run.id)}
+                    >
+                      <TrashIcon width={15} />
+                      {deletingRunId === run.id ? marketing.deletingRecord : marketing.deleteRun}
+                    </SmallButton>
+                  </InlineActions>
                   {date && (
                     <div>
                       <TrackingLabel>{marketing.performance}</TrackingLabel>
                       <MetricsGrid>
                         <Metric><MetricLabel>{marketing.trackedPosts}</MetricLabel><MetricValue>{run.performance.trackedPosts}</MetricValue></Metric>
-                        <Metric><MetricLabel>{marketing.impressions}</MetricLabel><MetricValue>{run.performance.impressions}</MetricValue></Metric>
+                        <Metric><MetricLabel>{marketing.views}</MetricLabel><MetricValue>{run.performance.impressions}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.clicks}</MetricLabel><MetricValue>{run.performance.clicks}</MetricValue></Metric>
+                        <Metric><MetricLabel>{marketing.ctr}</MetricLabel><MetricValue>{ctr}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.signups}</MetricLabel><MetricValue>{run.performance.signups}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.likes}</MetricLabel><MetricValue>{run.performance.likes}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.comments}</MetricLabel><MetricValue>{run.performance.comments}</MetricValue></Metric>
@@ -1517,10 +1714,16 @@ export default function GrowthDashboard() {
                     </div>
                   )}
                 </Content>
+                )}
               </RunCard>
             );
           })}
         </RunList>
+      )}
+      {hasMoreRuns && (
+        <RunListFooter ref={moreRunsRef} aria-live="polite">
+          {loadingMoreRuns && <Loading><ArrowPathIcon width={18} /> {marketing.loadingMoreRuns}</Loading>}
+        </RunListFooter>
       )}
     </>
   );

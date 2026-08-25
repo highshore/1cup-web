@@ -18,7 +18,7 @@ const CONFIG_ROW = "settings";
 const RUNS = "marketing_cron_runs";
 const TEMPLATES = "marketing_templates";
 
-const RUN_LIMIT = 50;
+export const MARKETING_RUN_PAGE_SIZE = 10;
 const TEMPLATE_LIMIT = 100;
 
 const toDate = (value: unknown): Date | null => {
@@ -139,14 +139,26 @@ export const fetchMarketingCronSettings = async (): Promise<MarketingCronSetting
   return toSettings(data as Record<string, unknown> | null);
 };
 
-export const fetchMarketingCronRuns = async (): Promise<MarketingCronRun[]> => {
+export type MarketingCronRunPage = {
+  runs: MarketingCronRun[];
+  hasMore: boolean;
+};
+
+export const fetchMarketingCronRuns = async (
+  offset = 0,
+  pageSize = MARKETING_RUN_PAGE_SIZE,
+): Promise<MarketingCronRunPage> => {
   const { data, error } = await supabase
     .from(RUNS)
     .select("*")
     .order("scheduled_for", { ascending: false, nullsFirst: false })
-    .limit(RUN_LIMIT);
+    .order("id", { ascending: false })
+    // Fetch a probe row so the dashboard can accurately tell whether there is
+    // another page without issuing an expensive count query.
+    .range(offset, offset + pageSize);
   if (error) throw error;
-  return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
+  const rows = (data ?? []).map((row) => toRun(row as Record<string, unknown>));
+  return { runs: rows.slice(0, pageSize), hasMore: rows.length > pageSize };
 };
 
 export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> => {
@@ -164,8 +176,8 @@ export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> =>
 // it keeps the ordering identical to the initial load.
 const subscribeToTable = <T>(
   table: string,
-  load: () => Promise<T[]>,
-  onChange: (rows: T[]) => void,
+  load: () => Promise<T>,
+  onChange: (value: T) => void,
 ): (() => void) => {
   let cancelled = false;
   const push = () => {
@@ -187,7 +199,7 @@ const subscribeToTable = <T>(
 };
 
 export const subscribeToMarketingCronRuns = (
-  onChange: (runs: MarketingCronRun[]) => void,
+  onChange: (page: MarketingCronRunPage) => void,
 ): (() => void) => subscribeToTable(RUNS, fetchMarketingCronRuns, onChange);
 
 export const subscribeToMarketingTemplates = (
@@ -230,6 +242,28 @@ export const ensureDefaultMarketingTemplate = async (): Promise<string> => {
 
 export const deleteMarketingTemplate = async (templateId: string): Promise<void> => {
   await invokeFunction("marketing", { action: "delete-template", templateId });
+};
+
+export const deleteMarketingCronRun = async (runId: string): Promise<void> => {
+  await invokeFunction("marketing", { action: "delete-run", runId });
+};
+
+export type GeneratedMarketingTemplate = {
+  name: string;
+  title: string;
+  copy: string;
+  callToAction: string;
+  schedule: MarketingCronSchedule;
+};
+
+export const generateMarketingTemplate = async (input: {
+  brief: string;
+  destinationUrl: string;
+}): Promise<GeneratedMarketingTemplate> => {
+  return invokeFunction<GeneratedMarketingTemplate>("marketing", {
+    action: "generate-template",
+    ...input,
+  });
 };
 
 export const runMarketingCronNow = async (templateId: string): Promise<void> => {

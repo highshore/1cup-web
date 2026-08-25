@@ -72,7 +72,20 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
   const socketRef = useRef<WebSocket | null>(null);
   const isSocketOpenRef = useRef(false);
   const activePartialSegmentRef = useRef<SonioxResult[]>([]);
+  const finalTranscriptRef = useRef<SonioxResult[]>([]);
   const lastSpeakerRef = useRef("UU");
+  const finishStreamRef = useRef<(() => void) | null>(null);
+  const finishTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const finishStream = useCallback(() => {
+    if (finishTimeoutRef.current) {
+      clearTimeout(finishTimeoutRef.current);
+      finishTimeoutRef.current = null;
+    }
+    const resolve = finishStreamRef.current;
+    finishStreamRef.current = null;
+    resolve?.();
+  }, []);
 
   useEffect(() => {
     isSocketOpenRef.current = isSonioxSocketOpen;
@@ -133,40 +146,53 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
       if (data.error_code) {
         setSonioxError(`Soniox API Error: ${data.error_code} - ${data.error_message}`);
         setIsSonioxSocketOpen(false);
+        isSocketOpenRef.current = false;
         return;
       }
 
-      if (data.tokens && !isPaused) {
+      if (data.tokens) {
         const finalTokens = data.tokens.filter((token) => token.is_final);
         const partialTokens = data.tokens.filter((token) => !token.is_final);
 
         const finalizedResults = convertTokensToResults(finalTokens);
         if (finalizedResults.length > 0) {
-          setFinalTranscript((prevFinal) => [...prevFinal, ...finalizedResults]);
+          setFinalTranscript((prevFinal) => {
+            const nextFinal = [...prevFinal, ...finalizedResults];
+            finalTranscriptRef.current = nextFinal;
+            return nextFinal;
+          });
         }
 
+        // A pause can happen while the provider is finalizing the sentence that
+        // was spoken immediately before it. Keep those final tokens; timestamp
+        // filtering in the transcript UI still removes audio from the pause.
         setActivePartialSegment(
-          convertTokensToResults(partialTokens).map((result) => ({
-            ...result,
-            isPartial: true,
-          }))
+          isPaused
+            ? []
+            : convertTokensToResults(partialTokens).map((result) => ({
+                ...result,
+                isPartial: true,
+              }))
         );
       }
 
       if (data.finished) {
         setActivePartialSegment([]);
         setIsSonioxSocketOpen(false);
+        isSocketOpenRef.current = false;
+        socketRef.current?.close();
+        finishStream();
       }
     },
-    [convertTokensToResults, isPausedRef]
+    [convertTokensToResults, finishStream, isPausedRef]
   );
 
   const setSavedTranscript = useCallback((savedData: SonioxResult[]) => {
-    setFinalTranscript(
-      savedData.filter(
-        (result) => !isControlToken(result.alternatives?.[0]?.content)
-      )
+    const filteredSavedData = savedData.filter(
+      (result) => !isControlToken(result.alternatives?.[0]?.content)
     );
+    finalTranscriptRef.current = filteredSavedData;
+    setFinalTranscript(filteredSavedData);
     setActivePartialSegment([]);
   }, []);
 
@@ -194,17 +220,23 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
             socket.send(
               JSON.stringify({
                 api_key: apiKey,
-                model: "stt-rt-v4",
+                // v5 supports diarization, endpoint tuning, and structured context.
+                model: "stt-rt-v5",
                 audio_format: "pcm_f32le",
                 sample_rate: 16000,
                 num_channels: 1,
+                language_hints: ["en", "ko"],
                 enable_speaker_diarization: true,
                 enable_language_identification: true,
                 enable_endpoint_detection: true,
-                max_endpoint_delay_ms: 1200,
+                // A short, but conversational, delay lets the copilot respond at
+                // a natural turn boundary without clipping a speaker mid-thought.
+                max_endpoint_delay_ms: 1100,
+                endpoint_sensitivity: 0.3,
                 context: terms?.length ? { terms } : undefined,
               })
             );
+            isSocketOpenRef.current = true;
             setIsSonioxSocketOpen(true);
             resolve();
           };
@@ -214,21 +246,28 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
           };
         });
 
-        socket.onclose = () => setIsSonioxSocketOpen(false);
+        socket.onclose = () => {
+          isSocketOpenRef.current = false;
+          setIsSonioxSocketOpen(false);
+          finishStream();
+        };
         socket.onerror = () => {
+          isSocketOpenRef.current = false;
           setIsSonioxSocketOpen(false);
           setSonioxError("Soniox WebSocket connection error.");
+          finishStream();
         };
 
         return true;
       } catch (err: any) {
         console.error("Error starting Soniox:", err);
         setSonioxError(err.message || "Failed to start Soniox.");
+        isSocketOpenRef.current = false;
         setIsSonioxSocketOpen(false);
         return false;
       }
     },
-    [handleMessage]
+    [finishStream, handleMessage]
   );
 
   const sendSonioxAudio = useCallback((audioData: ArrayBuffer) => {
@@ -248,17 +287,30 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       try {
         if (sendEndOfStreamCmd) {
+          const streamFinished = new Promise<void>((resolve) => {
+            finishStreamRef.current = resolve;
+            // Do not block a stopped UI forever if the provider never returns its
+            // final message. The socket is still closed to release the mic session.
+            finishTimeoutRef.current = setTimeout(() => {
+              socket.close();
+              finishStream();
+            }, 3000);
+          });
           socket.send(new ArrayBuffer(0));
+          await streamFinished;
         } else {
           socket.close();
+          finishStream();
         }
       } catch {
         setSonioxError("Error stopping Soniox recognition.");
+        socket.close();
+        finishStream();
       }
     }
 
     if (!sendEndOfStreamCmd) setActivePartialSegment([]);
-  }, []);
+  }, [finishStream]);
 
   useEffect(() => {
     return () => {
@@ -266,8 +318,9 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close();
       }
+      finishStream();
     };
-  }, []);
+  }, [finishStream]);
 
   return {
     sonioxResults: {
@@ -280,5 +333,6 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
     stopSoniox,
     sendSonioxAudio,
     setSavedTranscript,
+    getFinalTranscript: () => finalTranscriptRef.current,
   };
 };

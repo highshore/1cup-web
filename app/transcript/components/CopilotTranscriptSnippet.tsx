@@ -70,15 +70,6 @@ const Summary = styled.p`
   margin: 0;
 `;
 
-const List = styled.ul`
-  margin: 0.55rem 0 0;
-  padding-left: 1rem;
-
-  li + li {
-    margin-top: 0.3rem;
-  }
-`;
-
 const TypingDots = styled.span`
   display: inline-flex;
   gap: 0.18rem;
@@ -121,6 +112,9 @@ export default function CopilotTranscriptSnippet({
               : message?.reason === "turn-switch"
                 ? "turn switch"
                 : "intervention"}
+            {!isThinking && message?.action?.type !== "none"
+              ? ` · ${message.action.label}`
+              : ""}
           </Meta>
         </HeadRow>
         <Body>
@@ -135,13 +129,11 @@ export default function CopilotTranscriptSnippet({
             </Summary>
           ) : (
             <>
-              <Summary>{message?.summary}</Summary>
-              {message?.items && message.items.length > 0 && (
-                <List>
-                  {message.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </List>
+              <Summary>
+                {message?.error || message?.action?.message || message?.items?.[0]}
+              </Summary>
+              {message?.action?.type === "speech_correction" && message.action.replacement && (
+                <Summary>Try: {message.action.replacement}</Summary>
               )}
             </>
           )}

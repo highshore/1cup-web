@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
-  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   NewspaperIcon,
   TrophyIcon,
@@ -57,8 +56,8 @@ const NavTrack = styled.div`
   transition: min-height 140ms ease;
 
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     padding: 0 ${appLayout.pageGutterMobile};
   }
 
@@ -79,6 +78,11 @@ const BrandButton = styled.button`
   padding: 4px 0;
   cursor: pointer;
   &:hover { opacity: 0.82; }
+
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
+    grid-column: 2;
+    justify-self: center;
+  }
 `;
 
 const LogoImage = styled.img`
@@ -130,7 +134,10 @@ const RightActions = styled.div`
   justify-self: end;
   gap: 4px;
   min-width: 0;
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { margin-left: auto; }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
+    grid-column: 3;
+    margin-left: auto;
+  }
 `;
 
 const LanguageButton = styled.button<{ $isTransparent: boolean }>`
@@ -204,7 +211,11 @@ const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
   cursor: pointer;
   &:hover { background: ${({ $isTransparent }) => $isTransparent ? "rgba(255,255,255,0.14)" : "#f1f5f9"}; }
   svg { width: 20px; height: 20px; }
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: inline-flex; }
+  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
+    display: inline-flex;
+    grid-column: 1;
+    justify-self: start;
+  }
 `;
 
 const MobileMenu = styled.div`
@@ -274,7 +285,7 @@ const NewNavbar: React.FC = () => {
   const { locale, setLocale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, logout } = useAuth();
+  const { currentUser } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const isTransparent = pathname === "/" && !isScrolled;
   const logoSrc = isTransparent
@@ -306,18 +317,6 @@ const NewNavbar: React.FC = () => {
     handleNavigate(`/auth?redirect=${encodeURIComponent(safeReturnUrl)}`);
   };
 
-  const handleProfileNav = () => handleNavigate("/profile");
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setIsMobileMenuOpen(false);
-      router.push("/");
-    } catch (error) {
-      console.error("Failed to logout:", error);
-    }
-  };
-
   const isActivePath = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);
 
@@ -327,6 +326,14 @@ const NewNavbar: React.FC = () => {
         <BrandButton onClick={() => handleNavigate("/")} aria-label="Home">
           <LogoImage src={logoSrc} alt="1 Cup English" />
         </BrandButton>
+
+        <MobileMenuButton
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
+          $isTransparent={isTransparent}
+        >
+          {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
+        </MobileMenuButton>
 
         <NavLinks>
           {NAV_ITEMS.map((item) => {
@@ -343,16 +350,6 @@ const NewNavbar: React.FC = () => {
               </NavLinkButton>
             );
           })}
-          {isLoggedIn && (
-            <NavLinkButton
-              onClick={() => handleNavigate("/vocabulary")}
-              $active={isActivePath("/vocabulary")}
-              $isTransparent={isTransparent}
-            >
-              <BookOpenIcon />
-              {locale === "en" ? "Vocabulary" : "단어장"}
-            </NavLinkButton>
-          )}
         </NavLinks>
 
         <RightActions>
@@ -376,13 +373,6 @@ const NewNavbar: React.FC = () => {
             </JoinButton>
           )}
 
-          <MobileMenuButton
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
-            $isTransparent={isTransparent}
-          >
-            {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
-          </MobileMenuButton>
         </RightActions>
 
         {isMobileMenuOpen && (
@@ -401,27 +391,7 @@ const NewNavbar: React.FC = () => {
               );
             })}
 
-            {isLoggedIn ? (
-              <>
-                <MobileNavButton
-                  onClick={() => handleNavigate("/vocabulary")}
-                  $active={isActivePath("/vocabulary")}
-                >
-                  <BookOpenIcon />
-                  {locale === "en" ? "Vocabulary" : "단어장"}
-                </MobileNavButton>
-                <MobileNavButton
-                  onClick={handleProfileNav}
-                  $active={isActivePath("/profile")}
-                >
-                  <UserCircleIcon />
-                  {locale === "en" ? "My Account" : "내 계정"}
-                </MobileNavButton>
-                <MobileJoinButton onClick={handleLogout}>
-                  {locale === "en" ? "Logout" : "로그아웃"}
-                </MobileJoinButton>
-              </>
-            ) : (
+            {!isLoggedIn && (
               <MobileJoinButton onClick={handleJoin}>{t.nav.join}</MobileJoinButton>
             )}
           </MobileMenu>

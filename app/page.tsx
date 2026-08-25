@@ -4,7 +4,10 @@ import { fetchHomeStats, HomeStats } from "./lib/features/home/services/stats_se
 import { fetchHomeTopics, HomeTopicArticle } from "./lib/features/home/services/topics_service";
 import { MeetupEvent } from "./lib/features/meetup/types/meetup_types";
 
-// This page will be statically generated at build time
+// These queries depend on live Supabase data. Rendering on request keeps a
+// temporary database slowdown from preventing otherwise unrelated deployments.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   let upcomingEvents: MeetupEvent[] = [];
   let stats: HomeStats = {

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import NonKoreanApplicantsClient from "./NonKoreanApplicantsClient";
 import { fetchHomeStats, HomeStats } from "../lib/features/home/services/stats_service";
 
+// Do not make the deployment depend on a live statistics query.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "For Non-Korean Applicants | 1 Cup English",
   description:

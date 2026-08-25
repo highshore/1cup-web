@@ -189,23 +189,6 @@ const Input = styled.input`
   }
 `;
 
-const Select = styled.select`
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.6rem 0.7rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.86rem;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
 const Textarea = styled.textarea`
   width: 100%;
   min-height: 150px;
@@ -230,6 +213,122 @@ const FieldHint = styled.p`
   color: rgba(5, 5, 5, 0.56);
   font-size: 0.7rem;
   font-weight: 600;
+`;
+
+const MemberPicker = styled.div`
+  overflow: hidden;
+  border: 2px solid #050505;
+  border-radius: 10px;
+  background: #ffffff;
+`;
+
+const SearchWrap = styled.div`
+  position: relative;
+  border-bottom: 1.5px solid #050505;
+
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 0.7rem;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    color: rgba(5, 5, 5, 0.52);
+  }
+`;
+
+const SearchInput = styled(Input)`
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  padding-left: 2.1rem;
+
+  &:focus {
+    outline: none;
+  }
+`;
+
+const RecipientList = styled.div`
+  max-height: 235px;
+  overflow-y: auto;
+`;
+
+const RecipientRow = styled.label<{ $selected: boolean; $disabled?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
+  padding: 0.55rem 0.72rem;
+  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  opacity: ${({ $disabled }) => ($disabled ? 0.52 : 1)};
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background: ${({ $disabled }) => ($disabled ? "#ffffff" : "#fff8f4")};
+  }
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #f47a4a;
+  }
+`;
+
+const Avatar = styled.span`
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  font-size: 0.7rem;
+  font-weight: 850;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const RecipientText = styled.span`
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+`;
+
+const RecipientName = styled.span`
+  overflow: hidden;
+  color: #050505;
+  font-size: 0.81rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const RecipientMeta = styled.span`
+  overflow: hidden;
+  color: rgba(5, 5, 5, 0.55);
+  font-size: 0.67rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const EmptyRecipients = styled.p`
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  color: rgba(5, 5, 5, 0.54);
+  font-size: 0.8rem;
+  text-align: center;
 `;
 
 const LookupRow = styled.div`
@@ -472,6 +571,14 @@ function lastFour(value: string): string {
   return digits.length >= 4 ? `***-****-${digits.slice(-4)}` : value;
 }
 
+function recipientName(value: { displayName: string | null }, fallback: string): string {
+  return value.displayName?.trim() || fallback;
+}
+
+function initials(value: string): string {
+  return value.slice(0, 1).toUpperCase() || "1";
+}
+
 export default function AdminGiftsClient() {
   const { t, locale } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
@@ -485,6 +592,7 @@ export default function AdminGiftsClient() {
   const [product, setProduct] = useState<AdminGiftProduct | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [recipientId, setRecipientId] = useState(CUSTOM_RECIPIENT);
+  const [recipientSearch, setRecipientSearch] = useState("");
   const [customName, setCustomName] = useState("");
   const [customPhone, setCustomPhone] = useState("");
   const [mmsTitle, setMmsTitle] = useState(copy.defaultMmsTitle);
@@ -525,14 +633,20 @@ export default function AdminGiftsClient() {
     setMmsMessage((current) => current || copy.defaultMmsMessage);
   }, [copy.defaultMmsMessage, copy.defaultMmsTitle]);
 
-  const availableRecipients = useMemo(
-    () => (data?.recipients ?? []).filter((recipient) => recipient.hasPhone),
-    [data],
-  );
+  const recipients = useMemo(() => data?.recipients ?? [], [data]);
   const selectedRecipient = useMemo(
-    () => availableRecipients.find((recipient) => recipient.id === recipientId) ?? null,
-    [availableRecipients, recipientId],
+    () => recipients.find((recipient) => recipient.id === recipientId) ?? null,
+    [recipients, recipientId],
   );
+  const matchingRecipients = useMemo(() => {
+    const query = recipientSearch.trim().toLocaleLowerCase();
+    if (!query) return recipients;
+    return recipients.filter((recipient) =>
+      `${recipient.displayName ?? ""} ${recipient.maskedPhone ?? ""} ${recipient.id}`
+        .toLocaleLowerCase()
+        .includes(query),
+    );
+  }, [recipientSearch, recipients]);
 
   const formatMoney = (value: number | null) =>
     value === null
@@ -584,9 +698,11 @@ export default function AdminGiftsClient() {
       !mmsTitle.trim() ||
       !mmsMessage.trim() ||
       (custom && !customPhone.trim()) ||
-      (!custom && !selectedRecipient)
+      (!custom && (!selectedRecipient || !selectedRecipient.hasPhone))
     ) {
-      setSendError(copy.requiredFields);
+      setSendError(!custom && selectedRecipient && !selectedRecipient.hasPhone
+        ? copy.recipientPhoneRequired
+        : copy.requiredFields);
       return;
     }
     if ([...mmsTitle.trim()].length > 10) {
@@ -729,17 +845,62 @@ export default function AdminGiftsClient() {
                     </ProductCard>
                   )}
 
-                  <Field>
+                  <Field as="div">
                     {copy.recipientLabel}
-                    <Select value={recipientId} onChange={(event) => setRecipientId(event.target.value)}>
-                      <option value={CUSTOM_RECIPIENT}>{copy.customRecipient}</option>
-                      {availableRecipients.map((recipient) => (
-                        <option key={recipient.id} value={recipient.id}>
-                          {recipient.displayName || copy.memberFallback} · {recipient.maskedPhone}
-                        </option>
-                      ))}
-                    </Select>
-                    {(data?.recipients ?? []).some((recipient) => !recipient.hasPhone) && (
+                    <MemberPicker>
+                      <SearchWrap>
+                        <MagnifyingGlassIcon />
+                        <SearchInput
+                          value={recipientSearch}
+                          onChange={(event) => setRecipientSearch(event.target.value)}
+                          placeholder={copy.searchRecipients}
+                        />
+                      </SearchWrap>
+                      <RecipientList>
+                        <RecipientRow $selected={recipientId === CUSTOM_RECIPIENT}>
+                          <input
+                            type="radio"
+                            name="gift-recipient"
+                            checked={recipientId === CUSTOM_RECIPIENT}
+                            onChange={() => setRecipientId(CUSTOM_RECIPIENT)}
+                          />
+                          <Avatar>+</Avatar>
+                          <RecipientText>
+                            <RecipientName>{copy.customRecipient}</RecipientName>
+                          </RecipientText>
+                        </RecipientRow>
+                        {matchingRecipients.length === 0 ? (
+                          <EmptyRecipients>{copy.noRecipients}</EmptyRecipients>
+                        ) : (
+                          matchingRecipients.map((recipient) => {
+                            const name = recipientName(recipient, copy.memberFallback);
+                            return (
+                              <RecipientRow
+                                key={recipient.id}
+                                $selected={recipientId === recipient.id}
+                                $disabled={!recipient.hasPhone}
+                              >
+                                <input
+                                  type="radio"
+                                  name="gift-recipient"
+                                  checked={recipientId === recipient.id}
+                                  disabled={!recipient.hasPhone}
+                                  onChange={() => setRecipientId(recipient.id)}
+                                />
+                                <Avatar>
+                                  {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
+                                </Avatar>
+                                <RecipientText>
+                                  <RecipientName>{name}</RecipientName>
+                                  <RecipientMeta>{recipient.maskedPhone || copy.noPhone}</RecipientMeta>
+                                </RecipientText>
+                              </RecipientRow>
+                            );
+                          })
+                        )}
+                      </RecipientList>
+                    </MemberPicker>
+                    {recipients.some((recipient) => !recipient.hasPhone) && (
                       <FieldHint>{copy.noPhoneHint}</FieldHint>
                     )}
                   </Field>

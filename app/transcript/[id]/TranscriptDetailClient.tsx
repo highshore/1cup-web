@@ -958,136 +958,64 @@ const ToggleButton = styled.button<{ $active: boolean }>`
   }
 `;
 
-const RecordButtonContainer = styled.div`
-  position: relative;
-  display: flex;
-`;
-
-const SplitRecordButton = styled.div<{ $isRecording: boolean }>`
-  display: flex;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 2px solid #050505;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-
-  ${(props) =>
-    props.$isRecording
-      ? `
-    background: #d64545;
-  `
-      : `
-    background: #f47a4a;
-  `}
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-`;
-
-const RecordButtonMain = styled.button<{ $isRecording: boolean }>`
+const RecordingControls = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
+`;
+
+const PauseResumeButton = styled.button<{ $isRecording: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 3px 3px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
   color: ${(props) => (props.$isRecording ? "#ffffff" : "#050505")};
-  background: transparent;
+  background: ${(props) => (props.$isRecording ? "#d64545" : "#f47a4a")};
+
+  &:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
+  }
 
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    box-shadow: none;
   }
 `;
 
-const RecordButtonDropdown = styled.button<{ $isRecording: boolean }>`
+const StopRecordingButton = styled.button`
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.75rem 0.75rem;
-  border: none;
-  border-left: 2px solid #050505;
-  background: transparent;
-  color: ${(props) => (props.$isRecording ? "#ffffff" : "#050505")};
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #b91c1c;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.75rem;
-  min-width: 40px;
+  font-size: 0.875rem;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 #050505;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 
-  &:hover {
-    background: rgba(5, 5, 5, 0.12);
+  &:hover:not(:disabled) {
+    background: #fff1f1;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #050505;
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
-  }
-`;
-
-const DropdownMenu = styled.div<{ $isOpen: boolean }>`
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.75rem;
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  z-index: 1000;
-  min-width: 180px;
-  display: ${(props) => (props.$isOpen ? "block" : "none")};
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: -10px;
-    right: 20px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid #050505;
-  }
-`;
-
-const DropdownItem = styled.button`
-  width: 100%;
-  padding: 0.9rem 1.1rem;
-  border: none;
-  background: #ffffff;
-  color: #b91c1c;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-
-  &:hover {
-    background: #fff7f7;
-    color: #991b1b;
-    transform: translateX(1px);
-  }
-
-  &:active {
-    background: #fee2e2;
-    transform: translateX(0);
-  }
-
-  &:first-child {
-    border-radius: 12px 12px 0 0;
-  }
-
-  &:last-child {
-    border-radius: 0 0 12px 12px;
+    opacity: 0.55;
+    box-shadow: none;
   }
 `;
 
@@ -1784,6 +1712,7 @@ export default function TranscriptDetailClient() {
     stopSoniox,
     sendSonioxAudio,
     setSavedTranscript: setSavedSonioxTranscript,
+    getFinalTranscript,
   } = useSoniox(isPausedRef);
 
   // Unified transcript states (Soniox-only)
@@ -1799,6 +1728,7 @@ export default function TranscriptDetailClient() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isStarting, setIsStarting] = useState<boolean>(false);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(
     null
@@ -1832,7 +1762,6 @@ export default function TranscriptDetailClient() {
     isThinking: isCopilotThinking,
   } = useTranscriptCopilot({
     finalTranscript,
-    activePartialSegment,
     isListening: isRecording && !isPaused,
     participants: participantLabels,
     articleTitle: articleData?.title?.english || articleData?.title?.korean,
@@ -1858,6 +1787,7 @@ export default function TranscriptDetailClient() {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
+  const isRecordingRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const lastAudioSentAtRef = useRef<number>(0);
@@ -1869,7 +1799,6 @@ export default function TranscriptDetailClient() {
   >({});
   const [showSpeakerModal, setShowSpeakerModal] = useState(false);
   const [selectedSpeaker, setSelectedSpeaker] = useState<string | null>(null);
-  const [showRecordingDropdown, setShowRecordingDropdown] = useState(false);
 
   const [hideUnidentifiedSpeakers, setHideUnidentifiedSpeakers] =
     useState(false);
@@ -2829,26 +2758,6 @@ Respond in JSON format:
     checkPermission();
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      const dropdownContainer = target.closest("[data-dropdown-container]");
-
-      if (showRecordingDropdown && !dropdownContainer) {
-        setShowRecordingDropdown(false);
-      }
-    };
-
-    if (showRecordingDropdown) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showRecordingDropdown]);
-
   // Set up audio processing and recording
   const setupAudioProcessing = useCallback(async () => {
     try {
@@ -2916,7 +2825,7 @@ Respond in JSON format:
       const [track] = stream.getAudioTracks();
       if (track) {
         track.onended = async () => {
-          if (!isRecording) return;
+          if (!isRecordingRef.current) return;
           try {
             const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = newStream;
@@ -2943,6 +2852,8 @@ Respond in JSON format:
   }, [sendSonioxAudio]);
 
   const handleStartRecording = async () => {
+    if (isStarting || isStopping) return;
+
     try {
       setIsStarting(true);
 
@@ -2954,6 +2865,7 @@ Respond in JSON format:
 
         // Clear the hook's saved transcript data
         setSavedSonioxTranscript([]);
+        setSavedTranscriptData([]);
 
         // Clear pause periods and duration tracking
         pausePeriodsRef.current = [];
@@ -3056,6 +2968,7 @@ Respond in JSON format:
       let providerStarted = await startSoniox(customDictionary);
 
       if (!providerStarted) {
+        isRecordingRef.current = false;
         setIsStarting(false);
         return;
       }
@@ -3063,10 +2976,12 @@ Respond in JSON format:
       const audioSetup = await setupAudioProcessing();
       if (!audioSetup) {
         await stopSoniox(false);
+        isRecordingRef.current = false;
         setIsStarting(false);
         return;
       }
 
+      isRecordingRef.current = true;
       setIsRecording(true);
       setIsStarting(false);
       setRecordingStartTime(Date.now());
@@ -3086,27 +3001,37 @@ Respond in JSON format:
       }, 800);
     } catch (error) {
       console.error("Error starting recording:", error);
+      isRecordingRef.current = false;
       setIsStarting(false);
     }
   };
 
   const handleStopRecording = async () => {
-    // Close the dropdown first
-    setShowRecordingDropdown(false);
+    if (isStopping) return;
+
+    setIsStopping(true);
+    isRecordingRef.current = false;
 
     setIsRecording(false);
     setIsPaused(false); // Reset pause state when stopping
 
+    const stoppedAt = Date.now();
+    const startedAt = recordingStartTimeRef.current || recordingStartTime;
+    const sessionDuration = startedAt ? (stoppedAt - startedAt) / 1000 : 0;
+    const updatedTotalRecordingDuration = totalRecordingDuration + sessionDuration;
+    let updatedTotalPausedDuration = totalPausedDuration;
+
     // Calculate recording duration for this session
-    if (recordingStartTime) {
-      const sessionDuration = (Date.now() - recordingStartTime) / 1000; // Convert to seconds
+    if (startedAt) {
       setTotalRecordingDuration((prev) => prev + sessionDuration);
       setRecordingStartTime(null);
+      recordingStartTimeRef.current = null;
     }
 
     // Close any open pause period
     if (pauseStartTime) {
-      const pauseDuration = (Date.now() - pauseStartTime) / 1000;
+      const pauseDuration = (stoppedAt - pauseStartTime) / 1000;
+      updatedTotalPausedDuration += pauseDuration;
       setTotalPausedDuration((prev) => prev + pauseDuration);
       setPauseStartTime(null);
 
@@ -3115,64 +3040,72 @@ Respond in JSON format:
         pausePeriodsRef.current[pausePeriodsRef.current.length - 1];
       if (lastPause && !lastPause.end) {
         const currentTimestamp =
-          (Date.now() - (recordingStartTime || Date.now())) / 1000;
+          (stoppedAt - (startedAt || stoppedAt)) / 1000;
         lastPause.end = currentTimestamp;
       }
     }
 
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-
-      // Set up the onstop handler to create the audio URL
-      mediaRecorderRef.current.onstop = () => {
-        // Create a single audio blob from all accumulated chunks (across all sessions)
-        const audioBlob = new Blob(recordedAudioChunksRef.current, {
-          type: "audio/webm;codecs=opus",
+    try {
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        await new Promise<void>((resolve) => {
+          recorder.onstop = () => {
+            const audioBlob = new Blob(recordedAudioChunksRef.current, {
+              type: "audio/webm;codecs=opus",
+            });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            setRecordedAudioUrl((previousUrl) => {
+              if (previousUrl) URL.revokeObjectURL(previousUrl);
+              return audioUrl;
+            });
+            resolve();
+          };
+          try {
+            recorder.requestData();
+            recorder.stop();
+          } catch (error) {
+            console.error("Error stopping local audio recording:", error);
+            resolve();
+          }
         });
+      }
+      mediaRecorderRef.current = null;
 
-        // Clean up the previous audio URL to avoid memory leaks
-        if (recordedAudioUrl) {
-          URL.revokeObjectURL(recordedAudioUrl);
-        }
+      if (workletNodeRef.current) {
+        // Send the final partial PCM buffer before ending the Soniox stream.
+        workletNodeRef.current.port.postMessage({ type: "flush" });
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        workletNodeRef.current.disconnect();
+        workletNodeRef.current = null;
+      }
 
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setRecordedAudioUrl(audioUrl);
+      if (audioContextRef.current) {
+        await audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
 
-        console.log(
-          `[Audio] Updated audio URL with ${recordedAudioChunksRef.current.length} chunks`
-        );
-      };
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+
+      // Wait for Soniox to flush its final tokens before persisting the transcript.
+      await stopSoniox(true);
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
+
+      const finalResults = getFinalTranscript();
+      const latestLiveResults = finalResults.slice(savedTranscriptData.length);
+      await saveTranscriptToDatabase(
+        [...savedTranscriptData, ...latestLiveResults],
+        updatedTotalRecordingDuration,
+        updatedTotalPausedDuration
+      );
+    } finally {
+      setIsStopping(false);
     }
-
-    if (workletNodeRef.current) {
-      workletNodeRef.current.disconnect();
-      workletNodeRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      await audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-
-    // Stop provider (Soniox)
-    await stopSoniox(true);
-    if (keepAliveIntervalRef.current) {
-      clearInterval(keepAliveIntervalRef.current);
-      keepAliveIntervalRef.current = null;
-    }
-
-    // Immediately save transcript when recording stops
-    setTimeout(() => {
-      saveTranscriptToDatabase();
-    }, 1000); // Give a moment for final transcript to be processed
   };
 
   const handlePauseRecording = async () => {
@@ -3181,7 +3114,7 @@ Respond in JSON format:
 
     // Add a new pause period
     const pauseStartTimestamp =
-      (Date.now() - (recordingStartTime || Date.now())) / 1000;
+      (Date.now() - (recordingStartTimeRef.current || Date.now())) / 1000;
     pausePeriodsRef.current.push({ start: pauseStartTimestamp });
 
     console.log("[Recording] Paused at timestamp:", pauseStartTimestamp);
@@ -3198,7 +3131,7 @@ Respond in JSON format:
 
       // Close the current pause period
       const currentPauseStartTimestamp =
-        (Date.now() - (recordingStartTime || Date.now())) / 1000;
+        (Date.now() - (recordingStartTimeRef.current || Date.now())) / 1000;
       const lastPause =
         pausePeriodsRef.current[pausePeriodsRef.current.length - 1];
       if (lastPause && !lastPause.end) {
@@ -3213,6 +3146,8 @@ Respond in JSON format:
   };
 
   const toggleRecording = useCallback(async () => {
+    if (isStarting || isStopping) return;
+
     if (isRecording) {
       if (isPaused) {
         await handleResumeRecording();
@@ -3222,7 +3157,7 @@ Respond in JSON format:
     } else {
       await handleStartRecording();
     }
-  }, [isRecording, isPaused]);
+  }, [isRecording, isPaused, isStarting, isStopping]);
 
   // Sync pause state with ref for audio processing callback
   useEffect(() => {
@@ -3262,12 +3197,16 @@ Respond in JSON format:
   };
 
   // Auto-save transcript to the database with comprehensive data
-  const saveTranscriptToDatabase = useCallback(async () => {
-    if (!transcriptId || !combinedFinalTranscript) return;
+  const saveTranscriptToDatabase = useCallback(async (
+    transcriptResults = combinedFinalTranscript,
+    recordingDuration = totalRecordingDuration,
+    pausedDuration = totalPausedDuration
+  ) => {
+    if (!transcriptId || !transcriptResults) return;
 
     try {
       // Use filtered transcript data (excluding paused periods)
-      const transcriptData = filterPausedResults(combinedFinalTranscript);
+      const transcriptData = filterPausedResults(transcriptResults);
       const totalWords = transcriptData.reduce((count, result) => {
         return count + (result.alternatives?.[0]?.content ? 1 : 0);
       }, 0);
@@ -3300,8 +3239,8 @@ Respond in JSON format:
             speakerCount: speakers.size,
             latestTimestamp,
             lastRecordingSession: new Date().toISOString(),
-            totalRecordingDuration,
-            totalPausedDuration,
+            totalRecordingDuration: recordingDuration,
+            totalPausedDuration: pausedDuration,
             pausePeriods: pausePeriodsRef.current,
           },
         })
@@ -3312,7 +3251,7 @@ Respond in JSON format:
       setSavedTranscriptData(transcriptData);
 
       console.log(
-        `[Auto-save] Transcript saved: ${totalWords} words, ${speakers.size} speakers, latest: ${latestTimestamp}s, paused: ${totalPausedDuration}s`
+        `[Auto-save] Transcript saved: ${totalWords} words, ${speakers.size} speakers, latest: ${latestTimestamp}s, paused: ${pausedDuration}s`
       );
     } catch (error) {
       console.error("[Auto-save] Error saving transcript:", error);
@@ -3321,6 +3260,7 @@ Respond in JSON format:
     transcriptId,
     combinedFinalTranscript,
     filterPausedResults,
+    totalRecordingDuration,
     totalPausedDuration,
   ]);
 
@@ -3506,21 +3446,26 @@ Respond in JSON format:
           setHideUnidentifiedSpeakers(data.hide_unidentified_speakers || false);
           setReportsGenerated(data.reports_generated || false);
 
-          // Load saved transcript data - this is the source of truth
-          if (
-            data.transcript_content &&
-            Array.isArray(data.transcript_content) &&
-            data.transcript_content.length > 0
-          ) {
-            console.log(
-              "[Transcript Loading] Restoring",
-              data.transcript_content.length,
-              "saved transcript items"
-            );
-            setSavedTranscriptData(data.transcript_content);
-            setSavedSonioxTranscript(data.transcript_content);
-          } else {
-            setSavedTranscriptData([]);
+          // Database updates arrive after each local autosave. Do not replace the
+          // in-memory Soniox stream while it is recording: the database snapshot
+          // can be a few seconds behind and would otherwise erase new sentences.
+          if (!isRecordingRef.current) {
+            if (
+              data.transcript_content &&
+              Array.isArray(data.transcript_content) &&
+              data.transcript_content.length > 0
+            ) {
+              console.log(
+                "[Transcript Loading] Restoring",
+                data.transcript_content.length,
+                "saved transcript items"
+              );
+              setSavedTranscriptData(data.transcript_content);
+              setSavedSonioxTranscript(data.transcript_content);
+            } else {
+              setSavedTranscriptData([]);
+              setSavedSonioxTranscript([]);
+            }
           }
 
           // Load saved recording duration
@@ -4219,14 +4164,13 @@ Respond in JSON format:
                     {hideUnidentifiedSpeakers ? "Show All" : "Hide Unknown"}
                   </ToggleButton>
 
-                  {/* Recording controls with dropdown */}
-                  <div data-dropdown-container style={{ position: "relative" }}>
+                  <RecordingControls>
                     {isRecording ? (
-                      <SplitRecordButton $isRecording={isRecording && !isPaused}>
-                        <RecordButtonMain
+                      <>
+                        <PauseResumeButton
                           $isRecording={isRecording && !isPaused}
                           onClick={toggleRecording}
-                          disabled={isStarting}
+                          disabled={isStarting || isStopping}
                         >
                           {isPaused ? (
                             <>
@@ -4239,27 +4183,26 @@ Respond in JSON format:
                               Pause Recording
                             </>
                           )}
-                        </RecordButtonMain>
-                        <RecordButtonDropdown
-                          $isRecording={isRecording && !isPaused}
-                          onClick={() => setShowRecordingDropdown(!showRecordingDropdown)}
-                          disabled={isStarting}
+                        </PauseResumeButton>
+                        <StopRecordingButton
+                          onClick={handleStopRecording}
+                          disabled={isStarting || isStopping}
                         >
-                          ▼
-                        </RecordButtonDropdown>
-                        <DropdownMenu $isOpen={showRecordingDropdown}>
-                          <DropdownItem onClick={handleStopRecording}>
-                            Stop Recording
-                          </DropdownItem>
-                        </DropdownMenu>
-                      </SplitRecordButton>
+                          Stop Recording
+                        </StopRecordingButton>
+                      </>
                     ) : (
                       <RecordButton
                         $isRecording={false}
                         onClick={toggleRecording}
-                        disabled={isStarting || !keywordsLoaded}
+                        disabled={isStarting || isStopping || !keywordsLoaded}
                       >
-                        {isStarting ? (
+                        {isStopping ? (
+                          <>
+                            <PulseIcon />
+                            Stopping...
+                          </>
+                        ) : isStarting ? (
                           <>
                             <PulseIcon />
                             Starting...
@@ -4277,7 +4220,7 @@ Respond in JSON format:
                         )}
                       </RecordButton>
                     )}
-                  </div>
+                  </RecordingControls>
                 </div>
               </SectionHeader>
               <LegendContent>

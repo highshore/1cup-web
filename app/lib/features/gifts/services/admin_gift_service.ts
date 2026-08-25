@@ -64,14 +64,16 @@ function codePointLength(value: string): number {
 function readProviderConfig(): ProviderConfig {
   const authCode = process.env.GIFTISHOW_AUTH_CODE?.trim() || "";
   const authToken = process.env.GIFTISHOW_AUTH_TOKEN?.trim() || "";
-  const userId = process.env.GIFTISHOW_USER_ID?.trim() || "kyle.kim@nativept.kr";
-  const callbackNo = process.env.GIFTISHOW_CALLBACK_NO?.trim() || "15886474";
+  const userId = process.env.GIFTISHOW_USER_ID?.trim() || "";
+  const callbackNo = process.env.GIFTISHOW_CALLBACK_NO?.trim() || "";
   const templateId = process.env.GIFTISHOW_TEMPLATE_ID?.trim() || null;
   const bannerId = process.env.GIFTISHOW_BANNER_ID?.trim() || null;
   const missing: string[] = [];
 
   if (!authCode) missing.push("GIFTISHOW_AUTH_CODE");
   if (!authToken) missing.push("GIFTISHOW_AUTH_TOKEN");
+  if (!userId) missing.push("GIFTISHOW_USER_ID");
+  if (!callbackNo) missing.push("GIFTISHOW_CALLBACK_NO");
 
   return {
     authCode,
@@ -310,12 +312,13 @@ function toHistoryItem(value: unknown): AdminGiftHistoryItem | null {
 function toRecipient(value: unknown): AdminGiftRecipient | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.uid);
-  if (!id || value.is_placeholder === true || value.account_status === "admin") return null;
+  if (!id || value.is_placeholder === true) return null;
   const rawPhone = stringValue(value.phone);
   const phone = rawPhone ? normalizeKoreanPhone(rawPhone) : null;
   return {
     id,
     displayName: stringValue(value.display_name),
+    photoUrl: stringValue(value.photo_url),
     maskedPhone: phone ? maskPhone(phone) : null,
     hasPhone: Boolean(phone),
   };
@@ -388,7 +391,7 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
   const [recipientsResult, historyResult] = await Promise.all([
     db
       .from("users")
-      .select("uid, display_name, phone, account_status, is_placeholder")
+      .select("uid, display_name, photo_url, phone, account_status, is_placeholder")
       .order("display_name", { ascending: true, nullsFirst: false })
       .limit(1000),
     db

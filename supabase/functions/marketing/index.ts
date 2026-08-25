@@ -1,7 +1,7 @@
 // marketing — port of functions/src/marketingCron.ts (Gopas advert scheduler).
 //
 // Admin actions (save-template-schedule / create-template / ensure-default-template /
-// delete-template / run-now) plus the scheduled tick, which pg_cron calls with the
+// delete-template / delete-run / generate-template / run-now) plus the scheduled tick, which pg_cron calls with the
 // a private scheduler header as { action: "tick" }.
 //
 // Two things changed shape in the move off Firestore:
@@ -11,19 +11,29 @@
 //   * Post metrics were incremented per document; the refresh now writes each post's
 //     metrics blob directly, same as the Firestore version did after reading them.
 //
-// Publishing itself is unchanged: it POSTs to KOREAPAS_PUBLISHER_URL, which owns the
-// browser automation. Without that env var the run still records everything and stops
-// at "prepared", exactly like the original.
+// Publishing is delegated to a browser-capable service. Edge Functions own the
+// schedule, duplicate check, tracking records, and audit trail; the publisher
+// owns only the authenticated Chromium interaction with Koreapas.
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid } from "../_shared/db.ts";
+import Encoding from "npm:encoding-japanese@2.2.0";
 
 const CONFIG_ROW = "settings";
 const RUN_LEASE_MS = 10 * 60 * 1000;
+const KOREAPAS_MIN_POST_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const KOREA_OFFSET_MS = 9 * 60 * 60 * 1000;
 const ORIGINAL_TEMPLATE_ID = "gopas_original_meetup";
 const TRACKING_DOMAIN = "https://1cupenglish.com";
 const KOREAPAS_CHANNEL = "koreapas";
+const VERTEX_LOCATION = "global";
+const GEMINI_TEMPLATE_MODEL = "gemini-3.7-flash";
+const GOOGLE_CLOUD_PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
 const GOPAS_FREE_AD_URL = "https://www.koreapas.com/bbs/zboard.php?id=freead";
+const GOPAS_LOGIN_URL = "https://www.koreapas.com/m/fast_menu_index.php";
+const GOPAS_LOGIN_SUBMIT_URL = "https://www.koreapas.com/bbs/login_check.php";
+const GOPAS_WRITE_URL = "https://www.koreapas.com/bbs/write.php?id=freead&category=";
+const GOPAS_BROWSER_USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 type TemplatePhoto = { url: string; alt: string };
 type CronSchedule = { minute: number; hour: number; daysOfWeek: number[] };
@@ -153,6 +163,147 @@ const validTemplateId = (value: unknown, field = "templateId"): string => {
   return value;
 };
 
+const validRunId = (value: unknown): string => {
+  if (
+    typeof value !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  ) {
+    throw new Error("runId is invalid.");
+  }
+  return value;
+};
+
+type GeneratedTemplate = {
+  name: string;
+  title: string;
+  copy: string;
+  callToAction: string;
+  schedule: CronSchedule;
+};
+
+let cachedVertexToken: { value: string; expiresAt: number } | null = null;
+
+const base64url = (input: ArrayBuffer | string): string => {
+  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : new Uint8Array(input);
+  let binary = "";
+  bytes.forEach((byte) => (binary += String.fromCharCode(byte)));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+const pemToPkcs8 = (pem: string): ArrayBuffer => {
+  const body = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s+/g, "");
+  const raw = atob(body);
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+  return bytes.buffer;
+};
+
+const vertexAccessToken = async (): Promise<string> => {
+  if (cachedVertexToken && cachedVertexToken.expiresAt > Date.now() + 60_000) {
+    return cachedVertexToken.value;
+  }
+  const raw = Deno.env.get("GCP_SERVICE_ACCOUNT_JSON");
+  if (!raw) throw new Error("Vertex AI credentials are unavailable.");
+  const key = JSON.parse(raw) as { client_email: string; private_key: string };
+  const now = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss: key.client_email,
+    scope: "https://www.googleapis.com/auth/cloud-platform",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  };
+  const unsigned =
+    base64url(JSON.stringify({ alg: "RS256", typ: "JWT" })) + "." + base64url(JSON.stringify(claim));
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToPkcs8(key.private_key.replace(/\\n/g, "\n")),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(unsigned),
+  );
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${unsigned}.${base64url(signature)}`,
+    }),
+  });
+  if (!response.ok) throw new Error(`Vertex AI token exchange failed: ${response.status}`);
+  const token = (await response.json()) as { access_token: string; expires_in: number };
+  cachedVertexToken = {
+    value: token.access_token,
+    expiresAt: Date.now() + token.expires_in * 1000,
+  };
+  return cachedVertexToken.value;
+};
+
+const generateWithVertex = async (brief: string, destinationUrl: string): Promise<string> => {
+  const accessToken = await vertexAccessToken();
+  const response = await fetch(
+    `https://aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${GEMINI_TEMPLATE_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{
+            text: `You write accurate Korean marketing drafts for a Koreapas Free Ads post. Return only valid JSON with exactly this shape: {"name":"string","title":"string","copy":"string","callToAction":"string","schedule":{"hour":number,"minute":number,"daysOfWeek":[number]}}. Do not make up facts, prices, credentials, partnerships, availability, or guarantees. Use only claims the operator supplies. The destination URL is operator-controlled context (${destinationUrl}); do not put any URL in title, copy, or callToAction because the system injects one tracking link. Do not generate image URLs. Keep callToAction short. If using {{daysUntilSunday}}, leave it literal for the scheduler. Choose a conservative KST schedule; daysOfWeek uses Sunday=0 through Saturday=6, and use [] only if the brief explicitly requests no automatic scheduling.`,
+          }],
+        },
+        contents: [{ role: "user", parts: [{ text: `Campaign brief:\n${brief}` }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.4,
+          maxOutputTokens: 6_000,
+        },
+      }),
+    },
+  );
+  const payload = (await response.json().catch(() => ({}))) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    error?: { message?: string; status?: string };
+  };
+  if (!response.ok) {
+    throw new Error(
+      `Vertex AI ${response.status}: ${payload.error?.message || payload.error?.status || "request failed"}`,
+    );
+  }
+  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+  if (!text) throw new Error("Vertex AI returned no template draft.");
+  return text;
+};
+
+const generateTemplateDraft = async (body: Record<string, unknown>): Promise<GeneratedTemplate> => {
+  const brief = textField(body.brief, "Campaign brief", 2000);
+  const destinationUrl = validDestinationUrl(body.destinationUrl);
+
+  const rawDraft = await generateWithVertex(brief, destinationUrl);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(rawDraft) as Record<string, unknown>;
+  } catch {
+    throw new Error("Vertex AI returned an invalid template draft.");
+  }
+
+  return {
+    name: textField(parsed.name, "Template name", 120),
+    title: textField(parsed.title, "Title", 200),
+    copy: textField(parsed.copy, "Copy", 20000),
+    callToAction: textField(parsed.callToAction, "Call to action", 1000),
+    schedule: validSchedule(parsed.schedule),
+  };
+};
+
 // ------------------------------------------------------------------ schedule
 const koreaWeekday = (millis: number) => new Date(millis + KOREA_OFFSET_MS).getUTCDay();
 
@@ -200,6 +351,31 @@ const photoMarkup = (photos: TemplatePhoto[], destinationUrl: string) =>
 const buildPostCopy = (photos: TemplatePhoto[], destinationUrl: string, copy: string, cta: string) =>
   [photoMarkup(photos, destinationUrl), copy, cta].filter(Boolean).join("\n\n");
 
+const zeroWidthMarker = (marker: string) =>
+  marker
+    .split("")
+    .map((character) =>
+      character
+        .charCodeAt(0)
+        .toString(2)
+        .padStart(8, "0")
+        .replaceAll("0", "\u200B")
+        .replaceAll("1", "\u200C"),
+    )
+    .join("\u200D");
+
+const trackingLinkMarkup = (trackingUrl: string) =>
+  `<a href="${htmlAttribute(trackingUrl)}">${htmlAttribute(trackingUrl)}</a>`;
+
+const replaceDestinationWithTrackingLink = (
+  copy: string,
+  destinationUrl: string,
+  trackingUrl: string,
+) => copy.replaceAll(destinationUrl, trackingLinkMarkup(trackingUrl));
+
+const contentForKoreapas = (copy: string, trackingUrl: string, marker: string) =>
+  `${copy}${copy.includes(trackingUrl) ? "" : `\n\n${trackingLinkMarkup(trackingUrl)}`}\u2063${zeroWidthMarker(marker)}`;
+
 const resolveTemplateVariables = (value: string, scheduledForMillis: number) => {
   const weekday = koreaWeekday(scheduledForMillis);
   const daysUntilSunday = (7 - weekday) % 7;
@@ -216,14 +392,139 @@ const hasAdvertOnGopasFirstPage = async (title: string): Promise<boolean> => {
   if (!coreTitle) return false;
   try {
     const response = await fetch(GOPAS_FREE_AD_URL, {
-      headers: { "User-Agent": "1CupEnglish Marketing Scheduler" },
+      headers: { "User-Agent": GOPAS_BROWSER_USER_AGENT },
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) return false;
-    return (await response.text()).includes(coreTitle);
+    const body = new Uint8Array(await response.arrayBuffer());
+    const html = Encoding.convert(body, { from: "EUC-KR", to: "UNICODE", type: "string" }) as string;
+    return html.includes(coreTitle);
   } catch (error) {
     console.warn("Unable to check the Gopas first page for a duplicate advert.", error);
     return false;
   }
+};
+
+type KoreapasRequestInit = Omit<RequestInit, "headers" | "redirect"> & { headers?: HeadersInit };
+
+const encodeEucKrForm = (fields: Record<string, string>) => {
+  const encodeBytes = (bytes: number[]) =>
+    bytes
+      .map((byte) => {
+        const safe =
+          (byte >= 0x30 && byte <= 0x39) ||
+          (byte >= 0x41 && byte <= 0x5a) ||
+          (byte >= 0x61 && byte <= 0x7a) ||
+          byte === 0x2d || byte === 0x2e || byte === 0x5f || byte === 0x7e;
+        return safe ? String.fromCharCode(byte) : `%${byte.toString(16).padStart(2, "0").toUpperCase()}`;
+      })
+      .join("");
+  return Object.entries(fields)
+    .map(([key, value]) => {
+      const valueBytes = Encoding.convert(value, { to: "EUC-KR", type: "array" }) as number[];
+      return `${encodeBytes([...new TextEncoder().encode(key)])}=${encodeBytes(valueBytes)}`;
+    })
+    .join("&");
+};
+
+const formAttribute = (tag: string, attribute: string) => {
+  const match = tag.match(new RegExp(`\\b${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? "";
+};
+
+const saveCookies = (jar: Map<string, string>, headers: Headers) => {
+  const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+  const cookies = getSetCookie
+    ? getSetCookie.call(headers)
+    : headers
+        .get("set-cookie")
+        ?.split(/,(?=[^;,]+=)/)
+        .map((cookie) => cookie.trim()) ?? [];
+  for (const cookie of cookies) {
+    const [pair] = cookie.split(";", 1);
+    const separator = pair.indexOf("=");
+    if (separator > 0) jar.set(pair.slice(0, separator), pair.slice(separator + 1));
+  }
+};
+
+const fetchKoreapas = async (
+  jar: Map<string, string>,
+  input: string,
+  init: KoreapasRequestInit = {},
+): Promise<Response> => {
+  let url = input;
+  let request = init;
+  for (let redirects = 0; redirects < 6; redirects += 1) {
+    const headers = new Headers(request.headers);
+    headers.set("User-Agent", GOPAS_BROWSER_USER_AGENT);
+    headers.set("Cookie", [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; "));
+    const response = await fetch(url, {
+      ...request,
+      headers,
+      redirect: "manual",
+      signal: AbortSignal.timeout(20_000),
+    });
+    saveCookies(jar, response.headers);
+    const location = response.headers.get("location");
+    if (!location || response.status < 300 || response.status >= 400) return response;
+    url = new URL(location, url).toString();
+    request = { method: "GET", headers: { Referer: input } };
+  }
+  throw new Error("Koreapas redirected too many times.");
+};
+
+const writeForm = (html: string) => {
+  const matched = html.match(/<form\b[^>]*\b(?:id|name)=["']?write2["']?[^>]*>([\s\S]*?)<\/form>/i);
+  if (!matched) throw new Error("Koreapas write form was not available after login.");
+  const form = matched[0];
+  const action = formAttribute(form.slice(0, form.indexOf(">") + 1), "action");
+  if (!action) throw new Error("Koreapas write form action was not available.");
+  const hidden = [...matched[1].matchAll(/<input\b[^>]*>/gi)].reduce<Record<string, string>>((fields, match) => {
+    const input = match[0];
+    if (formAttribute(input, "type").toLowerCase() !== "hidden") return fields;
+    const name = formAttribute(input, "name");
+    if (name) fields[name] = formAttribute(input, "value");
+    return fields;
+  }, {});
+  return { action, hidden };
+};
+
+const publishToKoreapas = async (title: string, content: string): Promise<string> => {
+  const userId = Deno.env.get("KOREAPAS_USER_ID")?.trim();
+  const password = Deno.env.get("KOREAPAS_PASSWORD")?.trim();
+  if (!userId || !password) throw new Error("Koreapas credentials are not configured.");
+
+  const jar = new Map<string, string>();
+  const loginPage = await fetchKoreapas(jar, GOPAS_LOGIN_URL);
+  if (!loginPage.ok) throw new Error(`Koreapas login page returned ${loginPage.status}.`);
+  const login = await fetchKoreapas(jar, GOPAS_LOGIN_SUBMIT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: GOPAS_LOGIN_URL, Origin: "https://www.koreapas.com" },
+    body: encodeEucKrForm({ s_url: "/m/fast_menu_index.php", auto_login: "1", user_id: userId, password, group_no: "1" }),
+  });
+  if (!login.ok) throw new Error(`Koreapas login returned ${login.status}.`);
+
+  const writePage = await fetchKoreapas(jar, GOPAS_WRITE_URL, { headers: { Referer: GOPAS_LOGIN_URL } });
+  if (!writePage.ok) throw new Error(`Koreapas write page returned ${writePage.status}.`);
+  const writeHtml = await writePage.text();
+  if (/name=["']?zb_login/i.test(writeHtml)) {
+    throw new Error("Koreapas login did not create an authenticated write session.");
+  }
+  const { action, hidden } = writeForm(writeHtml);
+  const submit = await fetchKoreapas(jar, new URL(action, GOPAS_WRITE_URL).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: GOPAS_WRITE_URL, Origin: "https://www.koreapas.com" },
+    body: encodeEucKrForm({ ...hidden, subject: title, sitelink1: "", use_html: "1", memo: content, agreement: "1" }),
+  });
+  if (!submit.ok) throw new Error(`Koreapas post submission returned ${submit.status}.`);
+  const resultBytes = new Uint8Array(await submit.arrayBuffer());
+  const result = Encoding.convert(resultBytes, { from: "EUC-KR", to: "UNICODE", type: "string" }) as string;
+  if (/write2|name=["']?subject/i.test(result)) throw new Error("Koreapas did not accept the advert submission.");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await hasAdvertOnGopasFirstPage(title)) return GOPAS_FREE_AD_URL;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  throw new Error("Koreapas did not show the submitted advert on the first free-ad page.");
 };
 
 const callKoreapasPublisher = async (
@@ -246,9 +547,10 @@ const callKoreapasPublisher = async (
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: "Bearer " + token } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ action, ...payload }),
+    signal: AbortSignal.timeout(120_000),
   });
   if (!response.ok) throw new Error(`Gopas publisher responded with ${response.status}.`);
 
@@ -276,21 +578,21 @@ const refreshPriorPostPerformance = async (): Promise<Metrics & { trackedPosts: 
   const a = admin();
   const { data: posts } = await a
     .from("growth_posts")
-    .select("id, external_url, metrics")
+    .select("id, run_id, external_url, metrics")
     .eq("channel", KOREAPAS_CHANNEL)
     .order("created_at", { ascending: false })
     .limit(50);
 
   const rows = posts ?? [];
   const externalPosts = rows
-    .filter((p: Record<string, unknown>) => typeof p.external_url === "string" && p.external_url)
-    .map((p: Record<string, unknown>) => ({ id: p.id, externalPostUrl: p.external_url }));
+    .filter((post: Record<string, unknown>) => typeof post.external_url === "string" && post.external_url)
+    .map((post: Record<string, unknown>) => ({ id: post.id, externalPostUrl: post.external_url }));
 
   let remotePosts: unknown[] = [];
   if (externalPosts.length) {
     try {
       const remote = await callKoreapasPublisher("performance", { posts: externalPosts });
-      remotePosts = Array.isArray(remote?.posts) ? (remote!.posts as unknown[]) : [];
+      remotePosts = Array.isArray(remote?.posts) ? (remote.posts as unknown[]) : [];
     } catch (error) {
       console.warn("Publisher performance lookup failed; keeping stored metrics.", error);
     }
@@ -307,7 +609,7 @@ const refreshPriorPostPerformance = async (): Promise<Metrics & { trackedPosts: 
   for (const post of rows as Array<Record<string, unknown>>) {
     const stored = readMetrics(post.metrics);
     const external = publisherMetrics.get(String(post.id));
-    // Clicks are ours (the /r redirect counts them); everything else comes from Gopas.
+    // Clicks are counted by our /r redirect; other metrics, if supplied, come from Koreapas.
     const metrics: Metrics = external ? { ...external, clicks: stored.clicks } : stored;
 
     totals.impressions += metrics.impressions;
@@ -317,13 +619,40 @@ const refreshPriorPostPerformance = async (): Promise<Metrics & { trackedPosts: 
     totals.comments += metrics.comments;
 
     if (external) {
+      const updatedAt = new Date().toISOString();
       await a
         .from("growth_posts")
-        .update({ metrics, updated_at: new Date().toISOString() })
+        .update({ metrics, updated_at: updatedAt })
         .eq("id", post.id);
+      if (typeof post.run_id === "string" && post.run_id) {
+        await a
+          .from("marketing_cron_runs")
+          .update({
+            performance: { trackedPosts: 1, ...metrics },
+            performance_checked_at: updatedAt,
+          })
+          .eq("id", post.run_id);
+      }
     }
   }
   return totals;
+};
+
+// A request can reach Koreapas before a browser timeout or verification error is
+// reported. Treat every recent attempt as a publish for cooldown purposes, so
+// manual retries and overlapping schedules cannot create successive adverts.
+const recentKoreapasAttempt = async (startedAt: string): Promise<string | null> => {
+  const cutoff = new Date(new Date(startedAt).getTime() - KOREAPAS_MIN_POST_INTERVAL_MS).toISOString();
+  const { data, error } = await admin()
+    .from("growth_posts")
+    .select("created_at")
+    .eq("channel", KOREAPAS_CHANNEL)
+    .gte("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return typeof data?.created_at === "string" ? data.created_at : null;
 };
 
 // ------------------------------------------------------------------- run flow
@@ -335,24 +664,27 @@ type RunSettings = {
   photos: TemplatePhoto[];
 };
 
-const clearRunLease = async (templateId: string | null, completedAt: string) => {
-  await admin()
+const clearRunLease = async (runId: string, templateId: string | null, completedAt: string) => {
+  const { error: leaseError } = await admin()
     .from("growth_config")
     .update({
       active_run_id: null,
       active_run_lease_until: null,
       updated_at: completedAt,
     })
-    .eq("id", CONFIG_ROW);
+    .eq("id", CONFIG_ROW)
+    .eq("active_run_id", runId);
+  if (leaseError) throw new Error(leaseError.message);
   if (templateId) {
-    await admin()
+    const { error: templateError } = await admin()
       .from("marketing_templates")
       .update({ last_run_at: completedAt, updated_at: completedAt })
       .eq("id", templateId);
+    if (templateError) throw new Error(templateError.message);
   }
 };
 
-const executeRun = async (runId: string) => {
+const executeRun = async (runId: string, options: { bypassCooldown?: boolean } = {}) => {
   const a = admin();
   const { data: run } = await a
     .from("marketing_cron_runs")
@@ -365,6 +697,7 @@ const executeRun = async (runId: string) => {
   const templateId = typeof run.template_id === "string" ? run.template_id : null;
   const scheduledForMillis = run.scheduled_for ? new Date(run.scheduled_for).getTime() : Date.now();
   const startedAt = new Date().toISOString();
+  let postId = "";
 
   await a
     .from("marketing_cron_runs")
@@ -374,12 +707,15 @@ const executeRun = async (runId: string) => {
   try {
     const performance = await refreshPriorPostPerformance();
     const postTitle = resolveTemplateVariables(settings.title ?? "", scheduledForMillis);
-    const postCopy = buildPostCopy(
+    const code = trackingCode();
+    const trackingUrl = `${TRACKING_DOMAIN}/r/${code}`;
+    const marker = hiddenPostId(code);
+    const postCopy = replaceDestinationWithTrackingLink(buildPostCopy(
       settings.photos ?? [],
-      settings.destinationUrl ?? "",
+      trackingUrl,
       resolveTemplateVariables(settings.copy ?? "", scheduledForMillis),
       resolveTemplateVariables(settings.callToAction ?? "", scheduledForMillis),
-    );
+    ), settings.destinationUrl ?? "", trackingUrl);
 
     if (await hasAdvertOnGopasFirstPage(postTitle)) {
       const completedAt = new Date().toISOString();
@@ -396,20 +732,38 @@ const executeRun = async (runId: string) => {
           error: "A matching advert is already on the first Gopas free-ad page.",
         })
         .eq("id", runId);
-      await clearRunLease(templateId, completedAt);
+      await clearRunLease(runId, templateId, completedAt);
       return;
     }
 
-    const code = trackingCode();
-    const postId = crypto.randomUUID();
-    const trackingUrl = `${TRACKING_DOMAIN}/r/${code}`;
-    const marker = hiddenPostId(code);
+    const previousAttemptAt = await recentKoreapasAttempt(startedAt);
+    if (previousAttemptAt && !options.bypassCooldown) {
+      const completedAt = new Date().toISOString();
+      await a
+        .from("marketing_cron_runs")
+        .update({
+          status: "skipped",
+          post_title: postTitle,
+          post_copy: postCopy,
+          photos: settings.photos ?? [],
+          performance,
+          performance_checked_at: completedAt,
+          completed_at: completedAt,
+          error: `Koreapas posting cooldown is active after the ${previousAttemptAt} attempt.`,
+        })
+        .eq("id", runId);
+      await clearRunLease(runId, templateId, completedAt);
+      return;
+    }
 
-    await a.from("growth_posts").insert({
+    postId = crypto.randomUUID();
+    const submittedCopy = contentForKoreapas(postCopy, trackingUrl, marker);
+
+    const { error: postInsertError } = await a.from("growth_posts").insert({
       id: postId,
       channel: KOREAPAS_CHANNEL,
       title: postTitle,
-      content: postCopy,
+      content: submittedCopy,
       destination_url: settings.destinationUrl,
       tracking_code: code,
       hidden_post_id: marker,
@@ -420,20 +774,21 @@ const executeRun = async (runId: string) => {
       created_at: startedAt,
       updated_at: startedAt,
     });
+    if (postInsertError) throw new Error(postInsertError.message);
 
+    const completedAt = new Date().toISOString();
     const published = await callKoreapasPublisher("publish", {
       title: postTitle,
-      content: postCopy,
+      content: submittedCopy,
       trackingUrl,
       hiddenPostId: marker,
       destinationUrl: settings.destinationUrl,
       photos: settings.photos ?? [],
-      useHtml: (settings.photos ?? []).length > 0,
+      useHtml: true,
     });
-    const completedAt = new Date().toISOString();
 
     if (!published) {
-      // No publisher configured: everything is recorded, nothing was posted.
+      // The scheduler remains auditable while the browser service is not configured.
       await a
         .from("growth_posts")
         .update({ status: "prepared", publisher_status: "not_configured", updated_at: completedAt })
@@ -455,16 +810,18 @@ const executeRun = async (runId: string) => {
           error: "Gopas publisher is not configured.",
         })
         .eq("id", runId);
-      await clearRunLease(templateId, completedAt);
+      await clearRunLease(runId, templateId, completedAt);
       return;
     }
 
     const externalPostUrl = typeof published.postUrl === "string" ? published.postUrl : "";
+    if (!externalPostUrl) throw new Error("Gopas publisher did not return a verified post URL.");
     await a
       .from("growth_posts")
       .update({
         status: "posted",
         external_url: externalPostUrl,
+        publisher_status: "cloud_run",
         posted_at: completedAt,
         updated_at: completedAt,
       })
@@ -487,7 +844,7 @@ const executeRun = async (runId: string) => {
         error: "",
       })
       .eq("id", runId);
-    await clearRunLease(templateId, completedAt);
+    await clearRunLease(runId, templateId, completedAt);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const completedAt = new Date().toISOString();
@@ -495,7 +852,13 @@ const executeRun = async (runId: string) => {
       .from("marketing_cron_runs")
       .update({ status: "failed", completed_at: completedAt, error: message })
       .eq("id", runId);
-    await clearRunLease(templateId, completedAt);
+    if (postId) {
+      await a
+        .from("growth_posts")
+        .update({ status: "failed", publisher_status: "publisher_failed", updated_at: completedAt })
+        .eq("id", postId);
+    }
+    await clearRunLease(runId, templateId, completedAt);
   }
 };
 
@@ -555,44 +918,45 @@ const claimRun = async (
     .select("active_run_id");
   if (!leased || leased.length === 0) return null;
 
-  if (trigger === "schedule") {
-    const nextRunAt = nextScheduledAt(schedule, now.getTime()).toISOString();
-    const { error } = await a
-      .from("marketing_templates")
-      .update({ next_run_at: nextRunAt, updated_at: nowIso })
-      .eq("id", templateId)
-      .eq("next_run_at", template.next_run_at);
-    if (error) {
-      await clearRunLease(null, nowIso);
-      throw new Error(error.message);
+  try {
+    if (trigger === "schedule") {
+      const nextRunAt = nextScheduledAt(schedule, now.getTime()).toISOString();
+      const { error } = await a
+        .from("marketing_templates")
+        .update({ next_run_at: nextRunAt, updated_at: nowIso })
+        .eq("id", templateId)
+        .eq("next_run_at", template.next_run_at);
+      if (error) throw new Error(error.message);
     }
+
+    const runSettings: RunSettings = {
+      destinationUrl: validDestinationUrl(template.destination_url),
+      title: textField(template.title, "Title", 200),
+      copy: textField(template.copy, "Copy", 20000),
+      callToAction: String(template.call_to_action ?? ""),
+      photos: validPhotos(template.photos),
+    };
+
+    const { error: insertError } = await a.from("marketing_cron_runs").insert({
+      id: runId,
+      template_id: templateId,
+      channel: KOREAPAS_CHANNEL,
+      trigger,
+      status: "queued",
+      scheduled_for: scheduledFor.toISOString(),
+      settings: runSettings,
+      performance: { trackedPosts: 0, ...emptyMetrics() },
+      created_at: nowIso,
+    });
+    if (insertError) throw new Error(insertError.message);
+
+    return runId;
+  } catch (error) {
+    await clearRunLease(runId, null, nowIso).catch((leaseError) =>
+      console.error("Unable to clear the failed marketing run lease.", leaseError),
+    );
+    throw error;
   }
-
-  const runSettings: RunSettings = {
-    destinationUrl: String(template.destination_url ?? ""),
-    title: String(template.title ?? ""),
-    copy: String(template.copy ?? ""),
-    callToAction: String(template.call_to_action ?? ""),
-    photos: (template.photos ?? []) as TemplatePhoto[],
-  };
-
-  const { error: insertError } = await a.from("marketing_cron_runs").insert({
-    id: runId,
-    template_id: templateId,
-    channel: KOREAPAS_CHANNEL,
-    trigger,
-    status: "queued",
-    scheduled_for: scheduledFor.toISOString(),
-    settings: runSettings,
-    performance: { trackedPosts: 0, ...emptyMetrics() },
-    created_at: nowIso,
-  });
-  if (insertError) {
-    await clearRunLease(null, nowIso);
-    throw new Error(insertError.message);
-  }
-
-  return runId;
 };
 
 const requireAdmin = async (req: Request): Promise<string> => {
@@ -613,8 +977,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const a = admin();
 
   try {
-    // pg_cron calls this with the private scheduler header and no user session.
-    if (action === "tick") {
+    // pg_cron calls these with the private scheduler header and no user session.
+    if (action === "tick" || action === "refresh-performance") {
       const { data: schedulerSecret, error: schedulerSecretError } = await a.rpc(
         "marketing_scheduler_secret",
       );
@@ -626,9 +990,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
       ) {
         return json(req, { error: "permission-denied" }, 403);
       }
+      if (action === "refresh-performance") {
+        const performance = await refreshPriorPostPerformance();
+        return json(req, { refreshed: true, performance });
+      }
       const runId = await claimRun("schedule");
       if (!runId) return json(req, { ran: false });
-      await executeRun(runId);
+      // This is only reachable with the private scheduler secret. It is used
+      // for an explicitly authorized operational test; pg_cron never sets it.
+      await executeRun(runId, { bypassCooldown: body.force === true });
       return json(req, { ran: true, runId });
     }
 
@@ -709,6 +1079,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const { error } = await a.from("marketing_templates").delete().eq("id", templateId);
       if (error) throw new Error(error.message);
       return json(req, { ok: true });
+    }
+
+    if (action === "delete-run") {
+      const runId = validRunId(body.runId);
+      // This removes only the dashboard history snapshot. The associated growth_posts
+      // row stays in place so an already-published post keeps its redirect, clicks,
+      // and first-payment attribution intact.
+      const { error } = await a.from("marketing_cron_runs").delete().eq("id", runId);
+      if (error) throw new Error(error.message);
+      return json(req, { ok: true });
+    }
+
+    if (action === "generate-template") {
+      const template = await generateTemplateDraft(body);
+      return json(req, template);
     }
 
     if (action === "run-now") {

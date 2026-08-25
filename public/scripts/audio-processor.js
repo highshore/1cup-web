@@ -8,6 +8,14 @@ class AudioProcessor extends AudioWorkletProcessor {
     this.bufferIndex = 0;
 
     this.port.onmessage = (event) => {
+      if (event.data?.type === "flush") {
+        if (this.bufferIndex > 0) {
+          this.port.postMessage(this.buffer.buffer.slice(0, this.bufferIndex));
+          this.bufferIndex = 0;
+        }
+        return;
+      }
+
       if (event.data.sampleRate) {
         this.sampleRate = event.data.sampleRate;
         this.bufferSize = 4096;

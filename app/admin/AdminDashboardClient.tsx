@@ -146,6 +146,7 @@ const QUICK_ACTIONS = [
   ["marketing", "/admin/marketing"],
   ["notifications", "/admin/notifications"],
   ["gifts", "/admin/gifts"],
+  ["testCenter", "/admin/test-center"],
 ] as const;
 
 const EMPTY_STATS: DashboardStats = {
