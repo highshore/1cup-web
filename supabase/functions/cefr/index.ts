@@ -514,7 +514,7 @@ Deno.serve(async (req) => {
         return json(req, { error: "Internal scheduler authorization required" }, 403);
       }
       const pollResponse = await handlePoll(req);
-      await recordSchedulerHeartbeat("cefr.poll", null, "30 minutes");
+      await recordSchedulerHeartbeat("cefr.poll", null, "15 minutes");
       return pollResponse;
     }
     if (action === "start") {

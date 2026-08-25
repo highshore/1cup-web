@@ -20,6 +20,13 @@
 create table if not exists public.scheduler_heartbeats (
   job_name          text primary key,
   expected_interval interval    not null,
+  -- Optional, and the difference between finding out tomorrow and finding out tonight.
+  -- A rolling interval cannot flag a missed daily run until more than 24h after the
+  -- last success, which for billing means a full day late. With this set, the job goes
+  -- stale as soon as that time passes in KST with nothing recorded today.
+  expected_daily_at time,
+  -- Lets a deliberately paused job stop alerting without losing its history.
+  enabled           boolean     not null default true,
   last_success_at   timestamptz,
   last_detail       jsonb,
   updated_at        timestamptz not null default now()
@@ -29,12 +36,22 @@ comment on table public.scheduler_heartbeats is
   'One row per scheduled action. expected_interval is the longest gap that is still '
   'healthy — set it well above the schedule so a single missed tick is not an alert.';
 
--- Generous on purpose: a daily job gets 25 hours, so one late run is tolerated and a
--- genuinely broken one is caught the next day rather than paging on jitter.
-insert into public.scheduler_heartbeats (job_name, expected_interval) values
-  ('payment.process-recurring', interval '25 hours'),
-  ('cefr.poll',                 interval '30 minutes'),
-  ('messaging.send-links',      interval '25 hours')
+-- last_success_at starts at install rather than null. Seeding it null would mark every
+-- job stale the moment this lands and keep the two daily ones alerting until their next
+-- run — a day of false alarms as the monitor's opening act.
+--
+-- The intervals are the outer guard; expected_daily_at is what actually catches a missed
+-- billing run, 15 minutes after it should have happened.
+--
+-- cefr.poll runs every two minutes and shares the auth path with billing, so it is the
+-- fleet's canary: a 15-minute window turns a broken scheduler into an alert within
+-- minutes instead of waiting for a daily job to miss.
+insert into public.scheduler_heartbeats
+  (job_name, expected_interval, expected_daily_at, last_success_at)
+values
+  ('payment.process-recurring', interval '26 hours',   time '20:15', now()),
+  ('cefr.poll',                 interval '15 minutes', null,         now()),
+  ('messaging.send-links',      interval '26 hours',   time '08:15', now())
 on conflict (job_name) do nothing;
 
 -- Called by the Edge Functions themselves, at the end of a run that actually did its
@@ -61,10 +78,24 @@ $$;
 create or replace view public.scheduler_health as
   select job_name,
          expected_interval,
+         expected_daily_at,
          last_success_at,
          now() - last_success_at as since_last_success,
-         (last_success_at is null
-          or now() - last_success_at > expected_interval) as stale
+         enabled,
+         (
+           enabled and (
+             last_success_at is null
+             or now() - last_success_at > expected_interval
+             -- Past today's deadline with nothing recorded today. Compared in KST
+             -- because that is the clock the schedules were written against.
+             or (
+               expected_daily_at is not null
+               and (now() at time zone 'Asia/Seoul')::time > expected_daily_at
+               and (last_success_at at time zone 'Asia/Seoul')::date
+                     < (now() at time zone 'Asia/Seoul')::date
+             )
+           )
+         ) as stale
     from public.scheduler_heartbeats;
 
 comment on view public.scheduler_health is
