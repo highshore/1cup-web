@@ -66,6 +66,20 @@ const PAYPLE_REFUND_KEY = requiredEnv("PAYPLE_REFUND_KEY");
 // (it was 9900 here vs 9700 there, so an order-lookup miss overcharged by 200).
 const SUBSCRIPTION_PRICE = 9700;
 
+// How far back a renewal will reach. The window used to be a single calendar day, so a
+// run that was blocked — as it was on 24 and 25 August — left those members behind
+// permanently: the next day looked at the next day only, and they were never seen again.
+// Reaching back means an outage is caught up automatically on the next successful run.
+// Bounded rather than unlimited so that a data problem surfaces as an unbilled member a
+// human notices, not as a surprise charge on a year-old record.
+const RENEWAL_LOOKBACK_DAYS = 14;
+
+// A card that fails should not end a membership the same day. Two attempts a day for
+// three days is six chances before service stops. Members who asked to stop billing are
+// not given the grace — no charge is expected for them, so their membership simply ends
+// when the period does.
+const RENEWAL_GRACE_DAYS = 3;
+
 // -------------------------------------------------------------------
 // Small helpers
 // -------------------------------------------------------------------
@@ -820,12 +834,17 @@ async function processRecurringPayments() {
   );
 
   try {
-    // Users whose subscription_end_date falls in today's KST window.
+    // Due today, or overdue and still inside the lookback. Anyone missed by a failed run
+    // is picked up here rather than being stranded by a window that only ever looked at
+    // the current day.
+    const lookbackStart = new Date(
+      kstStartOfDay.getTime() - RENEWAL_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+    );
     const { data: usersToRenew, error: selErr } = await a
       .from("users")
       .select("*")
       .eq("has_active_subscription", true)
-      .gte("subscription_end_date", kstStartOfDay.toISOString())
+      .gte("subscription_end_date", lookbackStart.toISOString())
       .lte("subscription_end_date", kstEndOfDay.toISOString());
     if (selErr) throw new Error(selErr.message);
 
@@ -1021,26 +1040,57 @@ async function processRecurringPayments() {
       }
     }
 
-    // Deactivate any subscriptions already expired (subscription_end_date < now KST).
+    // End memberships that are genuinely over — but not the ones we simply failed to
+    // charge. This sweep used to deactivate anything past its end date in the same run
+    // that tried to renew it, so on 26 August it cancelled two members whose renewal the
+    // previous day's outage had never even attempted. They lost their membership without
+    // ever being asked for money.
+    //
+    // Two different endings, because they mean different things:
+    //   - asked to stop billing: the period ends, so does the membership. Nothing is owed
+    //     and nothing is being retried, so there is nothing to wait for.
+    //   - still billing: only after the grace period, by which point six attempts have
+    //     failed and the card really is the problem.
     try {
-      const { data: expired, error: expErr } = await a
+      const graceCutoff = new Date(
+        kstNow.getTime() - RENEWAL_GRACE_DAYS * 24 * 60 * 60 * 1000,
+      );
+
+      const { data: endedByChoice, error: choiceErr } = await a
         .from("users")
         .select("uid")
         .eq("has_active_subscription", true)
+        .eq("billing_cancelled", true)
         .lt("subscription_end_date", kstNow.toISOString());
-      if (expErr) throw new Error(expErr.message);
+      if (choiceErr) throw new Error(choiceErr.message);
 
-      if (expired && expired.length > 0) {
+      const { data: endedByFailure, error: failErr } = await a
+        .from("users")
+        .select("uid")
+        .eq("has_active_subscription", true)
+        .not("billing_cancelled", "is", true)
+        .lt("subscription_end_date", graceCutoff.toISOString());
+      if (failErr) throw new Error(failErr.message);
+
+      const ids = [
+        ...(endedByChoice ?? []).map((r: { uid: string }) => r.uid),
+        ...(endedByFailure ?? []).map((r: { uid: string }) => r.uid),
+      ];
+
+      if (ids.length > 0) {
+        // Named, not counted: a membership ending is worth being able to look up later.
         logInfo(
-          `Deactivating ${expired.length} expired subscriptions (subscription_end_date < now KST)`,
+          `Deactivating ${ids.length} membership(s) — ` +
+            `${(endedByChoice ?? []).length} after a requested stop, ` +
+            `${(endedByFailure ?? []).length} after ${RENEWAL_GRACE_DAYS} days of failed renewal: ` +
+            ids.join(", "),
         );
-        const ids = expired.map((r: { uid: string }) => r.uid);
         await a
           .from("users")
           .update({ has_active_subscription: false })
           .in("uid", ids);
       } else {
-        logInfo("No expired subscriptions to deactivate at this run");
+        logInfo("No memberships to end at this run");
       }
     } catch (deactivateError) {
       logError("Error deactivating expired subscriptions:", deactivateError);
