@@ -81,6 +81,7 @@ const BrandButton = styled.button`
 
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
     grid-column: 2;
+    grid-row: 1;
     justify-self: center;
   }
 `;
@@ -136,6 +137,7 @@ const RightActions = styled.div`
   min-width: 0;
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
     grid-column: 3;
+    grid-row: 1;
     margin-left: auto;
   }
 `;
@@ -167,13 +169,13 @@ const LanguageButton = styled.button<{ $isTransparent: boolean }>`
 `;
 
 const LangIcon = styled.img<{ $isTransparent: boolean }>`
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid ${({ $isTransparent }) =>
     $isTransparent ? "rgba(255,255,255,0.58)" : "#e2e8f0"};
-  @media (max-width: 520px) { width: 22px; height: 22px; }
+  @media (max-width: 520px) { width: 28px; height: 28px; }
 `;
 
 const JoinButton = styled.button<{ $isTransparent: boolean }>`
@@ -214,6 +216,7 @@ const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
   @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
     display: inline-flex;
     grid-column: 1;
+    grid-row: 1;
     justify-self: start;
   }
 `;
