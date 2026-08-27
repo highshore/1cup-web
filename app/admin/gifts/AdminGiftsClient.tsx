@@ -35,27 +35,6 @@ const Page = styled.main`
   }
 `;
 
-const Heading = styled.header`
-  margin: 0 0 1.35rem;
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.75rem, 4vw, 2.2rem);
-  font-weight: 900;
-  letter-spacing: -0.025em;
-`;
-
-const Description = styled.p`
-  max-width: 680px;
-  margin: 0.62rem 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.55;
-`;
-
 const Stack = styled.div`
   display: grid;
   gap: 1.25rem;
@@ -648,6 +627,12 @@ export default function AdminGiftsClient() {
     );
   }, [recipientSearch, recipients]);
 
+  const sendDisabledReason = !data?.configured
+    ? data?.configurationError || copy.providerNeedsSetup
+    : !product
+      ? copy.productRequired
+      : null;
+
   const formatMoney = (value: number | null) =>
     value === null
       ? copy.unavailable
@@ -751,11 +736,6 @@ export default function AdminGiftsClient() {
 
   return (
     <Page>
-      <Heading>
-        <Title>{copy.pageTitle}</Title>
-        <Description>{copy.pageDescription}</Description>
-      </Heading>
-
       {loadError ? (
         <Card>
           <CardBody>
@@ -955,11 +935,13 @@ export default function AdminGiftsClient() {
                 <div>
                   {sendError && <InlineStatus $error>{sendError}</InlineStatus>}
                   {sendSuccess && <InlineStatus>{sendSuccess}</InlineStatus>}
-                  {data?.balance === 0 && <InlineStatus $error>{copy.noBalance}</InlineStatus>}
+                  {!sendError && !sendSuccess && sendDisabledReason && (
+                    <InlineStatus $error>{sendDisabledReason}</InlineStatus>
+                  )}
                 </div>
                 <SendButton
                   type="button"
-                  disabled={isSending || !data?.configured || data?.balance === 0 || !product}
+                  disabled={isSending || Boolean(sendDisabledReason)}
                   onClick={() => void submit()}
                 >
                   {isSending ? copy.sending : copy.sendGift}

@@ -6,6 +6,7 @@ import Footer from "./footer";
 import NewNavbar from "../../new-home/components/NewNavbar";
 import { colors } from "../constants/colors";
 import { appLayout } from "../constants/app_layout";
+import NonKoreanApplicantPrompt from "./NonKoreanApplicantPrompt";
 
 const LayoutWrapper = styled.div<{ $isHomePage: boolean }>`
   min-height: 100vh;
@@ -60,6 +61,7 @@ export default function MainLayoutWrapper({
         {children}
       </PageContainer>
       <Footer />
+      <NonKoreanApplicantPrompt />
     </LayoutWrapper>
   );
 }

@@ -276,7 +276,7 @@ const UserStatus = styled.div<{ active: boolean }>`
   color: #050505;
 `;
 
-const GdgStatus = styled.div<{ $isMember: boolean }>`
+const LocationStatus = styled.div<{ $location: MembershipLocation }>`
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
@@ -284,13 +284,86 @@ const GdgStatus = styled.div<{ $isMember: boolean }>`
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
-  background-color: ${(props) => (props.$isMember ? "#f47a4a" : "#ffffff")};
+  background-color: ${(props) => (props.$location === "yeouido" ? "#dbeafe" : "#ffedd5")};
   color: #050505;
 `;
 
 const UserDate = styled.div`
   color: rgba(5, 5, 5, 0.6);
   font-size: 12px;
+`;
+
+const ApplicantList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ApplicantCard = styled.article`
+  border: 1.5px solid #050505;
+  border-radius: 10px;
+  padding: 16px;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
+  }
+`;
+
+const ApplicantHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const ApplicantDetails = styled.dl`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  dt {
+    margin: 0 0 3px;
+    color: rgba(5, 5, 5, 0.58);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+    color: #050505;
+    font-size: 13px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+`;
+
+const ApplicantStatus = styled.span<{ $status: NonKoreanApplication["status"] }>`
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #050505;
+  border-radius: 999px;
+  background: ${({ $status }) =>
+    $status === "approved" ? "#dcfce7" : $status === "declined" ? "#fee2e2" : "#fef3c7"};
+  color: #050505;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: capitalize;
+`;
+
+const ExternalProfileLink = styled.a`
+  color: #050505;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
 `;
 
 const FeedbackList = styled.div`
@@ -596,6 +669,8 @@ const EmptyState = styled.div`
 `;
 
 // Interfaces
+type MembershipLocation = "yeouido" | "anam";
+
 interface UserData {
   id: string;
   email?: string;
@@ -606,7 +681,7 @@ interface UserData {
   subscriptionStartDate?: Date | string;
   subscriptionEndDate?: Date | string;
   account_status?: string;
-  gdg_member?: boolean;
+  location: MembershipLocation;
   isPlaceholder?: boolean;
 }
 
@@ -617,6 +692,16 @@ interface FeedbackData {
   reasons: string[];
   otherReason?: string;
   timestamp: string;
+}
+
+interface NonKoreanApplication {
+  id: string;
+  userId: string;
+  email: string;
+  nationality: string;
+  linkedinUrl: string;
+  status: "pending" | "approved" | "declined";
+  createdAt: string;
 }
 
 interface DashboardStats {
@@ -702,11 +787,12 @@ export default function AdminClient({
   const [authChecking, setAuthChecking] = useState(true);
   const [users, setUsers] = useState<UserData[]>([]);
   const [feedback, setFeedback] = useState<FeedbackData[]>([]);
+  const [applications, setApplications] = useState<NonKoreanApplication[]>([]);
   const [articles, setArticles] = useState<ArticleData[]>([]);
   const [deletingArticleId, setDeletingArticleId] = useState<string | null>(
     null
   );
-  const [membersTab, setMembersTab] = useState<"members" | "feedback">("members");
+  const [membersTab, setMembersTab] = useState<"members" | "feedback" | "applicants">("members");
   const [extendingSubscriptions, setExtendingSubscriptions] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -782,16 +868,18 @@ export default function AdminClient({
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [usersData, feedbackData, eventsCount, articlesData] =
+      const [usersData, feedbackData, applicationsData, eventsCount, articlesData] =
         await Promise.all([
           fetchUsers(),
           fetchFeedback(),
+          fetchApplications(),
           fetchEventsCount(),
           fetchArticles(),
         ]);
 
       setUsers(usersData);
       setFeedback(feedbackData);
+      setApplications(applicationsData);
       setArticles(articlesData);
       calculateStats(usersData, eventsCount);
     } catch (error) {
@@ -820,7 +908,7 @@ export default function AdminClient({
           subscriptionStartDate: row.subscription_start_date ?? undefined,
           subscriptionEndDate: row.subscription_end_date ?? undefined,
           account_status: row.account_status ?? undefined,
-          gdg_member: row.gdg_member ?? false,
+          location: (row.location === "yeouido" ? "yeouido" : "anam") as MembershipLocation,
           isPlaceholder: row.is_placeholder === true,
         }))
         .filter((user) => !user.isPlaceholder);
@@ -849,6 +937,30 @@ export default function AdminClient({
       }));
     } catch (error) {
       console.error("Error fetching feedback:", error);
+      return [];
+    }
+  };
+
+  const fetchApplications = async (): Promise<NonKoreanApplication[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("non_korean_applications")
+        .select("id, user_id, email, nationality, linkedin_url, status, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      return (data || []).map((row: any) => ({
+        id: String(row.id),
+        userId: String(row.user_id),
+        email: String(row.email ?? ""),
+        nationality: String(row.nationality ?? ""),
+        linkedinUrl: String(row.linkedin_url ?? ""),
+        status:
+          row.status === "approved" || row.status === "declined" ? row.status : "pending",
+        createdAt: String(row.created_at ?? ""),
+      }));
+    } catch (error) {
+      console.error("Error fetching non-Korean applications:", error);
       return [];
     }
   };
@@ -1147,6 +1259,17 @@ export default function AdminClient({
           >
             {withCount(copy.tabFeedback, feedback.length)}
           </MembersTab>
+          <MembersTab
+            type="button"
+            role="tab"
+            id="applicants-tab"
+            aria-controls="applicants-panel"
+            aria-selected={membersTab === "applicants"}
+            $active={membersTab === "applicants"}
+            onClick={() => setMembersTab("applicants")}
+          >
+            {withCount(copy.tabApplicants, applications.length)}
+          </MembersTab>
         </MembersTabs>
 
         {membersTab === "members" ? (
@@ -1160,9 +1283,9 @@ export default function AdminClient({
                   </div>
 
                   <div>
-                    <GdgStatus $isMember={user.gdg_member === true}>
-                      {user.gdg_member ? copy.gdgMember : copy.nonGdg}
-                    </GdgStatus>
+                    <LocationStatus $location={user.location}>
+                      {user.location === "yeouido" ? copy.locationYeouido : copy.locationAnam}
+                    </LocationStatus>
                   </div>
 
                   <UserStatus active={!!user.hasActiveSubscription}>
@@ -1188,10 +1311,55 @@ export default function AdminClient({
               </UserCard>
             ))}
           </UsersList>
-        ) : (
+        ) : membersTab === "feedback" ? (
           <div id="feedback-panel" role="tabpanel" aria-labelledby="feedback-tab">
             {renderFeedback()}
           </div>
+        ) : (
+          <ApplicantList id="applicants-panel" role="tabpanel" aria-labelledby="applicants-tab">
+            {applications.length === 0 ? (
+              <EmptyState>{copy.noApplicants}</EmptyState>
+            ) : (
+              applications.map((application) => {
+                const member = usersById.get(application.userId);
+                return (
+                  <ApplicantCard key={application.id}>
+                    <ApplicantHeader>
+                      <div>
+                        <UserName>{member?.displayName || copy.noName}</UserName>
+                        <UserEmail>{application.email}</UserEmail>
+                      </div>
+                      <ApplicantStatus $status={application.status}>
+                        {copy.applicationStatuses[application.status]}
+                      </ApplicantStatus>
+                    </ApplicantHeader>
+                    <ApplicantDetails>
+                      <div>
+                        <dt>{copy.applicantNationality}</dt>
+                        <dd>{application.nationality}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.applicantLinkedIn}</dt>
+                        <dd>
+                          <ExternalProfileLink
+                            href={application.linkedinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {application.linkedinUrl}
+                          </ExternalProfileLink>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{copy.applicantSubmitted}</dt>
+                        <dd>{formatDateTime(application.createdAt)}</dd>
+                      </div>
+                    </ApplicantDetails>
+                  </ApplicantCard>
+                );
+              })
+            )}
+          </ApplicantList>
         )}
       </ContentSection>
     );

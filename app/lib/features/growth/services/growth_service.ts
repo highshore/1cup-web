@@ -19,6 +19,7 @@ const RUNS = "marketing_cron_runs";
 const TEMPLATES = "marketing_templates";
 
 export const MARKETING_RUN_PAGE_SIZE = 10;
+const MARKETING_PERFORMANCE_POINT_LIMIT = 180;
 const TEMPLATE_LIMIT = 100;
 
 const toDate = (value: unknown): Date | null => {
@@ -115,6 +116,7 @@ const toPerformance = (value: unknown): MarketingPerformanceSnapshot => {
 
 const toRun = (row: Record<string, unknown>): MarketingCronRun => ({
   id: String(row.id ?? ""),
+  templateId: typeof row.template_id === "string" ? row.template_id : "",
   channel: "koreapas",
   trigger: row.trigger === "manual" ? "manual" : "schedule",
   status: (row.status as MarketingRunStatus) || "queued",
@@ -159,6 +161,22 @@ export const fetchMarketingCronRuns = async (
   if (error) throw error;
   const rows = (data ?? []).map((row) => toRun(row as Record<string, unknown>));
   return { runs: rows.slice(0, pageSize), hasMore: rows.length > pageSize };
+};
+
+// Completed runs are immutable per-post snapshots, so they are the correct source
+// for a time series. Keep this deliberately bounded; the panel is a marketing
+// overview, not an unbounded client-side analytics export.
+export const fetchMarketingPerformanceRuns = async (): Promise<MarketingCronRun[]> => {
+  const { data, error } = await supabase
+    .from(RUNS)
+    .select("*")
+    .eq("status", "completed")
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(MARKETING_PERFORMANCE_POINT_LIMIT);
+  if (error) throw error;
+  return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };
 
 export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> => {

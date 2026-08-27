@@ -71,6 +71,7 @@ export interface MarketingPerformanceSnapshot extends GrowthPostMetrics {
 
 export interface MarketingCronRun {
   id: string;
+  templateId: string;
   channel: "koreapas";
   trigger: "schedule" | "manual";
   status: MarketingRunStatus;

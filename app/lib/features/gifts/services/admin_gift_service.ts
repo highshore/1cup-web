@@ -17,6 +17,8 @@ const GIFTISHOW_BASE_URL = "https://bizapi.giftishow.com/bizApi";
 const DEFAULT_GOODS_CODE = process.env.GIFTISHOW_DEFAULT_GOODS_CODE?.trim() || "G00003320983";
 const SEND_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
+const GIFTISHOW_CREDENTIAL_ERROR_MESSAGE =
+  "Giftishow rejected the configured API credentials (E0006). Replace GIFTISHOW_AUTH_CODE and GIFTISHOW_AUTH_TOKEN with the current production keys.";
 
 export class AdminGiftError extends Error {
   constructor(message: string, readonly status: number) {
@@ -152,6 +154,14 @@ function assertOuterSuccess(payload: Record<string, unknown>): void {
   if (code !== "0000") {
     throw new GiftishowProviderError(providerMessage(payload) || "Giftishow rejected the request.", code);
   }
+}
+
+function isCredentialRejection(error: unknown): boolean {
+  return error instanceof GiftishowProviderError && error.code === "E0006";
+}
+
+function giftishowCredentialError(): AdminGiftError {
+  return new AdminGiftError(GIFTISHOW_CREDENTIAL_ERROR_MESSAGE, 502);
 }
 
 async function postGiftishow(
@@ -413,6 +423,7 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
   let balance: number | null = null;
   let balanceError: string | null = null;
   let defaultProduct: AdminGiftProduct | null = null;
+  let credentialsRejected = false;
 
   if (config.configured) {
     const [balanceResult, productResult] = await Promise.allSettled([
@@ -422,18 +433,42 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
     if (balanceResult.status === "fulfilled") {
       balance = balanceResult.value;
     } else {
+      credentialsRejected ||= isCredentialRejection(balanceResult.reason);
       balanceError = balanceResult.reason instanceof Error
         ? balanceResult.reason.message
         : "Unable to load Bizmoney balance.";
     }
-    if (productResult.status === "fulfilled") defaultProduct = productResult.value;
+    if (productResult.status === "fulfilled") {
+      defaultProduct = productResult.value;
+    } else {
+      credentialsRejected ||= isCredentialRejection(productResult.reason);
+    }
+
+    console.info("Giftishow readiness check", {
+      balanceAvailable: balanceResult.status === "fulfilled",
+      defaultProductAvailable: productResult.status === "fulfilled",
+      balanceProviderCode:
+        balanceResult.status === "rejected" && balanceResult.reason instanceof GiftishowProviderError
+          ? balanceResult.reason.code
+          : null,
+      productProviderCode:
+        productResult.status === "rejected" && productResult.reason instanceof GiftishowProviderError
+          ? productResult.reason.code
+          : null,
+    });
+  } else {
+    console.warn("Giftishow readiness check failed: missing configuration", {
+      missing: config.missing,
+    });
   }
 
   return {
-    configured: config.configured,
-    configurationError: config.configured
-      ? null
-      : `Missing server configuration: ${config.missing.join(", ")}`,
+    configured: config.configured && !credentialsRejected,
+    configurationError: !config.configured
+      ? `Missing server configuration: ${config.missing.join(", ")}`
+      : credentialsRejected
+        ? GIFTISHOW_CREDENTIAL_ERROR_MESSAGE
+        : null,
     balance,
     balanceError,
     recipients: (recipientsResult.data ?? [])
@@ -448,7 +483,12 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
 
 export async function lookupAdminGiftProduct(goodsCode: string): Promise<AdminGiftProduct> {
   await requireAdminProfile();
-  return fetchProduct(goodsCode, requireProviderConfig());
+  try {
+    return await fetchProduct(goodsCode, requireProviderConfig());
+  } catch (error) {
+    if (isCredentialRejection(error)) throw giftishowCredentialError();
+    throw error;
+  }
 }
 
 export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdminGiftResult> {
@@ -501,11 +541,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     throw new AdminGiftError("This Giftishow product is not currently available for sale.", 400);
   }
 
-  const balance = await fetchBalance(config);
   const purchasePrice = product.discountPrice ?? product.salePrice;
-  if (purchasePrice !== null && balance < purchasePrice) {
-    throw new AdminGiftError("Bizmoney balance is insufficient for this gift.", 400);
-  }
 
   const trId = generateTrId();
   const { data: inserted, error: insertError } = await db
@@ -583,7 +619,9 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     if (error instanceof AdminGiftError) throw error;
 
     const providerError = error instanceof GiftishowProviderError ? error : null;
-    const message = providerError?.message || "Giftishow could not send the coupon.";
+    const message = isCredentialRejection(error)
+      ? GIFTISHOW_CREDENTIAL_ERROR_MESSAGE
+      : providerError?.message || "Giftishow could not send the coupon.";
     await updateGiftHistory(giftId, {
       status: "failed",
       provider_code: providerError?.code,

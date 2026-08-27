@@ -1,11 +1,14 @@
 "use client";
 
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { appLayout } from "../lib/constants/app_layout";
 import StatsSection from "../lib/features/home/components/StatsSection";
 import { HomeStats } from "../lib/features/home/services/stats_service";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import { useAuth } from "../lib/contexts/auth_context";
+import { supabase } from "../lib/supabase/client";
 
 const Page = styled.main`
   min-height: 100vh;
@@ -459,6 +462,84 @@ const GhostButton = styled(Link)`
   }
 `;
 
+const ApplicationCard = styled.section`
+  border: 2px solid #050505;
+  border-radius: 16px;
+  background: #fff8dc;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: 6px 6px 0 #050505;
+`;
+
+const ApplicationForm = styled.form`
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormField = styled.label`
+  display: grid;
+  gap: 0.42rem;
+  color: #050505;
+  font-size: 0.84rem;
+  font-weight: 850;
+`;
+
+const FormInput = styled.input`
+  width: 100%;
+  min-height: 46px;
+  border: 1.5px solid #050505;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #050505;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  font-size: 0.92rem;
+
+  &:focus-visible {
+    outline: 3px solid #f47a4a;
+    outline-offset: 2px;
+  }
+`;
+
+const FormAction = styled.button`
+  display: inline-flex;
+  width: fit-content;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #050505;
+  color: #ffffff;
+  padding: 0.66rem 1.05rem;
+  font-size: 0.88rem;
+  font-weight: 900;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.68;
+  }
+`;
+
+const FormNotice = styled.p<{ $success?: boolean }>`
+  margin: 0;
+  color: ${({ $success }) => ($success ? "#176b3a" : "#b42318")};
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.5;
+`;
+
 interface NonKoreanApplicantsClientProps {
   stats?: HomeStats;
 }
@@ -467,7 +548,114 @@ export default function NonKoreanApplicantsClient({
   stats,
 }: NonKoreanApplicantsClientProps) {
   const { t } = useI18n();
+  const { currentUser, isLoading: authLoading } = useAuth();
+  const applicationRef = useRef<HTMLElement | null>(null);
+  const [email, setEmail] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [loadingApplication, setLoadingApplication] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formMessage, setFormMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
   const page = t.nonKoreanApplicants;
+  const application = page.application;
+  const authHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
+
+  useEffect(() => {
+    if (authLoading || !currentUser) {
+      setLoadingApplication(false);
+      return;
+    }
+
+    let active = true;
+    setLoadingApplication(true);
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("non_korean_applications")
+          .select("email, nationality, linkedin_url, status")
+          .eq("user_id", currentUser.uid)
+          .maybeSingle();
+        if (!active) return;
+        if (error) {
+          console.error("Unable to load non-Korean application:", error);
+          setFormMessage({ tone: "error", text: application.form.loadError });
+          return;
+        }
+
+        setEmail(data?.email ?? currentUser.email ?? "");
+        setNationality(data?.nationality ?? "");
+        setLinkedinUrl(data?.linkedin_url ?? "");
+        setApplicationStatus(data?.status ?? null);
+      } finally {
+        if (active) setLoadingApplication(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [application.form.loadError, authLoading, currentUser]);
+
+  const scrollToApplication = () => {
+    applicationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleApply = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!currentUser || submitting) return;
+
+    const normalizedEmail = email.trim();
+    const normalizedNationality = nationality.trim();
+    const normalizedLinkedinUrl = linkedinUrl.trim();
+
+    let isLinkedInProfile = false;
+    try {
+      const parsedUrl = new URL(normalizedLinkedinUrl);
+      isLinkedInProfile =
+        parsedUrl.protocol === "https:" &&
+        (parsedUrl.hostname === "linkedin.com" || parsedUrl.hostname.endsWith(".linkedin.com"));
+    } catch {
+      isLinkedInProfile = false;
+    }
+
+    if (!isLinkedInProfile) {
+      setFormMessage({ tone: "error", text: application.form.invalidLinkedIn });
+      return;
+    }
+
+    setSubmitting(true);
+    setFormMessage(null);
+    try {
+      const { data, error } = await supabase
+        .from("non_korean_applications")
+        .upsert(
+          {
+            user_id: currentUser.uid,
+            email: normalizedEmail,
+            nationality: normalizedNationality,
+            linkedin_url: normalizedLinkedinUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        )
+        .select("status")
+        .single();
+
+      if (error) throw error;
+      setApplicationStatus(data.status);
+      setFormMessage({ tone: "success", text: application.form.success });
+    } catch (error) {
+      console.error("Unable to submit non-Korean application:", error);
+      setFormMessage({ tone: "error", text: application.form.error });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Page>
@@ -478,7 +666,13 @@ export default function NonKoreanApplicantsClient({
             <Title>{page.hero.title}</Title>
             <Subtitle>{page.hero.subtitle}</Subtitle>
             <HeroActions>
-              <PrimaryButton href="/auth">{page.hero.primaryCta}</PrimaryButton>
+              {currentUser ? (
+                <PrimaryButton href="#application" onClick={scrollToApplication}>
+                  {page.hero.primaryCta}
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton href={authHref}>{page.hero.primaryCta}</PrimaryButton>
+              )}
               <SecondaryButton href="/meetup">{page.hero.secondaryCta}</SecondaryButton>
             </HeroActions>
           </div>
@@ -563,11 +757,86 @@ export default function NonKoreanApplicantsClient({
           </ProcessList>
         </Section>
 
+        <Section ref={applicationRef} id="application">
+          <ApplicationCard>
+            <SectionHeader>
+              <Eyebrow>{application.eyebrow}</Eyebrow>
+              <SectionTitle>{application.title}</SectionTitle>
+              <SectionDescription>{application.description}</SectionDescription>
+            </SectionHeader>
+
+            {authLoading || loadingApplication ? null : currentUser ? (
+              <ApplicationForm onSubmit={handleApply}>
+                <FormGrid>
+                  <FormField>
+                    {application.form.emailLabel}
+                    <FormInput
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder={application.form.emailPlaceholder}
+                      maxLength={320}
+                      required
+                    />
+                  </FormField>
+                  <FormField>
+                    {application.form.nationalityLabel}
+                    <FormInput
+                      type="text"
+                      autoComplete="country-name"
+                      value={nationality}
+                      onChange={(event) => setNationality(event.target.value)}
+                      placeholder={application.form.nationalityPlaceholder}
+                      maxLength={100}
+                      required
+                    />
+                  </FormField>
+                </FormGrid>
+                <FormField>
+                  {application.form.linkedinLabel}
+                  <FormInput
+                    type="url"
+                    autoComplete="url"
+                    value={linkedinUrl}
+                    onChange={(event) => setLinkedinUrl(event.target.value)}
+                    placeholder={application.form.linkedinPlaceholder}
+                    maxLength={500}
+                    required
+                  />
+                </FormField>
+                {applicationStatus ? (
+                  <FormNotice $success>{application.form.submitted}</FormNotice>
+                ) : null}
+                {formMessage ? (
+                  <FormNotice $success={formMessage.tone === "success"} aria-live="polite">
+                    {formMessage.text}
+                  </FormNotice>
+                ) : null}
+                <FormAction type="submit" disabled={submitting}>
+                  {submitting ? application.form.submitting : application.form.submit}
+                </FormAction>
+              </ApplicationForm>
+            ) : (
+              <HeroActions>
+                <PrimaryButton href={authHref}>{application.signInCta}</PrimaryButton>
+                <SectionDescription>{application.signInHint}</SectionDescription>
+              </HeroActions>
+            )}
+          </ApplicationCard>
+        </Section>
+
         <CtaBox>
           <CtaTitle>{page.cta.title}</CtaTitle>
           <CtaText>{page.cta.description}</CtaText>
           <CtaActions>
-            <InvertedButton href="/auth">{page.cta.primary}</InvertedButton>
+            {currentUser ? (
+              <InvertedButton href="#application" onClick={scrollToApplication}>
+                {page.cta.primary}
+              </InvertedButton>
+            ) : (
+              <InvertedButton href={authHref}>{page.cta.primary}</InvertedButton>
+            )}
             <GhostButton href="/meetup">{page.cta.secondary}</GhostButton>
           </CtaActions>
         </CtaBox>

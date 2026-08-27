@@ -331,7 +331,7 @@ const AudioModeToggle = styled(Button)`
   }
 `;
 
-const ShadowClient: React.FC = () => {
+const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [overallError, setOverallError] = useState<string | null>(null);
 
   // YouTube Player State
@@ -436,7 +436,6 @@ const ShadowClient: React.FC = () => {
 
   const AZURE_SPEECH_KEY = process.env.NEXT_PUBLIC_AZURE_PRIMARY_KEY;
   const AZURE_SPEECH_REGION = "koreacentral";
-  const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
   // Step definitions
   const steps: Step[] = [
@@ -637,7 +636,7 @@ const ShadowClient: React.FC = () => {
         const { data, error } = await supabase
           .from("shadow")
           .select("*")
-          .eq("id", "sample")
+          .eq("id", lessonId)
           .maybeSingle();
         if (error) throw error;
         if (data) {
@@ -668,7 +667,7 @@ const ShadowClient: React.FC = () => {
           }
         } else
           setYoutubeError(
-            "Shadow learning content not found. Please ensure the 'shadow' row with id='sample' exists with youtube_url and audio_timestamps fields."
+            "This shadowing lesson is not available."
           );
       } catch (error: any) {
         console.error("Shadow data fetch error:", error);
@@ -682,7 +681,7 @@ const ShadowClient: React.FC = () => {
       if (timeUpdateIntervalRef.current)
         clearInterval(timeUpdateIntervalRef.current);
     };
-  }, [convertToEmbedUrlCallback]);
+  }, [convertToEmbedUrlCallback, lessonId]);
 
   useEffect(() => {
     if (!youtubeUrl || youtubeLoading || youtubeError) {
@@ -1349,47 +1348,23 @@ const ShadowClient: React.FC = () => {
     context: string
   ): Promise<string> => {
     try {
-      // For the shadow page, use a simpler approach without local caching.
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-      if (!apiKey) {
-        return "API 키가 설정되지 않았습니다.";
-      }
-
-      const url = "https://api.openai.com/v1/chat/completions";
-
-      const prompt = `다음 문장에서 '${word}'의 정의를 한국어로 제공해주세요. 단어의 의미를 문장의 맥락에 맞게 설명해주세요. 반드시 존대말로 작성해주세요.
-
-문장: "${context}"
-
-* 결과 형식:
-뜻풀이: [문장 문맥에 맞는 단어 정의]
-`;
-
-      const response = await fetch(url, {
+      const response = await fetch("/api/shadow/openai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.3,
-          max_tokens: 300,
-        }),
+        body: JSON.stringify({ action: "definition", word, context }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
+        throw new Error("뜻풀이를 지금 가져올 수 없습니다.");
       }
 
       const data = await response.json();
-      return data.choices[0].message.content;
+      if (typeof data.definition !== "string") {
+        throw new Error("뜻풀이를 지금 가져올 수 없습니다.");
+      }
+      return data.definition;
     } catch (error) {
       console.error("GPT API Error:", error);
       return `뜻풀이를 가져오는 중 오류가 발생했습니다: ${error}`;
@@ -1706,26 +1681,20 @@ const ShadowClient: React.FC = () => {
 
   // Function to get OpenAI ephemeral token
   const getOpenAIEphemeralToken = async (): Promise<string> => {
-    if (!OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is not configured");
-    }
-
-    const response = await fetch(
-      "https://api.openai.com/v1/realtime/transcription_sessions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch("/api/shadow/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "transcription-token" }),
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to get ephemeral token: ${response.status}`);
+      throw new Error("실시간 받아쓰기를 지금 시작할 수 없습니다.");
     }
 
     const data = await response.json();
+    if (typeof data.client_secret !== "string") {
+      throw new Error("실시간 받아쓰기를 지금 시작할 수 없습니다.");
+    }
     return data.client_secret;
   };
 

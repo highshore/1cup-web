@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import styled from "styled-components";
 import {
   ArrowPathIcon,
+  ChartBarIcon,
   CalendarDaysIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -26,6 +27,7 @@ import {
   ensureDefaultMarketingTemplate,
   fetchMarketingCronRuns,
   fetchMarketingCronSettings,
+  fetchMarketingPerformanceRuns,
   fetchMarketingTemplates,
   MARKETING_RUN_PAGE_SIZE,
   generateMarketingTemplate,
@@ -99,6 +101,80 @@ const copyText = async (value: string) => {
 const formatTemplate = (template: string, date: string) =>
   template.replace("{date}", date);
 
+type PerformancePoint = {
+  at: Date;
+  views: number;
+  ctr: number;
+};
+
+const TimeSeriesChart = ({
+  title,
+  points,
+  value,
+  color,
+  suffix = "",
+  emptyLabel,
+  formatDate,
+}: {
+  title: string;
+  points: PerformancePoint[];
+  value: (point: PerformancePoint) => number;
+  color: string;
+  suffix?: string;
+  emptyLabel: string;
+  formatDate: (date: Date) => string;
+}) => {
+  if (!points.length) {
+    return (
+      <ChartCard>
+        <ChartHeading><ChartTitle>{title}</ChartTitle></ChartHeading>
+        <ChartEmpty>{emptyLabel}</ChartEmpty>
+      </ChartCard>
+    );
+  }
+
+  const width = 320;
+  const height = 132;
+  const padding = { top: 14, right: 12, bottom: 10, left: 30 };
+  const values = points.map(value);
+  const max = Math.max(...values, 1);
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const coordinates = values.map((current, index) => {
+    const x = padding.left + (points.length === 1 ? chartWidth / 2 : (index / (points.length - 1)) * chartWidth);
+    const y = padding.top + chartHeight - (current / max) * chartHeight;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const latest = values.at(-1) ?? 0;
+
+  return (
+    <ChartCard>
+      <ChartHeading>
+        <ChartTitle>{title}</ChartTitle>
+        <ChartValue>{suffix ? `${latest.toFixed(1)}${suffix}` : latest.toLocaleString()}</ChartValue>
+      </ChartHeading>
+      <ChartSvg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        {[0, 0.5, 1].map((ratio) => {
+          const y = padding.top + chartHeight - ratio * chartHeight;
+          return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#dedede" strokeWidth="1" />;
+        })}
+        <text x="0" y={padding.top + 4} fill="#6a6a6a" fontSize="10" fontWeight="700">
+          {suffix ? `${max.toFixed(1)}${suffix}` : max.toLocaleString()}
+        </text>
+        <polyline points={coordinates.join(" ")} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {coordinates.map((coordinate, index) => {
+          const [cx, cy] = coordinate.split(",");
+          return <circle key={`${coordinate}_${index}`} cx={cx} cy={cy} r="3.5" fill="#ffffff" stroke={color} strokeWidth="2" />;
+        })}
+      </ChartSvg>
+      <ChartAxis>
+        <span>{formatDate(points[0].at)}</span>
+        <span>{formatDate(points.at(-1)!.at)}</span>
+      </ChartAxis>
+    </ChartCard>
+  );
+};
+
 const FormCard = styled.section`
   background: #ffffff;
   border: 3px solid #050505;
@@ -110,6 +186,104 @@ const FormCard = styled.section`
     padding: 18px;
     box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
   }
+`;
+
+const AnalyticsPanel = styled(FormCard)`
+  margin-bottom: 32px;
+`;
+
+const AnalyticsHeader = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+`;
+
+const AnalyticsSelect = styled.select`
+  min-width: min(100%, 250px);
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 2px solid #050505;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: #050505;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+
+  &:focus-visible {
+    outline: 3px solid #f47a4a;
+    outline-offset: 2px;
+  }
+`;
+
+const ChartGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartCard = styled.section`
+  min-width: 0;
+  border: 1.5px solid #050505;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fcfcfc;
+`;
+
+const ChartHeading = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+`;
+
+const ChartTitle = styled.h3`
+  margin: 0;
+  color: #050505;
+  font-size: 13px;
+  font-weight: 900;
+`;
+
+const ChartValue = styled.strong`
+  color: #050505;
+  font-size: 18px;
+  font-weight: 900;
+`;
+
+const ChartSvg = styled.svg`
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+`;
+
+const ChartAxis = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  color: rgba(5, 5, 5, 0.56);
+  font-size: 11px;
+  font-weight: 700;
+`;
+
+const ChartEmpty = styled.div`
+  display: grid;
+  min-height: 142px;
+  place-items: center;
+  color: rgba(5, 5, 5, 0.56);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
 `;
 
 const FormHeading = styled.div`
@@ -829,6 +1003,8 @@ export default function GrowthDashboard() {
     toDraft(DEFAULT_MARKETING_CRON_SETTINGS)
   );
   const [runs, setRuns] = useState<MarketingCronRun[]>([]);
+  const [performanceRuns, setPerformanceRuns] = useState<MarketingCronRun[]>([]);
+  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState("all");
   const [hasMoreRuns, setHasMoreRuns] = useState(false);
   const [loadingMoreRuns, setLoadingMoreRuns] = useState(false);
   const [templates, setTemplates] = useState<MarketingTemplate[]>([]);
@@ -859,10 +1035,11 @@ export default function GrowthDashboard() {
       } catch (error) {
         console.error("Unable to ensure the default Gopas template:", error);
       }
-      const [settings, nextRunPage, nextTemplates] = await Promise.all([
+      const [settings, nextRunPage, nextTemplates, nextPerformanceRuns] = await Promise.all([
         fetchMarketingCronSettings(),
         fetchMarketingCronRuns(),
         fetchMarketingTemplates(),
+        fetchMarketingPerformanceRuns(),
       ]);
       if (!mounted) return;
       const initialTemplateId = nextTemplates.some((template) => template.id === settings.templateId)
@@ -889,6 +1066,7 @@ export default function GrowthDashboard() {
       setRuns(nextRunPage.runs);
       setHasMoreRuns(nextRunPage.hasMore);
       setTemplates(nextTemplates);
+      setPerformanceRuns(nextPerformanceRuns);
       setLoading(false);
     };
 
@@ -900,6 +1078,11 @@ export default function GrowthDashboard() {
           return [...nextRunPage.runs, ...current.filter((run) => !refreshedIds.has(run.id))];
         });
         setHasMoreRuns(nextRunPage.hasMore);
+        void fetchMarketingPerformanceRuns()
+          .then((nextPerformanceRuns) => {
+            if (mounted) setPerformanceRuns(nextPerformanceRuns);
+          })
+          .catch((error) => console.error("Unable to refresh marketing performance series:", error));
         setLoading(false);
       }
     });
@@ -955,6 +1138,41 @@ export default function GrowthDashboard() {
         timeZone: "Asia/Seoul",
       }),
     [locale]
+  );
+
+  const performanceDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Seoul",
+      }),
+    [locale],
+  );
+
+  const performanceTemplateOptions = useMemo(() => {
+    const names = new Map(templates.map((template) => [template.id, template.name]));
+    return [...new Set(performanceRuns.map((run) => run.templateId).filter(Boolean))]
+      .map((id) => ({ id, name: names.get(id) || id }))
+      .sort((left, right) => left.name.localeCompare(right.name, locale));
+  }, [locale, performanceRuns, templates]);
+
+  const performancePoints = useMemo<PerformancePoint[]>(() =>
+    performanceRuns
+      .filter((run) => selectedPerformanceTemplateId === "all" || run.templateId === selectedPerformanceTemplateId)
+      .map((run) => {
+        const at = run.completedAt || run.scheduledFor;
+        if (!at) return null;
+        const views = run.performance.impressions;
+        return {
+          at,
+          views,
+          ctr: views > 0 ? (run.performance.clicks / views) * 100 : 0,
+        };
+      })
+      .filter((point): point is PerformancePoint => !!point)
+      .sort((left, right) => left.at.getTime() - right.at.getTime()),
+    [performanceRuns, selectedPerformanceTemplateId],
   );
 
   const updateDraft = <Key extends keyof SettingsDraft>(
@@ -1262,6 +1480,46 @@ export default function GrowthDashboard() {
 
   return (
     <>
+      <AnalyticsPanel>
+        <AnalyticsHeader>
+          <div>
+            <Eyebrow><ChartBarIcon width={15} /> {marketing.performanceAnalytics}</Eyebrow>
+            <FormTitle>{marketing.performanceAnalyticsTitle}</FormTitle>
+            <Description>{marketing.performanceAnalyticsDescription}</Description>
+          </div>
+          <CompactField>
+            {marketing.performanceTemplateSelect}
+            <AnalyticsSelect
+              value={selectedPerformanceTemplateId}
+              onChange={(event) => setSelectedPerformanceTemplateId(event.target.value)}
+            >
+              <option value="all">{marketing.allTemplates}</option>
+              {performanceTemplateOptions.map((template) => (
+                <option key={template.id} value={template.id}>{template.name}</option>
+              ))}
+            </AnalyticsSelect>
+          </CompactField>
+        </AnalyticsHeader>
+        <ChartGrid>
+          <TimeSeriesChart
+            title={marketing.viewsTimeSeries}
+            points={performancePoints}
+            value={(point) => point.views}
+            color="#f47a4a"
+            emptyLabel={marketing.noPerformanceData}
+            formatDate={(date) => performanceDateFormatter.format(date)}
+          />
+          <TimeSeriesChart
+            title={marketing.ctrTimeSeries}
+            points={performancePoints}
+            value={(point) => point.ctr}
+            color="#2a65c7"
+            suffix="%"
+            emptyLabel={marketing.noPerformanceData}
+            formatDate={(date) => performanceDateFormatter.format(date)}
+          />
+        </ChartGrid>
+      </AnalyticsPanel>
       <FormCard>
         <FormHeading>
           <div>

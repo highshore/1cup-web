@@ -65,6 +65,7 @@ const PAYPLE_REFUND_KEY = requiredEnv("PAYPLE_REFUND_KEY");
 // payment_orders.amount. Must match BASE_PRICE in app/payment/PaymentClient.tsx
 // (it was 9900 here vs 9700 there, so an order-lookup miss overcharged by 200).
 const SUBSCRIPTION_PRICE = 9700;
+type MembershipLocation = "yeouido" | "anam";
 
 // How far back a renewal will reach. The window used to be a single calendar day, so a
 // run that was blocked — as it was on 24 and 25 August — left those members behind
@@ -94,6 +95,17 @@ function logWarn(msg: string, extra?: unknown) {
 function logError(msg: string, extra?: unknown) {
   if (extra !== undefined) console.error(msg, extra);
   else console.error(msg);
+}
+
+function getSelectedLocation(value: unknown): MembershipLocation {
+  if (!value || typeof value !== "object") {
+    throw new ApiError("A membership location is required", 400, "invalid-argument");
+  }
+
+  const location = (value as Record<string, unknown>).region;
+  if (location === "yeouido" || location === "anam") return location;
+
+  throw new ApiError("Choose either Yeouido or Anam", 400, "invalid-argument");
 }
 
 // A thrown error carrying an HTTP-ish status + client message (mirrors HttpsError).
@@ -313,6 +325,7 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
   const pcd_amount = body.pcd_amount as number;
   const pcd_good_name = (body.pcd_good_name as string) || "";
   const selected_categories = body.selected_categories ?? {};
+  const location = getSelectedLocation(selected_categories);
   const referralCode = body.referralCode as string | undefined;
 
   if (!userId) throw new ApiError("User ID is required", 400, "invalid-argument");
@@ -425,7 +438,7 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     PCD_PAYER_AUTHTYPE: "sms",
     PCD_USER_DEFINE1: uid,
     PCD_SIMPLE_FNAME: "payment-result",
-    PCD_USER_DEFINE2: JSON.stringify(selected_categories || {}),
+    PCD_USER_DEFINE2: JSON.stringify({ ...(selected_categories as Record<string, unknown>), region: location }),
   };
 
   const limitViolations = auditPaypleParams(paymentParams);
@@ -441,7 +454,7 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     status: "pending_auth",
     type: "subscription_init",
     payple_params_attempted: paymentParams,
-    selected_categories: selected_categories || {},
+    selected_categories: { ...(selected_categories as Record<string, unknown>), region: location },
     // Recorded even though the window has not opened yet: if Payple rejects the
     // parameters there is no callback, so this is the only trace that would exist.
     error_code: limitViolations.length > 0 ? "param_limit_exceeded" : null,
@@ -558,6 +571,7 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
     // --- Fetch original order for dynamic amount/categories/referrer ---
     let originalAmount = SUBSCRIPTION_PRICE;
     let selectedCategories: { [key: string]: boolean } = {};
+    let location: MembershipLocation | null = null;
     let productName = "영어 한잔 멤버십 (정기결제)";
     let referrerUid: string | null = null;
 
@@ -586,6 +600,7 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
             selectedCategories = orderData.selected_categories as {
               [key: string]: boolean;
             };
+            location = getSelectedLocation(orderData.selected_categories);
             const nameParts: string[] = [];
             if (selectedCategories.tech) nameParts.push("테크");
             if (selectedCategories.business) nameParts.push("비즈니스");
@@ -608,6 +623,14 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
       } catch (fetchError) {
         logError(`Error fetching original order ${paymentOrderId}:`, fetchError);
       }
+    }
+
+    if (!location) {
+      throw new ApiError(
+        "The payment order does not include a membership location",
+        400,
+        "invalid-argument",
+      );
     }
 
     // --- Make the actual first payment using the billing key ---
@@ -691,6 +714,7 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
             plan_price: originalAmount,
             cat_tech: selectedCategories.tech ?? false,
             cat_business: selectedCategories.business ?? false,
+            location,
           })
           .eq("uid", userId);
 

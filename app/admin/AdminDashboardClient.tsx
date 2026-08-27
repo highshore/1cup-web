@@ -143,6 +143,7 @@ const Loading = styled.div`
 const QUICK_ACTIONS = [
   ["members", "/admin/members"],
   ["articles", "/admin/articles"],
+  ["shadow", "/admin/shadow"],
   ["marketing", "/admin/marketing"],
   ["notifications", "/admin/notifications"],
   ["gifts", "/admin/gifts"],

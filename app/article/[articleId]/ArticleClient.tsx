@@ -2459,15 +2459,28 @@ const Article = () => {
 
     try {
       const normalizedTerm = word.trim().replace(/\s+/g, " ").toLowerCase();
-      const { data: entryRow, error: entryError } = await supabase
-        .from("dictionary_entries")
-        .select(
-          "id, term, dictionary_meanings(id, grammar_type, definition_en, definition_ko, usage_labels, synonyms, antonyms, pronunciation_ipa, example_en, example_ko, meaning_order)"
-        )
-        .eq("language_code", "en")
-        .eq("normalized_term", normalizedTerm)
-        .maybeSingle();
-      if (entryError) throw entryError;
+      const entrySelect =
+        "id, term, dictionary_meanings(id, grammar_type, definition_en, definition_ko, usage_labels, synonyms, antonyms, pronunciation_ipa, example_en, example_ko, meaning_order)";
+      const [{ data: directEntry, error: directEntryError }, { data: formRows, error: formError }] =
+        await Promise.all([
+          supabase
+            .from("dictionary_entries")
+            .select(entrySelect)
+            .eq("language_code", "en")
+            .eq("normalized_term", normalizedTerm)
+            .maybeSingle(),
+          supabase
+            .from("dictionary_entry_forms")
+            .select(`entry:dictionary_entries!inner(${entrySelect})`)
+            .eq("language_code", "en")
+            .eq("normalized_form", normalizedTerm)
+            .limit(1),
+        ]);
+      if (directEntryError) throw directEntryError;
+      if (formError) throw formError;
+
+      const formEntry = (formRows?.[0] as any)?.entry;
+      const entryRow = directEntry || (Array.isArray(formEntry) ? formEntry[0] : formEntry);
 
       if (!entryRow) return null;
 

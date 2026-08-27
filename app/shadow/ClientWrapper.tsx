@@ -10,7 +10,7 @@ const ShadowClientDynamic = dynamic(() => import("./ShadowClient"), {
   loading: () => <GlobalLoadingScreen />,
 });
 
-export default function ClientWrapper() {
+export default function ClientWrapper({ lessonId }: { lessonId: string }) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -22,5 +22,5 @@ export default function ClientWrapper() {
     return <GlobalLoadingScreen />;
   }
 
-  return <ShadowClientDynamic />;
+  return <ShadowClientDynamic lessonId={lessonId} />;
 }

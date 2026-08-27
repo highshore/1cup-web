@@ -127,9 +127,31 @@ type RefinedArticle = {
 
 type AdvancedVocabularyItem = {
   term: string;
-  meaning_en: string;
   reason: string;
   example_from_article: string;
+};
+
+type ResolvedAdvancedVocabularyItem = AdvancedVocabularyItem & {
+  meaning_en: string;
+  meaning_ko: string | null;
+  dictionary_entry_id: string;
+  dictionary_meaning_id: string;
+};
+
+type DictionaryEntry = {
+  id: string;
+  term: string;
+  normalized_term: string;
+};
+
+type DictionaryMeaning = {
+  id: string;
+  entry_id: string;
+  definition_en: string;
+  definition_ko: string | null;
+  source: string;
+  meaning_order: number;
+  is_verified: boolean;
 };
 
 type AtypicalTerm = {
@@ -509,7 +531,7 @@ Requirements:
 - Prefer the canonical original expression without tense or aspect inflection.
 - For verbs and verbal phrases, remove past tense and -ing forms when possible.
 - Keep multi-word expressions and phrasal verbs together.
-- Return JSON: { "c1_vocab": [{ "term": "...", "meaning_en": "...", "reason": "...", "example_from_article": "..." }] }`,
+- Return JSON: { "c1_vocab": [{ "term": "...", "reason": "...", "example_from_article": "..." }] }`,
     `Title:\n${refinedTitle}\n\nParagraphs:\n${JSON.stringify(paragraphs)}`,
   );
 
@@ -530,11 +552,6 @@ Requirements:
     const candidate = item as Record<string, unknown>;
     return {
       term: modelText(candidate.term, "vocabulary term " + (index + 1), 120),
-      meaning_en: modelText(
-        candidate.meaning_en,
-        "vocabulary meaning " + (index + 1),
-        360,
-      ),
       reason: modelText(
         candidate.reason,
         "vocabulary reason " + (index + 1),
@@ -547,6 +564,153 @@ Requirements:
       ),
     };
   });
+};
+
+const normalizeDictionaryTerm = (term: string): string =>
+  term.trim().replace(/\s+/g, " ").toLowerCase();
+
+const dictionaryMeaningRank = (meaning: DictionaryMeaning): number[] => [
+  Number(meaning.source === "wiktionary"),
+  Number(meaning.is_verified),
+  Number(Boolean(meaning.definition_ko?.trim())),
+  -meaning.meaning_order,
+];
+
+const preferredDictionaryMeaning = (
+  meanings: DictionaryMeaning[],
+): DictionaryMeaning | null =>
+  meanings
+    .filter((meaning) => meaning.definition_en.trim().length > 0)
+    .sort((left, right) => {
+      const leftRank = dictionaryMeaningRank(left);
+      const rightRank = dictionaryMeaningRank(right);
+      for (let index = 0; index < leftRank.length; index += 1) {
+        if (leftRank[index] !== rightRank[index]) {
+          return rightRank[index] - leftRank[index];
+        }
+      }
+      return left.id.localeCompare(right.id);
+    })[0] ?? null;
+
+const asDictionaryEntry = (value: unknown): DictionaryEntry | null => {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row || typeof row !== "object") return null;
+  const candidate = row as Record<string, unknown>;
+  return typeof candidate.id === "string" &&
+      typeof candidate.term === "string" &&
+      typeof candidate.normalized_term === "string"
+    ? {
+      id: candidate.id,
+      term: candidate.term,
+      normalized_term: candidate.normalized_term,
+    }
+    : null;
+};
+
+const resolveVocabularyFromDictionary = async (
+  db: ReturnType<typeof admin>,
+  vocabulary: AdvancedVocabularyItem[],
+): Promise<{
+  items: ResolvedAdvancedVocabularyItem[];
+  mappings: Array<{
+    meaning_id: string;
+    example_en: string;
+    is_key_vocabulary: boolean;
+    source_order: number;
+  }>;
+}> => {
+  const normalizedTerms = [
+    ...new Set(vocabulary.map((item) => normalizeDictionaryTerm(item.term))),
+  ].filter(Boolean);
+  if (!normalizedTerms.length) return { items: [], mappings: [] };
+
+  // Resolve both headwords and inflected forms. The dictionary is the content
+  // source of truth; this function deliberately never creates a fallback entry.
+  const [{ data: directRows, error: directError }, { data: formRows, error: formError }] =
+    await Promise.all([
+      db
+        .from("dictionary_entries")
+        .select("id, term, normalized_term")
+        .eq("language_code", "en")
+        .in("normalized_term", normalizedTerms),
+      db
+        .from("dictionary_entry_forms")
+        .select(
+          "normalized_form, entry:dictionary_entries!inner(id, term, normalized_term)",
+        )
+        .eq("language_code", "en")
+        .in("normalized_form", normalizedTerms),
+    ]);
+  if (directError) throw new Error(directError.message);
+  if (formError) throw new Error(formError.message);
+
+  const entriesByTerm = new Map<string, DictionaryEntry>();
+  (directRows || []).forEach((row: any) => {
+    const entry = asDictionaryEntry(row);
+    if (entry) entriesByTerm.set(entry.normalized_term, entry);
+  });
+  (formRows || []).forEach((row: any) => {
+    const entry = asDictionaryEntry(row.entry);
+    if (entry && typeof row.normalized_form === "string") {
+      entriesByTerm.set(row.normalized_form, entry);
+    }
+  });
+
+  const entries = [
+    ...new Map(
+      [...entriesByTerm.values()].map((entry) => [entry.id, entry]),
+    ).values(),
+  ];
+  if (!entries.length) return { items: [], mappings: [] };
+
+  const { data: meaningRows, error: meaningError } = await db
+    .from("dictionary_meanings")
+    .select(
+      "id, entry_id, definition_en, definition_ko, source, meaning_order, is_verified",
+    )
+    .in("entry_id", entries.map((entry) => entry.id));
+  if (meaningError) throw new Error(meaningError.message);
+
+  const meaningsByEntry = new Map<string, DictionaryMeaning[]>();
+  (meaningRows || []).forEach((row: DictionaryMeaning) => {
+    const current = meaningsByEntry.get(row.entry_id) || [];
+    current.push(row);
+    meaningsByEntry.set(row.entry_id, current);
+  });
+
+  const selectedEntryIds = new Set<string>();
+  const items: ResolvedAdvancedVocabularyItem[] = [];
+  const mappings: Array<{
+    meaning_id: string;
+    example_en: string;
+    is_key_vocabulary: boolean;
+    source_order: number;
+  }> = [];
+
+  vocabulary.forEach((item) => {
+    const entry = entriesByTerm.get(normalizeDictionaryTerm(item.term));
+    if (!entry || selectedEntryIds.has(entry.id)) return;
+    const meaning = preferredDictionaryMeaning(meaningsByEntry.get(entry.id) || []);
+    if (!meaning) return;
+
+    selectedEntryIds.add(entry.id);
+    items.push({
+      ...item,
+      term: entry.term,
+      meaning_en: meaning.definition_en,
+      meaning_ko: meaning.definition_ko,
+      dictionary_entry_id: entry.id,
+      dictionary_meaning_id: meaning.id,
+    });
+    mappings.push({
+      meaning_id: meaning.id,
+      example_en: item.example_from_article,
+      is_key_vocabulary: true,
+      source_order: items.length - 1,
+    });
+  });
+
+  return { items, mappings };
 };
 
 const normalizeDiscussionCandidate = (value: string): string => {
@@ -1111,6 +1275,15 @@ const processArticle = async (
       refined.title,
       paragraphs,
     );
+    const dictionaryVocabulary = await resolveVocabularyFromDictionary(
+      db,
+      advancedVocabulary,
+    );
+    if (dictionaryVocabulary.items.length < 5) {
+      throw new Error(
+        "The shared dictionary did not resolve at least five advanced vocabulary items.",
+      );
+    }
 
     await progress("draftingDiscussion", 55);
     const topics = await extractDiscussionTopics(refined.title, summary);
@@ -1162,8 +1335,8 @@ const processArticle = async (
           english: paragraphs,
           korean: polished.paragraphs,
         },
-        keywords: advancedVocabulary.map((item) => item.term),
-        advanced_vocabulary: advancedVocabulary,
+        keywords: dictionaryVocabulary.items.map((item) => item.term),
+        advanced_vocabulary: dictionaryVocabulary.items,
         atypical_terms: terms,
         discussion_topics: topics,
         discussion_topic_ids: topics.map(() => crypto.randomUUID()),
@@ -1192,6 +1365,27 @@ const processArticle = async (
       .eq("id", articleId);
     if (articleResult.error) {
       throw new Error(articleResult.error.message);
+    }
+
+    // Reprocessing is idempotent: replace the article's selected meanings with
+    // the canonical shared-dictionary meanings resolved above.
+    const { error: clearVocabularyError } = await db
+      .from("article_vocabulary")
+      .delete()
+      .eq("article_id", articleId);
+    if (clearVocabularyError) {
+      throw new Error(clearVocabularyError.message);
+    }
+    const { error: vocabularyError } = await db
+      .from("article_vocabulary")
+      .insert(
+        dictionaryVocabulary.mappings.map((mapping) => ({
+          article_id: articleId,
+          ...mapping,
+        })),
+      );
+    if (vocabularyError) {
+      throw new Error(vocabularyError.message);
     }
 
     const jobResult = await db
