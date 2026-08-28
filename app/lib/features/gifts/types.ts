@@ -28,6 +28,7 @@ export interface AdminGiftCatalogPage {
   page: number;
   size: number;
   total: number | null;
+  hasMore: boolean;
   products: AdminGiftProduct[];
 }
 

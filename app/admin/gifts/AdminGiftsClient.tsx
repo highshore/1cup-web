@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowLeftIcon,
-  ArrowPathIcon,
-  ArrowRightIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -436,6 +430,7 @@ const ModalBackdrop = styled.div`
 
 const ModalCard = styled.section`
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   width: min(980px, 100%);
   max-height: min(780px, calc(100vh - 2rem));
   overflow: hidden;
@@ -506,6 +501,7 @@ const CatalogSearchInput = styled(SearchInput)`
 
 const CatalogList = styled.div`
   min-height: 180px;
+  min-height: 0;
   overflow-y: auto;
   padding: 0 1.1rem 1rem;
 `;
@@ -600,10 +596,9 @@ const CatalogFooter = styled.div`
   }
 `;
 
-const CatalogPaging = styled.div`
+const CatalogStatus = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.45rem;
   color: rgba(5, 5, 5, 0.64);
   font-size: 0.72rem;
   font-weight: 800;
@@ -885,11 +880,7 @@ export default function AdminGiftsClient() {
     : !product
       ? copy.productRequired
       : null;
-  const catalogHasNext = Boolean(
-    catalog &&
-      catalog.products.length === catalog.size &&
-      (catalog.total === null || catalog.page * catalog.size < catalog.total),
-  );
+  const catalogHasMore = Boolean(catalog?.hasMore);
 
   const formatMoney = (value: number | null) =>
     value === null
@@ -928,12 +919,23 @@ export default function AdminGiftsClient() {
     }
   };
 
-  const loadCatalog = useCallback(async (page: number) => {
+  const loadCatalog = useCallback(async (page: number, append = false) => {
     setIsCatalogLoading(true);
     setCatalogError(null);
     try {
       const next = await listAdminGiftProductsClient(page, copy.catalogLoadError);
-      setCatalog(next);
+      setCatalog((current) => {
+        if (!append || !current) return next;
+        const seen = new Set(current.products.map((catalogProduct) => catalogProduct.goodsCode));
+        return {
+          ...next,
+          products: [...current.products, ...next.products.filter((catalogProduct) => {
+            if (seen.has(catalogProduct.goodsCode)) return false;
+            seen.add(catalogProduct.goodsCode);
+            return true;
+          })],
+        };
+      });
     } catch (error) {
       setCatalogError(error instanceof Error ? error.message : copy.catalogLoadError);
     } finally {
@@ -944,10 +946,44 @@ export default function AdminGiftsClient() {
   const openCatalog = () => {
     setCatalogSearch("");
     setCatalogSelectedCode(product?.goodsCode ?? null);
+    setCatalog(null);
     setCatalogError(null);
     setIsCatalogOpen(true);
     void loadCatalog(1);
   };
+
+  const loadMoreCatalog = useCallback(() => {
+    if (!catalog || !catalog.hasMore || isCatalogLoading) return;
+    void loadCatalog(catalog.page + 1, true);
+  }, [catalog, isCatalogLoading, loadCatalog]);
+
+  const handleCatalogScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 120) {
+      loadMoreCatalog();
+    }
+  };
+
+  useEffect(() => {
+    if (
+      !isCatalogOpen ||
+      !catalogSearch.trim() ||
+      matchingCatalogProducts.length > 0 ||
+      !catalogHasMore ||
+      isCatalogLoading
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(loadMoreCatalog, 150);
+    return () => window.clearTimeout(timer);
+  }, [
+    catalogHasMore,
+    catalogSearch,
+    isCatalogLoading,
+    isCatalogOpen,
+    loadMoreCatalog,
+    matchingCatalogProducts.length,
+  ]);
 
   const selectCatalogProduct = async () => {
     if (!catalogSelectedCode) return;
@@ -1342,14 +1378,17 @@ export default function AdminGiftsClient() {
               </CatalogSearch>
             </CatalogTools>
 
-            <CatalogList>
-              {isCatalogLoading ? (
+            <CatalogList onScroll={handleCatalogScroll}>
+              {isCatalogLoading && !catalog ? (
                 <EmptyState>{copy.catalogLoading}</EmptyState>
               ) : catalogError ? (
                 <>
                   <InlineStatus $error>{catalogError}</InlineStatus>
                   <div style={{ marginTop: "0.8rem" }}>
-                    <SecondaryButton type="button" onClick={() => void loadCatalog(catalog?.page ?? 1)}>
+                    <SecondaryButton
+                      type="button"
+                      onClick={() => void loadCatalog(catalog ? catalog.page + 1 : 1, Boolean(catalog))}
+                    >
                       <ArrowPathIcon />
                       {copy.retry}
                     </SecondaryButton>
@@ -1389,25 +1428,13 @@ export default function AdminGiftsClient() {
             </CatalogList>
 
             <CatalogFooter>
-              <CatalogPaging>
-                <SecondaryButton
-                  type="button"
-                  disabled={isCatalogLoading || !catalog || catalog.page <= 1}
-                  onClick={() => catalog && void loadCatalog(catalog.page - 1)}
-                >
-                  <ArrowLeftIcon />
-                  {copy.catalogPrevious}
-                </SecondaryButton>
-                <span>{copy.catalogPage.replace("{page}", String(catalog?.page ?? 1))}</span>
-                <SecondaryButton
-                  type="button"
-                  disabled={isCatalogLoading || !catalogHasNext}
-                  onClick={() => catalog && void loadCatalog(catalog.page + 1)}
-                >
-                  {copy.catalogNext}
-                  <ArrowRightIcon />
-                </SecondaryButton>
-              </CatalogPaging>
+              <CatalogStatus>
+                {isCatalogLoading && catalog
+                  ? copy.catalogLoadingMore
+                  : catalogHasMore
+                    ? copy.catalogScrollHint
+                    : copy.catalogEnd}
+              </CatalogStatus>
               <CatalogActions>
                 <SecondaryButton type="button" onClick={() => setIsCatalogOpen(false)}>
                   {copy.catalogClose}

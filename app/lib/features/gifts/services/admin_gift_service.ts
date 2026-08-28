@@ -17,7 +17,7 @@ import type {
 const GIFTISHOW_BASE_URL = "https://bizapi.giftishow.com/bizApi";
 const SEND_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
-const CATALOG_PAGE_SIZE = 24;
+const CATALOG_PAGE_SIZE = 10;
 const GIFTISHOW_CREDENTIAL_ERROR_MESSAGE =
   "Giftishow rejected the configured API credentials (E0006). Replace GIFTISHOW_AUTH_CODE and GIFTISHOW_AUTH_TOKEN with the current production keys.";
 
@@ -276,14 +276,18 @@ async function fetchProductCatalog(page: number, config: ProviderConfig): Promis
   const goodsList = result && Array.isArray(result.goodsList) ? result.goodsList : null;
   if (!goodsList) throw new GiftishowProviderError("Giftishow did not return a product catalog.");
 
+  const products = goodsList
+    .filter(isRecord)
+    .map(toProductRecord)
+    .filter((product): product is AdminGiftProduct => product !== null);
+
   return {
     page,
     size: CATALOG_PAGE_SIZE,
-    total: integerValue(result.listNum),
-    products: goodsList
-      .filter(isRecord)
-      .map(toProductRecord)
-      .filter((product): product is AdminGiftProduct => product !== null),
+    // Giftishow's listNum is the count for this response, not a reliable total catalog count.
+    total: null,
+    hasMore: products.length === CATALOG_PAGE_SIZE,
+    products,
   };
 }
 
