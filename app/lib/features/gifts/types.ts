@@ -32,6 +32,10 @@ export interface AdminGiftBrand {
   categoryName: string | null;
 }
 
+export interface AdminGiftFavorite extends AdminGiftProduct {
+  createdAt: string;
+}
+
 export interface AdminGiftCatalogPage {
   page: number;
   size: number;
@@ -68,8 +72,14 @@ export interface AdminGiftsData {
   balance: number | null;
   balanceError: string | null;
   recipients: AdminGiftRecipient[];
+  favorites: AdminGiftFavorite[];
   history: AdminGiftHistoryItem[];
   defaultProduct: AdminGiftProduct | null;
+}
+
+export interface ToggleAdminGiftFavoriteResult {
+  product: AdminGiftProduct;
+  isFavorite: boolean;
 }
 
 export interface SendAdminGiftInput {

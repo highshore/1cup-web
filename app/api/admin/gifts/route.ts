@@ -8,6 +8,7 @@ import {
   listAdminGiftProducts,
   lookupAdminGiftProduct,
   sendAdminGift,
+  toggleAdminGiftFavorite,
 } from "../../../lib/features/gifts/services/admin_gift_service";
 import type { SendAdminGiftInput } from "../../../lib/features/gifts/types";
 
@@ -114,6 +115,17 @@ export async function POST(request: NextRequest) {
       }
       const products = await listAdminGiftBrandProducts(body.brandCode);
       return NextResponse.json(products, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (body.action === "toggle-favorite") {
+      if (typeof body.goodsCode !== "string") {
+        return NextResponse.json(
+          { error: "A Giftishow product is required." },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      const result = await toggleAdminGiftFavorite(body.goodsCode);
+      return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (body.action !== "send") {

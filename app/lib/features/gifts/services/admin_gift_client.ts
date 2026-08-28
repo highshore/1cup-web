@@ -5,6 +5,7 @@ import type {
   AdminGiftsData,
   SendAdminGiftInput,
   SendAdminGiftResult,
+  ToggleAdminGiftFavoriteResult,
 } from "../types";
 
 async function requestJson<T>(
@@ -47,6 +48,21 @@ export function listAdminGiftBrandProductsClient(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "list-brand-products", brandCode }),
+    },
+    fallbackMessage,
+  );
+}
+
+export function toggleAdminGiftFavoriteClient(
+  goodsCode: string,
+  fallbackMessage: string,
+): Promise<ToggleAdminGiftFavoriteResult> {
+  return requestJson<ToggleAdminGiftFavoriteResult>(
+    "/api/admin/gifts",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "toggle-favorite", goodsCode }),
     },
     fallbackMessage,
   );

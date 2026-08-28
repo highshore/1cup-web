@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { admin, createServerClientRSC } from "../../../supabase/server";
 import type {
   AdminGiftBrand,
+  AdminGiftFavorite,
   AdminGiftHistoryItem,
   AdminGiftCatalogPage,
   AdminGiftProduct,
@@ -13,6 +14,7 @@ import type {
   GiftSendStatus,
   SendAdminGiftInput,
   SendAdminGiftResult,
+  ToggleAdminGiftFavoriteResult,
 } from "../types";
 
 const GIFTISHOW_BASE_URL = "https://bizapi.giftishow.com/bizApi";
@@ -441,6 +443,26 @@ function toRecipient(value: unknown): AdminGiftRecipient | null {
   };
 }
 
+function toFavorite(value: unknown): AdminGiftFavorite | null {
+  if (!isRecord(value)) return null;
+  const goodsCode = stringValue(value.goods_code);
+  const goodsName = stringValue(value.goods_name);
+  const createdAt = stringValue(value.created_at);
+  if (!goodsCode || !goodsName || !createdAt) return null;
+  return {
+    goodsCode,
+    goodsName,
+    brandCode: stringValue(value.brand_code),
+    brandName: stringValue(value.brand_name),
+    imageUrl: stringValue(value.goods_image_url),
+    salePrice: integerValue(value.sale_price),
+    discountPrice: integerValue(value.purchase_price),
+    state: stringValue(value.state),
+    limitDay: null,
+    createdAt,
+  };
+}
+
 async function updateGiftHistory(
   id: string,
   values: Record<string, unknown>,
@@ -505,12 +527,17 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
   const db = admin();
   const config = readProviderConfig();
 
-  const [recipientsResult, historyResult] = await Promise.all([
+  const [recipientsResult, favoritesResult, historyResult] = await Promise.all([
     db
       .from("users")
       .select("uid, display_name, photo_url, phone, account_status, is_placeholder")
       .order("display_name", { ascending: true, nullsFirst: false })
       .limit(1000),
+    db
+      .from("gift_favorites")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .order("goods_code", { ascending: true }),
     db
       .from("gift_sends")
       .select("*")
@@ -519,9 +546,10 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
       .limit(50),
   ]);
 
-  if (recipientsResult.error || historyResult.error) {
+  if (recipientsResult.error || favoritesResult.error || historyResult.error) {
     console.error("Unable to load gift center:", {
       recipients: recipientsResult.error,
+      favorites: favoritesResult.error,
       history: historyResult.error,
     });
     throw new AdminGiftError("Unable to load the gift center.", 500);
@@ -571,6 +599,9 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
     recipients: (recipientsResult.data ?? [])
       .map(toRecipient)
       .filter((item): item is AdminGiftRecipient => item !== null),
+    favorites: (favoritesResult.data ?? [])
+      .map(toFavorite)
+      .filter((item): item is AdminGiftFavorite => item !== null),
     history: (historyResult.data ?? [])
       .map(toHistoryItem)
       .filter((item): item is AdminGiftHistoryItem => item !== null),
@@ -622,6 +653,66 @@ export async function listAdminGiftBrandProducts(brandCode: string): Promise<Adm
     if (isCredentialRejection(error)) throw giftishowCredentialError();
     throw error;
   }
+}
+
+export async function toggleAdminGiftFavorite(
+  goodsCode: string,
+): Promise<ToggleAdminGiftFavoriteResult> {
+  await requireAdminProfile();
+  const normalizedGoodsCode = goodsCode.trim().toUpperCase();
+  if (!/^[A-Z0-9]{6,20}$/.test(normalizedGoodsCode)) {
+    throw new AdminGiftError("Please choose a valid Giftishow product.", 400);
+  }
+
+  const db = admin();
+  const { data: existing, error: existingError } = await db
+    .from("gift_favorites")
+    .select("goods_code")
+    .eq("goods_code", normalizedGoodsCode)
+    .maybeSingle();
+  if (existingError) {
+    console.error("Unable to read gift favorites:", existingError);
+    throw new AdminGiftError("Unable to update Giftishow favorites.", 500);
+  }
+
+  if (existing) {
+    const { error } = await db.from("gift_favorites").delete().eq("goods_code", normalizedGoodsCode);
+    if (error) {
+      console.error("Unable to remove gift favorite:", error);
+      throw new AdminGiftError("Unable to update Giftishow favorites.", 500);
+    }
+    return {
+      product: {
+        goodsCode: normalizedGoodsCode,
+        goodsName: normalizedGoodsCode,
+        brandCode: null,
+        brandName: null,
+        imageUrl: null,
+        salePrice: null,
+        discountPrice: null,
+        state: null,
+        limitDay: null,
+      },
+      isFavorite: false,
+    };
+  }
+
+  const product = await fetchProduct(normalizedGoodsCode, requireProviderConfig());
+  const { error } = await db.from("gift_favorites").insert({
+    goods_code: product.goodsCode,
+    goods_name: product.goodsName,
+    brand_code: product.brandCode,
+    brand_name: product.brandName,
+    goods_image_url: product.imageUrl,
+    sale_price: product.salePrice,
+    purchase_price: product.discountPrice ?? product.salePrice,
+    state: product.state,
+  });
+  if (error) {
+    console.error("Unable to save gift favorite:", error);
+    throw new AdminGiftError("Unable to update Giftishow favorites.", 500);
+  }
+  return { product, isFavorite: true };
 }
 
 export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdminGiftResult> {

@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  MagnifyingGlassIcon,
+  StarIcon as StarOutlineIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -14,9 +20,11 @@ import {
   listAdminGiftBrandProductsClient,
   lookupAdminGiftProductClient,
   sendAdminGiftClient,
+  toggleAdminGiftFavoriteClient,
 } from "../../lib/features/gifts/services/admin_gift_client";
 import type {
   AdminGiftBrand,
+  AdminGiftFavorite,
   AdminGiftHistoryItem,
   AdminGiftProduct,
   AdminGiftsData,
@@ -291,6 +299,7 @@ const Avatar = styled.span`
     height: 100%;
     object-fit: cover;
   }
+
 `;
 
 const RecipientText = styled.span`
@@ -411,6 +420,69 @@ const ProductActions = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+`;
+
+const FavoriteQuickPicks = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+`;
+
+const FavoriteQuickPick = styled.button`
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.42rem;
+  overflow: hidden;
+  border: 1.5px solid #050505;
+  border-radius: 9px;
+  background: #fffef4;
+  padding: 0.4rem;
+  color: #050505;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+
+  &:hover:not(:disabled) {
+    background: #fff1ea;
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+`;
+
+const FavoriteQuickImage = styled.div`
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff8f4;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem;
+    color: #f47a4a;
+  }
+`;
+
+const FavoriteQuickText = styled.span`
+  overflow: hidden;
+  color: #050505;
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const ManualLookup = styled.details`
@@ -578,7 +650,8 @@ const CatalogGrid = styled.div`
   }
 `;
 
-const CatalogProduct = styled.button<{ $selected: boolean; $disabled: boolean }>`
+const CatalogProduct = styled.div<{ $selected: boolean; $disabled: boolean }>`
+  position: relative;
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 0.65rem;
@@ -595,10 +668,67 @@ const CatalogProduct = styled.button<{ $selected: boolean; $disabled: boolean }>
   opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
   text-align: left;
 
-  &:hover:not(:disabled) {
-    border-color: #f47a4a;
-    background: #fff8f4;
+  &:hover {
+    border-color: ${({ $disabled }) => ($disabled ? "#050505" : "#f47a4a")};
+    background: ${({ $disabled, $selected }) =>
+      $disabled ? ($selected ? "#fff1ea" : "#ffffff") : "#fff8f4"};
   }
+`;
+
+const FavoriteToggle = styled.button<{ $active: boolean }>`
+  position: absolute;
+  top: 0.38rem;
+  right: 0.38rem;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1px solid #050505;
+  border-radius: 999px;
+  background: ${({ $active }) => ($active ? "#fef08a" : "#ffffff")};
+  color: #050505;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+
+  svg {
+    width: 0.86rem;
+    height: 0.86rem;
+  }
+`;
+
+const CatalogItemsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+`;
+
+const CatalogBrandName = styled.p`
+  margin: 0;
+  overflow: hidden;
+  color: #050505;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const SortSelect = styled.select`
+  min-height: 32px;
+  max-width: 168px;
+  border: 1.5px solid #050505;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.3rem 0.4rem;
+  color: #050505;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
 `;
 
 const CatalogImage = styled.div`
@@ -865,6 +995,8 @@ export default function AdminGiftsClient() {
   const [brandProducts, setBrandProducts] = useState<AdminGiftProduct[] | null>(null);
   const [isBrandProductsLoading, setIsBrandProductsLoading] = useState(false);
   const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
+  const [catalogSort, setCatalogSort] = useState<"price-asc" | "price-desc" | "name">("name");
+  const [favoriteUpdatingCode, setFavoriteUpdatingCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [recipientId, setRecipientId] = useState(CUSTOM_RECIPIENT);
   const [recipientSearch, setRecipientSearch] = useState("");
@@ -946,9 +1078,18 @@ export default function AdminGiftsClient() {
     () => (brands ?? []).find((brand) => brand.brandCode === selectedBrandCode) ?? null,
     [brands, selectedBrandCode],
   );
-  const matchingCatalogProducts = useMemo(
-    () => brandProducts ?? [],
-    [brandProducts],
+  const matchingCatalogProducts = useMemo(() => {
+    const price = (catalogProduct: AdminGiftProduct) =>
+      catalogProduct.discountPrice ?? catalogProduct.salePrice ?? Number.MAX_SAFE_INTEGER;
+    return [...(brandProducts ?? [])].sort((left, right) => {
+      if (catalogSort === "price-asc") return price(left) - price(right);
+      if (catalogSort === "price-desc") return price(right) - price(left);
+      return left.goodsName.localeCompare(right.goodsName, "ko-KR");
+    });
+  }, [brandProducts, catalogSort]);
+  const favoriteCodes = useMemo(
+    () => new Set((data?.favorites ?? []).map((favorite) => favorite.goodsCode)),
+    [data?.favorites],
   );
 
   const sendDisabledReason = !data?.configured
@@ -1040,22 +1181,59 @@ export default function AdminGiftsClient() {
       });
   };
 
-  const selectCatalogProduct = async () => {
-    if (!catalogSelectedCode) return;
+  const useProduct = async (goodsCode: string, closeCatalog = false) => {
     setIsLookingUp(true);
-    setCatalogError(null);
     setSendError(null);
     setSendSuccess(null);
     try {
-      const next = await lookupAdminGiftProductClient(catalogSelectedCode, copy.lookupError);
+      const next = await lookupAdminGiftProductClient(goodsCode, copy.lookupError);
       setProduct(next);
       setGoodsCode(next.goodsCode);
-      setIsCatalogOpen(false);
+      if (closeCatalog) setIsCatalogOpen(false);
     } catch (error) {
-      setCatalogError(error instanceof Error ? error.message : copy.lookupError);
+      const message = error instanceof Error ? error.message : copy.lookupError;
+      if (closeCatalog) setCatalogError(message);
+      else setSendError(message);
     } finally {
       setIsLookingUp(false);
     }
+  };
+
+  const toggleFavorite = async (catalogProduct: AdminGiftProduct) => {
+    setFavoriteUpdatingCode(catalogProduct.goodsCode);
+    setCatalogError(null);
+    try {
+      const result = await toggleAdminGiftFavoriteClient(catalogProduct.goodsCode, copy.favoriteError);
+      setData((current) => {
+        if (!current) return current;
+        if (!result.isFavorite) {
+          return {
+            ...current,
+            favorites: current.favorites.filter((favorite) => favorite.goodsCode !== catalogProduct.goodsCode),
+          };
+        }
+        const favorite: AdminGiftFavorite = {
+          ...result.product,
+          createdAt: new Date().toISOString(),
+        };
+        return {
+          ...current,
+          favorites: [
+            ...current.favorites.filter((item) => item.goodsCode !== favorite.goodsCode),
+            favorite,
+          ],
+        };
+      });
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : copy.favoriteError);
+    } finally {
+      setFavoriteUpdatingCode(null);
+    }
+  };
+
+  const selectCatalogProduct = async () => {
+    if (!catalogSelectedCode) return;
+    await useProduct(catalogSelectedCode, true);
   };
 
   const submit = async () => {
@@ -1181,6 +1359,27 @@ export default function AdminGiftsClient() {
                         {copy.lookupProduct}
                       </SecondaryButton>
                     </ProductActions>
+                    {(data?.favorites ?? []).length > 0 && (
+                      <>
+                        <FieldHint>{copy.quickPicks}</FieldHint>
+                        <FavoriteQuickPicks>
+                          {(data?.favorites ?? []).map((favorite) => (
+                            <FavoriteQuickPick
+                              key={favorite.goodsCode}
+                              type="button"
+                              disabled={isLookingUp}
+                              onClick={() => void useProduct(favorite.goodsCode)}
+                              title={favorite.goodsName}
+                            >
+                              <FavoriteQuickImage>
+                                {favorite.imageUrl ? <img src={favorite.imageUrl} alt="" /> : <StarSolidIcon />}
+                              </FavoriteQuickImage>
+                              <FavoriteQuickText>{favorite.goodsName}</FavoriteQuickText>
+                            </FavoriteQuickPick>
+                          ))}
+                        </FavoriteQuickPicks>
+                      </>
+                    )}
                     <ManualLookup>
                       <summary>{copy.manualProductCode}</summary>
                       <ManualLookupRow>
@@ -1455,6 +1654,22 @@ export default function AdminGiftsClient() {
               </BrandPanel>
 
               <CatalogItems>
+                {selectedBrand && (
+                  <CatalogItemsHeader>
+                    <CatalogBrandName>{selectedBrand.brandName}</CatalogBrandName>
+                    <SortSelect
+                      value={catalogSort}
+                      onChange={(event) =>
+                        setCatalogSort(event.target.value as "price-asc" | "price-desc" | "name")
+                      }
+                      aria-label={copy.sortProducts}
+                    >
+                      <option value="name">{copy.sortName}</option>
+                      <option value="price-asc">{copy.sortPriceAsc}</option>
+                      <option value="price-desc">{copy.sortPriceDesc}</option>
+                    </SortSelect>
+                  </CatalogItemsHeader>
+                )}
                 {!selectedBrand ? (
                   <EmptyState>{copy.catalogChooseBrand}</EmptyState>
                 ) : isBrandProductsLoading && !brandProducts ? (
@@ -1481,12 +1696,38 @@ export default function AdminGiftsClient() {
                       return (
                         <CatalogProduct
                           key={catalogProduct.goodsCode}
-                          type="button"
+                          role="button"
+                          tabIndex={unavailable ? -1 : 0}
+                          aria-disabled={unavailable}
                           $selected={catalogSelectedCode === catalogProduct.goodsCode}
                           $disabled={unavailable}
-                          disabled={unavailable}
-                          onClick={() => setCatalogSelectedCode(catalogProduct.goodsCode)}
+                          onClick={() => {
+                            if (!unavailable) setCatalogSelectedCode(catalogProduct.goodsCode);
+                          }}
+                          onKeyDown={(event) => {
+                            if (!unavailable && (event.key === "Enter" || event.key === " ")) {
+                              event.preventDefault();
+                              setCatalogSelectedCode(catalogProduct.goodsCode);
+                            }
+                          }}
                         >
+                          <FavoriteToggle
+                            type="button"
+                            $active={favoriteCodes.has(catalogProduct.goodsCode)}
+                            disabled={favoriteUpdatingCode === catalogProduct.goodsCode}
+                            aria-label={
+                              favoriteCodes.has(catalogProduct.goodsCode)
+                                ? copy.removeFavorite
+                                : copy.addFavorite
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void toggleFavorite(catalogProduct);
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            {favoriteCodes.has(catalogProduct.goodsCode) ? <StarSolidIcon /> : <StarOutlineIcon />}
+                          </FavoriteToggle>
                           <CatalogImage>
                             {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
                           </CatalogImage>
