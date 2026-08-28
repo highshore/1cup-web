@@ -12,6 +12,9 @@ import {
 } from "../../../lib/features/gifts/services/admin_gift_service";
 import type { SendAdminGiftInput } from "../../../lib/features/gifts/types";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -21,11 +24,22 @@ function nullableString(value: unknown): string | null | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function stringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) return undefined;
+  return value;
+}
+
 function parseSendInput(value: Record<string, unknown>): SendAdminGiftInput | null {
-  const memberId = nullableString(value.memberId);
   const recipientName = nullableString(value.recipientName);
   const phoneNumber = nullableString(value.phoneNumber);
-  if (memberId === undefined || recipientName === undefined || phoneNumber === undefined) return null;
+  if (recipientName === undefined || phoneNumber === undefined) return null;
+
+  const legacyMemberId = value.memberIds === undefined ? nullableString(value.memberId) : null;
+  const memberIds = value.memberIds === undefined
+    ? legacyMemberId === undefined || legacyMemberId === null ? [] : [legacyMemberId]
+    : stringArray(value.memberIds);
+  if (!memberIds) return null;
+
   if (
     typeof value.goodsCode !== "string" ||
     typeof value.mmsTitle !== "string" ||
@@ -34,9 +48,11 @@ function parseSendInput(value: Record<string, unknown>): SendAdminGiftInput | nu
     return null;
   }
   return {
-    memberId,
-    recipientName,
-    phoneNumber,
+    memberIds,
+    // Existing open admin tabs submit a single member plus copied display data.
+    // The server remains authoritative for member names and phone numbers.
+    recipientName: memberIds.length > 0 ? null : recipientName,
+    phoneNumber: memberIds.length > 0 ? null : phoneNumber,
     goodsCode: value.goodsCode,
     mmsTitle: value.mmsTitle,
     mmsMessage: value.mmsMessage,

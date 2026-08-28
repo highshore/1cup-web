@@ -24,6 +24,7 @@ const CATALOG_PAGE_SIZE = 10;
 const BRAND_CATALOG_PAGE_SIZE = 1_000;
 const BRAND_CATALOG_MAX_PAGES = 50;
 const BRAND_CATALOG_CACHE_TTL_MS = 10 * 60 * 1_000;
+const MAX_BATCH_RECIPIENTS = 15;
 const GIFTISHOW_CREDENTIAL_ERROR_MESSAGE =
   "Giftishow rejected the configured API credentials (E0006). Replace GIFTISHOW_AUTH_CODE and GIFTISHOW_AUTH_TOKEN with the current production keys.";
 
@@ -50,6 +51,12 @@ type ProviderConfig = {
   bannerId: string | null;
   missing: string[];
   configured: boolean;
+};
+
+type ResolvedGiftRecipient = {
+  memberId: string | null;
+  recipientName: string | null;
+  phone: string;
 };
 
 let cachedFullCatalog: { expiresAt: number; products: AdminGiftProduct[] } | null = null;
@@ -715,67 +722,92 @@ export async function toggleAdminGiftFavorite(
   return { product, isFavorite: true };
 }
 
-export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdminGiftResult> {
-  const adminUid = await requireAdminProfile();
-  const config = requireProviderConfig();
-  const db = admin();
-
-  const goodsCode = input.goodsCode.trim().toUpperCase();
-  const mmsTitle = input.mmsTitle.trim();
-  const mmsMessage = input.mmsMessage.trim();
-  const memberId = input.memberId?.trim() || null;
-  let recipientName = input.recipientName?.trim() || null;
-  let phone: string | null = null;
-
-  if (!mmsTitle || codePointLength(mmsTitle) > 10) {
-    throw new AdminGiftError("MMS title must be between 1 and 10 characters.", 400);
-  }
-  if (!mmsMessage || mmsMessage.length > 4000) {
-    throw new AdminGiftError("MMS message must be between 1 and 4,000 characters.", 400);
-  }
-  if (recipientName && recipientName.length > 120) {
-    throw new AdminGiftError("Recipient name is too long.", 400);
+async function resolveGiftRecipients(
+  input: SendAdminGiftInput,
+  db: ReturnType<typeof admin>,
+): Promise<ResolvedGiftRecipient[]> {
+  const memberIds = [...new Set(input.memberIds.map((memberId) => memberId.trim()).filter(Boolean))];
+  if (memberIds.length > MAX_BATCH_RECIPIENTS) {
+    throw new AdminGiftError(`Choose up to ${MAX_BATCH_RECIPIENTS} recipients at a time.`, 400);
   }
 
-  if (memberId) {
-    const { data, error } = await db
-      .from("users")
-      .select("uid, display_name, phone, is_placeholder")
-      .eq("uid", memberId)
-      .maybeSingle();
-    if (error || !isRecord(data) || data.is_placeholder === true) {
-      throw new AdminGiftError("The selected member is unavailable.", 400);
+  if (memberIds.length === 0) {
+    const phone = input.phoneNumber ? normalizeKoreanPhone(input.phoneNumber) : null;
+    if (!phone) throw new AdminGiftError("Enter a valid Korean recipient phone number.", 400);
+    return [{
+      memberId: null,
+      recipientName: input.recipientName?.trim() || null,
+      phone,
+    }];
+  }
+
+  if (input.phoneNumber?.trim() || input.recipientName?.trim()) {
+    throw new AdminGiftError("Choose members or enter one recipient directly, not both.", 400);
+  }
+
+  const { data, error } = await db
+    .from("users")
+    .select("uid, display_name, phone, is_placeholder")
+    .in("uid", memberIds);
+  if (error) {
+    console.error("Unable to load selected gift recipients:", error);
+    throw new AdminGiftError("Unable to verify the selected members.", 500);
+  }
+
+  const recipientsById = new Map<string, Record<string, unknown>>();
+  for (const value of data ?? []) {
+    if (!isRecord(value)) continue;
+    const recipientId = stringValue(value.uid);
+    if (recipientId) recipientsById.set(recipientId, value);
+  }
+
+  return memberIds.map((memberId) => {
+    const recipient = recipientsById.get(memberId);
+    if (!recipient || recipient.is_placeholder === true) {
+      throw new AdminGiftError("One or more selected members are unavailable.", 400);
     }
-    const storedPhone = stringValue(data.phone);
-    phone = storedPhone ? normalizeKoreanPhone(storedPhone) : null;
-    recipientName = stringValue(data.display_name) || recipientName;
-  } else if (input.phoneNumber) {
-    phone = normalizeKoreanPhone(input.phoneNumber);
-  }
+    const storedPhone = stringValue(recipient.phone);
+    const phone = storedPhone ? normalizeKoreanPhone(storedPhone) : null;
+    if (!phone) {
+      throw new AdminGiftError("One or more selected members do not have a valid Korean phone number.", 400);
+    }
+    return {
+      memberId,
+      recipientName: stringValue(recipient.display_name),
+      phone,
+    };
+  });
+}
 
-  if (!phone) throw new AdminGiftError("Enter a valid Korean recipient phone number.", 400);
-
-  const callbackNo = normalizeCallbackNumber(config.callbackNo);
-  if (!callbackNo) {
-    throw new AdminGiftError("GIFTISHOW_CALLBACK_NO is not a valid Korean phone number.", 500);
-  }
-
-  const product = await fetchProduct(goodsCode, config);
-  if (product.state !== "SALE") {
-    throw new AdminGiftError("This Giftishow product is not currently available for sale.", 400);
-  }
-
+async function sendGiftToRecipient({
+  adminUid,
+  callbackNo,
+  config,
+  db,
+  mmsMessage,
+  mmsTitle,
+  product,
+  recipient,
+}: {
+  adminUid: string;
+  callbackNo: string;
+  config: ProviderConfig;
+  db: ReturnType<typeof admin>;
+  mmsMessage: string;
+  mmsTitle: string;
+  product: AdminGiftProduct;
+  recipient: ResolvedGiftRecipient;
+}): Promise<AdminGiftHistoryItem> {
   const purchasePrice = product.discountPrice ?? product.salePrice;
-
   const trId = generateTrId();
   const { data: inserted, error: insertError } = await db
     .from("gift_sends")
     .insert({
       tr_id: trId,
       created_by: adminUid,
-      member_id: memberId,
-      recipient_name: recipientName,
-      recipient_phone_last4: phone.slice(-4),
+      member_id: recipient.memberId,
+      recipient_name: recipient.recipientName,
+      recipient_phone_last4: recipient.phone.slice(-4),
       goods_code: product.goodsCode,
       goods_name: product.goodsName,
       brand_name: product.brandName,
@@ -800,7 +832,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     mms_msg: mmsMessage,
     mms_title: mmsTitle,
     callback_no: callbackNo,
-    phone_no: phone,
+    phone_no: recipient.phone,
     tr_id: trId,
     user_id: config.userId,
     gubun: "N",
@@ -808,7 +840,6 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
   if (config.templateId) sendParameters.template_id = config.templateId;
   if (config.bannerId) sendParameters.banner_id = config.bannerId;
 
-  let historyItem: AdminGiftHistoryItem;
   try {
     const payload = await postGiftishow(
       "/send",
@@ -818,7 +849,7 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
       SEND_TIMEOUT_MS,
     );
     const outcome = parseSendOutcome(payload);
-    historyItem = await updateGiftHistory(giftId, {
+    return await updateGiftHistory(giftId, {
       status: "sent",
       order_no: outcome.orderNo,
       provider_code: outcome.providerCode,
@@ -853,6 +884,64 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     });
     throw new AdminGiftError(message, 502);
   }
+}
+
+export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdminGiftResult> {
+  const adminUid = await requireAdminProfile();
+  const config = requireProviderConfig();
+  const db = admin();
+
+  const goodsCode = input.goodsCode.trim().toUpperCase();
+  const mmsTitle = input.mmsTitle.trim();
+  const mmsMessage = input.mmsMessage.trim();
+  const customRecipientName = input.recipientName?.trim() || null;
+
+  if (!mmsTitle || codePointLength(mmsTitle) > 10) {
+    throw new AdminGiftError("MMS title must be between 1 and 10 characters.", 400);
+  }
+  if (!mmsMessage || mmsMessage.length > 4000) {
+    throw new AdminGiftError("MMS message must be between 1 and 4,000 characters.", 400);
+  }
+  if (customRecipientName && customRecipientName.length > 120) {
+    throw new AdminGiftError("Recipient name is too long.", 400);
+  }
+
+  const recipients = await resolveGiftRecipients(input, db);
+  const callbackNo = normalizeCallbackNumber(config.callbackNo);
+  if (!callbackNo) {
+    throw new AdminGiftError("GIFTISHOW_CALLBACK_NO is not a valid Korean phone number.", 500);
+  }
+
+  const product = await fetchProduct(goodsCode, config);
+  if (product.state !== "SALE") {
+    throw new AdminGiftError("This Giftishow product is not currently available for sale.", 400);
+  }
+
+  const gifts: AdminGiftHistoryItem[] = [];
+  const sentMemberIds: string[] = [];
+  let failureMessage: string | null = null;
+
+  for (const recipient of recipients) {
+    try {
+      const gift = await sendGiftToRecipient({
+        adminUid,
+        callbackNo,
+        config,
+        db,
+        mmsMessage,
+        mmsTitle,
+        product,
+        recipient,
+      });
+      gifts.push(gift);
+      if (recipient.memberId) sentMemberIds.push(recipient.memberId);
+    } catch (error) {
+      failureMessage = error instanceof AdminGiftError
+        ? error.message
+        : "Giftishow could not send the coupon.";
+      break;
+    }
+  }
 
   let remainingBalance: number | null = null;
   try {
@@ -861,5 +950,15 @@ export async function sendAdminGift(input: SendAdminGiftInput): Promise<SendAdmi
     console.error("Unable to refresh Bizmoney after gift send:", error);
   }
 
-  return { gift: historyItem, balance: remainingBalance };
+  const failedCount = failureMessage ? 1 : 0;
+  return {
+    gifts,
+    recipientCount: recipients.length,
+    sentCount: gifts.length,
+    failedCount,
+    unattemptedCount: recipients.length - gifts.length - failedCount,
+    sentMemberIds,
+    failureMessage,
+    balance: remainingBalance,
+  };
 }

@@ -30,7 +30,7 @@ import type {
   AdminGiftsData,
 } from "../../lib/features/gifts/types";
 
-const CUSTOM_RECIPIENT = "__custom__";
+const MAX_BATCH_RECIPIENTS = 15;
 const FEATURED_BRAND_NAMES = [
   "스타벅스",
   "배달의민족",
@@ -998,7 +998,8 @@ export default function AdminGiftsClient() {
   const [catalogSort, setCatalogSort] = useState<"price-asc" | "price-desc" | "name">("name");
   const [favoriteUpdatingCode, setFavoriteUpdatingCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [recipientId, setRecipientId] = useState(CUSTOM_RECIPIENT);
+  const [isCustomRecipient, setIsCustomRecipient] = useState(true);
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[]>([]);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [customName, setCustomName] = useState("");
   const [customPhone, setCustomPhone] = useState("");
@@ -1051,9 +1052,9 @@ export default function AdminGiftsClient() {
   }, [isCatalogOpen]);
 
   const recipients = useMemo(() => data?.recipients ?? [], [data]);
-  const selectedRecipient = useMemo(
-    () => recipients.find((recipient) => recipient.id === recipientId) ?? null,
-    [recipients, recipientId],
+  const selectedRecipients = useMemo(
+    () => recipients.filter((recipient) => selectedRecipientIds.includes(recipient.id)),
+    [recipients, selectedRecipientIds],
   );
   const matchingRecipients = useMemo(() => {
     const query = recipientSearch.trim().toLocaleLowerCase();
@@ -1091,6 +1092,9 @@ export default function AdminGiftsClient() {
     () => new Set((data?.favorites ?? []).map((favorite) => favorite.goodsCode)),
     [data?.favorites],
   );
+  const recipientCount = isCustomRecipient
+    ? (customPhone.trim() ? 1 : 0)
+    : selectedRecipientIds.length;
 
   const sendDisabledReason = !data?.configured
     ? data?.configurationError || copy.providerNeedsSetup
@@ -1236,24 +1240,34 @@ export default function AdminGiftsClient() {
     await useProduct(catalogSelectedCode, true);
   };
 
+  const toggleRecipient = (recipientId: string) => {
+    setIsCustomRecipient(false);
+    setSelectedRecipientIds((current) =>
+      current.includes(recipientId)
+        ? current.filter((id) => id !== recipientId)
+        : [...current, recipientId],
+    );
+  };
+
   const submit = async () => {
     setSendError(null);
     setSendSuccess(null);
-    const custom = recipientId === CUSTOM_RECIPIENT;
+    const custom = isCustomRecipient;
     const recipientDisplay = custom
       ? customName.trim() || lastFour(customPhone)
-      : selectedRecipient?.displayName || selectedRecipient?.maskedPhone || copy.memberFallback;
+      : copy.recipientSelectedCount.replace("{count}", String(selectedRecipients.length));
 
     if (
       !product ||
       !mmsTitle.trim() ||
       !mmsMessage.trim() ||
       (custom && !customPhone.trim()) ||
-      (!custom && (!selectedRecipient || !selectedRecipient.hasPhone))
+      (!custom &&
+        (selectedRecipients.length === 0 ||
+          selectedRecipients.length !== selectedRecipientIds.length ||
+          selectedRecipients.some((recipient) => !recipient.hasPhone)))
     ) {
-      setSendError(!custom && selectedRecipient && !selectedRecipient.hasPhone
-        ? copy.recipientPhoneRequired
-        : copy.requiredFields);
+      setSendError(!custom ? copy.recipientPhoneRequired : copy.requiredFields);
       return;
     }
     if ([...mmsTitle.trim()].length > 10) {
@@ -1262,11 +1276,14 @@ export default function AdminGiftsClient() {
     }
 
     const price = formatMoney(product.discountPrice ?? product.salePrice);
+    const unitPrice = product.discountPrice ?? product.salePrice;
+    const total = unitPrice === null ? copy.unavailable : formatMoney(unitPrice * recipientCount);
     const confirmed = window.confirm(
       copy.sendConfirm
         .replace("{product}", product.goodsName)
         .replace("{recipient}", recipientDisplay)
-        .replace("{price}", price),
+        .replace("{price}", price)
+        .replace("{total}", total),
     );
     if (!confirmed) return;
 
@@ -1274,8 +1291,8 @@ export default function AdminGiftsClient() {
     try {
       const result = await sendAdminGiftClient(
         {
-          memberId: custom ? null : selectedRecipient?.id ?? null,
-          recipientName: custom ? customName.trim() || null : selectedRecipient?.displayName ?? null,
+          memberIds: custom ? [] : selectedRecipientIds,
+          recipientName: custom ? customName.trim() || null : null,
           phoneNumber: custom ? customPhone : null,
           goodsCode: product.goodsCode,
           mmsTitle: mmsTitle.trim(),
@@ -1283,7 +1300,30 @@ export default function AdminGiftsClient() {
         },
         copy.sendError,
       );
-      setSendSuccess(copy.sent.replace("{product}", result.gift.goodsName));
+      if (result.sentCount > 0) {
+        setSendSuccess(
+          copy.sent
+            .replace("{product}", product.goodsName)
+            .replace("{count}", String(result.sentCount)),
+        );
+      }
+      if (result.failureMessage) {
+        setSendError(
+          copy.partialSend
+            .replace("{sent}", String(result.sentCount))
+            .replace("{total}", String(result.recipientCount))
+            .replace("{remaining}", String(result.recipientCount - result.sentCount))
+            .replace("{message}", result.failureMessage),
+        );
+      }
+      if (custom && result.sentCount > 0) {
+        setCustomName("");
+        setCustomPhone("");
+      } else if (!custom && result.sentMemberIds.length > 0) {
+        setSelectedRecipientIds((current) =>
+          current.filter((memberId) => !result.sentMemberIds.includes(memberId)),
+        );
+      }
       await load();
     } catch (error) {
       setSendError(error instanceof Error ? error.message : copy.sendError);
@@ -1437,12 +1477,15 @@ export default function AdminGiftsClient() {
                         />
                       </SearchWrap>
                       <RecipientList>
-                        <RecipientRow $selected={recipientId === CUSTOM_RECIPIENT}>
+                        <RecipientRow $selected={isCustomRecipient}>
                           <input
                             type="radio"
                             name="gift-recipient"
-                            checked={recipientId === CUSTOM_RECIPIENT}
-                            onChange={() => setRecipientId(CUSTOM_RECIPIENT)}
+                            checked={isCustomRecipient}
+                            onChange={() => {
+                              setIsCustomRecipient(true);
+                              setSelectedRecipientIds([]);
+                            }}
                           />
                           <Avatar>+</Avatar>
                           <RecipientText>
@@ -1454,18 +1497,21 @@ export default function AdminGiftsClient() {
                         ) : (
                           matchingRecipients.map((recipient) => {
                             const name = recipientName(recipient, copy.memberFallback);
+                            const isSelected = selectedRecipientIds.includes(recipient.id);
+                            const selectionLimitReached =
+                              !isSelected && selectedRecipientIds.length >= MAX_BATCH_RECIPIENTS;
+                            const disabled = !recipient.hasPhone || selectionLimitReached;
                             return (
                               <RecipientRow
                                 key={recipient.id}
-                                $selected={recipientId === recipient.id}
-                                $disabled={!recipient.hasPhone}
+                                $selected={isSelected}
+                                $disabled={disabled}
                               >
                                 <input
-                                  type="radio"
-                                  name="gift-recipient"
-                                  checked={recipientId === recipient.id}
-                                  disabled={!recipient.hasPhone}
-                                  onChange={() => setRecipientId(recipient.id)}
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  disabled={disabled}
+                                  onChange={() => toggleRecipient(recipient.id)}
                                 />
                                 <Avatar>
                                   {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
@@ -1483,9 +1529,14 @@ export default function AdminGiftsClient() {
                     {recipients.some((recipient) => !recipient.hasPhone) && (
                       <FieldHint>{copy.noPhoneHint}</FieldHint>
                     )}
+                    <FieldHint>
+                      {copy.recipientSelectedCount.replace("{count}", String(recipientCount))}
+                      {" · "}
+                      {copy.recipientLimit.replace("{count}", String(MAX_BATCH_RECIPIENTS))}
+                    </FieldHint>
                   </Field>
 
-                  {recipientId === CUSTOM_RECIPIENT && (
+                  {isCustomRecipient && (
                     <TwoColumns>
                       <Field>
                         {copy.recipientNameLabel}
@@ -1544,7 +1595,9 @@ export default function AdminGiftsClient() {
                   disabled={isSending || Boolean(sendDisabledReason)}
                   onClick={() => void submit()}
                 >
-                  {isSending ? copy.sending : copy.sendGift}
+                  {isSending
+                    ? copy.sending
+                    : copy.sendGift.replace("{count}", String(recipientCount))}
                 </SendButton>
               </SubmitRow>
             </CardBody>

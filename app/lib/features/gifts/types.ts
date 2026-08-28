@@ -83,7 +83,7 @@ export interface ToggleAdminGiftFavoriteResult {
 }
 
 export interface SendAdminGiftInput {
-  memberId: string | null;
+  memberIds: string[];
   recipientName: string | null;
   phoneNumber: string | null;
   goodsCode: string;
@@ -92,6 +92,12 @@ export interface SendAdminGiftInput {
 }
 
 export interface SendAdminGiftResult {
-  gift: AdminGiftHistoryItem;
+  gifts: AdminGiftHistoryItem[];
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  unattemptedCount: number;
+  sentMemberIds: string[];
+  failureMessage: string | null;
   balance: number | null;
 }
