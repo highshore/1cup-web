@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowPathIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowLeftIcon,
+  ArrowPathIcon,
+  ArrowRightIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -10,16 +16,17 @@ import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   getAdminGiftsClient,
+  listAdminGiftProductsClient,
   lookupAdminGiftProductClient,
   sendAdminGiftClient,
 } from "../../lib/features/gifts/services/admin_gift_client";
 import type {
+  AdminGiftCatalogPage,
   AdminGiftHistoryItem,
   AdminGiftProduct,
   AdminGiftsData,
 } from "../../lib/features/gifts/types";
 
-const DEFAULT_GOODS_CODE = "G00003320983";
 const CUSTOM_RECIPIENT = "__custom__";
 
 const Page = styled.main`
@@ -392,6 +399,227 @@ const ProductMeta = styled.p`
   line-height: 1.4;
 `;
 
+const ProductActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+`;
+
+const ManualLookup = styled.details`
+  margin-top: 0.7rem;
+
+  summary {
+    width: fit-content;
+    cursor: pointer;
+    color: rgba(5, 5, 5, 0.68);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+`;
+
+const ManualLookupRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+`;
+
+const ModalBackdrop = styled.div`
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 5, 5, 0.56);
+  padding: 1rem;
+`;
+
+const ModalCard = styled.section`
+  display: grid;
+  width: min(980px, 100%);
+  max-height: min(780px, calc(100vh - 2rem));
+  overflow: hidden;
+  border: 3px solid #050505;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 7px 7px 0 #050505;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 2px solid #050505;
+  padding: 1rem 1.1rem;
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  color: #050505;
+  font-size: 1rem;
+  font-weight: 950;
+`;
+
+const ModalDescription = styled.p`
+  margin: 0.25rem 0 0;
+  color: rgba(5, 5, 5, 0.62);
+  font-size: 0.73rem;
+  font-weight: 650;
+  line-height: 1.45;
+`;
+
+const IconButton = styled.button`
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #050505;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #050505;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff1ea;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+`;
+
+const CatalogTools = styled.div`
+  padding: 0.8rem 1.1rem;
+`;
+
+const CatalogSearch = styled(SearchWrap)`
+  border: 2px solid #050505;
+  border-radius: 10px;
+`;
+
+const CatalogSearchInput = styled(SearchInput)`
+  border-radius: 8px;
+`;
+
+const CatalogList = styled.div`
+  min-height: 180px;
+  overflow-y: auto;
+  padding: 0 1.1rem 1rem;
+`;
+
+const CatalogGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+
+  @media (max-width: 780px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 500px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CatalogProduct = styled.button<{ $selected: boolean; $disabled: boolean }>`
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 86px;
+  align-items: center;
+  border: 2px solid #050505;
+  border-radius: 11px;
+  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
+  padding: 0.58rem;
+  color: #050505;
+  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  font: inherit;
+  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
+  text-align: left;
+
+  &:hover:not(:disabled) {
+    border-color: #f47a4a;
+    background: #fff8f4;
+  }
+`;
+
+const CatalogImage = styled.div`
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid rgba(5, 5, 5, 0.35);
+  border-radius: 8px;
+  background: #fff8f4;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const CatalogText = styled.span`
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+`;
+
+const CatalogName = styled.span`
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.32;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CatalogMeta = styled.span`
+  overflow: hidden;
+  color: rgba(5, 5, 5, 0.6);
+  font-size: 0.67rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CatalogFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1.5px solid rgba(5, 5, 5, 0.18);
+  padding: 0.85rem 1.1rem;
+
+  @media (max-width: 560px) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+`;
+
+const CatalogPaging = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(5, 5, 5, 0.64);
+  font-size: 0.72rem;
+  font-weight: 800;
+`;
+
+const CatalogActions = styled.div`
+  display: flex;
+  gap: 0.55rem;
+
+  @media (max-width: 560px) {
+    > button {
+      flex: 1;
+    }
+  }
+`;
+
 const TwoColumns = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -567,9 +795,15 @@ export default function AdminGiftsClient() {
   const [data, setData] = useState<AdminGiftsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [goodsCode, setGoodsCode] = useState(DEFAULT_GOODS_CODE);
+  const [goodsCode, setGoodsCode] = useState("");
   const [product, setProduct] = useState<AdminGiftProduct | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [catalog, setCatalog] = useState<AdminGiftCatalogPage | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [recipientId, setRecipientId] = useState(CUSTOM_RECIPIENT);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [customName, setCustomName] = useState("");
@@ -612,6 +846,15 @@ export default function AdminGiftsClient() {
     setMmsMessage((current) => current || copy.defaultMmsMessage);
   }, [copy.defaultMmsMessage, copy.defaultMmsTitle]);
 
+  useEffect(() => {
+    if (!isCatalogOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsCatalogOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isCatalogOpen]);
+
   const recipients = useMemo(() => data?.recipients ?? [], [data]);
   const selectedRecipient = useMemo(
     () => recipients.find((recipient) => recipient.id === recipientId) ?? null,
@@ -626,12 +869,27 @@ export default function AdminGiftsClient() {
         .includes(query),
     );
   }, [recipientSearch, recipients]);
+  const matchingCatalogProducts = useMemo(() => {
+    const products = catalog?.products ?? [];
+    const query = catalogSearch.trim().toLocaleLowerCase();
+    if (!query) return products;
+    return products.filter((catalogProduct) =>
+      `${catalogProduct.goodsName} ${catalogProduct.brandName ?? ""} ${catalogProduct.goodsCode}`
+        .toLocaleLowerCase()
+        .includes(query),
+    );
+  }, [catalog, catalogSearch]);
 
   const sendDisabledReason = !data?.configured
     ? data?.configurationError || copy.providerNeedsSetup
     : !product
       ? copy.productRequired
       : null;
+  const catalogHasNext = Boolean(
+    catalog &&
+      catalog.products.length === catalog.size &&
+      (catalog.total === null || catalog.page * catalog.size < catalog.total),
+  );
 
   const formatMoney = (value: number | null) =>
     value === null
@@ -665,6 +923,45 @@ export default function AdminGiftsClient() {
     } catch (error) {
       setProduct(null);
       setSendError(error instanceof Error ? error.message : copy.lookupError);
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  const loadCatalog = useCallback(async (page: number) => {
+    setIsCatalogLoading(true);
+    setCatalogError(null);
+    try {
+      const next = await listAdminGiftProductsClient(page, copy.catalogLoadError);
+      setCatalog(next);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : copy.catalogLoadError);
+    } finally {
+      setIsCatalogLoading(false);
+    }
+  }, [copy.catalogLoadError]);
+
+  const openCatalog = () => {
+    setCatalogSearch("");
+    setCatalogSelectedCode(product?.goodsCode ?? null);
+    setCatalogError(null);
+    setIsCatalogOpen(true);
+    void loadCatalog(1);
+  };
+
+  const selectCatalogProduct = async () => {
+    if (!catalogSelectedCode) return;
+    setIsLookingUp(true);
+    setCatalogError(null);
+    setSendError(null);
+    setSendSuccess(null);
+    try {
+      const next = await lookupAdminGiftProductClient(catalogSelectedCode, copy.lookupError);
+      setProduct(next);
+      setGoodsCode(next.goodsCode);
+      setIsCatalogOpen(false);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : copy.lookupError);
     } finally {
       setIsLookingUp(false);
     }
@@ -783,22 +1080,35 @@ export default function AdminGiftsClient() {
                 <FormColumn>
                   <Field>
                     {copy.productCodeLabel}
-                    <LookupRow>
-                      <Input
-                        value={goodsCode}
-                        onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
-                        placeholder={copy.productCodePlaceholder}
-                        autoCapitalize="characters"
-                      />
+                    <ProductActions>
                       <SecondaryButton
                         type="button"
-                        disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
-                        onClick={() => void lookupProduct()}
+                        disabled={!data?.configured || isCatalogLoading}
+                        onClick={openCatalog}
                       >
                         <MagnifyingGlassIcon />
-                        {isLookingUp ? copy.lookingUp : copy.lookupProduct}
+                        {copy.lookupProduct}
                       </SecondaryButton>
-                    </LookupRow>
+                    </ProductActions>
+                    <ManualLookup>
+                      <summary>{copy.manualProductCode}</summary>
+                      <ManualLookupRow>
+                        <Input
+                          value={goodsCode}
+                          onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
+                          placeholder={copy.productCodePlaceholder}
+                          autoCapitalize="characters"
+                        />
+                        <SecondaryButton
+                          type="button"
+                          disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
+                          onClick={() => void lookupProduct()}
+                        >
+                          <MagnifyingGlassIcon />
+                          {isLookingUp ? copy.lookingUp : copy.lookupByCode}
+                        </SecondaryButton>
+                      </ManualLookupRow>
+                    </ManualLookup>
                   </Field>
 
                   {product && (
@@ -1001,6 +1311,118 @@ export default function AdminGiftsClient() {
             </CardBody>
           </Card>
         </Stack>
+      )}
+
+      {isCatalogOpen && (
+        <ModalBackdrop role="presentation" onMouseDown={() => setIsCatalogOpen(false)}>
+          <ModalCard
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gift-catalog-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <ModalHeader>
+              <div>
+                <ModalTitle id="gift-catalog-title">{copy.catalogTitle}</ModalTitle>
+                <ModalDescription>{copy.catalogDescription}</ModalDescription>
+              </div>
+              <IconButton type="button" onClick={() => setIsCatalogOpen(false)} aria-label={copy.catalogClose}>
+                <XMarkIcon />
+              </IconButton>
+            </ModalHeader>
+
+            <CatalogTools>
+              <CatalogSearch>
+                <MagnifyingGlassIcon />
+                <CatalogSearchInput
+                  value={catalogSearch}
+                  onChange={(event) => setCatalogSearch(event.target.value)}
+                  placeholder={copy.catalogSearchPlaceholder}
+                />
+              </CatalogSearch>
+            </CatalogTools>
+
+            <CatalogList>
+              {isCatalogLoading ? (
+                <EmptyState>{copy.catalogLoading}</EmptyState>
+              ) : catalogError ? (
+                <>
+                  <InlineStatus $error>{catalogError}</InlineStatus>
+                  <div style={{ marginTop: "0.8rem" }}>
+                    <SecondaryButton type="button" onClick={() => void loadCatalog(catalog?.page ?? 1)}>
+                      <ArrowPathIcon />
+                      {copy.retry}
+                    </SecondaryButton>
+                  </div>
+                </>
+              ) : matchingCatalogProducts.length === 0 ? (
+                <EmptyState>{catalogSearch.trim() ? copy.catalogNoMatches : copy.catalogEmpty}</EmptyState>
+              ) : (
+                <CatalogGrid>
+                  {matchingCatalogProducts.map((catalogProduct) => {
+                    const unavailable = catalogProduct.state !== "SALE";
+                    return (
+                      <CatalogProduct
+                        key={catalogProduct.goodsCode}
+                        type="button"
+                        $selected={catalogSelectedCode === catalogProduct.goodsCode}
+                        $disabled={unavailable}
+                        disabled={unavailable}
+                        onClick={() => setCatalogSelectedCode(catalogProduct.goodsCode)}
+                      >
+                        <CatalogImage>
+                          {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
+                        </CatalogImage>
+                        <CatalogText>
+                          <CatalogName>{catalogProduct.goodsName}</CatalogName>
+                          <CatalogMeta>{catalogProduct.brandName || catalogProduct.goodsCode}</CatalogMeta>
+                          <CatalogMeta>
+                            {formatMoney(catalogProduct.discountPrice ?? catalogProduct.salePrice)}
+                            {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
+                          </CatalogMeta>
+                        </CatalogText>
+                      </CatalogProduct>
+                    );
+                  })}
+                </CatalogGrid>
+              )}
+            </CatalogList>
+
+            <CatalogFooter>
+              <CatalogPaging>
+                <SecondaryButton
+                  type="button"
+                  disabled={isCatalogLoading || !catalog || catalog.page <= 1}
+                  onClick={() => catalog && void loadCatalog(catalog.page - 1)}
+                >
+                  <ArrowLeftIcon />
+                  {copy.catalogPrevious}
+                </SecondaryButton>
+                <span>{copy.catalogPage.replace("{page}", String(catalog?.page ?? 1))}</span>
+                <SecondaryButton
+                  type="button"
+                  disabled={isCatalogLoading || !catalogHasNext}
+                  onClick={() => catalog && void loadCatalog(catalog.page + 1)}
+                >
+                  {copy.catalogNext}
+                  <ArrowRightIcon />
+                </SecondaryButton>
+              </CatalogPaging>
+              <CatalogActions>
+                <SecondaryButton type="button" onClick={() => setIsCatalogOpen(false)}>
+                  {copy.catalogClose}
+                </SecondaryButton>
+                <SendButton
+                  type="button"
+                  disabled={!catalogSelectedCode || isLookingUp || isCatalogLoading}
+                  onClick={() => void selectCatalogProduct()}
+                >
+                  {isLookingUp ? copy.lookingUp : copy.catalogChoose}
+                </SendButton>
+              </CatalogActions>
+            </CatalogFooter>
+          </ModalCard>
+        </ModalBackdrop>
       )}
     </Page>
   );

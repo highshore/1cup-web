@@ -24,6 +24,13 @@ export interface AdminGiftProduct {
   limitDay: number | null;
 }
 
+export interface AdminGiftCatalogPage {
+  page: number;
+  size: number;
+  total: number | null;
+  products: AdminGiftProduct[];
+}
+
 export interface AdminGiftHistoryItem {
   id: string;
   trId: string;

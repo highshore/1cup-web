@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   AdminGiftError,
   getAdminGifts,
+  listAdminGiftProducts,
   lookupAdminGiftProduct,
   sendAdminGift,
 } from "../../../lib/features/gifts/services/admin_gift_service";
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
       }
       const product = await lookupAdminGiftProduct(body.goodsCode);
       return NextResponse.json(product, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (body.action === "list-products") {
+      const page = typeof body.page === "number" ? body.page : 1;
+      const catalog = await listAdminGiftProducts(page);
+      return NextResponse.json(catalog, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (body.action !== "send") {

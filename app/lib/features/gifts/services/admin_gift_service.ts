@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { admin, createServerClientRSC } from "../../../supabase/server";
 import type {
   AdminGiftHistoryItem,
+  AdminGiftCatalogPage,
   AdminGiftProduct,
   AdminGiftRecipient,
   AdminGiftsData,
@@ -14,9 +15,9 @@ import type {
 } from "../types";
 
 const GIFTISHOW_BASE_URL = "https://bizapi.giftishow.com/bizApi";
-const DEFAULT_GOODS_CODE = process.env.GIFTISHOW_DEFAULT_GOODS_CODE?.trim() || "G00003320983";
 const SEND_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
+const CATALOG_PAGE_SIZE = 24;
 const GIFTISHOW_CREDENTIAL_ERROR_MESSAGE =
   "Giftishow rejected the configured API credentials (E0006). Replace GIFTISHOW_AUTH_CODE and GIFTISHOW_AUTH_TOKEN with the current production keys.";
 
@@ -217,28 +218,32 @@ async function postGiftishow(
   }
 }
 
-function toProduct(payload: Record<string, unknown>): AdminGiftProduct {
-  assertOuterSuccess(payload);
-  const result = isRecord(payload.result) ? payload.result : null;
-  const detail = result && isRecord(result.goodsDetail) ? result.goodsDetail : null;
-  if (!detail) throw new GiftishowProviderError("Giftishow did not return product details.");
-
-  const goodsCode = stringValue(detail.goodsCode);
-  const goodsName = stringValue(detail.goodsName);
+function toProductRecord(value: Record<string, unknown>): AdminGiftProduct | null {
+  const goodsCode = stringValue(value.goodsCode);
+  const goodsName = stringValue(value.goodsName);
   if (!goodsCode || !goodsName) {
-    throw new GiftishowProviderError("Giftishow product details are incomplete.");
+    return null;
   }
 
   return {
     goodsCode,
     goodsName,
-    brandName: stringValue(detail.brandName),
-    imageUrl: stringValue(detail.goodsImgS) || stringValue(detail.goodsImgB),
-    salePrice: integerValue(detail.salePrice),
-    discountPrice: integerValue(detail.discountPrice) ?? integerValue(detail.goldPrice),
-    state: stringValue(detail.goodsStateCd),
-    limitDay: integerValue(detail.limitDay) ?? integerValue(detail.limitday),
+    brandName: stringValue(value.brandName),
+    imageUrl: stringValue(value.goodsImgS) || stringValue(value.goodsImgB),
+    salePrice: integerValue(value.salePrice),
+    discountPrice: integerValue(value.discountPrice) ?? integerValue(value.goldPrice),
+    state: stringValue(value.goodsStateCd),
+    limitDay: integerValue(value.limitDay) ?? integerValue(value.limitday),
   };
+}
+
+function toProduct(payload: Record<string, unknown>): AdminGiftProduct {
+  assertOuterSuccess(payload);
+  const result = isRecord(payload.result) ? payload.result : null;
+  const detail = result && isRecord(result.goodsDetail) ? result.goodsDetail : null;
+  const product = detail ? toProductRecord(detail) : null;
+  if (!product) throw new GiftishowProviderError("Giftishow product details are incomplete.");
+  return product;
 }
 
 async function fetchProduct(goodsCode: string, config: ProviderConfig): Promise<AdminGiftProduct> {
@@ -253,6 +258,33 @@ async function fetchProduct(goodsCode: string, config: ProviderConfig): Promise<
     config,
   );
   return toProduct(payload);
+}
+
+async function fetchProductCatalog(page: number, config: ProviderConfig): Promise<AdminGiftCatalogPage> {
+  if (!Number.isInteger(page) || page < 1 || page > 10_000) {
+    throw new AdminGiftError("Please enter a valid product catalog page.", 400);
+  }
+
+  const payload = await postGiftishow(
+    "/goods",
+    "0101",
+    { start: String(page), size: String(CATALOG_PAGE_SIZE) },
+    config,
+  );
+  assertOuterSuccess(payload);
+  const result = isRecord(payload.result) ? payload.result : null;
+  const goodsList = result && Array.isArray(result.goodsList) ? result.goodsList : null;
+  if (!goodsList) throw new GiftishowProviderError("Giftishow did not return a product catalog.");
+
+  return {
+    page,
+    size: CATALOG_PAGE_SIZE,
+    total: integerValue(result.listNum),
+    products: goodsList
+      .filter(isRecord)
+      .map(toProductRecord)
+      .filter((product): product is AdminGiftProduct => product !== null),
+  };
 }
 
 async function fetchBalance(config: ProviderConfig): Promise<number> {
@@ -422,14 +454,14 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
 
   let balance: number | null = null;
   let balanceError: string | null = null;
-  let defaultProduct: AdminGiftProduct | null = null;
+  const defaultProduct: AdminGiftProduct | null = null;
   let credentialsRejected = false;
 
   if (config.configured) {
-    const [balanceResult, productResult] = await Promise.allSettled([
-      fetchBalance(config),
-      fetchProduct(DEFAULT_GOODS_CODE, config),
-    ]);
+    const balanceResult = await Promise.resolve(fetchBalance(config)).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason) => ({ status: "rejected" as const, reason }),
+    );
     if (balanceResult.status === "fulfilled") {
       balance = balanceResult.value;
     } else {
@@ -438,22 +470,12 @@ export async function getAdminGifts(): Promise<AdminGiftsData> {
         ? balanceResult.reason.message
         : "Unable to load Bizmoney balance.";
     }
-    if (productResult.status === "fulfilled") {
-      defaultProduct = productResult.value;
-    } else {
-      credentialsRejected ||= isCredentialRejection(productResult.reason);
-    }
-
     console.info("Giftishow readiness check", {
       balanceAvailable: balanceResult.status === "fulfilled",
-      defaultProductAvailable: productResult.status === "fulfilled",
+      catalogLoadedOnDemand: true,
       balanceProviderCode:
         balanceResult.status === "rejected" && balanceResult.reason instanceof GiftishowProviderError
           ? balanceResult.reason.code
-          : null,
-      productProviderCode:
-        productResult.status === "rejected" && productResult.reason instanceof GiftishowProviderError
-          ? productResult.reason.code
           : null,
     });
   } else {
@@ -485,6 +507,16 @@ export async function lookupAdminGiftProduct(goodsCode: string): Promise<AdminGi
   await requireAdminProfile();
   try {
     return await fetchProduct(goodsCode, requireProviderConfig());
+  } catch (error) {
+    if (isCredentialRejection(error)) throw giftishowCredentialError();
+    throw error;
+  }
+}
+
+export async function listAdminGiftProducts(page: number): Promise<AdminGiftCatalogPage> {
+  await requireAdminProfile();
+  try {
+    return await fetchProductCatalog(page, requireProviderConfig());
   } catch (error) {
     if (isCredentialRejection(error)) throw giftishowCredentialError();
     throw error;

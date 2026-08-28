@@ -1,4 +1,5 @@
 import type {
+  AdminGiftCatalogPage,
   AdminGiftProduct,
   AdminGiftsData,
   SendAdminGiftInput,
@@ -21,6 +22,21 @@ async function requestJson<T>(
     throw new Error(message);
   }
   return payload as T;
+}
+
+export function listAdminGiftProductsClient(
+  page: number,
+  fallbackMessage: string,
+): Promise<AdminGiftCatalogPage> {
+  return requestJson<AdminGiftCatalogPage>(
+    "/api/admin/gifts",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list-products", page }),
+    },
+    fallbackMessage,
+  );
 }
 
 export function getAdminGiftsClient(fallbackMessage: string): Promise<AdminGiftsData> {
