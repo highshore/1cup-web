@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 
 import { admin, createServerClientRSC } from "../../../supabase/server";
 import type {
+  AdminGiftBrand,
   AdminGiftHistoryItem,
   AdminGiftCatalogPage,
   AdminGiftProduct,
@@ -228,12 +229,25 @@ function toProductRecord(value: Record<string, unknown>): AdminGiftProduct | nul
   return {
     goodsCode,
     goodsName,
+    brandCode: stringValue(value.brandCode),
     brandName: stringValue(value.brandName),
     imageUrl: stringValue(value.goodsImgS) || stringValue(value.goodsImgB),
     salePrice: integerValue(value.salePrice),
     discountPrice: integerValue(value.discountPrice) ?? integerValue(value.goldPrice),
     state: stringValue(value.goodsStateCd),
     limitDay: integerValue(value.limitDay) ?? integerValue(value.limitday),
+  };
+}
+
+function toBrandRecord(value: Record<string, unknown>): AdminGiftBrand | null {
+  const brandCode = stringValue(value.brandCode);
+  const brandName = stringValue(value.brandName);
+  if (!brandCode || !brandName) return null;
+  return {
+    brandCode,
+    brandName,
+    iconUrl: stringValue(value.brandIconImg) || stringValue(value.brandIConImg),
+    categoryName: stringValue(value.category1Name),
   };
 }
 
@@ -289,6 +303,20 @@ async function fetchProductCatalog(page: number, config: ProviderConfig): Promis
     hasMore: products.length === CATALOG_PAGE_SIZE,
     products,
   };
+}
+
+async function fetchGiftBrands(config: ProviderConfig): Promise<AdminGiftBrand[]> {
+  const payload = await postGiftishow("/brands", "0102", {}, config);
+  assertOuterSuccess(payload);
+  const result = isRecord(payload.result) ? payload.result : null;
+  const brandList = result && Array.isArray(result.brandList) ? result.brandList : null;
+  if (!brandList) throw new GiftishowProviderError("Giftishow did not return a brand catalog.");
+
+  return brandList
+    .filter(isRecord)
+    .map(toBrandRecord)
+    .filter((brand): brand is AdminGiftBrand => brand !== null)
+    .sort((left, right) => left.brandName.localeCompare(right.brandName, "ko-KR"));
 }
 
 async function fetchBalance(config: ProviderConfig): Promise<number> {
@@ -521,6 +549,16 @@ export async function listAdminGiftProducts(page: number): Promise<AdminGiftCata
   await requireAdminProfile();
   try {
     return await fetchProductCatalog(page, requireProviderConfig());
+  } catch (error) {
+    if (isCredentialRejection(error)) throw giftishowCredentialError();
+    throw error;
+  }
+}
+
+export async function listAdminGiftBrands(): Promise<AdminGiftBrand[]> {
+  await requireAdminProfile();
+  try {
+    return await fetchGiftBrands(requireProviderConfig());
   } catch (error) {
     if (isCredentialRejection(error)) throw giftishowCredentialError();
     throw error;

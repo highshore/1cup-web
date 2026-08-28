@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   AdminGiftError,
   getAdminGifts,
+  listAdminGiftBrands,
   listAdminGiftProducts,
   lookupAdminGiftProduct,
   sendAdminGift,
@@ -96,6 +97,11 @@ export async function POST(request: NextRequest) {
       const page = typeof body.page === "number" ? body.page : 1;
       const catalog = await listAdminGiftProducts(page);
       return NextResponse.json(catalog, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (body.action === "list-brands") {
+      const brands = await listAdminGiftBrands();
+      return NextResponse.json(brands, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (body.action !== "send") {

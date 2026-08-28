@@ -10,11 +10,13 @@ import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   getAdminGiftsClient,
+  listAdminGiftBrandsClient,
   listAdminGiftProductsClient,
   lookupAdminGiftProductClient,
   sendAdminGiftClient,
 } from "../../lib/features/gifts/services/admin_gift_client";
 import type {
+  AdminGiftBrand,
   AdminGiftCatalogPage,
   AdminGiftHistoryItem,
   AdminGiftProduct,
@@ -430,9 +432,9 @@ const ModalBackdrop = styled.div`
 
 const ModalCard = styled.section`
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: min(980px, 100%);
-  max-height: min(780px, calc(100vh - 2rem));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(760px, 100%);
+  max-height: min(620px, calc(100vh - 2rem));
   overflow: hidden;
   border: 3px solid #050505;
   border-radius: 16px;
@@ -487,7 +489,8 @@ const IconButton = styled.button`
 `;
 
 const CatalogTools = styled.div`
-  padding: 0.8rem 1.1rem;
+  border-bottom: 1.5px solid rgba(5, 5, 5, 0.18);
+  padding: 0.7rem;
 `;
 
 const CatalogSearch = styled(SearchWrap)`
@@ -499,23 +502,66 @@ const CatalogSearchInput = styled(SearchInput)`
   border-radius: 8px;
 `;
 
-const CatalogList = styled.div`
-  min-height: 180px;
+const CatalogBody = styled.div`
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 188px minmax(0, 1fr);
+
+  @media (max-width: 620px) {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+`;
+
+const BrandPanel = styled.aside`
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  border-right: 2px solid #050505;
+  background: #fff8f4;
+`;
+
+const BrandList = styled.div`
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0.35rem;
+`;
+
+const BrandButton = styled.button<{ $selected: boolean }>`
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 7px;
+  background: ${({ $selected }) => ($selected ? "#f47a4a" : "transparent")};
+  padding: 0.55rem 0.58rem;
+  color: #050505;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    background: ${({ $selected }) => ($selected ? "#f47a4a" : "#fff1ea")};
+  }
+`;
+
+const CatalogItems = styled.div`
   min-height: 0;
   overflow-y: auto;
-  padding: 0 1.1rem 1rem;
+  padding: 0.85rem;
 `;
 
 const CatalogGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.7rem;
 
-  @media (max-width: 780px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 500px) {
+  @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -794,8 +840,11 @@ export default function AdminGiftsClient() {
   const [product, setProduct] = useState<AdminGiftProduct | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [brands, setBrands] = useState<AdminGiftBrand[] | null>(null);
+  const [brandSearch, setBrandSearch] = useState("");
+  const [selectedBrandCode, setSelectedBrandCode] = useState<string | null>(null);
+  const [isBrandLoading, setIsBrandLoading] = useState(false);
   const [catalog, setCatalog] = useState<AdminGiftCatalogPage | null>(null);
-  const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
@@ -864,16 +913,21 @@ export default function AdminGiftsClient() {
         .includes(query),
     );
   }, [recipientSearch, recipients]);
-  const matchingCatalogProducts = useMemo(() => {
-    const products = catalog?.products ?? [];
-    const query = catalogSearch.trim().toLocaleLowerCase();
-    if (!query) return products;
-    return products.filter((catalogProduct) =>
-      `${catalogProduct.goodsName} ${catalogProduct.brandName ?? ""} ${catalogProduct.goodsCode}`
-        .toLocaleLowerCase()
-        .includes(query),
+  const matchingBrands = useMemo(() => {
+    const query = brandSearch.trim().toLocaleLowerCase();
+    if (!query) return brands ?? [];
+    return (brands ?? []).filter((brand) =>
+      `${brand.brandName} ${brand.categoryName ?? ""}`.toLocaleLowerCase().includes(query),
     );
-  }, [catalog, catalogSearch]);
+  }, [brandSearch, brands]);
+  const selectedBrand = useMemo(
+    () => (brands ?? []).find((brand) => brand.brandCode === selectedBrandCode) ?? null,
+    [brands, selectedBrandCode],
+  );
+  const matchingCatalogProducts = useMemo(
+    () => (catalog?.products ?? []).filter((catalogProduct) => catalogProduct.brandCode === selectedBrandCode),
+    [catalog, selectedBrandCode],
+  );
 
   const sendDisabledReason = !data?.configured
     ? data?.configurationError || copy.providerNeedsSetup
@@ -943,12 +997,35 @@ export default function AdminGiftsClient() {
     }
   }, [copy.catalogLoadError]);
 
+  const loadBrands = useCallback(async () => {
+    setIsBrandLoading(true);
+    setCatalogError(null);
+    try {
+      const next = await listAdminGiftBrandsClient(copy.brandLoadError);
+      setBrands(next);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : copy.brandLoadError);
+    } finally {
+      setIsBrandLoading(false);
+    }
+  }, [copy.brandLoadError]);
+
   const openCatalog = () => {
-    setCatalogSearch("");
+    setBrandSearch("");
     setCatalogSelectedCode(product?.goodsCode ?? null);
+    setSelectedBrandCode(null);
+    setBrands(null);
     setCatalog(null);
     setCatalogError(null);
     setIsCatalogOpen(true);
+    void loadBrands();
+  };
+
+  const selectBrand = (brandCode: string) => {
+    setSelectedBrandCode(brandCode);
+    setCatalogSelectedCode(null);
+    setCatalog(null);
+    setCatalogError(null);
     void loadCatalog(1);
   };
 
@@ -967,8 +1044,9 @@ export default function AdminGiftsClient() {
   useEffect(() => {
     if (
       !isCatalogOpen ||
-      !catalogSearch.trim() ||
-      matchingCatalogProducts.length > 0 ||
+      !selectedBrandCode ||
+      !catalog ||
+      matchingCatalogProducts.length >= 10 ||
       !catalogHasMore ||
       isCatalogLoading
     ) {
@@ -978,11 +1056,11 @@ export default function AdminGiftsClient() {
     return () => window.clearTimeout(timer);
   }, [
     catalogHasMore,
-    catalogSearch,
     isCatalogLoading,
     isCatalogOpen,
     loadMoreCatalog,
     matchingCatalogProducts.length,
+    selectedBrandCode,
   ]);
 
   const selectCatalogProduct = async () => {
@@ -1367,69 +1445,101 @@ export default function AdminGiftsClient() {
               </IconButton>
             </ModalHeader>
 
-            <CatalogTools>
-              <CatalogSearch>
-                <MagnifyingGlassIcon />
-                <CatalogSearchInput
-                  value={catalogSearch}
-                  onChange={(event) => setCatalogSearch(event.target.value)}
-                  placeholder={copy.catalogSearchPlaceholder}
-                />
-              </CatalogSearch>
-            </CatalogTools>
-
-            <CatalogList onScroll={handleCatalogScroll}>
-              {isCatalogLoading && !catalog ? (
-                <EmptyState>{copy.catalogLoading}</EmptyState>
-              ) : catalogError ? (
-                <>
-                  <InlineStatus $error>{catalogError}</InlineStatus>
-                  <div style={{ marginTop: "0.8rem" }}>
-                    <SecondaryButton
-                      type="button"
-                      onClick={() => void loadCatalog(catalog ? catalog.page + 1 : 1, Boolean(catalog))}
-                    >
-                      <ArrowPathIcon />
-                      {copy.retry}
-                    </SecondaryButton>
-                  </div>
-                </>
-              ) : matchingCatalogProducts.length === 0 ? (
-                <EmptyState>{catalogSearch.trim() ? copy.catalogNoMatches : copy.catalogEmpty}</EmptyState>
-              ) : (
-                <CatalogGrid>
-                  {matchingCatalogProducts.map((catalogProduct) => {
-                    const unavailable = catalogProduct.state !== "SALE";
-                    return (
-                      <CatalogProduct
-                        key={catalogProduct.goodsCode}
+            <CatalogBody>
+              <BrandPanel>
+                <CatalogTools>
+                  <CatalogSearch>
+                    <MagnifyingGlassIcon />
+                    <CatalogSearchInput
+                      value={brandSearch}
+                      onChange={(event) => setBrandSearch(event.target.value)}
+                      placeholder={copy.brandSearchPlaceholder}
+                    />
+                  </CatalogSearch>
+                </CatalogTools>
+                <BrandList>
+                  {isBrandLoading ? (
+                    <EmptyState>{copy.brandLoading}</EmptyState>
+                  ) : matchingBrands.length === 0 ? (
+                    <EmptyState>{copy.brandEmpty}</EmptyState>
+                  ) : (
+                    matchingBrands.map((brand) => (
+                      <BrandButton
+                        key={brand.brandCode}
                         type="button"
-                        $selected={catalogSelectedCode === catalogProduct.goodsCode}
-                        $disabled={unavailable}
-                        disabled={unavailable}
-                        onClick={() => setCatalogSelectedCode(catalogProduct.goodsCode)}
+                        $selected={brand.brandCode === selectedBrandCode}
+                        onClick={() => selectBrand(brand.brandCode)}
                       >
-                        <CatalogImage>
-                          {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
-                        </CatalogImage>
-                        <CatalogText>
-                          <CatalogName>{catalogProduct.goodsName}</CatalogName>
-                          <CatalogMeta>{catalogProduct.brandName || catalogProduct.goodsCode}</CatalogMeta>
-                          <CatalogMeta>
-                            {formatMoney(catalogProduct.discountPrice ?? catalogProduct.salePrice)}
-                            {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
-                          </CatalogMeta>
-                        </CatalogText>
-                      </CatalogProduct>
-                    );
-                  })}
-                </CatalogGrid>
-              )}
-            </CatalogList>
+                        {brand.brandName}
+                      </BrandButton>
+                    ))
+                  )}
+                </BrandList>
+              </BrandPanel>
+
+              <CatalogItems onScroll={handleCatalogScroll}>
+                {!selectedBrand ? (
+                  <EmptyState>{copy.catalogChooseBrand}</EmptyState>
+                ) : isCatalogLoading && !catalog ? (
+                  <EmptyState>{copy.catalogLoading}</EmptyState>
+                ) : catalogError ? (
+                  <>
+                    <InlineStatus $error>{catalogError}</InlineStatus>
+                    <div style={{ marginTop: "0.8rem" }}>
+                      <SecondaryButton
+                        type="button"
+                        onClick={() =>
+                          selectedBrandCode
+                            ? void loadCatalog(catalog ? catalog.page + 1 : 1, Boolean(catalog))
+                            : void loadBrands()
+                        }
+                      >
+                        <ArrowPathIcon />
+                        {copy.retry}
+                      </SecondaryButton>
+                    </div>
+                  </>
+                ) : matchingCatalogProducts.length === 0 ? (
+                  <EmptyState>
+                    {isCatalogLoading || catalogHasMore ? copy.catalogSearchingBrand : copy.catalogEmpty}
+                  </EmptyState>
+                ) : (
+                  <CatalogGrid>
+                    {matchingCatalogProducts.map((catalogProduct) => {
+                      const unavailable = catalogProduct.state !== "SALE";
+                      return (
+                        <CatalogProduct
+                          key={catalogProduct.goodsCode}
+                          type="button"
+                          $selected={catalogSelectedCode === catalogProduct.goodsCode}
+                          $disabled={unavailable}
+                          disabled={unavailable}
+                          onClick={() => setCatalogSelectedCode(catalogProduct.goodsCode)}
+                        >
+                          <CatalogImage>
+                            {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
+                          </CatalogImage>
+                          <CatalogText>
+                            <CatalogName>{catalogProduct.goodsName}</CatalogName>
+                            <CatalogMeta>{catalogProduct.goodsCode}</CatalogMeta>
+                            <CatalogMeta>
+                              {formatMoney(catalogProduct.discountPrice ?? catalogProduct.salePrice)}
+                              {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
+                            </CatalogMeta>
+                          </CatalogText>
+                        </CatalogProduct>
+                      );
+                    })}
+                  </CatalogGrid>
+                )}
+              </CatalogItems>
+            </CatalogBody>
 
             <CatalogFooter>
               <CatalogStatus>
-                {isCatalogLoading && catalog
+                {!selectedBrand
+                  ? copy.catalogChooseBrand
+                  : isCatalogLoading && catalog
                   ? copy.catalogLoadingMore
                   : catalogHasMore
                     ? copy.catalogScrollHint

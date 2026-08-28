@@ -16,12 +16,20 @@ export interface AdminGiftRecipient {
 export interface AdminGiftProduct {
   goodsCode: string;
   goodsName: string;
+  brandCode: string | null;
   brandName: string | null;
   imageUrl: string | null;
   salePrice: number | null;
   discountPrice: number | null;
   state: string | null;
   limitDay: number | null;
+}
+
+export interface AdminGiftBrand {
+  brandCode: string;
+  brandName: string;
+  iconUrl: string | null;
+  categoryName: string | null;
 }
 
 export interface AdminGiftCatalogPage {
