@@ -19,6 +19,9 @@ const GIFTISHOW_BASE_URL = "https://bizapi.giftishow.com/bizApi";
 const SEND_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const CATALOG_PAGE_SIZE = 10;
+const BRAND_CATALOG_PAGE_SIZE = 1_000;
+const BRAND_CATALOG_MAX_PAGES = 50;
+const BRAND_CATALOG_CACHE_TTL_MS = 10 * 60 * 1_000;
 const GIFTISHOW_CREDENTIAL_ERROR_MESSAGE =
   "Giftishow rejected the configured API credentials (E0006). Replace GIFTISHOW_AUTH_CODE and GIFTISHOW_AUTH_TOKEN with the current production keys.";
 
@@ -46,6 +49,9 @@ type ProviderConfig = {
   missing: string[];
   configured: boolean;
 };
+
+let cachedFullCatalog: { expiresAt: number; products: AdminGiftProduct[] } | null = null;
+let fullCatalogRequest: Promise<AdminGiftProduct[]> | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -274,15 +280,22 @@ async function fetchProduct(goodsCode: string, config: ProviderConfig): Promise<
   return toProduct(payload);
 }
 
-async function fetchProductCatalog(page: number, config: ProviderConfig): Promise<AdminGiftCatalogPage> {
+async function fetchProductCatalog(
+  page: number,
+  config: ProviderConfig,
+  size = CATALOG_PAGE_SIZE,
+): Promise<AdminGiftCatalogPage> {
   if (!Number.isInteger(page) || page < 1 || page > 10_000) {
     throw new AdminGiftError("Please enter a valid product catalog page.", 400);
+  }
+  if (!Number.isInteger(size) || size < 1 || size > BRAND_CATALOG_PAGE_SIZE) {
+    throw new AdminGiftError("Please enter a valid product catalog size.", 400);
   }
 
   const payload = await postGiftishow(
     "/goods",
     "0101",
-    { start: String(page), size: String(CATALOG_PAGE_SIZE) },
+    { start: String(page), size: String(size) },
     config,
   );
   assertOuterSuccess(payload);
@@ -297,12 +310,42 @@ async function fetchProductCatalog(page: number, config: ProviderConfig): Promis
 
   return {
     page,
-    size: CATALOG_PAGE_SIZE,
+    size,
     // Giftishow's listNum is the count for this response, not a reliable total catalog count.
     total: null,
-    hasMore: products.length === CATALOG_PAGE_SIZE,
+    hasMore: products.length === size,
     products,
   };
+}
+
+async function fetchFullGiftCatalog(config: ProviderConfig): Promise<AdminGiftProduct[]> {
+  if (cachedFullCatalog && cachedFullCatalog.expiresAt > Date.now()) {
+    return cachedFullCatalog.products;
+  }
+  if (fullCatalogRequest) return fullCatalogRequest;
+
+  fullCatalogRequest = (async () => {
+    const productsByCode = new Map<string, AdminGiftProduct>();
+    for (let page = 1; page <= BRAND_CATALOG_MAX_PAGES; page += 1) {
+      const response = await fetchProductCatalog(page, config, BRAND_CATALOG_PAGE_SIZE);
+      response.products.forEach((product) => productsByCode.set(product.goodsCode, product));
+      if (!response.hasMore) {
+        const products = [...productsByCode.values()];
+        cachedFullCatalog = {
+          expiresAt: Date.now() + BRAND_CATALOG_CACHE_TTL_MS,
+          products,
+        };
+        return products;
+      }
+    }
+    throw new GiftishowProviderError("Giftishow returned more catalog pages than the safe import limit.");
+  })();
+
+  try {
+    return await fullCatalogRequest;
+  } finally {
+    fullCatalogRequest = null;
+  }
 }
 
 async function fetchGiftBrands(config: ProviderConfig): Promise<AdminGiftBrand[]> {
@@ -559,6 +602,22 @@ export async function listAdminGiftBrands(): Promise<AdminGiftBrand[]> {
   await requireAdminProfile();
   try {
     return await fetchGiftBrands(requireProviderConfig());
+  } catch (error) {
+    if (isCredentialRejection(error)) throw giftishowCredentialError();
+    throw error;
+  }
+}
+
+export async function listAdminGiftBrandProducts(brandCode: string): Promise<AdminGiftProduct[]> {
+  await requireAdminProfile();
+  const normalizedBrandCode = brandCode.trim().toUpperCase();
+  if (!/^BR[A-Z0-9]{3,48}$/.test(normalizedBrandCode)) {
+    throw new AdminGiftError("Please choose a valid Giftishow brand.", 400);
+  }
+  try {
+    return (await fetchFullGiftCatalog(requireProviderConfig()))
+      .filter((product) => product.brandCode === normalizedBrandCode && product.state === "SALE")
+      .sort((left, right) => left.goodsName.localeCompare(right.goodsName, "ko-KR"));
   } catch (error) {
     if (isCredentialRejection(error)) throw giftishowCredentialError();
     throw error;

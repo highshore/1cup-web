@@ -4,6 +4,7 @@ import {
   AdminGiftError,
   getAdminGifts,
   listAdminGiftBrands,
+  listAdminGiftBrandProducts,
   listAdminGiftProducts,
   lookupAdminGiftProduct,
   sendAdminGift,
@@ -102,6 +103,17 @@ export async function POST(request: NextRequest) {
     if (body.action === "list-brands") {
       const brands = await listAdminGiftBrands();
       return NextResponse.json(brands, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (body.action === "list-brand-products") {
+      if (typeof body.brandCode !== "string") {
+        return NextResponse.json(
+          { error: "A Giftishow brand is required." },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      const products = await listAdminGiftBrandProducts(body.brandCode);
+      return NextResponse.json(products, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (body.action !== "send") {

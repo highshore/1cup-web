@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 
@@ -11,19 +11,31 @@ import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   getAdminGiftsClient,
   listAdminGiftBrandsClient,
-  listAdminGiftProductsClient,
+  listAdminGiftBrandProductsClient,
   lookupAdminGiftProductClient,
   sendAdminGiftClient,
 } from "../../lib/features/gifts/services/admin_gift_client";
 import type {
   AdminGiftBrand,
-  AdminGiftCatalogPage,
   AdminGiftHistoryItem,
   AdminGiftProduct,
   AdminGiftsData,
 } from "../../lib/features/gifts/types";
 
 const CUSTOM_RECIPIENT = "__custom__";
+const FEATURED_BRAND_NAMES = [
+  "스타벅스",
+  "배달의민족",
+  "투썸플레이스",
+  "커피빈",
+  "메가mgc",
+  "컴포즈",
+  "이디야",
+  "빽다방",
+  "공차",
+  "배스킨라빈스",
+  "던킨",
+];
 
 const Page = styled.main`
   width: 100%;
@@ -827,6 +839,12 @@ function initials(value: string): string {
   return value.slice(0, 1).toUpperCase() || "1";
 }
 
+function brandRank(brandName: string): number {
+  const normalized = brandName.replace(/\s/g, "").toLocaleLowerCase();
+  const index = FEATURED_BRAND_NAMES.findIndex((name) => normalized.includes(name));
+  return index === -1 ? FEATURED_BRAND_NAMES.length : index;
+}
+
 export default function AdminGiftsClient() {
   const { t, locale } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
@@ -844,10 +862,10 @@ export default function AdminGiftsClient() {
   const [brandSearch, setBrandSearch] = useState("");
   const [selectedBrandCode, setSelectedBrandCode] = useState<string | null>(null);
   const [isBrandLoading, setIsBrandLoading] = useState(false);
-  const [catalog, setCatalog] = useState<AdminGiftCatalogPage | null>(null);
+  const [brandProducts, setBrandProducts] = useState<AdminGiftProduct[] | null>(null);
+  const [isBrandProductsLoading, setIsBrandProductsLoading] = useState(false);
   const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [recipientId, setRecipientId] = useState(CUSTOM_RECIPIENT);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [customName, setCustomName] = useState("");
@@ -857,6 +875,7 @@ export default function AdminGiftsClient() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+  const brandProductRequest = useRef(0);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -915,9 +934,12 @@ export default function AdminGiftsClient() {
   }, [recipientSearch, recipients]);
   const matchingBrands = useMemo(() => {
     const query = brandSearch.trim().toLocaleLowerCase();
-    if (!query) return brands ?? [];
-    return (brands ?? []).filter((brand) =>
+    const filtered = !query ? brands ?? [] : (brands ?? []).filter((brand) =>
       `${brand.brandName} ${brand.categoryName ?? ""}`.toLocaleLowerCase().includes(query),
+    );
+    return [...filtered].sort((left, right) =>
+      brandRank(left.brandName) - brandRank(right.brandName) ||
+      left.brandName.localeCompare(right.brandName, "ko-KR"),
     );
   }, [brandSearch, brands]);
   const selectedBrand = useMemo(
@@ -925,8 +947,8 @@ export default function AdminGiftsClient() {
     [brands, selectedBrandCode],
   );
   const matchingCatalogProducts = useMemo(
-    () => (catalog?.products ?? []).filter((catalogProduct) => catalogProduct.brandCode === selectedBrandCode),
-    [catalog, selectedBrandCode],
+    () => brandProducts ?? [],
+    [brandProducts],
   );
 
   const sendDisabledReason = !data?.configured
@@ -934,7 +956,6 @@ export default function AdminGiftsClient() {
     : !product
       ? copy.productRequired
       : null;
-  const catalogHasMore = Boolean(catalog?.hasMore);
 
   const formatMoney = (value: number | null) =>
     value === null
@@ -973,30 +994,6 @@ export default function AdminGiftsClient() {
     }
   };
 
-  const loadCatalog = useCallback(async (page: number, append = false) => {
-    setIsCatalogLoading(true);
-    setCatalogError(null);
-    try {
-      const next = await listAdminGiftProductsClient(page, copy.catalogLoadError);
-      setCatalog((current) => {
-        if (!append || !current) return next;
-        const seen = new Set(current.products.map((catalogProduct) => catalogProduct.goodsCode));
-        return {
-          ...next,
-          products: [...current.products, ...next.products.filter((catalogProduct) => {
-            if (seen.has(catalogProduct.goodsCode)) return false;
-            seen.add(catalogProduct.goodsCode);
-            return true;
-          })],
-        };
-      });
-    } catch (error) {
-      setCatalogError(error instanceof Error ? error.message : copy.catalogLoadError);
-    } finally {
-      setIsCatalogLoading(false);
-    }
-  }, [copy.catalogLoadError]);
-
   const loadBrands = useCallback(async () => {
     setIsBrandLoading(true);
     setCatalogError(null);
@@ -1015,53 +1012,33 @@ export default function AdminGiftsClient() {
     setCatalogSelectedCode(product?.goodsCode ?? null);
     setSelectedBrandCode(null);
     setBrands(null);
-    setCatalog(null);
+    setBrandProducts(null);
     setCatalogError(null);
     setIsCatalogOpen(true);
     void loadBrands();
   };
 
   const selectBrand = (brandCode: string) => {
+    const requestId = brandProductRequest.current + 1;
+    brandProductRequest.current = requestId;
     setSelectedBrandCode(brandCode);
     setCatalogSelectedCode(null);
-    setCatalog(null);
+    setBrandProducts(null);
     setCatalogError(null);
-    void loadCatalog(1);
+    setIsBrandProductsLoading(true);
+    void listAdminGiftBrandProductsClient(brandCode, copy.catalogLoadError)
+      .then((products) => {
+        if (brandProductRequest.current === requestId) setBrandProducts(products);
+      })
+      .catch((error) => {
+        if (brandProductRequest.current === requestId) {
+          setCatalogError(error instanceof Error ? error.message : copy.catalogLoadError);
+        }
+      })
+      .finally(() => {
+        if (brandProductRequest.current === requestId) setIsBrandProductsLoading(false);
+      });
   };
-
-  const loadMoreCatalog = useCallback(() => {
-    if (!catalog || !catalog.hasMore || isCatalogLoading) return;
-    void loadCatalog(catalog.page + 1, true);
-  }, [catalog, isCatalogLoading, loadCatalog]);
-
-  const handleCatalogScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const target = event.currentTarget;
-    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 120) {
-      loadMoreCatalog();
-    }
-  };
-
-  useEffect(() => {
-    if (
-      !isCatalogOpen ||
-      !selectedBrandCode ||
-      !catalog ||
-      matchingCatalogProducts.length >= 10 ||
-      !catalogHasMore ||
-      isCatalogLoading
-    ) {
-      return;
-    }
-    const timer = window.setTimeout(loadMoreCatalog, 150);
-    return () => window.clearTimeout(timer);
-  }, [
-    catalogHasMore,
-    isCatalogLoading,
-    isCatalogOpen,
-    loadMoreCatalog,
-    matchingCatalogProducts.length,
-    selectedBrandCode,
-  ]);
 
   const selectCatalogProduct = async () => {
     if (!catalogSelectedCode) return;
@@ -1197,7 +1174,7 @@ export default function AdminGiftsClient() {
                     <ProductActions>
                       <SecondaryButton
                         type="button"
-                        disabled={!data?.configured || isCatalogLoading}
+                        disabled={!data?.configured || isBrandLoading}
                         onClick={openCatalog}
                       >
                         <MagnifyingGlassIcon />
@@ -1477,10 +1454,10 @@ export default function AdminGiftsClient() {
                 </BrandList>
               </BrandPanel>
 
-              <CatalogItems onScroll={handleCatalogScroll}>
+              <CatalogItems>
                 {!selectedBrand ? (
                   <EmptyState>{copy.catalogChooseBrand}</EmptyState>
-                ) : isCatalogLoading && !catalog ? (
+                ) : isBrandProductsLoading && !brandProducts ? (
                   <EmptyState>{copy.catalogLoading}</EmptyState>
                 ) : catalogError ? (
                   <>
@@ -1488,11 +1465,7 @@ export default function AdminGiftsClient() {
                     <div style={{ marginTop: "0.8rem" }}>
                       <SecondaryButton
                         type="button"
-                        onClick={() =>
-                          selectedBrandCode
-                            ? void loadCatalog(catalog ? catalog.page + 1 : 1, Boolean(catalog))
-                            : void loadBrands()
-                        }
+                        onClick={() => selectedBrandCode ? selectBrand(selectedBrandCode) : void loadBrands()}
                       >
                         <ArrowPathIcon />
                         {copy.retry}
@@ -1500,9 +1473,7 @@ export default function AdminGiftsClient() {
                     </div>
                   </>
                 ) : matchingCatalogProducts.length === 0 ? (
-                  <EmptyState>
-                    {isCatalogLoading || catalogHasMore ? copy.catalogSearchingBrand : copy.catalogEmpty}
-                  </EmptyState>
+                  <EmptyState>{copy.catalogEmpty}</EmptyState>
                 ) : (
                   <CatalogGrid>
                     {matchingCatalogProducts.map((catalogProduct) => {
@@ -1539,11 +1510,9 @@ export default function AdminGiftsClient() {
               <CatalogStatus>
                 {!selectedBrand
                   ? copy.catalogChooseBrand
-                  : isCatalogLoading && catalog
-                  ? copy.catalogLoadingMore
-                  : catalogHasMore
-                    ? copy.catalogScrollHint
-                    : copy.catalogEnd}
+                  : isBrandProductsLoading
+                    ? copy.catalogLoading
+                    : copy.catalogAvailableCount.replace("{count}", String(matchingCatalogProducts.length))}
               </CatalogStatus>
               <CatalogActions>
                 <SecondaryButton type="button" onClick={() => setIsCatalogOpen(false)}>
@@ -1551,7 +1520,7 @@ export default function AdminGiftsClient() {
                 </SecondaryButton>
                 <SendButton
                   type="button"
-                  disabled={!catalogSelectedCode || isLookingUp || isCatalogLoading}
+                  disabled={!catalogSelectedCode || isLookingUp || isBrandProductsLoading}
                   onClick={() => void selectCatalogProduct()}
                 >
                   {isLookingUp ? copy.lookingUp : copy.catalogChoose}

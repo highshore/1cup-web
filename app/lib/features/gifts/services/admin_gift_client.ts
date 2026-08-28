@@ -37,6 +37,21 @@ export function listAdminGiftBrandsClient(fallbackMessage: string): Promise<Admi
   );
 }
 
+export function listAdminGiftBrandProductsClient(
+  brandCode: string,
+  fallbackMessage: string,
+): Promise<AdminGiftProduct[]> {
+  return requestJson<AdminGiftProduct[]>(
+    "/api/admin/gifts",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list-brand-products", brandCode }),
+    },
+    fallbackMessage,
+  );
+}
+
 export function listAdminGiftProductsClient(
   page: number,
   fallbackMessage: string,
