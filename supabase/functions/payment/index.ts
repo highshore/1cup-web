@@ -843,6 +843,11 @@ async function processRecurringPayments() {
   logInfo(`Running recurring payments job (UTC now): ${nowUtc.toISOString()}`);
 
   // KST (UTC+9) day window computed robustly from UTC.
+  //
+  // kstNow is a shifted instant, useful only for reading off KST calendar parts with
+  // getUTC*. It is nine hours in the future and must never be compared against a stored
+  // timestamp: doing so is what ended two memberships early. Compare against
+  // kstStartOfDay or kstEndOfDay, which are real instants.
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
   const kstNow = new Date(nowUtc.getTime() + KST_OFFSET_MS);
   const kstYear = kstNow.getUTCFullYear();
@@ -1076,8 +1081,16 @@ async function processRecurringPayments() {
     //   - still billing: only after the grace period, by which point six attempts have
     //     failed and the card really is the problem.
     try {
+      // Only periods that ended on an earlier day. A membership therefore lasts the whole
+      // of its final day, which is the promise made to anyone who stops billing and is
+      // told they can keep coming until the period runs out.
+      //
+      // The old comparison used kstNow — nine hours ahead of the real time — so the 14:00
+      // run treated anything ending before 23:00 as already over. Members were cut off up
+      // to nine hours early, and with meetups at 18:30, 19:00 and 23:15 that is the
+      // difference between attending a session they had paid for and being turned away.
       const graceCutoff = new Date(
-        kstNow.getTime() - RENEWAL_GRACE_DAYS * 24 * 60 * 60 * 1000,
+        kstStartOfDay.getTime() - RENEWAL_GRACE_DAYS * 24 * 60 * 60 * 1000,
       );
 
       const { data: endedByChoice, error: choiceErr } = await a
@@ -1085,7 +1098,7 @@ async function processRecurringPayments() {
         .select("uid")
         .eq("has_active_subscription", true)
         .eq("billing_cancelled", true)
-        .lt("subscription_end_date", kstNow.toISOString());
+        .lt("subscription_end_date", kstStartOfDay.toISOString());
       if (choiceErr) throw new Error(choiceErr.message);
 
       const { data: endedByFailure, error: failErr } = await a
