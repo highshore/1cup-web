@@ -81,6 +81,12 @@ const RENEWAL_LOOKBACK_DAYS = 14;
 // when the period does.
 const RENEWAL_GRACE_DAYS = 3;
 
+// Every successful payment buys exactly 30 x 24 hours of membership. Calendar-month
+// arithmetic would otherwise produce 28-31 day periods depending on the month.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MEMBERSHIP_DAYS = 30;
+const FULL_REFUND_DAYS = 7;
+
 // -------------------------------------------------------------------
 // Small helpers
 // -------------------------------------------------------------------
@@ -698,10 +704,11 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
           related_auth_order: paymentOrderId || null,
         });
 
-        // Update user subscription status.
+        // Update user subscription status. One payment is exactly 30 x 24 hours.
         const subscriptionStartDate = new Date();
-        const subscriptionEndDate = new Date(subscriptionStartDate);
-        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+        const subscriptionEndDate = new Date(
+          subscriptionStartDate.getTime() + MEMBERSHIP_DAYS * DAY_MS,
+        );
 
         await a
           .from("users")
@@ -1006,7 +1013,7 @@ async function processRecurringPayments() {
         if (payData.PCD_PAY_RST === "success") {
           const newStartDate = new Date();
           const newEndDate = new Date(
-            new Date().setMonth(new Date().getMonth() + 1),
+            newStartDate.getTime() + MEMBERSHIP_DAYS * DAY_MS,
           );
 
           await a.from("payment_orders").insert({
@@ -1202,21 +1209,21 @@ async function cancelSubscription(uid: string, body: Record<string, unknown>) {
     `Found last payment for refund: OrderID=${originalOrderId}, Amount=${originalPaymentAmount}`,
   );
 
-  // Calculate refund amount (full < 7 days, prorated over 30-day month otherwise, 0 floor).
+  // Full refund through the first exact 7 x 24 hours. After that, refund the
+  // unused whole-day portion of the fixed 30-day membership.
   const completedAt = new Date(lastPaymentData.completed_at as string);
-  const today = new Date();
-  const timeDiff = today.getTime() - completedAt.getTime();
-  const daysPassed = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  const elapsedMs = Math.max(0, Date.now() - completedAt.getTime());
+  const daysPassed = Math.ceil(elapsedMs / DAY_MS);
 
   let refundAmount = 0;
-  if (daysPassed < 7) {
+  if (elapsedMs <= FULL_REFUND_DAYS * DAY_MS) {
     refundAmount = originalPaymentAmount;
     logInfo(
-      `User ${userId}: ${daysPassed} days passed. Processing full refund: ${refundAmount}`,
+      `User ${userId}: within ${FULL_REFUND_DAYS}-day full refund window. Processing full refund: ${refundAmount}`,
     );
   } else {
     const proratedAmount = Math.round(
-      (originalPaymentAmount * (30 - daysPassed)) / 30,
+      (originalPaymentAmount * (MEMBERSHIP_DAYS - daysPassed)) / MEMBERSHIP_DAYS,
     );
     refundAmount = Math.max(0, proratedAmount);
     logInfo(
