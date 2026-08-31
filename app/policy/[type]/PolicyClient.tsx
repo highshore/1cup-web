@@ -46,7 +46,16 @@ const Content = styled.div`
     padding: 0;
   }
 
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
   li {
+    display: list-item;
     margin-bottom: 0.4rem;
   }
 
