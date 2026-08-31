@@ -82,7 +82,7 @@ const Note = styled.div`
   padding: 1rem 1.1rem;
   border: 1px solid ${colors.border};
   border-radius: 10px;
-  background: ${colors.background?.light || "transparent"};
+  background: ${colors.gray.light};
 `;
 
 const Divider = styled.hr`
