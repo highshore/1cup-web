@@ -22,7 +22,6 @@ const FooterContent = styled.div`
   flex-direction: column;
   gap: 0.5rem;
 
-  /* Improve line height for wrapped text within each div */
   > div {
     line-height: 1.4;
 
@@ -54,18 +53,20 @@ export default function Footer() {
         <div>
           <FooterLink href="/vocabulary">내 단어장</FooterLink>
           <FooterDivider>|</FooterDivider>
-          <FooterLink href="/policy/privacy">개인정보 취급방침</FooterLink>
+          <FooterLink href="/policy/privacy">개인정보처리방침</FooterLink>
           <FooterDivider>|</FooterDivider>
           <FooterLink href="/policy/terms">이용약관</FooterLink>
+          <FooterDivider>|</FooterDivider>
+          <FooterLink href="/policy/refund">환불 및 멤버십 해지</FooterLink>
         </div>
         <div>
           네이티브피티 | 549-04-02156 | 대표자 김수겸 | 이메일
-          hello@1cupenglish.com
+          hello@1cupenglish.com | 전화 010-6858-4123
         </div>
         <div>통신판매업 신고번호 제2022-서울종로-1744호</div>
         <div>서울특별시 성북구 안암로9가길 9-8, 303호</div>
         <div>'영어 한잔'은 '네이티브피티'의 영어교육 서비스 브랜드입니다.</div>
-        <div>ⓒ2025 All Rights Reserved.</div>
+        <div>ⓒ2026 All Rights Reserved.</div>
       </FooterContent>
     </FooterContainer>
   );
