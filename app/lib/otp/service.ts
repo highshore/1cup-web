@@ -21,10 +21,20 @@ const MAX_SENDS_PER_HOUR = 5;             // sends per number per hour
 
 const HMAC_SECRET = process.env.OTP_HMAC_SECRET ?? "";
 
-// Testing only: when OTP_DEV_ECHO=true, log the code to the server console and do
-// NOT fail the request if AlimTalk delivery fails (e.g. template pending approval).
-// NEVER set this in real production — it writes OTP codes to the function logs.
-const DEV_ECHO = process.env.OTP_DEV_ECHO === "true";
+// Testing aid from when the AlimTalk template was still awaiting approval: log the code
+// so it can be read out of the server logs, and let a delivery failure pass.
+//
+// Both halves are unacceptable in production — one puts live sign-in codes in plain text
+// where anyone with log access can read them, the other leaves a member staring at a
+// screen while the send that failed is quietly discarded. The comment saying so was the
+// only thing stopping it, and OTP_DEV_ECHO has been set on Production for a month.
+//
+// The environment now decides, not the flag. On Vercel VERCEL_ENV is "production" for
+// production deployments and absent locally, so this stays available where it is useful
+// and cannot be switched on where it is dangerous.
+const DEV_ECHO =
+  process.env.OTP_DEV_ECHO === "true" &&
+  process.env.VERCEL_ENV !== "production";
 
 // Error whose .status maps to the HTTP response. Messages here are user-facing (Korean).
 export class OtpError extends Error {
