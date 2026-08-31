@@ -45,6 +45,9 @@ functions/.env.one-cup-eng
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+# Shared because it is project configuration, not preference: without deno.enablePaths
+# the editor reports every Supabase Edge Function as broken.
+!.vscode/settings.json
 .idea
 .cursor/rules/
 .kilo/
@@ -65,3 +68,7 @@ firebase-config.json
 # Local investigation notes (contain user PII — do not commit)
 AUTH_ACCOUNT_CLEANUP.md
 .env*
+
+# Written by `npm run check:functions`. Left untracked on purpose: no deno.json or
+# deno.lock is committed, so nothing the Supabase CLI reads while deploying changes.
+deno.lock

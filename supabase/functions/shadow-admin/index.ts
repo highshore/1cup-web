@@ -182,6 +182,18 @@ Deno.serve(async (req): Promise<Response> => {
     console.error("[shadow-admin] processing failed", caught instanceof Error ? caught.message : "unknown");
     await updateProgress(lessonId, { status: "failed", stage: "failed", progress: 100, error_message: "Caption processing failed. Try again." }, { publication_status: "failed", processing: { state: "failed", stage: "failed", progress: 100 } });
   });
-  EdgeRuntime.waitUntil(work);
+  // EdgeRuntime is supplied by the Supabase Edge Runtime and is absent from Deno's
+  // globals, so a bare reference does not type-check — and neither the import of
+  // edge-runtime.d.ts above nor a triple-slash reference brings it in. Reach for it
+  // through globalThis, the way admin-article already does, and fall back to awaiting
+  // the work so a runtime without waitUntil finishes the job instead of dropping it.
+  const runtime = (
+    globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }
+  ).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(work);
+  } else {
+    await work;
+  }
   return json(req, { lessonId, status: "queued" }, 202);
 });

@@ -1,0 +1,18 @@
+{
+  // supabase/functions is Deno, not Node. The root tsconfig excludes it, so without this
+  // the editor falls back to an inferred Node project and reports the whole directory as
+  // broken: `Deno` undefined, `jsr:` specifiers unresolvable, `.ts` import extensions
+  // rejected. None of it is real — those files are type-checked and bundled by Deno.
+  //
+  // Paths only, deliberately: no deno.json is added, so nothing the Supabase CLI reads
+  // when deploying changes.
+  "deno.enablePaths": [
+    "./supabase/functions"
+  ],
+  "deno.enable": false,
+  "deno.lint": true,
+
+  // Everything outside those paths keeps using the workspace TypeScript.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

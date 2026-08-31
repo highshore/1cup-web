@@ -370,11 +370,18 @@ async function handleMeetupReminder(
     .select("user_id, role, users:user_id (uid, phone)")
     .eq("meetup_id", eventId);
 
+  // PostgREST returns an embedded to-one relationship as an object while the client
+  // types it as an array, so this asserted one shape and the checker rejected it. Accept
+  // either instead of insisting: were the relationship ever resolved as to-many, the
+  // assertion would leave phone undefined and quietly drop that member from the send.
+  type EmbeddedUser = { uid: string; phone: string | null };
   const rows = (parts ?? []) as Array<{
     user_id: string;
     role: string;
-    users: { uid: string; phone: string | null } | null;
+    users: EmbeddedUser | EmbeddedUser[] | null;
   }>;
+  const embeddedUser = (u: EmbeddedUser | EmbeddedUser[] | null): EmbeddedUser | null =>
+    Array.isArray(u) ? (u[0] ?? null) : u;
 
   if (rows.length === 0) {
     return { success: true, messagesSent: 0, message: "No participants to notify" };
@@ -386,7 +393,7 @@ async function handleMeetupReminder(
   for (const r of rows) {
     if (seen.has(r.user_id)) continue;
     seen.add(r.user_id);
-    uniquePhones.push(r.users?.phone ?? null);
+    uniquePhones.push(embeddedUser(r.users)?.phone ?? null);
   }
 
   // Format the date/time for Korean display (Asia/Seoul).
