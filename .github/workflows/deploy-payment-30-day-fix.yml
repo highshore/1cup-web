@@ -1,0 +1,126 @@
+name: Deploy fixed 30-day payment function
+
+on:
+  push:
+    paths:
+      - .github/workflows/deploy-payment-30-day-fix.yml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply payment fixes to deployment workspace
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path("supabase/functions/payment/index.ts")
+          text = path.read_text()
+
+          replacements = [
+              (
+                  'const RENEWAL_GRACE_DAYS = 3;',
+                  '''const RENEWAL_GRACE_DAYS = 3;
+
+// Paid memberships are always exactly 30 x 24 hours, not one calendar month.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MEMBERSHIP_DAYS = 30;
+const FULL_REFUND_DAYS = 7;''',
+              ),
+              (
+                  '''        const subscriptionStartDate = new Date();
+        const subscriptionEndDate = new Date(subscriptionStartDate);
+        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);''',
+                  '''        const subscriptionStartDate = new Date();
+        const subscriptionEndDate = new Date(
+          subscriptionStartDate.getTime() + MEMBERSHIP_DAYS * DAY_MS,
+        );''',
+              ),
+              (
+                  '''          const newStartDate = new Date();
+          const newEndDate = new Date(
+            new Date().setMonth(new Date().getMonth() + 1),
+          );''',
+                  '''          const newStartDate = new Date();
+          const newEndDate = new Date(
+            newStartDate.getTime() + MEMBERSHIP_DAYS * DAY_MS,
+          );''',
+              ),
+              (
+                  '''  // Calculate refund amount (full < 7 days, prorated over 30-day month otherwise, 0 floor).
+  const completedAt = new Date(lastPaymentData.completed_at as string);
+  const today = new Date();
+  const timeDiff = today.getTime() - completedAt.getTime();
+  const daysPassed = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+  let refundAmount = 0;
+  if (daysPassed < 7) {
+    refundAmount = originalPaymentAmount;
+    logInfo(
+      `User ${userId}: ${daysPassed} days passed. Processing full refund: ${refundAmount}`,
+    );
+  } else {
+    const proratedAmount = Math.round(
+      (originalPaymentAmount * (30 - daysPassed)) / 30,
+    );
+    refundAmount = Math.max(0, proratedAmount);
+    logInfo(
+      `User ${userId}: ${daysPassed} days passed. Processing prorated refund: ${refundAmount}`,
+    );
+  }''',
+                  '''  // Use elapsed milliseconds for the exact 7 x 24 hour full-refund boundary.
+  // After that, refund the unused whole-day portion of the fixed 30-day membership.
+  const completedAt = new Date(lastPaymentData.completed_at as string);
+  const elapsedMs = Math.max(0, Date.now() - completedAt.getTime());
+  const daysPassed = Math.ceil(elapsedMs / DAY_MS);
+
+  let refundAmount = 0;
+  if (elapsedMs <= FULL_REFUND_DAYS * DAY_MS) {
+    refundAmount = originalPaymentAmount;
+    logInfo(
+      `User ${userId}: within ${FULL_REFUND_DAYS}-day full refund window. Processing full refund: ${refundAmount}`,
+    );
+  } else {
+    const proratedAmount = Math.round(
+      (originalPaymentAmount * (MEMBERSHIP_DAYS - daysPassed)) / MEMBERSHIP_DAYS,
+    );
+    refundAmount = Math.max(0, proratedAmount);
+    logInfo(
+      `User ${userId}: ${daysPassed} days passed. Processing prorated refund: ${refundAmount}`,
+    );
+  }''',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one occurrence, got {count}: {old[:90]!r}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Verify deployment source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'const MEMBERSHIP_DAYS = 30;' supabase/functions/payment/index.ts
+          grep -q 'const FULL_REFUND_DAYS = 7;' supabase/functions/payment/index.ts
+          grep -q 'subscriptionStartDate.getTime() + MEMBERSHIP_DAYS \* DAY_MS' supabase/functions/payment/index.ts
+          grep -q 'newStartDate.getTime() + MEMBERSHIP_DAYS \* DAY_MS' supabase/functions/payment/index.ts
+          grep -q 'elapsedMs <= FULL_REFUND_DAYS \* DAY_MS' supabase/functions/payment/index.ts
+          ! grep -q 'subscriptionEndDate.setMonth' supabase/functions/payment/index.ts
+          git diff --check
+
+      - name: Deploy payment function
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          npx --yes supabase@latest functions deploy payment --project-ref hetiycbotgjeluteicyk --no-verify-jwt
