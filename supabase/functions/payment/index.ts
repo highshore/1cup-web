@@ -753,17 +753,28 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
 
         logInfo("User subscription activated:", { userId });
 
-        // Kakao 'order-received' notification (phone from public.users).
+        // Kakao 'order-received' notification (phone and name from public.users).
         try {
           const userRow = await getUserRow(userId);
           const recipientNo = krPhone(userRow?.phone as string | undefined);
+          // The approved template reads "#{customer-name} 님", and this passed the
+          // literal "고객" — so every member who ever paid was greeted as "고객 님", with
+          // the gap in the middle looking like a substitution that had failed. It had
+          // not: the variable was being filled, just with a constant. The name is on the
+          // row already, and the same value is what send-article has always used.
+          //
+          // The bare name goes in, not "이름님": the 님 belongs to the template, and
+          // Kakao would have to re-approve it to change that. 129 of 134 members have a
+          // name, the longest is 10 characters, so nothing here risks the field limit.
+          const customerName =
+            ((userRow?.display_name as string) ?? "").trim() || "고객";
           if (recipientNo.startsWith("010") && recipientNo.length >= 10) {
             await sendKakaoMessages(
               [
                 {
                   recipientNo,
                   templateParameter: {
-                    "customer-name": "고객",
+                    "customer-name": customerName,
                     link: "https://1cupenglish.com/guide",
                   },
                 },
