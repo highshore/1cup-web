@@ -43,7 +43,9 @@ export async function callerUid(req: Request): Promise<string | null> {
 // message send is considered failed.
 export async function recordSchedulerHeartbeat(
   jobName: string,
-  detail?: Record<string, unknown>,
+  // Nullable, not just optional: callers with nothing to record say so explicitly, and
+  // the argument sits before expectedInterval so it cannot simply be omitted.
+  detail?: Record<string, unknown> | null,
   expectedInterval = "25 hours",
 ): Promise<void> {
   try {

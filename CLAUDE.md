@@ -15,6 +15,29 @@ npm run build        # next build --webpack — run this before any deployment-o
 npm run lint         # next lint (ESLint flat config)
 ```
 
+### When the editor shows errors the build does not
+
+`npm run build` only ever type-checked `app/`: the root `tsconfig.json` excludes both
+`functions` and `supabase`, so a clean build says nothing about the rest of the tree.
+Three things produce editor errors that are not defects, and one that is:
+
+- **`supabase/functions/**` is Deno, not Node.** `Deno`, `jsr:` specifiers and `.ts`
+  import extensions are all invalid to the TypeScript server. `.vscode/settings.json`
+  points those paths at the Deno language server; the fix needs the `denoland.vscode-deno`
+  extension, which `.vscode/extensions.json` recommends.
+- **`.next/types` is generated per Next version** and `tsconfig.json` includes it. After a
+  dependency bump the old files import internals the installed Next no longer exports and
+  every one of them is reported. `npm run clean` removes them.
+- **Stale `node_modules`.** `functions/` has its own `package.json`; both roots need
+  installing, and `npm ci` rather than `npm install` keeps them matching the lockfile.
+- **Real errors nothing was checking.** Edge functions were type-checked for the first
+  time in August 2026 and two had accumulated. `npm run check` now covers both halves —
+  `tsc` for the app, `deno check` for the functions. Run it before deploying a function.
+
+Pin the Supabase CLI when deploying: `2.116.0` hangs on `functions deploy` with no output
+and leaves the previous version live while appearing to succeed. The `deploy:*` scripts
+pin `2.115.0`.
+
 There is **no test framework** in this repo — no `test` script, no test files. "Validation" means `npm run build` passes (TypeScript errors are NOT ignored: `next.config.mjs` sets `ignoreBuildErrors: false`).
 
 ### Deployment (web, Supabase, legacy Storage)

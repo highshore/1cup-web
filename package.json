@@ -8,16 +8,20 @@
     "start": "next start",
     "build": "next build --webpack",
     "lint": "next lint",
+    "check:functions": "npx --yes deno@2 check --node-modules-dir=auto supabase/functions/*/index.ts supabase/functions/_shared/*.ts",
+    "check": "tsc --noEmit && npm run check:functions",
+    "clean": "rm -rf .next",
     "predeploy": "npm run build",
     "deploy:firebase-storage": "firebase deploy --only storage --force",
     "deploy:firebase": "npm run deploy:firebase-storage",
-    "deploy:supabase": "npx supabase@latest db push",
+    "deploy:supabase": "npx supabase@2.115.0 db push",
     "deploy:vercel": "npx vercel --prod",
     "deploy:vercel-only": "npm run deploy:vercel",
     "deploy": "npm run build && npm run deploy:vercel",
     "deploy:firebase-only": "npm run build && npm run deploy:firebase-storage",
     "deploy:enhanced": "node scripts/deploy.cjs",
-    "proxy": "node proxy-server.js"
+    "proxy": "node proxy-server.js",
+    "deploy:functions": "npx supabase@2.115.0 functions deploy --use-api --project-ref hetiycbotgjeluteicyk"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
