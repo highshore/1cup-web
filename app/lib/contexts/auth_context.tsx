@@ -48,6 +48,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [isGdgMember, setIsGdgMember] = useState<boolean | null>(null);
   const hydratedAuthIdRef = useRef<string | null>(null);
+  // Set only while logout() is running, so a sign-out the member asked for is not
+  // reported as one that happened to them.
+  const deliberateSignOutRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -107,6 +110,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
 
+    // Best-effort and never awaited by anything the member is waiting on.
+    function reportSessionEvent(event: string, reason?: string) {
+      try {
+        void fetch("/api/auth/session-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event, reason }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
+
     async function start() {
       // On the browser, getSession() reads the session already maintained by the
       // Supabase client. Server-side authorization is validated separately with
@@ -121,6 +138,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
+        // The only place that can tell the two apart. Without this, auth.sessions shows
+        // a session that stopped refreshing and nothing about why.
+        if (!deliberateSignOutRef.current) {
+          reportSessionEvent("signed_out_unexpectedly", "onAuthStateChange");
+        }
+        deliberateSignOutRef.current = false;
         // Defer Supabase work until the auth callback has returned. This keeps the
         // onAuthStateChange handler synchronous and avoids competing with the auth
         // client's internal session lock on slower mobile browsers.
@@ -140,6 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const logout = async () => {
+    deliberateSignOutRef.current = true;
     const { error } = await supabase.auth.signOut();
     if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
   };

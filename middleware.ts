@@ -1,35 +1,37 @@
-// Refreshes the Supabase auth session where server-side auth is actually needed.
-// Public read pages deliberately bypass auth refresh so a stale/slow auth provider
-// can never make Meetup, Leaderboard, Blog, or public-profile reads look offline.
+// Refreshes the Supabase auth session on every request that carries one.
+//
+// A request with no auth cookie does no auth work at all, so public reads — Meetup,
+// Leaderboard, Blog, public profiles — still cannot be made slow or offline by the auth
+// provider. What changed is that being signed in no longer depends on which page you
+// happen to be reading.
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const isSupabaseAuthCookie = (name: string) =>
   name.startsWith("sb-") && name.includes("-auth-token");
 
-const isInvalidRefreshTokenError = (error: { code?: string } | null) =>
-  error?.code === "refresh_token_not_found" ||
-  error?.code === "refresh_token_already_used";
+// Only the first of these means the session is genuinely gone. refresh_token_already_used
+// is what a rotation race looks like: the browser refreshed, rotating the token, and a
+// server request that was already in flight presented the previous one. The reuse window
+// is 10 seconds, so this is ordinary rather than rare — and clearing every auth cookie
+// over it signs out a member whose session is perfectly healthy. If the session really is
+// dead, the next request says refresh_token_not_found and this fires then.
+const isDeadSessionError = (error: { code?: string } | null) =>
+  error?.code === "refresh_token_not_found";
 
-const PUBLIC_GET_PREFIXES = [
-  "/meetup",
-  "/leaderboard",
-  "/blog",
-  "/api/public-profile/",
-  "/api/meetup/events",
-  "/api/meetup/leaderboards",
-  "/api/celebrations",
-  "/auth",
-] as const;
-
+// The point of skipping was to keep anonymous traffic from making an auth-server call
+// per page and per asset. It was written as a list of public routes, which quietly made
+// it something else: /meetup, /leaderboard and /blog are where signed-in members spend
+// their time, so a member could browse for an hour and never have their session
+// refreshed. An access token lasts an hour, and the first request after that renders
+// them signed out.
+//
+// The condition that was actually wanted is "is anyone signed in", and a request either
+// carries an auth cookie or it does not. Anonymous visitors still cost nothing, on every
+// route rather than a hand-maintained few, and a member's session is refreshed wherever
+// they happen to be.
 function canSkipAuthRefresh(request: NextRequest) {
-  if (request.method !== "GET" && request.method !== "HEAD") return false;
-  const pathname = request.nextUrl.pathname;
-  return PUBLIC_GET_PREFIXES.some((prefix) =>
-    prefix.endsWith("/")
-      ? pathname.startsWith(prefix)
-      : pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return !request.cookies.getAll().some(({ name }) => isSupabaseAuthCookie(name));
 }
 
 export async function middleware(request: NextRequest) {
@@ -65,7 +67,18 @@ export async function middleware(request: NextRequest) {
   // each browser keeps its own valid Supabase session and should not contend on a
   // redundant auth-server validation request for every asset and route.
   const { error } = await supabase.auth.getClaims();
-  if (isInvalidRefreshTokenError(error)) {
+  if (error?.code === "refresh_token_already_used") {
+    // Left in the log rather than acted on: if these turn out to be frequent, the reuse
+    // interval is too tight for how often the client and the edge both refresh.
+    console.warn("[auth] refresh token rotation race, session left intact", {
+      path: request.nextUrl.pathname,
+    });
+  }
+  if (isDeadSessionError(error)) {
+    console.warn("[auth] refresh token gone, clearing cookies", {
+      path: request.nextUrl.pathname,
+      code: error?.code,
+    });
     const staleAuthCookies = request.cookies
       .getAll()
       .filter(({ name }) => isSupabaseAuthCookie(name));
