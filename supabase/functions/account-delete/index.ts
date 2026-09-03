@@ -66,7 +66,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const db = admin();
   const { data: user, error: userError } = await db
     .from("users")
-    .select("uid, auth_id, has_active_subscription, billing_cancelled, account_status")
+    .select("uid, auth_id, phone, has_active_subscription, billing_cancelled, account_status")
     .eq("uid", uid)
     .maybeSingle();
   if (userError) return json(req, { error: "account_lookup_failed" }, 500);
@@ -132,10 +132,58 @@ Deno.serve(async (req: Request): Promise<Response> => {
           payple_params_attempted: {},
         })
         .eq("user_id", uid),
+
+      // Everything above this line was already handled. What follows are rows that hold
+      // the member's own content rather than a reference to it — the distinction that
+      // matters here, because the users row becomes an anonymised tombstone and a uid
+      // pointing at it identifies nobody. Payment history, past meetups and admin-authored
+      // content keep their uid for that reason; these do not, because the row itself is
+      // the personal data.
+
+      // "회원 기본정보·프로필·학습기록: 회원탈퇴 시까지" — the privacy policy promises the
+      // study record goes. The vocabulary feature arrived after this function was written
+      // and was never added to it.
+      db.from("user_vocabulary").delete().eq("user_id", uid),
+      db.from("vocabulary_study_cards").delete().eq("user_id", uid),
+      db.from("vocabulary_review_events").delete().eq("user_id", uid),
+      db.from("vocabulary_deck_follows").delete().eq("user_id", uid),
+      db.from("vocabulary_deck_study_preferences").delete().eq("user_id", uid),
+
+      // Answers and recordings. Empty today, which is exactly why it is cheap to add now
+      // rather than after the feature is in use and the policy is already being broken.
+      db.from("exam_attempts").delete().eq("user_id", uid),
+      db.from("speaking_test_attempts").delete().eq("user_id", uid),
+
+      db.from("blog_post_likes").delete().eq("user_id", uid),
+      db.from("non_korean_applications").delete().eq("user_id", uid),
+
+      // Device strings kept to diagnose sign-outs. No reason to hold them for somebody
+      // who has left.
+      db.from("auth_session_events").delete().eq("uid", uid),
+
+      // Not privacy but correctness: the code stays redeemable and still credits a member
+      // who no longer exists. users.referral_code was already being cleared while the row
+      // it pointed at was left live.
+      db
+        .from("referral_codes")
+        .update({ active: false, referrer: null })
+        .eq("referrer", uid),
     ]);
     cleanupResults.forEach((result, index) =>
       requireNoError(result.error, `Unable to erase account data step ${index + 1}`),
     );
+
+    // phone_otp is keyed by the number, not by uid, so no amount of uid cleanup touches
+    // it: the raw phone survived every deletion this function has ever performed. Done
+    // before the profile is anonymised, because that is when the number is still known.
+    const memberPhone = typeof user.phone === "string" ? user.phone.trim() : "";
+    if (memberPhone) {
+      const { error: otpError } = await db
+        .from("phone_otp")
+        .delete()
+        .eq("phone", memberPhone);
+      requireNoError(otpError, "Unable to erase verification codes");
+    }
 
     const now = new Date().toISOString();
     const { error: profileError } = await db

@@ -346,7 +346,7 @@ const en = {
         { q: "Can I cancel my subscription anytime?", a: "Yes, you can cancel your subscription at any time. Service will stop from the next billing cycle upon cancellation." },
         { q: "Is it available on mobile?", a: "Yes, 1 Cup English was developed considering both mobile and PC environments. When using mobile/tablet, it may work better on Chrome or Safari browsers than the KakaoTalk in-app browser." },
         { q: "I'm getting a text for code verification from a foreign website when signing up. Is this okay?", a: "We have adopted Google's authentication method, so that text is sent through the Google system. 1 Cup English does not receive any personal information other than the mobile phone number when signing up on the website. You can sign up with peace of mind." },
-        { q: "How do I withdraw my membership?", a: "For inquiries regarding membership withdrawal, please contact the 1 Cup English KakaoTalk channel, and we will help you proceed with the withdrawal." },
+        { q: "How do I withdraw my membership?", a: "Use the 'Delete account' button at the bottom of your profile page. If you have an active subscription, stop billing first. If you run into trouble, contact the 1 Cup English KakaoTalk channel and we will help." },
         { q: "I have inquiries about the service", a: "Please contact the 1 Cup English KakaoTalk (link added) for various inquiries, and we will respond sincerely." },
       ],
     },
