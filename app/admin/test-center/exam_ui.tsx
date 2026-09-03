@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import styled from "styled-components";
 
 import type { ExamInterviewer, ExamMediaStatus, ExamSetStatus } from "../../lib/features/exam/types";
@@ -120,6 +121,7 @@ export const Loading = styled.div`
 `;
 
 const AvatarWrap = styled.div<{ $seed: string; $large?: boolean }>`
+  position: relative;
   display: grid;
   width: ${({ $large }) => $large ? "100%" : "52px"};
   aspect-ratio: ${({ $large }) => $large ? "16 / 10" : "1"};
@@ -134,6 +136,8 @@ const AvatarWrap = styled.div<{ $seed: string; $large?: boolean }>`
     radial-gradient(ellipse at 50% 110%, ${({ $seed }) => $seed.includes("elena") ? "#f5e7ca" : $seed.includes("robert") ? "#383a40" : $seed.includes("david") ? "#141414" : "#d6e7d5"} 0 46%, transparent 46.5%),
     linear-gradient(135deg, #ffeab0, #f47a4a);
   box-shadow: inset 0 -18px 30px rgba(5, 5, 5, 0.08);
+
+  img { object-fit: cover; }
 `;
 
 const AvatarInitials = styled.span<{ $large?: boolean }>`
@@ -147,12 +151,14 @@ const AvatarInitials = styled.span<{ $large?: boolean }>`
   letter-spacing: 0.04em;
 `;
 
-export function ExamAvatar({ interviewer, large = false }: { interviewer: Pick<ExamInterviewer, "name" | "avatar_key">; large?: boolean }) {
+export function ExamAvatar({ interviewer, large = false }: { interviewer: Pick<ExamInterviewer, "name" | "avatar_key" | "image_url">; large?: boolean }) {
   const initials = interviewer.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  return <AvatarWrap $seed={interviewer.avatar_key} $large={large} role="img" aria-label={`${interviewer.name} profile preview`}><AvatarInitials $large={large}>{initials}</AvatarInitials></AvatarWrap>;
+  return <AvatarWrap $seed={interviewer.avatar_key} $large={large} role="img" aria-label={`${interviewer.name} profile preview`}>
+    {interviewer.image_url ? <Image src={interviewer.image_url} alt="" fill sizes={large ? "(max-width: 700px) 100vw, 360px" : "52px"} /> : <AvatarInitials $large={large}>{initials}</AvatarInitials>}
+  </AvatarWrap>;
 }
 
-const Scene = styled.div<{ $target?: string }>`
+const Scene = styled.div<{ $target?: string; $hasImage?: boolean }>`
   position: relative;
   min-height: 195px;
   overflow: hidden;
@@ -161,6 +167,7 @@ const Scene = styled.div<{ $target?: string }>`
   background: linear-gradient(#ffe9a5 0 54%, #88ba77 54% 100%);
 
   &::before {
+    display: ${({ $hasImage }) => $hasImage ? "none" : "block"};
     position: absolute;
     top: 32px;
     left: 9%;
@@ -173,6 +180,7 @@ const Scene = styled.div<{ $target?: string }>`
   }
 
   &::after {
+    display: ${({ $hasImage }) => $hasImage ? "none" : "block"};
     position: absolute;
     right: 10%;
     bottom: 26px;
@@ -204,8 +212,9 @@ const SceneTarget = styled.p`
   text-align: center;
 `;
 
-export function GardenScene({ target }: { target?: string }) {
-  return <Scene $target={target} aria-label="Community garden visual preview"><SceneTarget>{target || "Community garden scene"}</SceneTarget></Scene>;
+export function GardenScene({ target, imageUrl }: { target?: string; imageUrl?: string | null }) {
+  if (imageUrl) return <Scene $target={target} $hasImage aria-label="Listen and Repeat visual preview"><Image src={imageUrl} alt="" fill sizes="(max-width: 700px) 100vw, 520px" style={{ objectFit: "cover" }} /></Scene>;
+  return <Scene $target={target} aria-label="Listen and Repeat visual preview"><SceneTarget>{target || "Media not available"}</SceneTarget></Scene>;
 }
 
 const Pill = styled.span<{ $tone: "ready" | "pending" | "rejected" | "draft" | "published" }>`

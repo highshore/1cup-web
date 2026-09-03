@@ -15,6 +15,7 @@ const nextConfig = {
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "k.kakaocdn.net" },
+      { protocol: "https", hostname: "hetiycbotgjeluteicyk.supabase.co" },
     ],
   },
   async redirects() {

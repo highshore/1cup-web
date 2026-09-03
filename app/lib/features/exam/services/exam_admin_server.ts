@@ -51,7 +51,9 @@ function setSummaryRows(sets: Array<Record<string, unknown>>, interviewers: Arra
 
   return sets.map((set) => {
     const setItems = itemsBySet.get(String(set.id)) ?? [];
-    const ready = setItems.filter((item) => item.audio_status === "ready" && item.visual_status === "ready" && item.video_status === "ready").length;
+    const ready = setItems.filter((item) => item.module === "listen_repeat"
+      ? item.audio_status === "ready" && item.visual_status === "ready" && item.audio_url && item.image_url
+      : item.video_status === "ready" && item.video_url).length;
     const interviewer = interviewerById.get(set.interviewer_id);
     return {
       ...set,
@@ -61,6 +63,7 @@ function setSummaryRows(sets: Array<Record<string, unknown>>, interviewers: Arra
         avatar_key: interviewer.avatar_key,
         occupation: interviewer.occupation,
         status: interviewer.status,
+        image_url: interviewer.image_url,
       } : null,
       item_count: setItems.length,
       ready_item_count: ready,
@@ -73,7 +76,7 @@ export async function getExamCenter(): Promise<ExamCenterOverview> {
   const [interviewersResult, setsResult, itemsResult] = await Promise.all([
     database.from("exam_interviewers").select("*").order("updated_at", { ascending: false }),
     database.from("exam_sets").select("*").order("updated_at", { ascending: false }),
-    database.from("exam_set_items").select("exam_set_id, audio_status, visual_status, video_status"),
+    database.from("exam_set_items").select("exam_set_id, module, audio_status, visual_status, video_status, audio_url, image_url, video_url"),
   ]);
 
   if (interviewersResult.error || setsResult.error || itemsResult.error) {
@@ -142,8 +145,8 @@ function buildSetContent(listenRepeatTheme: string, interviewTheme: string) {
       { cue_key: "interview_scenario", label: "Take an Interview scenario", script: `You have volunteered to participate in a research study about ${interviewSubject}. You will have a short online interview with a researcher. The researcher will ask you some questions. Please answer the interviewer's questions.`, source: "authored", position: 5 },
     ],
     items: [
-      ...repeatPrompts.map((prompt, index) => ({ module: "listen_repeat", position: index + 1, label: `Sentence ${index + 1}`, prompt, response_seconds: 12, visual_target: listenSubject, audio_status: "idle", visual_status: "idle", video_status: "idle", media_mode: "browser_preview" })),
-      ...interviewPrompts.map((prompt, index) => ({ module: "interview", position: index + 1, label: `Question ${index + 1}`, prompt, response_seconds: index < 2 ? 30 : 45, visual_target: "", audio_status: "idle", visual_status: "idle", video_status: "idle", media_mode: "browser_preview" })),
+      ...repeatPrompts.map((prompt, index) => ({ module: "listen_repeat", position: index + 1, label: `Sentence ${index + 1}`, prompt, response_seconds: 12, visual_target: listenSubject, audio_status: "idle", visual_status: "idle", video_status: "idle", media_mode: "uploaded" })),
+      ...interviewPrompts.map((prompt, index) => ({ module: "interview", position: index + 1, label: `Question ${index + 1}`, prompt, response_seconds: index < 2 ? 30 : 45, visual_target: "", audio_status: "idle", visual_status: "idle", video_status: "idle", media_mode: "uploaded" })),
     ],
   };
 }
@@ -169,9 +172,9 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
         voice_tone: candidate.voiceTone,
         avatar_key: candidate.avatarKey,
         status: "pending",
-        image_status: "ready",
-        video_status: "ready",
-        media_mode: "browser_preview",
+        image_status: "idle",
+        video_status: "idle",
+        media_mode: "uploaded",
         source_metadata: { source: "web-candidate-batch" },
         created_by: adminUserId,
       })),
@@ -194,15 +197,7 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
   }
 
   if (action === "refresh-interviewer-media") {
-    const interviewerId = compact(input.interviewerId, 80);
-    if (!isUuid(interviewerId)) throw new Error("Choose an interviewer first.");
-    const { data, error } = await database.from("exam_interviewers")
-      .update({ image_status: "ready", video_status: "ready", media_mode: "browser_preview", updated_at: new Date().toISOString() })
-      .eq("id", interviewerId)
-      .select("*")
-      .single();
-    if (error) throw new Error("Could not refresh the interviewer preview media.");
-    return { interviewer: data };
+    throw new Error("Interviewer media must be uploaded from a durable source; browser preview stand-ins are no longer supported.");
   }
 
   if (action === "create-set") {
@@ -222,7 +217,7 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
       interview_theme: interviewTheme,
       scene_description: `A clear, inclusive scene for ${listenRepeatTheme}.`,
       status: "draft",
-      media_mode: "browser_preview",
+      media_mode: "uploaded",
       created_by: adminUserId,
     }).select("*").single();
     if (setError || !set) throw new Error("Could not create the exam set.");
@@ -243,25 +238,25 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
     const examSetId = compact(input.examSetId, 80);
     if (!isUuid(examSetId)) throw new Error("Choose an exam set first.");
     const [narrationResult, itemsResult] = await Promise.all([
-      database.from("exam_set_narration").update({ media_status: "ready", updated_at: new Date().toISOString() }).eq("exam_set_id", examSetId),
-      database.from("exam_set_items").update({ audio_status: "ready", visual_status: "ready", video_status: "ready", updated_at: new Date().toISOString() }).eq("exam_set_id", examSetId),
+      database.from("exam_set_narration").select("media_status, audio_url").eq("exam_set_id", examSetId),
+      database.from("exam_set_items").select("module, audio_status, visual_status, video_status, audio_url, image_url, video_url").eq("exam_set_id", examSetId),
     ]);
-    if (narrationResult.error || itemsResult.error) throw new Error("Could not prepare browser preview media.");
+    const complete = narrationResult.data?.length === 5
+      && narrationResult.data.every((cue) => cue.media_status === "ready" && cue.audio_url)
+      && itemsResult.data?.length === 11
+      && itemsResult.data.every((item) => item.module === "listen_repeat"
+        ? item.audio_status === "ready" && item.visual_status === "ready" && item.audio_url && item.image_url
+        : item.video_status === "ready" && item.video_url);
+    if (!complete) throw new Error("This set is missing durable media. Upload its source assets before marking it ready.");
     const { data: set, error } = await database.from("exam_sets")
       .update({ status: "media_ready", updated_at: new Date().toISOString() })
       .eq("id", examSetId).select("*").single();
-    if (error) throw new Error("Could not mark media as ready.");
+    if (error) throw new Error("Could not mark this imported media set as ready.");
     return { set };
   }
 
   if (action === "retry-item") {
-    const itemId = compact(input.itemId, 80);
-    if (!isUuid(itemId)) throw new Error("Choose an exam item first.");
-    const { data, error } = await database.from("exam_set_items")
-      .update({ audio_status: "ready", visual_status: "ready", video_status: "ready", updated_at: new Date().toISOString() })
-      .eq("id", itemId).select("*").single();
-    if (error) throw new Error("Could not refresh this preview item.");
-    return { item: data };
+    throw new Error("Refreshing no longer fabricates media. Upload a replacement source asset for this item instead.");
   }
 
   if (action === "set-published") {
@@ -270,14 +265,16 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
     if (!isUuid(examSetId)) throw new Error("Choose an exam set first.");
     if (published) {
       const [narrationResult, itemsResult] = await Promise.all([
-        database.from("exam_set_narration").select("media_status").eq("exam_set_id", examSetId),
-        database.from("exam_set_items").select("audio_status, visual_status, video_status").eq("exam_set_id", examSetId),
+        database.from("exam_set_narration").select("media_status, audio_url").eq("exam_set_id", examSetId),
+        database.from("exam_set_items").select("module, audio_status, visual_status, video_status, audio_url, image_url, video_url").eq("exam_set_id", examSetId),
       ]);
       const mediaReady = Boolean(narrationResult.data?.length)
-        && narrationResult.data?.every((cue) => cue.media_status === "ready")
+        && narrationResult.data?.every((cue) => cue.media_status === "ready" && cue.audio_url)
         && itemsResult.data?.length === 11
-        && itemsResult.data?.every((item) => item.audio_status === "ready" && item.visual_status === "ready" && item.video_status === "ready");
-      if (!mediaReady) throw new Error("Prepare all browser preview media before publishing this exam.");
+        && itemsResult.data?.every((item) => item.module === "listen_repeat"
+          ? item.audio_status === "ready" && item.visual_status === "ready" && item.audio_url && item.image_url
+          : item.video_status === "ready" && item.video_url);
+      if (!mediaReady) throw new Error("Attach all durable pipeline media before publishing this exam.");
     }
     const status: ExamSetStatus = published ? "published" : "media_ready";
     const { data, error } = await database.from("exam_sets")

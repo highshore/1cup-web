@@ -16,6 +16,8 @@ export type ExamInterviewer = {
   image_status: ExamMediaStatus;
   video_status: ExamMediaStatus;
   media_mode: "browser_preview" | "uploaded" | "generated";
+  image_url: string | null;
+  video_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -29,10 +31,11 @@ export type ExamSetSummary = {
   interview_theme: string;
   scene_description: string;
   media_mode: "browser_preview" | "uploaded" | "generated";
+  illustration_url: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
-  interviewer?: Pick<ExamInterviewer, "id" | "name" | "avatar_key" | "occupation" | "status"> | null;
+  interviewer?: Pick<ExamInterviewer, "id" | "name" | "avatar_key" | "occupation" | "status" | "image_url"> | null;
   item_count?: number;
   ready_item_count?: number;
 };
@@ -46,6 +49,7 @@ export type ExamNarration = {
   source: "fixed" | "authored" | "generated";
   media_status: ExamMediaStatus;
   position: number;
+  audio_url: string | null;
 };
 
 export type ExamItem = {
@@ -61,6 +65,9 @@ export type ExamItem = {
   visual_status: ExamMediaStatus;
   video_status: ExamMediaStatus;
   media_mode: "browser_preview" | "uploaded" | "generated";
+  audio_url: string | null;
+  image_url: string | null;
+  video_url: string | null;
 };
 
 export type ExamSetDetail = ExamSetSummary & {
