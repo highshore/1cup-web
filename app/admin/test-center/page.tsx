@@ -1,12 +1,12 @@
 import { Metadata } from "next";
 
-import TestCenterFactoryClient from "./TestCenterFactoryClient";
+import ExamCenterClient from "./ExamCenterClient";
 
 export const metadata: Metadata = {
-  title: "TOEFL Speaking 2026 Factory - Admin - OneCup English",
-  description: "Generate, review, and publish 2026+ TOEFL Speaking practice sets.",
+  title: "Exam Interviewer Pipeline - Admin - OneCup English",
+  description: "Build interviewer-led speaking exams, inspect media readiness, and publish practice runs.",
 };
 
 export default function TestCenterPage() {
-  return <TestCenterFactoryClient />;
+  return <ExamCenterClient />;
 }
