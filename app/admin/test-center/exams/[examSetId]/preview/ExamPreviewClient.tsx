@@ -13,7 +13,6 @@ import type {
   ExamNarration,
   ExamSetDetail,
 } from "../../../../../lib/features/exam/types";
-import { useI18n } from "../../../../../lib/i18n/I18nProvider";
 
 type SpeakingState =
   | "welcome"
@@ -70,6 +69,20 @@ const PreviewStyles = createGlobalStyle`
   .preview-assessment-bar { min-height:46px; font-size:11px; letter-spacing:.9px; }.preview-lead,.preview-message > p:last-of-type { color:#34413f; font-size:17px; line-height:1.64; }.preview-kicker { font-size:11px; }.preview-overview { width:min(560px,100%); margin:36px auto; }.preview-overview div { padding:16px 20px; }.preview-overview dt { color:#5c6a67; font-size:11px; }.preview-overview dd { color:#17201f; font-size:16px; }.preview-instructions { max-width:540px; color:#394745; }.preview-instructions strong { font-size:14px; }.preview-instructions p { margin-top:7px; font-size:14px; line-height:1.6; }.preview-primary,.preview-secondary { min-height:44px; font-size:13px; }.preview-welcome-card > .preview-primary { min-width:208px; margin-top:31px; }.preview-task-types { width:min(590px,100%); margin-top:31px; }.preview-task-types div { grid-template-columns:175px 1fr; }.preview-task-types dt,.preview-task-types dd { padding-top:16px; padding-bottom:16px; }.preview-task-types dt { font-size:12px; }.preview-task-types dd { color:#394745; font-size:14px; }.preview-audio-status { color:#40504d; font-size:13px; }.preview-section-intro { width:min(720px,100%); box-sizing:border-box; padding:clamp(34px,6vh,58px) clamp(28px,6vw,62px); border:1px solid #1f302d; background:rgba(255,255,255,.8); }.preview-narration-actions { margin-top:31px; }.preview-narration-actions .preview-primary { min-width:154px; padding-inline:26px; }
   .preview-task-shell { width:min(920px,calc(100% - 64px)); padding:22px 0 30px; transform:translateY(clamp(-38px,-3.5vh,-14px)); }.preview-progress { height:5px; }.preview-task-heading { padding:28px 0 22px; }.preview-prompt-area { min-height:0; }.preview-segmentation { width:min(640px,100%); }.preview-segmentation img { max-height:44dvh; }.preview-interviewer-stage { width:min(680px,100%); max-height:44dvh; }.preview-response-panel { width:min(244px,100%); margin-top:24px; }.preview-response-label { padding:8px 10px 7px; font-size:9px; }.preview-response-readout { min-height:42px; gap:9px; padding:7px 12px; }.preview-response-readout strong,.preview-countdown { font-size:18px !important; }.preview-response-dot { width:12px; height:12px; }.preview-volume-meter { min-height:32px; padding:6px 10px; }.preview-volume-meter > span { font-size:10px; }.preview-volume-bars { height:17px; }.preview-playback-help p { color:#4c3e38; font-size:13px; }
   @media (max-width:720px) { .preview-assessment-bar { min-height:38px; }.preview-welcome,.preview-loading,.preview-message { min-height:calc(100dvh - 38px); }.preview-lead,.preview-message > p:last-of-type { font-size:15px; }.preview-section-intro { width:100%; padding:30px 22px; }.preview-task-types div { grid-template-columns:1fr; }.preview-task-types dt { padding-bottom:5px; }.preview-task-types dd { padding-top:5px; }.preview-task-shell { width:min(100% - 30px,920px); padding:14px 0 24px; }.preview-task-heading { padding:20px 0 16px; }.preview-segmentation { width:min(100%,560px); }.preview-segmentation img,.preview-interviewer-stage { max-height:38dvh; }.preview-interviewer-stage { width:min(100%,620px); }.preview-response-panel { margin-top:18px; } }
+
+  /* Deliberately oversized assessment surfaces: this preview must read as a test, not an admin card. */
+  .preview-welcome { width:100%; padding:clamp(32px,5.5vh,78px) clamp(32px,6vw,112px); }
+  .preview-welcome-card,.preview-message { width:min(980px,100%); box-sizing:border-box; padding:clamp(38px,6.5vh,76px) clamp(36px,8vw,118px); border:1px solid #253330; background:rgba(255,255,255,.86); text-align:center; }
+  .preview-kicker { color:#096b70; font-size:12px; letter-spacing:1.1px; }
+  .preview-lead,.preview-message > p:last-of-type { max-width:760px; color:#263634; font-size:19px; line-height:1.66; }
+  .preview-overview { width:min(760px,100%); margin:42px auto; }.preview-overview div { padding:18px 26px; }.preview-overview dt { color:#485b57; font-size:12px; font-weight:700; }.preview-overview dd { color:#17201f; font-size:18px; }
+  .preview-instructions { max-width:740px; color:#2f403d; }.preview-instructions strong { color:#17201f; font-size:16px; }.preview-instructions p { font-size:16px; line-height:1.65; }
+  .preview-welcome-card > .preview-primary { min-width:254px; min-height:50px; margin-top:40px; padding-inline:30px; font-size:15px; }
+  .preview-section-intro { width:min(980px,100%); padding:clamp(38px,6.5vh,76px) clamp(36px,8vw,118px); transform:translateY(clamp(-30px,-3vh,-14px)); }
+  .preview-task-types { width:min(760px,100%); margin-top:38px; }.preview-task-types div { grid-template-columns:205px 1fr; }.preview-task-types dt,.preview-task-types dd { padding-top:18px; padding-bottom:18px; }.preview-task-types dt { font-size:13px; }.preview-task-types dd { color:#2f403d; font-size:16px; line-height:1.55; }
+  .preview-audio-status { margin-top:30px; color:#2f403d; font-size:15px; }.preview-narration-actions { margin-top:36px; }.preview-narration-actions .preview-primary { min-width:184px; min-height:48px; font-size:15px; }
+  .preview-task-shell { width:min(1080px,calc(100% - 80px)); }.preview-segmentation { width:min(740px,100%); }.preview-interviewer-stage { width:min(780px,100%); }.preview-response-panel { width:min(280px,100%); }.preview-response-label { font-size:10px; }.preview-response-readout strong,.preview-countdown { font-size:20px !important; }.preview-volume-meter > span { font-size:11px; }
+  @media (max-width:720px) { .preview-welcome { padding:24px 16px; }.preview-welcome-card,.preview-message,.preview-section-intro { width:100%; padding:32px 24px; }.preview-kicker { font-size:10px; }.preview-lead,.preview-message > p:last-of-type { font-size:16px; }.preview-overview { margin:30px auto; }.preview-overview div { padding:14px 10px; }.preview-overview dd { font-size:16px; }.preview-instructions strong { font-size:14px; }.preview-instructions p { font-size:14px; }.preview-welcome-card > .preview-primary { min-width:232px; min-height:48px; margin-top:32px; }.preview-section-intro { transform:none; }.preview-task-types { margin-top:30px; }.preview-task-types div { grid-template-columns:1fr; }.preview-task-types dt,.preview-task-types dd { padding:11px 0; }.preview-task-shell { width:min(100% - 32px,1080px); }.preview-segmentation { width:min(100%,640px); }.preview-interviewer-stage { width:min(100%,700px); } }
 `;
 
 function responseTime(seconds: number) {
@@ -118,7 +131,6 @@ export default function ExamPreviewClient({
 }) {
   const router = useRouter();
   const { currentUser, accountStatus, isLoading } = useAuth();
-  const { t } = useI18n();
   const [examSet, setExamSet] = useState<ExamSetDetail | null>(null);
   const [stage, setStage] = useState<SpeakingState>("welcome");
   const [responseIndex, setResponseIndex] = useState(0);
@@ -261,10 +273,10 @@ export default function ExamPreviewClient({
           ? questionVideoRef.current
           : null;
     if (!player) return;
-    setPlaybackState("playing");
     player.currentTime = 0;
     try {
       await player.play();
+      setPlaybackState("playing");
     } catch {
       setPlaybackState("blocked");
     }
@@ -496,7 +508,7 @@ export default function ExamPreviewClient({
                   disabled={!narrationComplete}
                   onClick={advanceNarration}
                 >
-                  {t.onboarding.next}
+                  Next
                 </button>
               </div>
             </div>
@@ -612,7 +624,7 @@ export default function ExamPreviewClient({
                   </div>
                   <div
                     className="preview-volume-meter"
-                    aria-label={t.examCenter.recording}
+                    aria-label="Recording level"
                     role="status"
                   >
                     <span className="preview-volume-bars" aria-hidden="true">
@@ -627,7 +639,7 @@ export default function ExamPreviewClient({
                         />
                       ))}
                     </span>
-                    <span>{t.examCenter.recording}</span>
+                    <span>Recording</span>
                   </div>
                 </>
               ) : (
