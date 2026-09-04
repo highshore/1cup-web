@@ -57,6 +57,16 @@ const PreviewStyles = createGlobalStyle`
   .preview-prompt-area { min-height:355px; padding:0; border:0; background:transparent; box-shadow:none; }.preview-segmentation { width:min(710px,100%); margin:0 auto; }.preview-segmentation img { display:block; width:100%; height:auto; border:1px solid #d1bfb6; background:#e7ded9; }.preview-prompt-copy { max-width:650px; margin:20px auto 0; color:#5f4c44; font-size:14px; line-height:1.5; text-align:center; }.preview-interviewer-stage { position:relative; width:min(640px,100%); margin:4px auto 0; overflow:hidden; aspect-ratio:16 / 9; background:#eee3de; }.preview-interviewer-stage video { display:block; width:100%; height:100%; object-fit:cover; }.preview-interviewer-stage video.is-playing { animation:preview-video-active 8s linear both; } @keyframes preview-video-active { from { transform:scale(1); } to { transform:scale(1.025); } }
   .preview-response-panel { display:flex; gap:25px; align-items:center; justify-content:space-between; margin-top:20px; padding:17px 0; border:solid #decfc7; border-width:1px 0; background:transparent; }.preview-response-panel > div:first-child { display:grid; gap:3px; }.preview-response-panel strong { color:#3c2820; font-size:16px; }.preview-response-panel span { color:#84716a; font-size:11px; }.preview-countdown { color:#c84932 !important; font-size:27px !important; letter-spacing:.5px; }.preview-recording-indicator { display:flex !important; align-items:center; gap:8px; }.preview-recording-indicator > span { width:9px; height:9px; border-radius:999px; background:#d25431; }.preview-volume-meter { display:flex; align-items:center; gap:8px; min-width:118px; }.preview-volume-bars { display:flex; align-items:center; gap:3px; height:22px; }.preview-volume-bars i { display:block; width:4px; border-radius:999px; background:#dfd1cb; transition:background .09s ease,transform .09s ease; }.preview-volume-bars i:nth-child(1) { height:5px; }.preview-volume-bars i:nth-child(2) { height:8px; }.preview-volume-bars i:nth-child(3) { height:11px; }.preview-volume-bars i:nth-child(4) { height:14px; }.preview-volume-bars i:nth-child(5) { height:17px; }.preview-volume-bars i:nth-child(6) { height:20px; }.preview-volume-bars i.is-active { background:#d25431; transform:scaleY(1.08); }.preview-volume-meter > span { color:#8b756c; font-size:10px; font-weight:700; letter-spacing:.35px; text-transform:uppercase; }.preview-response-panel.is-recording { border-color:#d25431; }.preview-playback-help { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-top:15px; padding:13px 0; border:solid #e8c6bb; border-width:1px 0; background:transparent; }.preview-playback-help p { margin:0; color:#814331; font-size:12px; }.preview-complete-actions { display:flex; justify-content:center; gap:10px; margin-top:28px; }.preview-complete-actions .preview-primary { padding:0 18px; }.preview-section-intro { transform:translateY(clamp(-44px,-5vh,-20px)); }.preview-narration-actions { display:flex; justify-content:center; margin-top:28px; padding-top:26px; border-top:1px solid #dfd5cf; }.preview-narration-actions .preview-primary { min-width:148px; margin:0; padding:0 24px; }.preview-primary:disabled { border-color:#d4c5bd; background:#ded3ce; color:#fff; cursor:not-allowed; }.preview-link-button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }.preview-loading { color:#705e55; font-size:14px; }.preview-message { place-content:center; text-align:center; }.preview-message a { color:#bd4b2c; font-weight:700; }
   @media (max-width:720px) { .preview-topbar { grid-template-columns:1fr auto; min-height:56px; padding:0 16px; }.preview-topbar-center { display:none; }.preview-welcome,.preview-loading,.preview-message { padding:20px 14px; }.preview-welcome-card,.preview-message { padding:30px 21px; }.preview-overview,.preview-task-types { grid-template-columns:1fr; }.preview-task-types div { grid-template-columns:1fr; }.preview-task-types dt { border-right:0; border-bottom:1px solid #e5d9d3; }.preview-task-shell { width:min(100% - 28px,920px); margin:0 auto; padding:16px 0; }.preview-prompt-area { min-height:0; padding:13px; }.preview-task-heading { padding-inline:0; }.preview-response-panel { align-items:stretch; flex-direction:column; }.preview-response-panel.is-recording > span { margin-left:0; }.preview-playback-help { align-items:stretch; flex-direction:column; }.preview-complete-actions { align-items:stretch; flex-direction:column; }.preview-complete-actions > * { width:100%; min-height:42px; } }
+  /* Assessment chrome: intentionally separate from the site navbar. */
+  .speaking-preview { flex-direction:column; color:#17201f; }.preview-assessment-bar { display:grid; flex:none; min-height:28px; place-items:center; background:#0d7b80; color:#fff; font-size:10px; font-weight:800; letter-spacing:.7px; line-height:1; }.preview-welcome-card,.preview-message { width:min(600px,100%); }.preview-kicker { color:#0d7075; }.preview-welcome-card h1,.preview-message h1 { color:#17201f; font-size:clamp(29px,4.3vw,43px); letter-spacing:-1.55px; line-height:1.04; }.preview-lead,.preview-message > p:last-of-type { color:#586565; line-height:1.6; }
+  .preview-overview { width:min(470px,100%); margin:31px auto; border:solid #d5ddda; border-width:1px 0; }.preview-overview div { padding:13px 15px; }.preview-overview div + div { border-color:#d5ddda; }.preview-overview dt { color:#72807d; }.preview-overview dd { color:#273230; font-size:14px; }.preview-instructions { max-width:470px; color:#586565; }.preview-instructions strong { color:#26302e; font-size:12px; }
+  .preview-primary,.preview-secondary { min-height:38px; font-size:12px; }.preview-primary { border-color:#0d7277; background:#0d7b80; }.preview-primary:hover { border-color:#095e62; background:#096b70; }.preview-welcome-card > .preview-primary { min-width:182px; margin-top:27px; padding:0 20px; }.preview-secondary { border-color:#aebbb8; color:#3f4e4c; }.preview-secondary:hover { border-color:#0d7b80; color:#0d7075; }
+  .preview-task-types { width:min(520px,100%); margin:27px auto 0; }.preview-task-types div { grid-template-columns:145px 1fr; border-color:#dce3e0; }.preview-task-types div:last-child { border-color:#dce3e0; }.preview-task-types dt { padding:12px 0; color:#1b6264; }.preview-task-types dd { padding:12px 0; color:#5d6968; }.preview-audio-status { margin-top:24px; color:#657270; font-size:11px; }.preview-audio-status > span { background:#c9d1cf; }.preview-audio-status > span.is-playing { background:#0d7b80; box-shadow:0 0 0 4px rgba(13,123,128,.12); }
+  .preview-task-shell { width:min(760px,calc(100% - 48px)); padding:14px 0 24px; transform:translateY(clamp(-40px,-4vh,-16px)); }.preview-progress { height:4px; border-radius:0; background:#dce4e1; }.preview-progress span { background:#10a062; }.preview-task-heading { display:block; padding:20px 0 14px; text-align:center; }.preview-task-heading h1 { margin:5px 0 0; color:#1a2624; font-size:clamp(18px,2.35vw,23px); letter-spacing:-.5px; line-height:1.2; }
+  .preview-prompt-area { display:grid; min-height:0; justify-items:center; padding:0; }.preview-segmentation { width:min(510px,100%); margin:0; }.preview-segmentation img { max-height:40dvh; border-color:#b8c5c1; background:#e6ece9; object-fit:contain; }.preview-interviewer-stage { width:min(560px,100%); max-height:40dvh; margin:0; background:#e7edeb; }.preview-interviewer-stage video.is-playing { animation:preview-video-active 8s linear both; }
+  .preview-response-panel { display:grid; width:min(208px,100%); gap:0; align-items:stretch; justify-content:normal; margin:18px auto 0; padding:0; overflow:hidden; border:1px solid #b9c4c1; background:rgba(255,255,255,.76); text-align:center; }.preview-response-label { margin:0; padding:6px 8px 5px; border-bottom:1px solid #cbd3d0; background:#e3e6e4; color:#35413f; font-size:8px; font-weight:800; letter-spacing:.35px; text-transform:uppercase; }.preview-response-readout { display:flex; min-height:32px; align-items:center; justify-content:center; gap:7px; padding:5px 10px; }.preview-response-readout strong { color:#1e2d2b; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:15px; font-weight:500; letter-spacing:.2px; }.preview-countdown { color:#1e2d2b !important; font-size:15px !important; }.preview-response-dot { display:inline-block; flex:none; width:10px; height:10px; border:1px solid #8bb6b5; border-radius:50%; }.preview-response-dot.is-recording { border-color:#13a464; background:#13a464; box-shadow:0 0 0 3px rgba(19,164,100,.13); }.preview-volume-meter { justify-content:center; min-height:26px; padding:4px 8px; border-top:1px solid #e0e5e3; }.preview-volume-bars { gap:2px; height:15px; }.preview-volume-bars i { width:3px; background:#d5dedb; }.preview-volume-bars i:nth-child(1) { height:4px; }.preview-volume-bars i:nth-child(2) { height:6px; }.preview-volume-bars i:nth-child(3) { height:8px; }.preview-volume-bars i:nth-child(4) { height:10px; }.preview-volume-bars i:nth-child(5) { height:12px; }.preview-volume-bars i:nth-child(6) { height:14px; }.preview-volume-bars i.is-active { background:#13a464; }.preview-volume-meter > span { color:#65716f; font-size:9px; }.preview-response-panel.is-recording { border-color:#7aaf9a; }
+  .preview-playback-help { justify-content:center; gap:11px; margin-top:13px; padding-top:12px; border-color:#dbe3e0; }.preview-playback-help p { color:#6c5750; font-size:11px; }.preview-section-intro { transform:translateY(clamp(-28px,-3vh,-12px)); }.preview-narration-actions { margin-top:24px; padding-top:0; border-top:0; }.preview-narration-actions .preview-primary { min-width:128px; padding:0 19px; }.preview-primary:disabled { border-color:#d5dcda; background:#dfe5e3; }.preview-message a { color:#0d7075; }
+  @media (max-width:720px) { .speaking-preview { overflow-y:auto; }.preview-assessment-bar { min-height:26px; }.preview-welcome,.preview-loading,.preview-message { min-height:calc(100dvh - 26px); padding:26px 18px; }.preview-welcome-card,.preview-message { padding:0; }.preview-overview { margin:25px auto; }.preview-task-types div { grid-template-columns:1fr; }.preview-task-types dt { padding-bottom:4px; border:0; }.preview-task-types dd { padding-top:4px; }.preview-task-shell { width:min(100% - 28px,760px); padding:10px 0 20px; transform:none; }.preview-task-heading { padding:16px 0 12px; }.preview-segmentation img,.preview-interviewer-stage { max-height:36dvh; }.preview-response-panel { align-items:normal; flex-direction:initial; margin-top:14px; }.preview-playback-help { align-items:stretch; flex-direction:column; } }
 `;
 
 function responseTime(seconds: number) {
@@ -353,6 +363,7 @@ export default function ExamPreviewClient({
       <>
         <PreviewStyles />
         <main className="speaking-preview">
+          <div className="preview-assessment-bar">1CUP ENGLISH</div>
           <div className="preview-loading">
             {loadError || "Loading saved speaking test…"}
           </div>
@@ -364,6 +375,7 @@ export default function ExamPreviewClient({
       <>
         <PreviewStyles />
         <main className="speaking-preview">
+          <div className="preview-assessment-bar">1CUP ENGLISH</div>
           <div className="preview-message">
             <p className="preview-kicker">TEST PREVIEW LOCKED</p>
             <h1>Finish all media first.</h1>
@@ -385,6 +397,7 @@ export default function ExamPreviewClient({
     <>
       <PreviewStyles />
       <main className="speaking-preview">
+        <div className="preview-assessment-bar">1CUP ENGLISH</div>
         {stage === "welcome" && (
           <section className="preview-welcome">
             <div className="preview-welcome-card">
@@ -505,22 +518,16 @@ export default function ExamPreviewClient({
               />
             </div>
             <div className="preview-task-heading">
-              <div>
-                <p className="preview-kicker">
-                  {activeItem.module === "listen_repeat"
-                    ? "LISTEN AND REPEAT"
-                    : "TAKE AN INTERVIEW"}
-                </p>
-                <h1>
-                  {activeItem.module === "listen_repeat"
-                    ? `Sentence ${activeItem.position} of 7`
-                    : `Question ${activeItem.position} of 4`}
-                </h1>
-              </div>
-              <div className="preview-task-count">
-                <strong>{responseNumber}</strong>
-                <span>of 11</span>
-              </div>
+              <p className="preview-kicker">
+                RESPONSE {responseNumber} OF {responses.length}
+              </p>
+              <h1>
+                {isRecording
+                  ? "Speak now."
+                  : activeItem.module === "listen_repeat"
+                    ? "Listen and repeat once."
+                    : "Listen to the interviewer."}
+              </h1>
             </div>
             <div className="preview-prompt-area">
               {activeItem.module === "listen_repeat" ? (
@@ -541,9 +548,6 @@ export default function ExamPreviewClient({
                     src={activeItem.audio_url ?? undefined}
                     onEnded={startResponseRecording}
                   />
-                  <p className="preview-prompt-copy">
-                    Listen carefully. The sentence will play once.
-                  </p>
                 </>
               ) : (
                 <>
@@ -588,10 +592,6 @@ export default function ExamPreviewClient({
                       />
                     )}
                   </div>
-                  <p className="preview-prompt-copy">
-                    Listen to the interviewer. Your response starts immediately
-                    when the question ends.
-                  </p>
                 </>
               )}
             </div>
@@ -600,9 +600,12 @@ export default function ExamPreviewClient({
             >
               {isRecording ? (
                 <>
-                  <div className="preview-recording-indicator">
-                    <span />
-                    <p className="preview-kicker">RECORDING</p>
+                  <p className="preview-response-label">Response time</p>
+                  <div className="preview-response-readout">
+                    <span className="preview-response-dot is-recording" />
+                    <strong className="preview-countdown">
+                      {responseTime(secondsRemaining)}
+                    </strong>
                   </div>
                   <div
                     className="preview-volume-meter"
@@ -623,16 +626,14 @@ export default function ExamPreviewClient({
                     </span>
                     <span>{t.examCenter.recording}</span>
                   </div>
-                  <strong className="preview-countdown">
-                    {responseTime(secondsRemaining)}
-                  </strong>
-                  <span>Speak now. Recording stops automatically at zero.</span>
                 </>
               ) : (
                 <>
-                  <p className="preview-kicker">PROMPT PLAYING</p>
-                  <strong>Listening…</strong>
-                  <span>Recording will start automatically.</span>
+                  <p className="preview-response-label">Response time</p>
+                  <div className="preview-response-readout">
+                    <span className="preview-response-dot" />
+                    <strong>Waiting</strong>
+                  </div>
                 </>
               )}
             </div>
