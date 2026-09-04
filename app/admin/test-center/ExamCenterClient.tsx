@@ -19,60 +19,7 @@ import { useAuth } from "../../lib/contexts/auth_context";
 import { loadExamCenter, postExamAction } from "../../lib/features/exam/services/exam_admin_client";
 import type { ExamCenterOverview, ExamInterviewer, ExamInterviewerStatus } from "../../lib/features/exam/types";
 import { useI18n } from "../../lib/i18n/I18nProvider";
-import { Button, Card, ExamAvatar, ExamHeader, ExamPage, Eyebrow, InterviewerStatusPill, Loading, Notice, PageLead, PageTitle, SetStatusPill } from "./exam_ui";
-
-const Hero = styled.section`
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(250px, 0.75fr);
-  gap: 20px;
-  margin-bottom: 28px;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: clamp(20px, 4vw, 38px);
-  background: #050505;
-  color: #fff;
-  box-shadow: 6px 6px 0 #f47a4a;
-
-  @media (max-width: 760px) { grid-template-columns: 1fr; }
-`;
-
-const HeroKicker = styled(Eyebrow)`
-  color: #f47a4a;
-`;
-
-const HeroTitle = styled.h2`
-  max-width: 620px;
-  margin: 0;
-  color: #fff;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 1.02;
-`;
-
-const HeroCopy = styled.p`
-  max-width: 630px;
-  margin: 13px 0 0;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 14px;
-  line-height: 1.6;
-`;
-
-const HeroStats = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-content: center;
-  gap: 10px;
-`;
-
-const HeroStat = styled.div`
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  border-radius: 10px;
-  padding: 13px;
-  background: rgba(255, 255, 255, 0.07);
-  strong { display: block; color: #fff; font-size: 24px; font-weight: 900; letter-spacing: -0.05em; }
-  span { display: block; margin-top: 3px; color: rgba(255, 255, 255, 0.72); font-size: 11px; font-weight: 750; }
-`;
+import { Button, Card, ExamAvatar, ExamPage, Eyebrow, InterviewerStatusPill, Loading, Notice, SetStatusPill } from "./exam_ui";
 
 const WorkspaceNav = styled.nav`
   display: flex;
@@ -111,6 +58,14 @@ const FilterRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+`;
+
+const InterviewerControls = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 `;
 
 const Filter = styled.button<{ $active?: boolean }>`
@@ -227,7 +182,6 @@ export default function ExamCenterClient() {
   );
   const approved = workspace?.interviewers.filter((person) => person.status === "approved").length ?? 0;
   const pending = workspace?.interviewers.filter((person) => person.status === "pending").length ?? 0;
-  const published = workspace?.sets.filter((set) => set.status === "published").length ?? 0;
 
   async function act(action: string, input: Record<string, unknown>, success: string) {
     setBusy(action + JSON.stringify(input));
@@ -253,23 +207,13 @@ export default function ExamCenterClient() {
   };
 
   return <ExamPage>
-    <ExamHeader>
-      <div><Eyebrow>{t.examCenter.adminWorkflow}</Eyebrow><PageTitle>{t.examCenter.pipelineTitle}</PageTitle><PageLead>{t.examCenter.pipelineLead}</PageLead></div>
-      <Button $tone="cream" disabled={busy === "create-candidates{}"} onClick={() => void act("create-candidates", {}, "A fresh candidate batch is ready for review.")}><SparklesIcon />{t.examCenter.generateCandidates}</Button>
-    </ExamHeader>
-
-    <Hero>
-      <div><HeroKicker>Web-native production flow</HeroKicker><HeroTitle>From interviewer review to a timed 11-response exam.</HeroTitle><HeroCopy>The desktop prototype’s local candidate approval and media checks are now persistent, shareable records. Browser preview media gives every administrator a reliable review run without depending on temporary provider downloads.</HeroCopy></div>
-      <HeroStats><HeroStat><strong>{approved}</strong><span>Hired interviewers</span></HeroStat><HeroStat><strong>{pending}</strong><span>Awaiting review</span></HeroStat><HeroStat><strong>{workspace.sets.length}</strong><span>Exam sets</span></HeroStat><HeroStat><strong>{published}</strong><span>Published runs</span></HeroStat></HeroStats>
-    </Hero>
-
     <WorkspaceNav aria-label="Exam workflow navigation"><NavLink $active href="/admin/test-center"><UserGroupIcon />{t.examCenter.roster}</NavLink><NavLink href="/admin/test-center/exams"><PlusIcon />{t.examCenter.setup}</NavLink></WorkspaceNav>
 
     {notice && <Notice $error={notice.error}>{notice.text}</Notice>}
 
     <SectionHeader>
       <div><h2>{t.examCenter.interviewerBuilding}</h2><p>Approve a consistent profile before it can be used in an exam set. Preview media is intentionally neutral and silent while the web uses browser speech for questions.</p></div>
-      <FilterRow>{(["all", "approved", "pending", "rejected"] as FilterName[]).map((name) => <Filter key={name} $active={filter === name} onClick={() => setFilter(name)}>{name === "approved" ? t.examCenter.hired : name === "all" ? t.examCenter.all : name === "pending" ? t.examCenter.pending : t.examCenter.rejected} · {counts[name]}</Filter>)}</FilterRow>
+      <InterviewerControls><Button $tone="cream" disabled={busy === "create-candidates{}"} onClick={() => void act("create-candidates", {}, "A fresh candidate batch is ready for review.")}><SparklesIcon />{t.examCenter.generateCandidates}</Button><FilterRow>{(["all", "approved", "pending", "rejected"] as FilterName[]).map((name) => <Filter key={name} $active={filter === name} onClick={() => setFilter(name)}>{name === "approved" ? t.examCenter.hired : name === "all" ? t.examCenter.all : name === "pending" ? t.examCenter.pending : t.examCenter.rejected} · {counts[name]}</Filter>)}</FilterRow></InterviewerControls>
     </SectionHeader>
 
     <CandidateGrid>
