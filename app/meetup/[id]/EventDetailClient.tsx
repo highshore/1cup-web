@@ -45,6 +45,7 @@ import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
   PointerSensor,
   useDroppable,
   useSensor,
@@ -2757,7 +2758,7 @@ export function EventDetailClient() {
     })
   );
 
-  const handleDragStart = (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
   };
 
