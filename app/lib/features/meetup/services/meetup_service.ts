@@ -2,10 +2,13 @@
 //
 // Public list/detail/leaderboard reads are intentionally routed through same-origin
 // Next.js endpoints so an expired browser auth session cannot block public pages.
-// Authenticated legacy mutations remain available here, except meetup registration:
-// participation-credit accounting requires that path to go through the database RPC.
+// Authenticated legacy mutations remain available here, except meetup participation:
+// participation-credit accounting requires joins/cancellations to go through DB RPCs.
 export * from "./meetup_service_legacy";
-export { joinEventAsRole } from "./meetup_registration_service";
+export {
+  joinEventAsRole,
+  cancelParticipation,
+} from "./meetup_registration_service";
 export {
   fetchMeetupEvents,
   fetchMeetupEventById,
