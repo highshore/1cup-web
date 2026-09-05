@@ -1287,10 +1287,10 @@ const DraggableParticipant: React.FC<{
     }
 
     const validName = isValidDisplayName(user.displayName);
-    if (!validName) return "익명";
+    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
 
     const maskedName = maskName(user.displayName!);
-    return maskedName;
+    return `${maskedName} (${user.phoneLast4 || "****"})`;
   };
 
   const itemContent = (
@@ -1865,10 +1865,10 @@ export function EventDetailClient() {
 
   const formatParticipantDisplay = (user: UserWithDetails): string => {
     const validName = isValidDisplayName(user.displayName);
-    if (!validName) return "익명";
+    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
 
     const maskedName = maskName(user.displayName!);
-    return maskedName;
+    return `${maskedName} (${user.phoneLast4 || "****"})`;
   };
 
   const formatLeaderDisplay = (user: UserWithDetails): string => {
@@ -1878,7 +1878,8 @@ export function EventDetailClient() {
 
   const formatSeatingImageParticipant = (user: UserWithDetails): string => {
     const validName = isValidDisplayName(user.displayName);
-    return validName ? maskName(user.displayName!) : "익명";
+    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
+    return `${maskName(user.displayName!)} (${user.phoneLast4 || "****"})`;
   };
 
   const createSeatingImageBlob = async (): Promise<Blob> => {
@@ -1894,13 +1895,16 @@ export function EventDetailClient() {
 
     const width = 1200;
     const margin = 56;
-    const columnGap = 32;
-    const headerHeight = 190;
+    const columnGap = 40;
+    const headerHeight = 172;
     const columnWidth = (width - margin * 2 - columnGap) / 2;
-    const rowHeight = 38;
-    const groupGap = 20;
-    const groupHeaderHeight = 78;
-    const groupPadding = 24;
+    const groupGap = 24;
+    const cardPadding = 28;
+    const leaderAvatarSize = 44;
+    const participantAvatarSize = 34;
+    const leaderRowHeight = 74;
+    const participantRowHeight = 54;
+    const sessionHeaderHeight = 62;
 
     const sessionAssignments = [1, 2].map((sessionNumber) =>
       seatingAssignments.filter(
@@ -1909,24 +1913,28 @@ export function EventDetailClient() {
     );
 
     const getGroupHeight = (assignment: SeatingAssignment) =>
-      groupPadding * 2 +
-      groupHeaderHeight +
-      Math.max(assignment.participants.length, 1) * rowHeight;
+      cardPadding * 2 +
+      leaderRowHeight +
+      18 +
+      Math.max(assignment.participants.length, 1) * participantRowHeight;
 
     const getSessionHeight = (assignments: SeatingAssignment[]) => {
       const groupsHeight = assignments.reduce(
         (sum, assignment) => sum + getGroupHeight(assignment),
         0
       );
-      const gaps = Math.max(assignments.length - 1, 0) * groupGap;
-      return 74 + groupsHeight + gaps + 28;
+      return (
+        sessionHeaderHeight +
+        groupsHeight +
+        Math.max(assignments.length - 1, 0) * groupGap
+      );
     };
 
     const contentHeight = Math.max(
-      220,
+      260,
       ...sessionAssignments.map(getSessionHeight)
     );
-    const height = headerHeight + contentHeight + margin;
+    const height = headerHeight + contentHeight + 58;
 
     canvas.width = width;
     canvas.height = height;
@@ -1957,83 +1965,211 @@ export function EventDetailClient() {
       ctx.closePath();
     };
 
+    const allUsers = new Map<string, UserWithDetails>();
+    seatingAssignments.forEach((assignment) => {
+      allUsers.set(assignment.leaderDetails.uid, assignment.leaderDetails);
+      assignment.participants.forEach((participant) =>
+        allUsers.set(participant.uid, participant)
+      );
+    });
+
+    const avatarImages = new Map<string, HTMLImageElement>();
+    await Promise.all(
+      Array.from(allUsers.values()).map(async (user) => {
+        if (!user.photoURL) return;
+        try {
+          const response = await fetch(user.photoURL, { mode: "cors" });
+          if (!response.ok) return;
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          try {
+            const image = new Image();
+            await new Promise<void>((resolve, reject) => {
+              image.onload = () => resolve();
+              image.onerror = () => reject(new Error("avatar load failed"));
+              image.src = objectUrl;
+            });
+            avatarImages.set(user.uid, image);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        } catch (error) {
+          console.warn("Could not load avatar for seating share image:", error);
+        }
+      })
+    );
+
+    const drawAvatar = (
+      user: UserWithDetails,
+      centerX: number,
+      centerY: number,
+      size: number
+    ) => {
+      const radius = size / 2;
+      const image = avatarImages.get(user.uid);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      if (image) {
+        const scale = Math.max(size / image.width, size / image.height);
+        const drawWidth = image.width * scale;
+        const drawHeight = image.height * scale;
+        ctx.drawImage(
+          image,
+          centerX - drawWidth / 2,
+          centerY - drawHeight / 2,
+          drawWidth,
+          drawHeight
+        );
+      } else {
+        ctx.fillStyle = "#8bc5df";
+        ctx.fillRect(centerX - radius, centerY - radius, size, size);
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        ctx.beginPath();
+        ctx.arc(centerX, centerY - size * 0.12, size * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY + size * 0.24, size * 0.27, Math.PI, 0);
+        ctx.lineTo(centerX + size * 0.27, centerY + size * 0.44);
+        ctx.lineTo(centerX - size * 0.27, centerY + size * 0.44);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+
+    const drawLeaderBadge = (x: number, y: number) => {
+      const badgeWidth = 58;
+      const badgeHeight = 30;
+      ctx.fillStyle = "#333333";
+      drawRoundedRect(x, y, badgeWidth, badgeHeight, 15);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("리더", x + badgeWidth / 2, y + badgeHeight / 2 + 1);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    };
+
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
     ctx.fillStyle = "#111827";
-    ctx.font = '700 42px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.fillText("영어한잔 좌석 배치", margin, 72);
+    ctx.font = '700 40px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText("영어한잔 좌석 배치", margin, 66);
 
     ctx.fillStyle = "#374151";
-    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.fillText(event.title, margin, 112);
+    ctx.font = '600 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText(event.title, margin, 106);
 
     const eventMeta = [event.date, event.location_name].filter(Boolean).join(" · ");
     ctx.fillStyle = "#6b7280";
-    ctx.font = '400 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.fillText(eventMeta, margin, 148);
+    ctx.font = '400 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText(eventMeta, margin, 140);
 
     sessionAssignments.forEach((assignments, sessionIndex) => {
       const x = margin + sessionIndex * (columnWidth + columnGap);
-      const y = headerHeight;
-      const sessionHeight = getSessionHeight(assignments);
+      const sessionTop = headerHeight;
 
-      ctx.fillStyle = "#f8fafc";
-      drawRoundedRect(x, y, columnWidth, sessionHeight, 24);
-      ctx.fill();
-      ctx.strokeStyle = "#e2e8f0";
+      ctx.fillStyle = "#333333";
+      ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `세션 ${sessionIndex + 1}`,
+        x + columnWidth / 2,
+        sessionTop + 28
+      );
+      ctx.strokeStyle = "#333333";
       ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, sessionTop + 48);
+      ctx.lineTo(x + columnWidth, sessionTop + 48);
       ctx.stroke();
+      ctx.textAlign = "left";
 
-      ctx.fillStyle = "#111827";
-      ctx.font = '700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      ctx.fillText(`세션 ${sessionIndex + 1}`, x + 28, y + 46);
+      let currentY = sessionTop + sessionHeaderHeight;
 
-      let currentY = y + 74;
-
-      assignments.forEach((assignment, tableIndex) => {
+      assignments.forEach((assignment) => {
         const groupHeight = getGroupHeight(assignment);
+        const cardX = x;
+        const cardWidth = columnWidth;
 
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.08)";
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 3;
         ctx.fillStyle = "#ffffff";
-        drawRoundedRect(
-          x + 20,
-          currentY,
-          columnWidth - 40,
-          groupHeight,
-          18
-        );
+        drawRoundedRect(cardX, currentY, cardWidth, groupHeight, 25);
         ctx.fill();
-        ctx.strokeStyle = "#e5e7eb";
-        ctx.lineWidth = 1.5;
+        ctx.restore();
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.lineWidth = 2;
+        drawRoundedRect(cardX, currentY, cardWidth, groupHeight, 25);
         ctx.stroke();
 
-        ctx.fillStyle = "#6b7280";
-        ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-        ctx.fillText(`TABLE ${tableIndex + 1}`, x + 44, currentY + 32);
-
-        ctx.fillStyle = "#111827";
-        ctx.font = '700 21px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-        ctx.fillText(
-          `리더 · ${formatLeaderDisplay(assignment.leaderDetails)}`,
-          x + 44,
-          currentY + 64
+        const contentX = cardX + cardPadding;
+        const leaderCenterY = currentY + cardPadding + leaderAvatarSize / 2;
+        drawAvatar(
+          assignment.leaderDetails,
+          contentX + leaderAvatarSize / 2,
+          leaderCenterY,
+          leaderAvatarSize
         );
 
-        const participantStartY = currentY + groupPadding + groupHeaderHeight;
+        const leaderNameX = contentX + leaderAvatarSize + 16;
+        const leaderName = formatLeaderDisplay(assignment.leaderDetails);
+        ctx.fillStyle = "#333333";
+        ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textBaseline = "middle";
+        ctx.fillText(leaderName, leaderNameX, leaderCenterY + 1);
+        const leaderNameWidth = ctx.measureText(leaderName).width;
+        drawLeaderBadge(leaderNameX + leaderNameWidth + 14, leaderCenterY - 15);
+        ctx.textBaseline = "alphabetic";
+
+        const dividerY = currentY + cardPadding + leaderRowHeight;
+        ctx.strokeStyle = "#eeeeee";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(contentX, dividerY);
+        ctx.lineTo(cardX + cardWidth - cardPadding, dividerY);
+        ctx.stroke();
+
+        const participantStartY = dividerY + 18;
         if (assignment.participants.length === 0) {
           ctx.fillStyle = "#9ca3af";
-          ctx.font = '400 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-          ctx.fillText("참가자 없음", x + 44, participantStartY + 10);
+          ctx.font = '500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.fillText("참가자 없음", contentX, participantStartY + 31);
         } else {
           assignment.participants.forEach((participant, participantIndex) => {
-            const rowY = participantStartY + participantIndex * rowHeight;
-            ctx.fillStyle = "#111827";
-            ctx.font = '500 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-            ctx.fillText(
-              `• ${formatSeatingImageParticipant(participant)}`,
-              x + 44,
-              rowY + 12
+            const rowTop = participantStartY + participantIndex * participantRowHeight;
+            const centerY = rowTop + participantRowHeight / 2;
+            drawAvatar(
+              participant,
+              contentX + participantAvatarSize / 2,
+              centerY,
+              participantAvatarSize
             );
+            ctx.fillStyle = "#333333";
+            ctx.font = '600 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            ctx.textBaseline = "middle";
+            ctx.fillText(
+              formatSeatingImageParticipant(participant),
+              contentX + participantAvatarSize + 14,
+              centerY + 1
+            );
+            ctx.textBaseline = "alphabetic";
           });
         }
 
