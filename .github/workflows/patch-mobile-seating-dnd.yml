@@ -74,12 +74,6 @@ jobs:
           const DragOverlayCard = styled.div`'''))
 
           replacements.append((
-          '''    cursor: isLeader ? "default" : "grab",
-          };''',
-          '''    cursor: "default",
-          };'''))
-
-          replacements.append((
           '''      <UserName>{formatParticipantDisplay(participant)}</UserName>
                 {isLeader && <LeaderBadge>리더</LeaderBadge>}
               </ParticipantItem>''',
