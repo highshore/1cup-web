@@ -1287,10 +1287,10 @@ const DraggableParticipant: React.FC<{
     }
 
     const validName = isValidDisplayName(user.displayName);
-    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
+    if (!validName) return "익명";
 
     const maskedName = maskName(user.displayName!);
-    return `${maskedName} (${user.phoneLast4 || "****"})`;
+    return maskedName;
   };
 
   const itemContent = (
@@ -1865,10 +1865,10 @@ export function EventDetailClient() {
 
   const formatParticipantDisplay = (user: UserWithDetails): string => {
     const validName = isValidDisplayName(user.displayName);
-    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
+    if (!validName) return "익명";
 
     const maskedName = maskName(user.displayName!);
-    return `${maskedName} (${user.phoneLast4 || "****"})`;
+    return maskedName;
   };
 
   const formatLeaderDisplay = (user: UserWithDetails): string => {
@@ -3390,16 +3390,6 @@ export function EventDetailClient() {
                   >
                     {seatingLoading ? "배치 중..." : "다시 배치하기"}
                   </SeatingButton>
-                  <div
-                    style={{
-                      width: "100%",
-                      fontSize: "12px",
-                      color: "#6b7280",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    모바일에서는 참가자 오른쪽의 ⋮⋮ 핸들을 잡고 이동하세요.
-                  </div>
                   <SeatingButton onClick={() => setShowSeatingTable(false)}>
                     닫기
                   </SeatingButton>
