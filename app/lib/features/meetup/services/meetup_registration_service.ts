@@ -1,8 +1,8 @@
 import { supabase } from "../../../supabase/client";
 
-// Meetup participation writes must go through the database RPC. The participation-credit
+// Meetup participation writes must go through the database RPCs. The participation-credit
 // migration intentionally removed direct member INSERT/UPDATE/DELETE policies so capacity,
-// subscription access, and credit spending stay atomic under one row lock.
+// subscription access, credit spending, and credit refunds stay atomic under row locks.
 export const joinEventAsRole = async (
   eventId: string,
   _userId: string,
@@ -15,5 +15,18 @@ export const joinEventAsRole = async (
 
   if (error) {
     throw new Error(error.message || "Meetup registration failed");
+  }
+};
+
+export const cancelParticipation = async (
+  eventId: string,
+  _userId: string,
+): Promise<void> => {
+  const { error } = await supabase.rpc("cancel_meetup_registration", {
+    p_meetup_id: eventId,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Meetup cancellation failed");
   }
 };
