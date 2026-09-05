@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { fetchMeetupEventsPageServer } from "../../../lib/features/meetup/services/meetup_public_server";
+import { fetchMeetupEventsPageServer } from "../../../lib/features/meetup/services/meetup_public_active_server";
 
 export const dynamic = "force-dynamic";
 
