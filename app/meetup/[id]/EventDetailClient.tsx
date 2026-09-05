@@ -1163,6 +1163,37 @@ const ParticipantItemWrapper = styled.div`
   /* Wrapper for dnd-kit sortable */
 `;
 
+const ParticipantDragHandle = styled.button`
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+
+  &:active {
+    cursor: grabbing;
+    background: #e5e7eb;
+  }
+
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+`;
+
 const DragOverlayCard = styled.div`
   min-width: 220px;
   padding: 0.75rem 1rem;
@@ -1276,19 +1307,27 @@ const DraggableParticipant: React.FC<{
         }
       />
       <UserName>{formatParticipantDisplay(participant)}</UserName>
-      {isLeader && <LeaderBadge>리더</LeaderBadge>}
+      {isLeader ? (
+        <LeaderBadge>리더</LeaderBadge>
+      ) : (
+        <ParticipantDragHandle
+          type="button"
+          aria-label={`${formatParticipantDisplay(participant)} 이동`}
+          title="드래그해서 좌석 이동"
+          {...attributes}
+          {...listeners}
+          onClick={(event) => event.stopPropagation()}
+        >
+          ⋮⋮
+        </ParticipantDragHandle>
+      )}
     </ParticipantItem>
   );
 
   return isLeader ? (
     <>{itemContent}</>
   ) : (
-    <ParticipantItemWrapper
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
+    <ParticipantItemWrapper ref={setNodeRef} style={style}>
       {itemContent}
     </ParticipantItemWrapper>
   );
@@ -3277,6 +3316,17 @@ export function EventDetailClient() {
                   {seatingLoading ? "Generating..." : "Generate Seating"}
                 </span>
               </AdminButton>
+              <AdminButton
+                onClick={handleShareSeatingImage}
+                disabled={
+                  seatingShareLoading || seatingAssignments.length === 0
+                }
+              >
+                <PhotoIcon />
+                <span>
+                  {seatingShareLoading ? "Creating Image..." : "Share Seating Image"}
+                </span>
+              </AdminButton>
               <AdminButton onClick={handleSendReminderToParticipants}>
                 <MegaphoneIcon />
                 <span>Send Reminder</span>
@@ -3302,7 +3352,12 @@ export function EventDetailClient() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
-              autoScroll
+              autoScroll={{
+                layoutShiftCompensation: false,
+                threshold: { x: 0.08, y: 0.08 },
+                acceleration: 3,
+                interval: 10,
+              }}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -3335,17 +3390,16 @@ export function EventDetailClient() {
                   >
                     {seatingLoading ? "배치 중..." : "다시 배치하기"}
                   </SeatingButton>
-                  <SeatingButton
-                    onClick={handleShareSeatingImage}
-                    disabled={
-                      seatingShareLoading || seatingAssignments.length === 0
-                    }
+                  <div
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      lineHeight: 1.5,
+                    }}
                   >
-                    <PhotoIcon style={{ width: "18px", height: "18px" }} />
-                    {seatingShareLoading
-                      ? "이미지 생성 중..."
-                      : "좌석 이미지 공유"}
-                  </SeatingButton>
+                    모바일에서는 참가자 오른쪽의 ⋮⋮ 핸들을 잡고 이동하세요.
+                  </div>
                   <SeatingButton onClick={() => setShowSeatingTable(false)}>
                     닫기
                   </SeatingButton>
