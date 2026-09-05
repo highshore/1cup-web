@@ -1,0 +1,44 @@
+name: Patch seating drag start type
+
+on:
+  push:
+    branches:
+      - fix/admin-seating-dnd-share
+    paths:
+      - .github/workflows/patch-drag-start-type.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-seating-dnd-share
+          fetch-depth: 0
+      - name: Patch DragStartEvent typing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('app/meetup/[id]/EventDetailClient.tsx')
+          text = path.read_text()
+          old_import = '  DragEndEvent,\n  PointerSensor,'
+          new_import = '  DragEndEvent,\n  DragStartEvent,\n  PointerSensor,'
+          old_handler = '  const handleDragStart = (event: DragEndEvent) => {'
+          new_handler = '  const handleDragStart = (event: DragStartEvent) => {'
+          if text.count(old_import) != 1 or text.count(old_handler) != 1:
+              raise SystemExit('Expected drag-start source patterns were not found exactly once')
+          text = text.replace(old_import, new_import, 1)
+          text = text.replace(old_handler, new_handler, 1)
+          path.write_text(text)
+          PY
+          git diff --check
+      - name: Commit implementation cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'app/meetup/[id]/EventDetailClient.tsx'
+          git commit -m "fix: type seating drag start event correctly"
+          git push origin HEAD:fix/admin-seating-dnd-share
