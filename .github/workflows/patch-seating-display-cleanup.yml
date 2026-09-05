@@ -1,0 +1,73 @@
+name: Patch seating display cleanup
+
+on:
+  push:
+    branches:
+      - fix/seating-display-cleanup
+    paths:
+      - .github/workflows/patch-seating-display-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/seating-display-cleanup
+          fetch-depth: 0
+
+      - name: Clean seating participant labels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/meetup/[id]/EventDetailClient.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          phone_fallback = 'if (!validName) return `익명 (${user.phoneLast4 || "****"})`;'
+          phone_result = 'return `${maskedName} (${user.phoneLast4 || "****"})`;'
+
+          if text.count(phone_fallback) != 2:
+              raise SystemExit(f'Expected 2 phone fallback labels, found {text.count(phone_fallback)}')
+          if text.count(phone_result) != 2:
+              raise SystemExit(f'Expected 2 phone result labels, found {text.count(phone_result)}')
+
+          text = text.replace(phone_fallback, 'if (!validName) return "익명";')
+          text = text.replace(phone_result, 'return maskedName;')
+
+          helper = '''                  <div
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    모바일에서는 참가자 오른쪽의 ⋮⋮ 핸들을 잡고 이동하세요.
+                  </div>
+'''
+          if text.count(helper) != 1:
+              raise SystemExit(f'Expected 1 mobile helper block, found {text.count(helper)}')
+          text = text.replace(helper, '', 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Install dependencies without changing lockfile
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'app/meetup/[id]/EventDetailClient.tsx'
+          git diff --cached --check
+          git commit -m "fix(meetup): simplify seating participant labels"
+          git push origin HEAD:fix/seating-display-cleanup
