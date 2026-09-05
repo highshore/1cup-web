@@ -23,26 +23,6 @@ const Wrapper = styled.main`
   gap: 24px;
 `;
 
-const Header = styled.header`
-  margin-top: 8px;
-`;
-
-const Eyebrow = styled.p`
-  margin: 0 0 6px;
-  color: #e0602e;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 28px;
-  font-weight: 900;
-`;
-
 const Description = styled.p`
   max-width: 760px;
   margin: 8px 0 0;
@@ -365,12 +345,6 @@ export default function AdminShadowClient() {
 
   return (
     <Wrapper>
-      <Header>
-        <Eyebrow>{copy.eyebrow}</Eyebrow>
-        <Title>{copy.pageTitle}</Title>
-        <Description>{copy.pageDescription}</Description>
-      </Header>
-
       <Panel>
         <PanelTitle>{copy.queueTitle}</PanelTitle>
         <PanelDescription>{copy.queueDescription}</PanelDescription>

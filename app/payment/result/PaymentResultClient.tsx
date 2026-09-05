@@ -276,6 +276,10 @@ interface PaymentResult {
   success: boolean;
   message: string;
   errorCode?: string;
+  productType?: "participation_pack_purchase" | "subscription_initial_payment" | string;
+  creditBalance?: number;
+  creditsGranted?: number;
+  creditExpiresAt?: string | null;
   data?: {
     PCD_PAY_RST: string;
     PCD_PAY_MSG: string;
@@ -306,6 +310,7 @@ export default function PaymentResultClient() {
   );
   const [isProcessed, setIsProcessed] = useState(false);
   const [hasAttemptedProcessing, setHasAttemptedProcessing] = useState(false);
+  const isParticipationPack = paymentResult?.productType === "participation_pack_purchase";
 
   // Prevent back navigation and double payment processing
   useEffect(() => {
@@ -672,12 +677,29 @@ export default function PaymentResultClient() {
 
           {paymentResult?.success ? (
             <>
-              <Title>구독 등록 완료</Title>
+              <Title>{isParticipationPack ? "참여권 구매 완료" : "구독 등록 완료"}</Title>
               <Subtitle>
-                One Cup English 프리미엄 멤버십에 가입되었습니다
+                {isParticipationPack
+                  ? `${paymentResult.creditsGranted ?? 5}회 참여권을 구매했습니다. 멤버십은 별도로 유지됩니다.`
+                  : "One Cup English 프리미엄 멤버십에 가입되었습니다"}
               </Subtitle>
 
-              {paymentResult.data && (
+              {isParticipationPack ? (
+                <ResultDetails>
+                  <DetailRow>
+                    <DetailLabel>현재 잔여 참여권</DetailLabel>
+                    <DetailValue>{paymentResult.creditBalance ?? 0}회</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>유효기간</DetailLabel>
+                    <DetailValue>
+                      {paymentResult.creditExpiresAt
+                        ? new Date(paymentResult.creditExpiresAt).toLocaleDateString()
+                        : "구매 내역에서 확인"}
+                    </DetailValue>
+                  </DetailRow>
+                </ResultDetails>
+              ) : paymentResult.data && (
                 <ResultDetails>
                   <DetailRow>
                     <DetailLabel>결제 결과</DetailLabel>

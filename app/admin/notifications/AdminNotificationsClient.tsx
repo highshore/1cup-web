@@ -1,6 +1,6 @@
 "use client";
 
-import { BellAlertIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -27,44 +27,6 @@ const Page = styled.main`
   width: min(1400px, calc(100% - 2.5rem));
   margin: 0 auto;
   padding: 0 0 2.5rem;
-`;
-
-const Heading = styled.header`
-  margin: 0 0 1.35rem;
-`;
-
-const Eyebrow = styled.p`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.48rem;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.75rem, 4vw, 2.2rem);
-  font-weight: 900;
-  letter-spacing: -0.025em;
-`;
-
-const Description = styled.p`
-  max-width: 680px;
-  margin: 0.62rem 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.55;
 `;
 
 const Layout = styled.div`
@@ -868,15 +830,6 @@ export default function AdminNotificationsClient() {
 
   return (
     <Page>
-      <Heading>
-        <Eyebrow>
-          <BellAlertIcon />
-          {copy.eyebrow}
-        </Eyebrow>
-        <Title>{copy.pageTitle}</Title>
-        <Description>{copy.pageDescription}</Description>
-      </Heading>
-
       {loadError ? (
         <Card>
           <CardBody>

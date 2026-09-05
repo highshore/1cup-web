@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 
@@ -12,6 +12,14 @@ const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
 const BASE_PRICE = 9700;
 
 type Region = "yeouido" | "anam";
+type ProductId = "membership_30d" | "participation_pack_5";
+type PaymentProduct = {
+  id: ProductId;
+  price: number;
+  credits?: number;
+  validityDays?: number;
+  recurring: boolean;
+};
 
 declare global {
   interface Window {
@@ -85,6 +93,48 @@ const Grid = styled.div`
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
   }
+`;
+
+const ProductGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+
+  @media (max-width: 620px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ProductButton = styled.button<{ $selected: boolean; disabled?: boolean }>`
+  border: 2px solid #050505;
+  border-radius: 12px;
+  background: ${(p) => (p.$selected ? "#fff0e8" : "#fff")};
+  color: #050505;
+  padding: 0.9rem;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: ${(p) => (p.$selected ? "3px 3px 0 #f47a4a" : "none")};
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+    box-shadow: none;
+  }
+`;
+
+const ProductName = styled.div`
+  font-weight: 950;
+  font-size: 0.98rem;
+`;
+
+const ProductDescription = styled.div`
+  margin-top: 0.3rem;
+  color: rgba(5, 5, 5, 0.64);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
 `;
 
 const Section = styled.div`
@@ -268,6 +318,8 @@ export default function CompactPaymentClient() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [alreadySubscribed, setAlreadySubscribed] = useState(false);
+  const [products, setProducts] = useState<PaymentProduct[]>([]);
+  const [productId, setProductId] = useState<ProductId>("membership_30d");
   const [region, setRegion] = useState<Region>("yeouido");
   const [referralCode, setReferralCode] = useState("");
   const [referralPrice, setReferralPrice] = useState<number | null>(null);
@@ -276,28 +328,29 @@ export default function CompactPaymentClient() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
 
-  const totalAmount = referralPrice ?? BASE_PRICE;
-  const discounted = totalAmount < BASE_PRICE;
-
-  const productName = useMemo(
-    () => `영어 한잔 멤버십 (${region === "yeouido" ? "여의도" : "안암"})`,
-    [region],
-  );
+  const selectedProduct = products.find((product) => product.id === productId);
+  const membershipProduct = products.find((product) => product.id === "membership_30d");
+  const membershipPrice = membershipProduct?.price ?? BASE_PRICE;
+  const totalAmount = productId === "membership_30d"
+    ? referralPrice ?? membershipPrice
+    : selectedProduct?.price;
+  const discounted = productId === "membership_30d" && totalAmount !== undefined && totalAmount < membershipPrice;
 
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
-    }
-
     void (async () => {
       try {
-        const { data } = await supabase
-          .from("users")
-          .select("has_active_subscription")
-          .eq("uid", currentUser.uid)
-          .maybeSingle();
-        setAlreadySubscribed(Boolean(data?.has_active_subscription));
+        const [productResult, userResult] = await Promise.all([
+          invokeFunction<{ success: boolean; products: PaymentProduct[] }>("payment", { action: "products" }),
+          currentUser
+            ? supabase
+                .from("users")
+                .select("has_active_subscription")
+                .eq("uid", currentUser.uid)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        setProducts(productResult.products || []);
+        setAlreadySubscribed(Boolean(userResult.data?.has_active_subscription));
       } finally {
         setLoading(false);
       }
@@ -307,8 +360,10 @@ export default function CompactPaymentClient() {
   useEffect(() => {
     const urlRef = searchParams?.get("ref")?.trim();
     const urlRegion = searchParams?.get("region");
+    const urlProduct = searchParams?.get("product");
     if (urlRef) setReferralCode(urlRef);
     if (urlRegion === "yeouido" || urlRegion === "anam") setRegion(urlRegion);
+    if (urlProduct === "participation_pack_5") setProductId(urlProduct);
 
     if (typeof window !== "undefined") {
       const storedRef = sessionStorage.getItem("referralCodePrefill")?.trim();
@@ -374,6 +429,7 @@ export default function CompactPaymentClient() {
   }, []);
 
   const checkReferral = async () => {
+    if (productId !== "membership_30d") return;
     const code = referralCode.trim();
     if (!code) return;
 
@@ -415,9 +471,18 @@ export default function CompactPaymentClient() {
 
   const handlePayment = async () => {
     if (!currentUser) {
-      localStorage.setItem("returnUrl", `/payment?region=${region}`);
+      localStorage.setItem("returnUrl", `/payment?region=${region}&product=${productId}`);
       if (referralCode.trim()) sessionStorage.setItem("referralCodePrefill", referralCode.trim());
       router.push("/auth");
+      return;
+    }
+
+    if (!selectedProduct || totalAmount === undefined) {
+      setError("상품 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    if (productId === "membership_30d" && alreadySubscribed) {
+      setError("이미 이용 중인 멤버십은 다시 구매할 수 없습니다. 참여권은 별도로 구매할 수 있습니다.");
       return;
     }
 
@@ -431,15 +496,16 @@ export default function CompactPaymentClient() {
         userEmail: currentUser.email || "",
         userName: currentUser.displayName || "사용자",
         userPhone: currentUser.phoneNumber || "",
-        pcd_amount: totalAmount,
-        pcd_good_name: productName,
-        selected_categories: {
-          meetup: true,
-          region,
-          yeouido: region === "yeouido",
-          anam: region === "anam",
-        },
-        referralCode: discounted ? referralCode.trim() : undefined,
+        productId,
+        selected_categories: productId === "membership_30d"
+          ? {
+              meetup: true,
+              region,
+              yeouido: region === "yeouido",
+              anam: region === "anam",
+            }
+          : {},
+        referralCode: productId === "membership_30d" && discounted ? referralCode.trim() : undefined,
       })) as any;
 
       if (!paymentData?.success) throw new Error(paymentData?.message || "결제 정보를 불러오지 못했습니다.");
@@ -447,7 +513,7 @@ export default function CompactPaymentClient() {
 
       sessionStorage.setItem(
         "paymentSessionInfo",
-        JSON.stringify({ userId: currentUser.uid, amount: totalAmount, productName, region, timestamp: Date.now() }),
+        JSON.stringify({ userId: currentUser.uid, productId, region, timestamp: Date.now() }),
       );
       window.PaypleCpayAuthCheck(paymentData.paymentParams);
     } catch (err) {
@@ -460,76 +526,117 @@ export default function CompactPaymentClient() {
     return <Page><StateCard>결제 정보를 불러오는 중...</StateCard></Page>;
   }
 
-  if (alreadySubscribed) {
-    return (
-      <Page>
-        <StateCard>
-          <Title>이미 구독 중입니다</Title>
-          <p>현재 멤버십을 이용 중입니다. 프로필에서 구독 상태를 확인해 주세요.</p>
-          <PayButton onClick={() => router.push("/profile")}>프로필로 이동</PayButton>
-        </StateCard>
-      </Page>
-    );
-  }
-
   return (
     <Page>
       <Card>
         <Header>
           <div>
-            <Title>영어 한잔 월간 멤버십</Title>
-            <Muted>월 4회 오프라인 영어 모임 · 30일마다 자동 결제</Muted>
+            <Title>영어 한잔 이용권</Title>
+            <Muted>30일 멤버십과 회차 참여권은 서로 다른 이용권입니다.</Muted>
           </div>
           <Price>
-            {totalAmount.toLocaleString()}원 <Muted>/ 1개월</Muted>
+            {totalAmount === undefined ? "상품 확인 중" : `${totalAmount.toLocaleString()}원`}
+            {productId === "membership_30d" ? <Muted> / 30일</Muted> : null}
           </Price>
         </Header>
 
-        <Grid>
-          <Section>
-            <Label>참여 지역</Label>
-            <RegionGrid>
-              <RegionButton type="button" $selected={region === "yeouido"} onClick={() => setRegion("yeouido")}>여의도</RegionButton>
-              <RegionButton type="button" $selected={region === "anam"} onClick={() => setRegion("anam")}>안암</RegionButton>
-            </RegionGrid>
-          </Section>
+        <ProductGrid>
+          <ProductButton
+            type="button"
+            $selected={productId === "membership_30d"}
+            disabled={alreadySubscribed}
+            onClick={() => setProductId("membership_30d")}
+          >
+            <ProductName>30일 멤버십 {alreadySubscribed ? "(이용 중)" : ""}</ProductName>
+            <ProductDescription>30일마다 자동 결제 · 멤버십 전용 기능 및 밋업 신청</ProductDescription>
+          </ProductButton>
+          <ProductButton
+            type="button"
+            $selected={productId === "participation_pack_5"}
+            onClick={() => {
+              setProductId("participation_pack_5");
+              setReferralPrice(null);
+              setReferralMessage("");
+            }}
+          >
+            <ProductName>{selectedProduct?.credits ?? 5}회 참여권</ProductName>
+            <ProductDescription>1회 결제 · 자동 결제 없음 · 밋업 신청 시 1회 사용</ProductDescription>
+          </ProductButton>
+        </ProductGrid>
 
-          <Section>
-            <Label>지인 추천 코드 <Muted>(선택)</Muted></Label>
-            <InputRow>
-              <Input
-                value={referralCode}
-                placeholder="추천 코드를 입력하세요"
-                onChange={(e) => {
-                  setReferralCode(e.target.value);
-                  setReferralPrice(null);
-                  setReferralMessage("");
-                }}
-              />
-              <SmallButton type="button" onClick={checkReferral} disabled={!referralCode.trim() || checkingReferral}>
-                {checkingReferral ? "확인 중" : "확인"}
-              </SmallButton>
-            </InputRow>
-            {referralMessage ? <Message $error={!discounted}>{referralMessage}</Message> : null}
-          </Section>
+        <Grid>
+          {productId === "membership_30d" ? (
+            <>
+              <Section>
+                <Label>참여 지역</Label>
+                <RegionGrid>
+                  <RegionButton type="button" $selected={region === "yeouido"} onClick={() => setRegion("yeouido")}>여의도</RegionButton>
+                  <RegionButton type="button" $selected={region === "anam"} onClick={() => setRegion("anam")}>안암</RegionButton>
+                </RegionGrid>
+              </Section>
+
+              <Section>
+                <Label>지인 추천 코드 <Muted>(선택)</Muted></Label>
+                <InputRow>
+                  <Input
+                    value={referralCode}
+                    placeholder="추천 코드를 입력하세요"
+                    onChange={(e) => {
+                      setReferralCode(e.target.value);
+                      setReferralPrice(null);
+                      setReferralMessage("");
+                    }}
+                  />
+                  <SmallButton type="button" onClick={checkReferral} disabled={!referralCode.trim() || checkingReferral}>
+                    {checkingReferral ? "확인 중" : "확인"}
+                  </SmallButton>
+                </InputRow>
+                {referralMessage ? <Message $error={!discounted}>{referralMessage}</Message> : null}
+              </Section>
+            </>
+          ) : (
+            <Section>
+              <Label>회차 참여권 안내</Label>
+              <ProductDescription>
+                {selectedProduct?.credits ?? 5}회는 밋업 참가 신청을 완료할 때 1회씩 사용됩니다. 멤버십 상태나 멤버십 전용 기능은 변경되지 않으며, 구매일부터 {selectedProduct?.validityDays ?? 180}일 동안 사용할 수 있습니다.
+              </ProductDescription>
+            </Section>
+          )}
         </Grid>
 
         <BenefitRow>
-          <Benefit>✓ 통번역사 출신 리더와 실전 영어 토론</Benefit>
-          <Benefit>✓ 5명 이하 소규모 그룹 중심 운영</Benefit>
-          <Benefit>✓ WSJ·FT 등 글로벌 비즈니스 기사 기반</Benefit>
+          <Benefit>{productId === "membership_30d" ? "✓ 멤버십 기간 동안 밋업 신청" : "✓ 밋업 신청 5회에 사용할 수 있는 회차형 이용권"}</Benefit>
+          <Benefit>{productId === "membership_30d" ? "✓ 멤버십 전용 영어 학습 기능" : "✓ 자동 결제 없이 1회만 결제"}</Benefit>
+          <Benefit>{productId === "membership_30d" ? "✓ 30일마다 자동 결제, 언제든 다음 결제 중단" : "✓ 구매일부터 180일간 사용"}</Benefit>
         </BenefitRow>
 
         <Footer>
           <PolicyGroup>
             <PolicyTitle>결제 및 환불 정책</PolicyTitle>
-            <p><strong>자동 결제</strong> · 30일마다 자동으로 결제됩니다. 재결제 시 알림톡을 드리며 언제든지 취소할 수 있습니다.</p>
-            <p><strong>7일 체험 기간 및 환불 정책</strong> · 결제일로부터 <strong>7일 이내 전액 환불</strong>이 가능합니다. 7일 이후에는 사용하지 않은 기간에 대해 일할 계산으로 환불됩니다. 또한, 운영진 판단에 의거 정책 위반이나 원활한 서비스 제공이 어려울 경우 일방적으로 환불 처리를 해드릴 수 있습니다.</p>
-            <p><strong>구독 관리</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 구독을 관리하실 수 있습니다.</p>
+            {productId === "membership_30d" ? (
+              <>
+                <p><strong>자동 결제</strong> · 30일마다 자동으로 결제됩니다. 재결제 시 알림톡을 드리며 언제든지 취소할 수 있습니다.</p>
+                <p><strong>7일 체험 기간 및 환불 정책</strong> · 결제일로부터 <strong>7일 이내 전액 환불</strong>이 가능합니다. 7일 이후에는 사용하지 않은 기간에 대해 일할 계산으로 환불됩니다.</p>
+              </>
+            ) : (
+              <>
+                <p><strong>자동 결제 없음</strong> · 참여권은 한 번만 결제되며 멤버십을 시작하거나 갱신하지 않습니다.</p>
+                <p><strong>밋업 취소</strong> · 밋업 시작 24시간 전까지 취소하면 사용한 참여권 1회가 반환됩니다. 상세 환불 정책은 아래 링크에서 확인하세요.</p>
+              </>
+            )}
+            <p><strong>이용권 관리</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 멤버십과 참여권을 확인할 수 있습니다.</p>
             {error ? <Message $error>{error}</Message> : null}
           </PolicyGroup>
-          <PayButton type="button" onClick={handlePayment} disabled={processing}>
-            {processing ? "결제 준비 중..." : discounted ? `${totalAmount.toLocaleString()}원으로 시작하기` : "9,700원으로 시작하기"}
+          <PayButton type="button" onClick={handlePayment} disabled={processing || totalAmount === undefined || (productId === "membership_30d" && alreadySubscribed)}>
+            {processing
+              ? "결제 준비 중..."
+              : productId === "membership_30d" && alreadySubscribed
+                ? "멤버십 이용 중"
+                : totalAmount === undefined
+                  ? "상품 확인 중..."
+                  : productId === "membership_30d"
+                    ? `${totalAmount.toLocaleString()}원으로 시작하기`
+                    : `${totalAmount.toLocaleString()}원으로 참여권 구매`}
           </PayButton>
         </Footer>
       </Card>

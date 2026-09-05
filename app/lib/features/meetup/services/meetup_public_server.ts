@@ -187,6 +187,7 @@ export async function fetchMeetupEventsPageServer(
       .from("meetup_participants")
       .select("meetup_id,user_id,role")
       .in("meetup_id", ids)
+      .eq("registration_status", "registered")
       .abortSignal(querySignal()),
     supabase
       .from("meetup_articles")
@@ -262,8 +263,9 @@ export async function fetchMeetupLeaderboardsServer(
         )
         .abortSignal(querySignal()),
       supabase
-        .from("meetup_participants")
-        .select("meetup_id,user_id,role")
+      .from("meetup_participants")
+      .select("meetup_id,user_id,role")
+      .eq("registration_status", "registered")
         .abortSignal(querySignal()),
       supabase
         .from("user_first_paid")

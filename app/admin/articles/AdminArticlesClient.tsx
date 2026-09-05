@@ -94,17 +94,6 @@ const Wrapper = styled.div`
   gap: 30px;
 `;
 
-const Header = styled.div`
-  margin-bottom: -10px;
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 28px;
-  font-weight: 900;
-`;
-
 const ContentSection = styled.section`
   background: #ffffff;
   border-radius: 16px;
@@ -535,7 +524,6 @@ export default function AdminArticlesClient() {
 
   return (
     <Wrapper>
-      <Header><Title>{copy.pageTitle}</Title></Header>
       <AdminArticleIngestForm onArticleQueued={handleQueued} />
 
       <ContentSection>

@@ -48,7 +48,6 @@ import {
 } from "../types/growth_types";
 
 type SettingsDraft = {
-  enabled: boolean;
   schedule: MarketingCronSchedule;
   templateId: string;
   destinationUrl: string;
@@ -59,7 +58,6 @@ type SettingsDraft = {
 };
 
 const toDraft = (settings: MarketingCronSettings): SettingsDraft => ({
-  enabled: settings.enabled,
   schedule: settings.schedule,
   templateId: settings.templateId,
   destinationUrl: settings.destinationUrl,
@@ -102,9 +100,13 @@ const formatTemplate = (template: string, date: string) =>
   template.replace("{date}", date);
 
 type PerformancePoint = {
+  runId: string;
   at: Date;
   views: number;
   ctr: number;
+  clicks: number;
+  templateName: string;
+  postTitle: string;
 };
 
 const TimeSeriesChart = ({
@@ -115,6 +117,8 @@ const TimeSeriesChart = ({
   suffix = "",
   emptyLabel,
   formatDate,
+  formatDateTime,
+  tooltipLabels,
 }: {
   title: string;
   points: PerformancePoint[];
@@ -123,7 +127,10 @@ const TimeSeriesChart = ({
   suffix?: string;
   emptyLabel: string;
   formatDate: (date: Date) => string;
+  formatDateTime: (date: Date) => string;
+  tooltipLabels: { template: string; post: string; views: string; clicks: string; ctr: string };
 }) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   if (!points.length) {
     return (
       <ChartCard>
@@ -146,6 +153,7 @@ const TimeSeriesChart = ({
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const latest = values.at(-1) ?? 0;
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartCard>
@@ -153,7 +161,22 @@ const TimeSeriesChart = ({
         <ChartTitle>{title}</ChartTitle>
         <ChartValue>{suffix ? `${latest.toFixed(1)}${suffix}` : latest.toLocaleString()}</ChartValue>
       </ChartHeading>
-      <ChartSvg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+      {hoveredPoint && (
+        <ChartTooltip role="status">
+          <strong>{formatDateTime(hoveredPoint.at)}</strong>
+          <span>{tooltipLabels.template}: {hoveredPoint.templateName}</span>
+          {hoveredPoint.postTitle && <span>{tooltipLabels.post}: {hoveredPoint.postTitle}</span>}
+          <span>
+            {tooltipLabels.views}: {hoveredPoint.views.toLocaleString()} · {tooltipLabels.clicks}: {hoveredPoint.clicks.toLocaleString()} · {tooltipLabels.ctr}: {hoveredPoint.ctr.toFixed(1)}%
+          </span>
+        </ChartTooltip>
+      )}
+      <ChartSvg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={title}
+        onPointerLeave={() => setHoveredIndex(null)}
+      >
         {[0, 0.5, 1].map((ratio) => {
           const y = padding.top + chartHeight - ratio * chartHeight;
           return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#dedede" strokeWidth="1" />;
@@ -164,7 +187,22 @@ const TimeSeriesChart = ({
         <polyline points={coordinates.join(" ")} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         {coordinates.map((coordinate, index) => {
           const [cx, cy] = coordinate.split(",");
-          return <circle key={`${coordinate}_${index}`} cx={cx} cy={cy} r="3.5" fill="#ffffff" stroke={color} strokeWidth="2" />;
+          return (
+            <circle
+              key={`${coordinate}_${index}`}
+              cx={cx}
+              cy={cy}
+              r="6"
+              fill="#ffffff"
+              stroke={color}
+              strokeWidth="2.5"
+              tabIndex={0}
+              aria-label={`${formatDateTime(points[index].at)} · ${points[index].templateName}`}
+              onPointerEnter={() => setHoveredIndex(index)}
+              onFocus={() => setHoveredIndex(index)}
+              onBlur={() => setHoveredIndex(null)}
+            />
+          );
         })}
       </ChartSvg>
       <ChartAxis>
@@ -231,11 +269,32 @@ const ChartGrid = styled.div`
 `;
 
 const ChartCard = styled.section`
+  position: relative;
   min-width: 0;
   border: 1.5px solid #050505;
   border-radius: 12px;
   padding: 14px;
   background: #fcfcfc;
+`;
+
+const ChartTooltip = styled.div`
+  position: absolute;
+  z-index: 2;
+  top: 42px;
+  right: 14px;
+  display: grid;
+  max-width: min(280px, calc(100% - 28px));
+  gap: 3px;
+  border: 1.5px solid #050505;
+  border-radius: 9px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.86);
+  color: #050505;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  pointer-events: none;
 `;
 
 const ChartHeading = styled.div`
@@ -264,6 +323,10 @@ const ChartSvg = styled.svg`
   width: 100%;
   height: auto;
   overflow: visible;
+
+  circle {
+    cursor: pointer;
+  }
 `;
 
 const ChartAxis = styled.div`
@@ -431,6 +494,16 @@ const TemplatePicker = styled.div`
   display: grid;
   grid-column: 1 / -1;
   gap: 8px;
+`;
+
+const AiTemplatePanel = styled.section`
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  padding: 15px;
+  background: #fff1e9;
 `;
 
 const TemplatePickerActions = styled.div`
@@ -602,56 +675,6 @@ const RunPhoto = styled.img`
   border-radius: 8px;
   object-fit: cover;
   background: #f5f5f5;
-`;
-
-const SwitchRow = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  width: fit-content;
-  color: #050505;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-`;
-
-const Switch = styled.input`
-  appearance: none;
-  position: relative;
-  width: 42px;
-  height: 24px;
-  margin: 0;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #d9d9d9;
-  cursor: pointer;
-  transition: background 0.16s ease;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid #050505;
-    border-radius: 50%;
-    background: #ffffff;
-    transition: transform 0.16s ease;
-  }
-
-  &:checked {
-    background: #f47a4a;
-  }
-
-  &:checked::after {
-    transform: translateX(17px);
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
 `;
 
 const ActionRow = styled.div`
@@ -1058,7 +1081,6 @@ export default function GrowthDashboard() {
               copy: savedTemplate.copy,
               callToAction: savedTemplate.callToAction,
               photos: savedTemplate.photos,
-              enabled: savedTemplate.scheduleEnabled,
               schedule: savedTemplate.schedule,
             }
           : toDraft(settings)
@@ -1150,12 +1172,16 @@ export default function GrowthDashboard() {
     [locale],
   );
 
+  const performanceTemplateNames = useMemo(
+    () => new Map(templates.map((template) => [template.id, template.name])),
+    [templates],
+  );
+
   const performanceTemplateOptions = useMemo(() => {
-    const names = new Map(templates.map((template) => [template.id, template.name]));
     return [...new Set(performanceRuns.map((run) => run.templateId).filter(Boolean))]
-      .map((id) => ({ id, name: names.get(id) || id }))
+      .map((id) => ({ id, name: performanceTemplateNames.get(id) || id }))
       .sort((left, right) => left.name.localeCompare(right.name, locale));
-  }, [locale, performanceRuns, templates]);
+  }, [locale, performanceRuns, performanceTemplateNames]);
 
   const performancePoints = useMemo<PerformancePoint[]>(() =>
     performanceRuns
@@ -1165,14 +1191,18 @@ export default function GrowthDashboard() {
         if (!at) return null;
         const views = run.performance.impressions;
         return {
+          runId: run.id,
           at,
           views,
           ctr: views > 0 ? (run.performance.clicks / views) * 100 : 0,
+          clicks: run.performance.clicks,
+          templateName: performanceTemplateNames.get(run.templateId) || run.templateId || marketing.unknownTemplate,
+          postTitle: run.postTitle,
         };
       })
       .filter((point): point is PerformancePoint => !!point)
       .sort((left, right) => left.at.getTime() - right.at.getTime()),
-    [performanceRuns, selectedPerformanceTemplateId],
+    [marketing.unknownTemplate, performanceRuns, performanceTemplateNames, selectedPerformanceTemplateId],
   );
 
   const updateDraft = <Key extends keyof SettingsDraft>(
@@ -1201,7 +1231,6 @@ export default function GrowthDashboard() {
             copy: template.copy,
             callToAction: template.callToAction,
             photos: template.photos,
-            enabled: template.scheduleEnabled,
             schedule: template.schedule,
           }
         : { ...current, templateId: "" }
@@ -1212,6 +1241,7 @@ export default function GrowthDashboard() {
     setDraft({
       ...toDraft(DEFAULT_MARKETING_CRON_SETTINGS),
       destinationUrl: draft.destinationUrl || DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
+      schedule: { ...DEFAULT_MARKETING_CRON_SETTINGS.schedule, daysOfWeek: [] },
     });
     setTemplateName("");
     setAiBrief("");
@@ -1225,7 +1255,6 @@ export default function GrowthDashboard() {
       : [...draft.schedule.daysOfWeek, day].sort((a, b) => a - b);
     setDraft((current) => ({
       ...current,
-      enabled: next.length > 0 ? current.enabled : false,
       schedule: { ...current.schedule, daysOfWeek: next },
     }));
   };
@@ -1296,7 +1325,6 @@ export default function GrowthDashboard() {
       if (!draft.templateId) throw new Error("Select a template first.");
       await saveMarketingTemplateSchedule({
         templateId: draft.templateId,
-        scheduleEnabled: draft.enabled,
         schedule: draft.schedule,
       });
       setMessage({ text: marketing.settingsSaved });
@@ -1319,7 +1347,6 @@ export default function GrowthDashboard() {
         copy: draft.copy,
         callToAction: draft.callToAction,
         photos: draft.photos,
-        scheduleEnabled: draft.enabled,
         schedule: draft.schedule,
       });
       setTemplateName("");
@@ -1336,7 +1363,6 @@ export default function GrowthDashboard() {
           copy: saved.copy,
           callToAction: saved.callToAction,
           photos: saved.photos,
-          enabled: saved.scheduleEnabled,
           schedule: saved.schedule,
         }));
       }
@@ -1369,9 +1395,6 @@ export default function GrowthDashboard() {
         copy: generated.copy,
         callToAction: generated.callToAction,
         schedule: generated.schedule,
-        // A generated draft never activates a schedule until the admin explicitly
-        // turns the toggle on before saving it as a template.
-        enabled: false,
       }));
       setMessage({ text: marketing.aiDraftReady });
     } catch (error) {
@@ -1508,6 +1531,14 @@ export default function GrowthDashboard() {
             color="#f47a4a"
             emptyLabel={marketing.noPerformanceData}
             formatDate={(date) => performanceDateFormatter.format(date)}
+            formatDateTime={(date) => formatter.format(date)}
+            tooltipLabels={{
+              template: marketing.tooltipTemplate,
+              post: marketing.tooltipPost,
+              views: marketing.views,
+              clicks: marketing.clicks,
+              ctr: marketing.ctr,
+            }}
           />
           <TimeSeriesChart
             title={marketing.ctrTimeSeries}
@@ -1517,6 +1548,14 @@ export default function GrowthDashboard() {
             suffix="%"
             emptyLabel={marketing.noPerformanceData}
             formatDate={(date) => performanceDateFormatter.format(date)}
+            formatDateTime={(date) => formatter.format(date)}
+            tooltipLabels={{
+              template: marketing.tooltipTemplate,
+              post: marketing.tooltipPost,
+              views: marketing.views,
+              clicks: marketing.clicks,
+              ctr: marketing.ctr,
+            }}
           />
         </ChartGrid>
       </AnalyticsPanel>
@@ -1527,13 +1566,35 @@ export default function GrowthDashboard() {
             <FormTitle>{marketing.settingsTitle}</FormTitle>
             <Description>{marketing.settingsDescription}</Description>
           </div>
-          <ScheduleState $enabled={draft.enabled && scheduleHasDays}>
-            <CheckIcon width={14} /> {draft.enabled && scheduleHasDays ? marketing.enabled : marketing.scheduleDisabled}
+          <ScheduleState $enabled={scheduleHasDays}>
+            <CheckIcon width={14} /> {scheduleHasDays ? marketing.enabled : marketing.scheduleDisabled}
           </ScheduleState>
         </FormHeading>
 
         <form onSubmit={handleSave}>
           <FormGrid>
+            <AiTemplatePanel>
+              <div>
+                <PanelTitle>{marketing.aiTemplateBrief}</PanelTitle>
+                <PanelDescription>{marketing.aiTemplateDescription}</PanelDescription>
+              </div>
+              <TextArea
+                value={aiBrief}
+                maxLength={2000}
+                placeholder={marketing.aiTemplateBriefPlaceholder}
+                onChange={(event) => setAiBrief(event.target.value)}
+              />
+              <TemplatePickerActions>
+                <SmallButton
+                  type="button"
+                  disabled={generatingTemplate}
+                  onClick={() => void handleGenerateTemplate()}
+                >
+                  {generatingTemplate ? <ArrowPathIcon width={15} /> : <SparklesIcon width={15} />}
+                  {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
+                </SmallButton>
+              </TemplatePickerActions>
+            </AiTemplatePanel>
             <TemplatePicker>
               <PanelTitle>{marketing.templateEditorTitle}</PanelTitle>
               <PanelDescription>{marketing.templateEditorDescription}</PanelDescription>
@@ -1554,26 +1615,6 @@ export default function GrowthDashboard() {
               <TemplatePickerActions>
                 <SmallButton type="button" onClick={startNewTemplate}>
                   <PlusIcon width={15} /> {marketing.newTemplate}
-                </SmallButton>
-              </TemplatePickerActions>
-              <CompactField>
-                {marketing.aiTemplateBrief}
-                <TextArea
-                  value={aiBrief}
-                  maxLength={2000}
-                  placeholder={marketing.aiTemplateBriefPlaceholder}
-                  onChange={(event) => setAiBrief(event.target.value)}
-                />
-                <FieldHint>{marketing.aiTemplateDescription}</FieldHint>
-              </CompactField>
-              <TemplatePickerActions>
-                <SmallButton
-                  type="button"
-                  disabled={generatingTemplate}
-                  onClick={() => void handleGenerateTemplate()}
-                >
-                  {generatingTemplate ? <ArrowPathIcon width={15} /> : <SparklesIcon width={15} />}
-                  {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
                 </SmallButton>
               </TemplatePickerActions>
             </TemplatePicker>
@@ -1764,15 +1805,6 @@ export default function GrowthDashboard() {
           </FormGrid>
 
           <ActionRow>
-            <SwitchRow>
-              <Switch
-                type="checkbox"
-                checked={draft.enabled && scheduleHasDays}
-                disabled={!scheduleHasDays}
-                onChange={(event) => updateDraft("enabled", event.target.checked)}
-              />
-              {marketing.enabled}
-            </SwitchRow>
             <Button type="submit" disabled={saving || !canSaveSchedule}>
               {saving ? <ArrowPathIcon width={16} /> : <CheckIcon width={16} />}
               {saving ? marketing.savingSettings : marketing.saveSettings}

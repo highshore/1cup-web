@@ -232,8 +232,8 @@ const UsersList = styled.div`
 
 const UserCard = styled.div`
   display: flex;
-  justify-content: between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   padding: 16px;
   border: 1.5px solid #050505;
   border-radius: 10px;
@@ -251,6 +251,40 @@ const UserInfo = styled.div`
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
   gap: 16px;
   align-items: center;
+`;
+
+const CreditInspector = styled.div`
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(5, 5, 5, 0.15);
+  font-size: 12px;
+`;
+
+const CreditControls = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  input {
+    min-width: 0;
+    border: 1px solid #050505;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font: inherit;
+  }
+
+  button {
+    border: 1px solid #050505;
+    border-radius: 6px;
+    background: #fff;
+    padding: 6px 8px;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
 `;
 
 const UserName = styled.div`
@@ -683,6 +717,7 @@ interface UserData {
   account_status?: string;
   location: MembershipLocation;
   isPlaceholder?: boolean;
+  participationCreditBalance?: number;
 }
 
 interface FeedbackData {
@@ -794,6 +829,11 @@ export default function AdminClient({
   );
   const [membersTab, setMembersTab] = useState<"members" | "feedback" | "applicants">("members");
   const [extendingSubscriptions, setExtendingSubscriptions] = useState(false);
+  const [expandedCreditMemberId, setExpandedCreditMemberId] = useState<string | null>(null);
+  const [creditHistory, setCreditHistory] = useState<Record<string, Array<Record<string, any>>>>({});
+  const [creditAdjustmentAmount, setCreditAdjustmentAmount] = useState("1");
+  const [creditAdjustmentReason, setCreditAdjustmentReason] = useState("");
+  const [creditAdjusting, setCreditAdjusting] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeSubscriptions: 0,
@@ -891,11 +931,16 @@ export default function AdminClient({
 
   const fetchUsers = async (): Promise<UserData[]> => {
     try {
-      const { data, error } = await supabase
+      const [{ data, error }, { data: balances, error: balanceError }] = await Promise.all([
+        supabase
         .from("users")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }),
+        supabase.from("participation_credit_balances").select("user_id, balance"),
+      ]);
       if (error) throw error;
+      if (balanceError) throw balanceError;
+      const balanceByUser = new Map((balances || []).map((row: any) => [row.user_id, Number(row.balance || 0)]));
 
       return (data || [])
         .map((row: any) => ({
@@ -910,6 +955,7 @@ export default function AdminClient({
           account_status: row.account_status ?? undefined,
           location: (row.location === "yeouido" ? "yeouido" : "anam") as MembershipLocation,
           isPlaceholder: row.is_placeholder === true,
+          participationCreditBalance: balanceByUser.get(row.uid) ?? 0,
         }))
         .filter((user) => !user.isPlaceholder);
     } catch (error) {
@@ -1095,6 +1141,64 @@ export default function AdminClient({
 
   const handleArticleClick = (articleId: string) => {
     router.push(`/article/${articleId}`);
+  };
+
+  const loadCreditHistory = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("participation_credit_transactions")
+      .select("id, amount, type, meetup_id, metadata, created_at, meetups(title, date_time)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) {
+      window.alert(`참여권 내역을 불러오지 못했습니다. (${error.message})`);
+      return;
+    }
+    setCreditHistory((previous) => ({ ...previous, [userId]: data || [] }));
+  };
+
+  const toggleCreditHistory = async (userId: string) => {
+    if (expandedCreditMemberId === userId) {
+      setExpandedCreditMemberId(null);
+      return;
+    }
+    setExpandedCreditMemberId(userId);
+    if (creditHistory[userId]) return;
+    await loadCreditHistory(userId);
+  };
+
+  const adjustCredits = async (user: UserData) => {
+    const amount = Number.parseInt(creditAdjustmentAmount, 10);
+    if (!Number.isInteger(amount) || amount === 0) {
+      window.alert("0이 아닌 정수 조정 값을 입력하세요.");
+      return;
+    }
+    if (!creditAdjustmentReason.trim()) {
+      window.alert("조정 사유를 입력하세요.");
+      return;
+    }
+    setCreditAdjusting(true);
+    try {
+      const { data, error } = await supabase.rpc("adjust_participation_credits", {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_reason: creditAdjustmentReason.trim(),
+      });
+      if (error) throw error;
+      const balance = Number(data ?? 0);
+      setUsers((previous) => previous.map((item) => item.id === user.id
+        ? { ...item, participationCreditBalance: balance }
+        : item));
+      setCreditHistory((previous) => ({ ...previous, [user.id]: [] }));
+      setCreditAdjustmentReason("");
+      window.alert(`참여권 잔액이 ${balance}회로 조정되었습니다.`);
+      await loadCreditHistory(user.id);
+    } catch (adjustmentError) {
+      const message = adjustmentError instanceof Error ? adjustmentError.message : String(adjustmentError);
+      window.alert(`참여권 조정에 실패했습니다. (${message})`);
+    } finally {
+      setCreditAdjusting(false);
+    }
   };
 
   const handleArticleQueued = ({ articleId, title }: { articleId: string; title: string }) => {
@@ -1308,6 +1412,47 @@ export default function AdminClient({
 
                   <UserDate>{formatDate(user.createdAt)}</UserDate>
                 </UserInfo>
+                <CreditInspector>
+                  <strong>회차 참여권: {user.participationCreditBalance ?? 0}회</strong>
+                  <CreditControls>
+                    <button type="button" onClick={() => void toggleCreditHistory(user.id)}>
+                      {expandedCreditMemberId === user.id ? "내역 닫기" : "내역 보기"}
+                    </button>
+                    {expandedCreditMemberId === user.id && (
+                      <>
+                        <input
+                          value={creditAdjustmentAmount}
+                          onChange={(event) => setCreditAdjustmentAmount(event.target.value)}
+                          inputMode="numeric"
+                          aria-label="참여권 조정 수량"
+                          placeholder="예: +1 또는 -1"
+                        />
+                        <input
+                          value={creditAdjustmentReason}
+                          onChange={(event) => setCreditAdjustmentReason(event.target.value)}
+                          aria-label="참여권 조정 사유"
+                          placeholder="조정 사유"
+                        />
+                        <button type="button" onClick={() => void adjustCredits(user)} disabled={creditAdjusting}>
+                          {creditAdjusting ? "조정 중" : "조정 기록"}
+                        </button>
+                      </>
+                    )}
+                  </CreditControls>
+                  {expandedCreditMemberId === user.id && (creditHistory[user.id] || []).map((entry) => {
+                    const meetup = Array.isArray(entry.meetups) ? entry.meetups[0] : entry.meetups;
+                    const label = entry.type === "purchase"
+                      ? "참여권 구매"
+                      : entry.type === "registration"
+                        ? `${meetup?.title || "밋업"} 신청`
+                        : entry.type === "registration_refund"
+                          ? `${meetup?.title || "밋업"} 취소`
+                          : entry.type === "payment_refund"
+                            ? "참여권 구매 환불"
+                            : "관리자 조정";
+                    return <div key={entry.id}>{entry.amount > 0 ? `+${entry.amount}` : entry.amount} · {label} · {formatDateTime(entry.created_at)}</div>;
+                  })}
+                </CreditInspector>
               </UserCard>
             ))}
           </UsersList>
@@ -1568,16 +1713,6 @@ export default function AdminClient({
 
   return (
     <Wrapper>
-      {section !== "dashboard" && (
-        <Header>
-          <Title>
-            {section === "articles"
-              ? t.admin.articles.pageTitle
-              : t.admin.dashboard.sections[section].label}
-          </Title>
-        </Header>
-      )}
-
       {section === "dashboard" && renderDashboard()}
       {section === "members" && renderMembers()}
       {section === "articles" && renderArticles()}

@@ -34,8 +34,9 @@ export default function ConditionalLayoutWrapper({
   const isExamPreview = /^\/admin\/test-center\/exams\/[^/]+\/preview$/.test(
     pathname,
   );
+  const isExamPipeline = /^\/admin\/test-center(?:\/.*)?$/.test(pathname);
 
-  const shouldUseMainLayout = !authPages.includes(pathname) && !isExamPreview;
+  const shouldUseMainLayout = !authPages.includes(pathname) && !isExamPreview && !isExamPipeline;
 
   return (
     <I18nProvider>

@@ -10,8 +10,6 @@ import {
 } from "../../lib/features/meetup/types/meetup_types";
 import {
   subscribeToEvent,
-  joinEventAsRole,
-  cancelParticipation,
   fetchArticlesByIds,
   removeParticipant,
   changeUserRole,
@@ -25,7 +23,13 @@ import {
   formatEventTitleWithCountdown,
 } from "../../lib/features/meetup/utils/meetup_helpers";
 import { UserAvatar } from "../../lib/features/meetup/components/user_avatar";
-import { hasActiveSubscription } from "../../lib/features/meetup/services/user_service";
+import {
+  cancelMeetupRegistration,
+  getMeetupCancellationQuote,
+  getMeetupEntitlement,
+  MeetupEntitlement,
+  registerForMeetup,
+} from "../../lib/features/meetup/services/participation_service";
 import { useAuth } from "../../lib/contexts/auth_context";
 import AdminEventDialog from "../../lib/features/meetup/components/admin_event_dialog";
 import {
@@ -1445,7 +1449,7 @@ export function EventDetailClient() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, accountStatus, isGdgMember } = useAuth();
+  const { currentUser, accountStatus, isGdgMember, hasActiveSubscription } = useAuth();
   const [event, setEvent] = useState<MeetupEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1469,10 +1473,9 @@ export function EventDetailClient() {
   const [showParticipationSuccessDialog, setShowParticipationSuccessDialog] =
     useState(false);
   const [articleTopics, setArticleTopics] = useState<Article[]>([]);
-  const [userHasSubscription, setUserHasSubscription] = useState<
-    boolean | null
-  >(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [meetupEntitlement, setMeetupEntitlement] = useState<MeetupEntitlement | null>(null);
+  const [entitlementLoading, setEntitlementLoading] = useState(true);
+  const [latestCreditBalance, setLatestCreditBalance] = useState<number | null>(null);
 
   // Admin action dialogs state
   const [showAdminActionDialog, setShowAdminActionDialog] = useState(false);
@@ -1761,37 +1764,31 @@ export function EventDetailClient() {
 
   // useEffect hooks
   useEffect(() => {
-    const checkSubscriptionStatus = async () => {
+    const loadMeetupEntitlement = async () => {
       if (!currentUser) {
-        setUserHasSubscription(null);
-        setSubscriptionLoading(false);
+        setMeetupEntitlement(null);
+        setEntitlementLoading(false);
         return;
       }
-
-      // Exempt admin/leader/GDG users from needing a subscription
-      if (
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true
-      ) {
-        setUserHasSubscription(true);
-        setSubscriptionLoading(false);
-        return;
-      }
-
       try {
-        const hasSubscription = await hasActiveSubscription(currentUser.uid);
-        setUserHasSubscription(hasSubscription);
+        const entitlement = await getMeetupEntitlement({
+          // This flag remains a real recurring membership signal. Credits are
+          // evaluated independently and never leak into subscription-only UI.
+          hasActiveSubscription: hasActiveSubscription === true,
+          isComplimentary:
+            accountStatus === "admin" || accountStatus === "leader" || isGdgMember === true,
+        });
+        setMeetupEntitlement(entitlement);
       } catch (error) {
-        console.error("Error checking subscription status:", error);
-        setUserHasSubscription(false);
+        console.error("Error checking meetup entitlement:", error);
+        setMeetupEntitlement({ canJoin: false, source: "none", creditBalance: 0 });
       } finally {
-        setSubscriptionLoading(false);
+        setEntitlementLoading(false);
       }
     };
 
-    checkSubscriptionStatus();
-  }, [currentUser, accountStatus, isGdgMember]);
+    void loadMeetupEntitlement();
+  }, [currentUser, accountStatus, hasActiveSubscription, isGdgMember]);
 
   useEffect(() => {
     if (!eventId) {
@@ -1962,6 +1959,29 @@ export function EventDetailClient() {
     router.push("/meetup");
   };
 
+  const reflectRegistration = (role: "leader" | "participant") => {
+    if (!currentUser) return;
+    setEvent((previous) => {
+      if (!previous) return previous;
+      const participants = previous.participants.filter((uid) => uid !== currentUser.uid);
+      const leaders = previous.leaders.filter((uid) => uid !== currentUser.uid);
+      if (role === "leader") leaders.push(currentUser.uid);
+      else participants.push(currentUser.uid);
+      return { ...previous, participants, leaders };
+    });
+  };
+
+  const reflectCancellation = () => {
+    if (!currentUser) return;
+    setEvent((previous) => previous
+      ? {
+        ...previous,
+        participants: previous.participants.filter((uid) => uid !== currentUser.uid),
+        leaders: previous.leaders.filter((uid) => uid !== currentUser.uid),
+      }
+      : previous);
+  };
+
   const handleJoin = async () => {
     if (!currentUser) {
       localStorage.setItem("returnUrl", pathname);
@@ -1975,20 +1995,32 @@ export function EventDetailClient() {
     }
 
     if (isCurrentUserParticipant) {
-      // Check if event is locked down - prevent cancellation after lockdown
-      const lockStatus = isEventLocked(event);
-      if (lockStatus.isLocked && lockStatus.reason === "lockdown") {
-        alert("모집 마감 시간이 지나 더 이상 참가를 취소할 수 없습니다.");
-        return;
-      }
-      if (lockStatus.isLocked && lockStatus.reason === "started") {
-        alert("이미 시작된 모임의 참가를 취소할 수 없습니다.");
-        return;
-      }
-
       try {
-        await cancelParticipation(event.id, currentUser.uid);
-        alert("밋업 참가가 취소되었습니다.");
+        const quote = await getMeetupCancellationQuote(event.id);
+        if (!quote.cancellation_allowed) {
+          alert("모집 마감 시간이 지나 더 이상 참가를 취소할 수 없습니다.");
+          return;
+        }
+        const quoteText = quote.credit_will_be_refunded
+          ? "지금 취소하면 참여권 1회가 반환됩니다."
+          : quote.access_type === "credit"
+            ? "밋업 시작 24시간 이내이므로 참여권은 반환되지 않습니다."
+            : "참가 신청을 취소하시겠습니까?";
+        if (!window.confirm(quoteText)) return;
+        const result = await cancelMeetupRegistration(event.id);
+        setLatestCreditBalance(result.credit_balance);
+        setMeetupEntitlement((previous) => previous
+          ? {
+            ...previous,
+            creditBalance: result.credit_balance,
+            canJoin: previous.source !== "none" || result.credit_balance > 0,
+            source: previous.source === "none" && result.credit_balance > 0 ? "credit" : previous.source,
+          }
+          : previous);
+        reflectCancellation();
+        alert(result.credit_refunded
+          ? `밋업 참가가 취소되었고 참여권 1회가 반환되었습니다. 잔여 참여권: ${result.credit_balance}회`
+          : "밋업 참가가 취소되었습니다.");
       } catch (err) {
         const message =
           err instanceof Error
@@ -1997,33 +2029,18 @@ export function EventDetailClient() {
         alert(`오류: 참가 취소에 실패했습니다. (${message})`);
       }
     } else {
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-
-      if (!isExempt) {
-        try {
-          const userHasActiveSubscription = await hasActiveSubscription(
-            currentUser.uid
-          );
-          if (!userHasActiveSubscription) {
-            setShowSubscriptionDialog(true);
-            return;
-          }
-        } catch (err) {
-          alert(
-            "구독 상태를 확인하는 중 오류가 발생했습니다. 다시 시도해주세요."
-          );
-          return;
-        }
+      if (!meetupEntitlement?.canJoin) {
+        setShowSubscriptionDialog(true);
+        return;
       }
 
       if (accountStatus === "admin" || accountStatus === "leader") {
         setShowRoleChoiceDialog(true);
       } else {
         try {
-          await joinEventAsRole(event.id, currentUser.uid, "participant");
+          const result = await registerForMeetup(event.id, "participant");
+          setLatestCreditBalance(result.credit_balance);
+          reflectRegistration("participant");
           setShowParticipationSuccessDialog(true);
         } catch (err) {
           const message =
@@ -2043,27 +2060,15 @@ export function EventDetailClient() {
       return;
     }
 
-    try {
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-      if (!isExempt) {
-        const userHasActiveSubscription = await hasActiveSubscription(
-          currentUser.uid
-        );
-        if (!userHasActiveSubscription) {
-          setShowSubscriptionDialog(true);
-          return;
-        }
-      }
-    } catch (err) {
-      alert("구독 상태를 확인하는 중 오류가 발생했습니다. 다시 시도해주세요.");
+    if (!meetupEntitlement?.canJoin && role !== "leader") {
+      setShowSubscriptionDialog(true);
       return;
     }
 
     try {
-      await joinEventAsRole(event.id, currentUser.uid, role);
+      const result = await registerForMeetup(event.id, role);
+      setLatestCreditBalance(result.credit_balance);
+      reflectRegistration(role);
       setShowParticipationSuccessDialog(true);
     } catch (err) {
       const message =
@@ -2414,12 +2419,7 @@ export function EventDetailClient() {
       return;
     }
 
-    const isExempt =
-      accountStatus === "admin" ||
-      accountStatus === "leader" ||
-      isGdgMember === true;
-
-    if (userHasSubscription === false && !isExempt) {
+    if (!isCurrentUserParticipant && !meetupEntitlement?.canJoin) {
       setShowSubscriptionDialog(true);
       return;
     }
@@ -2569,7 +2569,7 @@ export function EventDetailClient() {
   }, [activeId, seatingAssignments]);
 
   // Loading state
-  if (loading || (currentUser && subscriptionLoading)) {
+  if (loading || (currentUser && entitlementLoading)) {
     return <GlobalLoadingScreen />;
   }
 
@@ -2644,12 +2644,8 @@ export function EventDetailClient() {
       if (!currentUser) {
         return "로그인하고 참가하기";
       }
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-      if (userHasSubscription === false && !isExempt) {
-        return "구독하고 참가하기";
+      if (!meetupEntitlement?.canJoin) {
+        return "멤버십/참여권 보기";
       }
       return isCurrentUserParticipant ? "취소" : "참가 신청하기";
     }
@@ -2825,7 +2821,6 @@ export function EventDetailClient() {
             </div>
           )}
         </ParticipantsGrid>
-
         <SectionTitle>운영진 및 리더</SectionTitle>
         <ParticipantsGrid>
           {Array.from(
@@ -2894,6 +2889,18 @@ export function EventDetailClient() {
               </TopicCard>
             ))}
           </TopicsSection>
+        )}
+
+        {currentUser && !isCurrentUserParticipant && (
+          <div style={{ margin: "0.75rem 0", fontSize: "0.9rem", fontWeight: 700, color: "#333" }}>
+            {meetupEntitlement?.source === "subscription"
+              ? "멤버십으로 참여할 수 있습니다."
+              : meetupEntitlement?.source === "credit"
+                ? `참여권 ${meetupEntitlement.creditBalance}회 보유 · 이번 신청에 1회가 사용됩니다.`
+                : meetupEntitlement?.source === "complimentary"
+                  ? "운영 권한으로 참여할 수 있습니다."
+                  : "이 밋업에 참여하려면 멤버십 또는 참여권이 필요합니다."}
+          </div>
         )}
 
         <ActionButtonSlot ref={actionButtonRef}>
@@ -3150,9 +3157,9 @@ export function EventDetailClient() {
       {showSubscriptionDialog && (
         <DialogOverlay onClick={() => setShowSubscriptionDialog(false)}>
           <DialogBox onClick={(e) => e.stopPropagation()}>
-            <h3>구독이 필요합니다</h3>
-            <p>밋업에 참가하시려면 활성화된 구독이 필요합니다.</p>
-            <p>결제 페이지에서 구독을 시작하시겠습니까?</p>
+            <h3>이용권이 필요합니다</h3>
+            <p>밋업에 참가하시려면 활성화된 멤버십 또는 참여권이 필요합니다.</p>
+            <p>결제 페이지에서 멤버십 또는 참여권을 선택하시겠습니까?</p>
             <DialogButton $primary onClick={handleGoToPayment}>
               결제 페이지로 이동
             </DialogButton>
@@ -3174,6 +3181,11 @@ export function EventDetailClient() {
             </SuccessTitle>
             <SuccessContent>
               <p>밋업 참가 신청이 성공적으로 완료되었습니다.</p>
+              {latestCreditBalance !== null && meetupEntitlement?.source === "credit" && (
+                <p style={{ color: "#2e7d32", fontWeight: 700 }}>
+                  잔여 참여권: {latestCreditBalance}회
+                </p>
+              )}
               <p>
                 궁금한 점이 있으시면 언제든지{" "}
                 <KakaoLink

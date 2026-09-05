@@ -68,7 +68,8 @@ export const fetchUpcomingMeetupEventsServer = async (): Promise<
       supabase
         .from("meetup_participants")
         .select("meetup_id, user_id, role")
-        .in("meetup_id", ids),
+        .in("meetup_id", ids)
+        .eq("registration_status", "registered"),
       supabase
         .from("meetup_articles")
         .select("meetup_id, article_id")

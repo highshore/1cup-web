@@ -57,3 +57,13 @@
 - 브라우저용 Supabase base URL을 변경할 때 기존 Supabase auth cookie/storage key를 유지하세요. 그렇지 않으면 브라우저와 서버가 서로 다른 병렬 세션을 조용히 만들 수 있습니다.
 - 향후 브라우저 Supabase 트래픽을 Vercel로 프록시한다면 `/rest/v1/*`, `/auth/v1/*`, `/functions/v1/*`, `/storage/v1/*`, `/realtime/v1/*`, `/graphql/v1/*` 같은 Supabase 서비스 namespace만 프록시하세요. `/:path*` blanket rewrite는 실제 Next.js 라우트를 삼키고 404/향후 라우트 동작을 모호하게 만들 수 있으므로 사용하지 마세요.
 - first-party Supabase proxy를 쓰더라도 provider callback 자체가 raw `*.supabase.co` 호스트를 절대 거치지 않는 것이 보장되지 않는 한, Kakao OAuth는 전용 first-party callback 경로를 유지하세요.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

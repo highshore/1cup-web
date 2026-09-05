@@ -368,7 +368,8 @@ async function handleMeetupReminder(
   const { data: parts } = await db
     .from("meetup_participants")
     .select("user_id, role, users:user_id (uid, phone)")
-    .eq("meetup_id", eventId);
+    .eq("meetup_id", eventId)
+    .eq("registration_status", "registered");
 
   // PostgREST returns an embedded to-one relationship as an object while the client
   // types it as an array, so this asserted one shape and the checker rejected it. Accept

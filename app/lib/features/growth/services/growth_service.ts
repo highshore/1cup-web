@@ -228,7 +228,6 @@ export const subscribeToMarketingTemplates = (
 
 export const saveMarketingTemplateSchedule = async (settings: {
   templateId: string;
-  scheduleEnabled: boolean;
   schedule: MarketingCronSchedule;
 }): Promise<void> => {
   await invokeFunction("marketing", { action: "save-template-schedule", settings });
@@ -241,7 +240,6 @@ export const createMarketingTemplate = async (template: {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
-  scheduleEnabled: boolean;
   schedule: MarketingCronSchedule;
 }): Promise<string> => {
   const result = await invokeFunction<{ templateId: string }>("marketing", {

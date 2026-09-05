@@ -1006,13 +1006,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (action === "save-template-schedule") {
       const s = (body.settings ?? {}) as Record<string, unknown>;
-      if (typeof s.scheduleEnabled !== "boolean") {
-        throw new Error("scheduleEnabled must be a boolean.");
-      }
       const templateId = validTemplateId(s.templateId);
       const schedule = validSchedule(s.schedule);
-      const isScheduled = schedule.daysOfWeek.length > 0;
-      const scheduleEnabled = s.scheduleEnabled && isScheduled;
+      const scheduleEnabled = schedule.daysOfWeek.length > 0;
       const nextRunAt = scheduleEnabled
         ? nextScheduledAt(schedule, Date.now()).toISOString()
         : null;
@@ -1035,7 +1031,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const templateId = crypto.randomUUID();
       const now = new Date().toISOString();
       const schedule = validSchedule(t.schedule);
-      const scheduleEnabled = t.scheduleEnabled === true && schedule.daysOfWeek.length > 0;
+      const scheduleEnabled = schedule.daysOfWeek.length > 0;
       const { error } = await a.from("marketing_templates").insert({
         id: templateId,
         name: textField(t.name, "Template name", 120),

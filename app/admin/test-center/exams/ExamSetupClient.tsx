@@ -3,130 +3,265 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckIcon, PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import styled from "styled-components";
 
 import { useAuth } from "../../../lib/contexts/auth_context";
 import { loadExamCenter, postExamAction } from "../../../lib/features/exam/services/exam_admin_client";
-import type { ExamCenterOverview, ExamInterviewer } from "../../../lib/features/exam/types";
+import type { ExamCenterOverview, ExamInterviewer, ExamSetSummary } from "../../../lib/features/exam/types";
 import { useI18n } from "../../../lib/i18n/I18nProvider";
-import { Button, Card, ExamAvatar, ExamHeader, ExamPage, Eyebrow, Loading, Notice, PageLead, PageTitle } from "../exam_ui";
+import {
+  Button,
+  ExamAvatar,
+  ExamContent,
+  ExamPage,
+  ExamPipelineTopbar,
+  Loading,
+  Notice,
+  PipelineEyebrow,
+  PipelineLead,
+  PipelinePeriod,
+  PipelineTitle,
+  SetStatusPill,
+} from "../exam_ui";
 
-const Steps = styled.ol`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-  margin: 0 0 24px;
-  padding: 0;
-  list-style: none;
-`;
-
-const Step = styled.li<{ $active: boolean; $complete: boolean }>`
+const Heading = styled.header`
   display: flex;
-  align-items: center;
-  gap: 8px;
-  border-top: 3px solid ${({ $active, $complete }) => $active || $complete ? "#050505" : "rgba(5,5,5,.2)"};
-  padding-top: 9px;
-  color: ${({ $active }) => $active ? "#050505" : "rgba(5,5,5,.53)"};
-  font-size: 12px;
-  font-weight: 850;
-  span { display: grid; width: 22px; height: 22px; place-items: center; border: 1.5px solid #050505; border-radius: 50%; background: ${({ $complete }) => $complete ? "#f47a4a" : "#fff"}; font-size: 10px; }
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 860px;
+  border-bottom: 1px solid #e2d9d4;
+  padding-bottom: 32px;
+
+  @media (max-width: 650px) { align-items: flex-start; flex-direction: column; }
 `;
 
-const SetupCard = styled(Card)`
-  padding: clamp(18px, 4vw, 32px);
-`;
-
-const Picker = styled.div`
+const ResumeCard = styled.section`
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 11px;
-  margin-top: 20px;
-  @media (max-width: 780px) { grid-template-columns: 1fr; }
+  max-width: 760px;
+  margin-top: 28px;
+  border: 1px solid #e3d5ce;
+  padding: 28px;
+  background: #fffdfb;
+
+  h2 { margin: 8px 0 0; color: #382219; font-family: Georgia, "Times New Roman", serif; font-size: clamp(28px, 3vw, 40px); font-weight: 500; letter-spacing: -.05em; line-height: 1; }
+  > p { max-width: 610px; margin: 12px 0 0; color: #77665d; font-size: 13px; line-height: 1.55; }
 `;
 
-const PersonButton = styled.button<{ $selected?: boolean }>`
+const SetList = styled.div`
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
+  margin-top: 22px;
+  border-top: 1px solid #e5d9d3;
+`;
+
+const SetRow = styled.button<{ $selected: boolean }>`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  gap: 10px;
-  border: 2px solid #050505;
-  border-radius: 11px;
-  padding: 9px;
-  background: ${({ $selected }) => $selected ? "#fff0b9" : "#fff"};
-  box-shadow: ${({ $selected }) => $selected ? "3px 3px 0 #f47a4a" : "none"};
-  color: #050505;
+  border: 0;
+  border-bottom: 1px solid #e5d9d3;
+  padding: 13px 0;
+  background: transparent;
+  color: #3f281e;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  strong { display: block; font-size: 13px; font-weight: 900; }
-  span { display: block; margin-top: 3px; color: rgba(5,5,5,.64); font-size: 11px; font-weight: 650; line-height: 1.42; }
+
+  strong, small { display: block; }
+  strong { font-size: 13px; font-weight: 800; }
+  small { margin-top: 4px; color: #826f65; font-size: 11px; line-height: 1.4; }
+  &::before { grid-column: 1; display: none; }
+  ${({ $selected }) => $selected && "background: #fff5f0; margin-inline: -10px; padding-inline: 10px;"}
 `;
 
-const Fields = styled.div`
+const ResumeActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+`;
+
+const BuilderGrid = styled.div`
   display: grid;
-  gap: 16px;
-  margin-top: 21px;
+  grid-template-columns: minmax(0, 1fr) 282px;
+  gap: 30px;
+  max-width: 1120px;
+  margin-top: 30px;
+
+  @media (max-width: 900px) { grid-template-columns: 1fr; }
+`;
+
+const FormCard = styled.form`
+  border: 1px solid #e3d7d1;
+  padding: clamp(19px, 3vw, 30px);
+  background: #fff;
 `;
 
 const Label = styled.label`
   display: grid;
-  gap: 7px;
-  color: #050505;
+  gap: 8px;
+  color: #4b3025;
   font-size: 12px;
-  font-weight: 850;
-  span { color: rgba(5,5,5,.56); font-size: 11px; font-weight: 650; }
+  font-weight: 800;
 `;
 
 const Input = styled.input`
   width: 100%;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 9px;
-  padding: 11px;
-  outline: none;
-  color: #050505;
+  min-height: 43px;
+  border: 1px solid #d9cac2;
+  padding: 10px 11px;
+  background: #fffdfb;
+  color: #362118;
   font: inherit;
   font-size: 14px;
-  &:focus { box-shadow: 3px 3px 0 #f47a4a; }
+  outline: none;
+
+  &:focus { border-color: #e57950; box-shadow: 0 0 0 3px #fff0eb; }
 `;
 
 const Textarea = styled.textarea`
   width: 100%;
-  min-height: 104px;
-  box-sizing: border-box;
+  min-height: 112px;
   resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 9px;
+  border: 1px solid #d9cac2;
   padding: 11px;
-  outline: none;
-  color: #050505;
+  background: #fffdfb;
+  color: #362118;
   font: inherit;
-  font-size: 14px;
-  line-height: 1.52;
-  &:focus { box-shadow: 3px 3px 0 #f47a4a; }
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+
+  &:focus { border-color: #e57950; box-shadow: 0 0 0 3px #fff0eb; }
 `;
 
-const ActionRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 23px;
-`;
-
-const Summary = styled.div`
+const ResponseSummary = styled.div`
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  gap: 14px;
+  gap: 3px;
+  margin-top: 15px;
+  border-left: 3px solid #f47a4a;
+  padding: 8px 10px;
+  background: #fff8f4;
+  strong { color: #4b2c20; font-size: 12px; font-weight: 800; }
+  span { color: #806d63; font-size: 11px; line-height: 1.42; }
+`;
+
+const ThemeHeader = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 28px;
+  border-top: 1px solid #eadfd9;
+  padding-top: 22px;
+
+  strong { display: block; color: #41281d; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 500; letter-spacing: -.04em; }
+  p { max-width: 470px; margin: 6px 0 0; color: #7b6a61; font-size: 11px; line-height: 1.5; }
+  @media (max-width: 620px) { align-items: flex-start; flex-direction: column; }
+`;
+
+const ThemeGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+
+  @media (max-width: 650px) { grid-template-columns: 1fr; }
+`;
+
+const FieldKicker = styled.span`
+  color: #b54a29;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+`;
+
+const GenerateRow = styled.div`
+  display: flex;
   align-items: center;
-  margin: 20px 0 2px;
-  border: 1.5px solid #050505;
-  border-radius: 11px;
-  padding: 11px;
-  background: #fff8dc;
-  strong { display: block; font-size: 14px; font-weight: 900; }
-  p { margin: 4px 0 0; color: rgba(5,5,5,.64); font-size: 11px; font-weight: 650; line-height: 1.48; }
+  gap: 16px;
+  margin-top: 24px;
+  border-top: 1px solid #eadfd9;
+  padding-top: 20px;
+  small { max-width: 360px; color: #806e65; font-size: 10px; line-height: 1.5; }
+
+  @media (max-width: 560px) { align-items: stretch; flex-direction: column; }
+`;
+
+const InterviewerCard = styled.aside`
+  position: sticky;
+  top: 22px;
+  align-self: start;
+  border: 1px solid #e3d7d1;
+  padding: 15px;
+  background: #fff;
+
+  @media (max-width: 900px) { position: static; }
+`;
+
+const Portrait = styled.div`
+  margin-top: 12px;
+  border: 1px solid #eaded8;
+  > div { width: 100%; }
+`;
+
+const InterviewerName = styled.h2`
+  margin: 14px 0 0;
+  color: #352019;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -.045em;
+`;
+
+const InterviewerMeta = styled.p`
+  margin: 5px 0 0;
+  color: #806e65;
+  font-size: 11px;
+  line-height: 1.45;
+`;
+
+const PickerLabel = styled.label`
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  color: #554036;
+  font-size: 11px;
+  font-weight: 800;
+`;
+
+const Picker = styled.select`
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #d9cac2;
+  padding: 8px 9px;
+  background: #fffdfb;
+  color: #3b241a;
+  font: inherit;
+  font-size: 11px;
+`;
+
+const Facts = styled.dl`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 17px 0 0;
+  border-top: 1px solid #eadfd9;
+  border-left: 1px solid #eadfd9;
+  div { border-right: 1px solid #eadfd9; border-bottom: 1px solid #eadfd9; padding: 9px; }
+  dt { color: #8b786e; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 8px; letter-spacing: .06em; text-transform: uppercase; }
+  dd { margin: 5px 0 0; color: #513429; font-size: 10px; line-height: 1.35; }
+`;
+
+const NoInterviewer = styled.div`
+  margin-top: 13px;
+  border: 1px dashed #dfcec5;
+  padding: 18px 14px;
+  background: #fffaf7;
+  strong { display: block; color: #4a2c21; font-size: 12px; }
+  p { margin: 7px 0 0; color: #806e65; font-size: 11px; line-height: 1.5; }
 `;
 
 export default function ExamSetupClient({ initialInterviewerId }: { initialInterviewerId: string }) {
@@ -134,58 +269,119 @@ export default function ExamSetupClient({ initialInterviewerId }: { initialInter
   const { currentUser, accountStatus, isLoading } = useAuth();
   const { t } = useI18n();
   const [workspace, setWorkspace] = useState<ExamCenterOverview | null>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [mode, setMode] = useState<"resume" | "editing">(initialInterviewerId ? "editing" : "resume");
+  const [resumeId, setResumeId] = useState("");
   const [interviewerId, setInterviewerId] = useState(initialInterviewerId);
-  const [title, setTitle] = useState("Speaking practice set");
+  const [title, setTitle] = useState("");
   const [listenRepeatTheme, setListenRepeatTheme] = useState("");
   const [interviewTheme, setInterviewTheme] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{ error?: boolean; text: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    try { setWorkspace(await loadExamCenter()); } catch (cause) { setNotice({ error: true, text: cause instanceof Error ? cause.message : "Could not load approved interviewers." }); }
-  }, []);
+    try { setWorkspace(await loadExamCenter()); }
+    catch (cause) { setNotice({ error: true, text: cause instanceof Error ? cause.message : t.examCenter.workspaceLoadFailed }); }
+  }, [t.examCenter.workspaceLoadFailed]);
 
   useEffect(() => { if (!isLoading && (!currentUser || accountStatus !== "admin")) router.replace("/"); }, [accountStatus, currentUser, isLoading, router]);
   useEffect(() => { if (currentUser && accountStatus === "admin") void refresh(); }, [accountStatus, currentUser, refresh]);
 
   const interviewers = useMemo(() => workspace?.interviewers.filter((person) => person.status === "approved") ?? [], [workspace?.interviewers]);
   const selected = interviewers.find((person) => person.id === interviewerId) ?? null;
-  useEffect(() => { if (!interviewerId && interviewers[0]) setInterviewerId(interviewers[0].id); }, [interviewerId, interviewers]);
+  const resumeSet = workspace?.sets.find((set) => set.id === resumeId) ?? workspace?.sets[0] ?? null;
 
-  function goToBriefs() {
-    if (!selected || title.trim().length < 2) { setNotice({ error: true, text: "Choose a hired interviewer and enter an exam title first." }); return; }
+  useEffect(() => {
+    if (!interviewerId && interviewers[0]) setInterviewerId(interviewers[0].id);
+  }, [interviewerId, interviewers]);
+
+  useEffect(() => {
+    if (!resumeId && workspace?.sets[0]) setResumeId(workspace.sets[0].id);
+  }, [resumeId, workspace?.sets]);
+
+  async function suggestThemes() {
+    if (!selected || suggesting || submitting) return;
+    setSuggesting(true);
     setNotice(null);
-    setStep(2);
+    try {
+      const result = await postExamAction<{ themes: { listenRepeatTheme: string; interviewTheme: string } }>("suggest-set-briefs", { title, interviewerId: selected.id });
+      setListenRepeatTheme(result.themes.listenRepeatTheme);
+      setInterviewTheme(result.themes.interviewTheme);
+      setNotice({ text: t.examCenter.briefSuggestionsApplied });
+    } catch (cause) {
+      setNotice({ error: true, text: cause instanceof Error ? cause.message : t.examCenter.briefSuggestionsFailed });
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   async function createSet(event: FormEvent) {
     event.preventDefault();
     if (!selected) return;
-    setSubmitting(true); setNotice(null);
+    setSubmitting(true);
+    setNotice(null);
     try {
       const result = await postExamAction<{ set: { id: string } }>("create-set", { title, interviewerId: selected.id, listenRepeatTheme, interviewTheme });
       router.push(`/admin/test-center/exams/${result.set.id}`);
-    } catch (cause) { setNotice({ error: true, text: cause instanceof Error ? cause.message : "Could not create the exam set." }); } finally { setSubmitting(false); }
+    } catch (cause) {
+      setNotice({ error: true, text: cause instanceof Error ? cause.message : t.examCenter.workspaceUpdateFailed });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  if (isLoading || !workspace) return <ExamPage><Loading>{notice?.text || t.examCenter.loadingSetup}</Loading></ExamPage>;
+  const showResume = mode === "resume" && Boolean(workspace?.sets.length) && !initialInterviewerId;
 
   return <ExamPage>
-    <ExamHeader><div><Eyebrow>{t.examCenter.adminSetup}</Eyebrow><PageTitle>{t.examCenter.createTitle}</PageTitle><PageLead>{t.examCenter.createLead}</PageLead></div><Button as={Link} href="/admin/test-center" $tone="cream"><ArrowLeftIcon />{t.examCenter.roster}</Button></ExamHeader>
-    <Steps aria-label={t.examCenter.setupProgress}><Step $active={step === 1} $complete={step === 2}><span>{step === 2 ? <CheckIcon /> : "1"}</span>{t.examCenter.chooseInterviewer}</Step><Step $active={step === 2} $complete={false}><span>2</span>{t.examCenter.shapeExam}</Step></Steps>
-    {notice && <Notice $error={notice.error}>{notice.text}</Notice>}
-    {step === 1 ? <SetupCard>
-      <Eyebrow>{t.examCenter.stepOne}</Eyebrow><h2 style={{ margin: 0, fontSize: 23, fontWeight: 900, letterSpacing: "-0.04em" }}>{t.examCenter.chooseInterviewer}</h2><p style={{ maxWidth: 610, margin: "9px 0 0", color: "rgba(5,5,5,.65)", fontSize: 13, lineHeight: 1.58 }}>Only hired profiles can anchor an exam. The browser preview keeps the chosen person visually consistent throughout item inspection and the timed run.</p>
-      <Fields><Label>{t.examCenter.examTitle}<Input value={title} maxLength={140} onChange={(event) => setTitle(event.target.value)} /></Label></Fields>
-      <Picker>{interviewers.map((person: ExamInterviewer) => <PersonButton key={person.id} $selected={selected?.id === person.id} onClick={() => setInterviewerId(person.id)}><ExamAvatar interviewer={person} /><div><strong>{person.name}</strong><span>{person.occupation} · {person.personality} · {person.voice_tone} voice</span></div></PersonButton>)}</Picker>
-      {!interviewers.length && <Notice $error>No hired interviewer is available yet. Return to the roster and hire a reviewed profile.</Notice>}
-      <ActionRow><span /><Button disabled={!selected} onClick={goToBriefs}>{t.examCenter.continueStepTwo}<ArrowRightIcon /></Button></ActionRow>
-    </SetupCard> : <SetupCard as="form" onSubmit={createSet}>
-      <Eyebrow>{t.examCenter.stepTwo}</Eyebrow><h2 style={{ margin: 0, fontSize: 23, fontWeight: 900, letterSpacing: "-0.04em" }}>{t.examCenter.shapeExam}</h2><p style={{ maxWidth: 630, margin: "9px 0 0", color: "rgba(5,5,5,.65)", fontSize: 13, lineHeight: 1.58 }}>The first brief supplies the seven Listen and Repeat prompts. The second supplies four interviewer questions. You can inspect every generated draft item before publishing.</p>
-      {selected && <Summary><ExamAvatar interviewer={selected} /><div><strong>{selected.name} will lead this exam</strong><p>{title || "Untitled exam"} · {selected.occupation} · {selected.voice_tone} voice profile</p></div></Summary>}
-      <Fields><Label>Listen and Repeat brief<span>Use a neutral, concrete setting rather than a learner question.</span><Textarea required minLength={6} value={listenRepeatTheme} onChange={(event) => setListenRepeatTheme(event.target.value)} placeholder="e.g. short updates about a community garden harvest schedule" /></Label><Label>Take an Interview brief<span>Choose a personal-experience theme for the four open answers.</span><Textarea required minLength={6} value={interviewTheme} onChange={(event) => setInterviewTheme(event.target.value)} placeholder="e.g. meaningful childhood objects and a sense of home" /></Label></Fields>
-      <ActionRow><Button type="button" $tone="cream" onClick={() => setStep(1)}><ArrowLeftIcon />{t.examCenter.back}</Button><Button type="submit" disabled={submitting}>{submitting ? t.examCenter.buildingDraft : t.examCenter.buildDraft}<SparklesIcon /></Button></ActionRow>
-    </SetupCard>}
+    <ExamPipelineTopbar current="sets" actionHref="/admin/test-center" actionLabel={t.examCenter.roster} />
+    <ExamContent>
+      {isLoading || !workspace ? <Loading>{notice?.text || t.examCenter.loadingSetup}</Loading> : <>
+        <Heading>
+          <div><PipelineEyebrow>{t.examCenter.stepOneOfTwo}</PipelineEyebrow><PipelineTitle>{t.examCenter.setupExamSet}<PipelinePeriod>.</PipelinePeriod></PipelineTitle><PipelineLead>{t.examCenter.setupExamSetLead}</PipelineLead></div>
+          {mode === "editing" && workspace.sets.length > 0 && <Button type="button" $tone="cream" onClick={() => setMode("resume")}>{t.examCenter.savedExamSets}</Button>}
+        </Heading>
+        {notice && <Notice $error={notice.error}>{notice.text}</Notice>}
+
+        {showResume ? <ResumeWork set={resumeSet} sets={workspace.sets} onSelect={setResumeId} onContinue={() => resumeSet && router.push(`/admin/test-center/exams/${resumeSet.id}`)} onStart={() => setMode("editing")} /> : <BuilderGrid>
+          <FormCard onSubmit={createSet}>
+            <Label>{t.examCenter.examTitle}<Input required value={title} maxLength={140} onChange={(event) => setTitle(event.target.value)} /></Label>
+            <ResponseSummary><strong>{t.examCenter.elevenResponses}</strong><span>{t.examCenter.responseStructure}</span></ResponseSummary>
+            <ThemeHeader><div><strong>{t.examCenter.scenarioTopics}</strong><p>{t.examCenter.scenarioTopicsLead}</p></div><Button type="button" $tone="cream" disabled={!selected || suggesting || submitting} onClick={() => void suggestThemes()}><SparklesIcon />{suggesting ? t.examCenter.suggestingBriefs : t.examCenter.suggestTopics}</Button></ThemeHeader>
+            <ThemeGrid>
+              <Label><FieldKicker>{t.examCenter.listenRepeat}</FieldKicker>{t.examCenter.listenRepeatBrief}<Textarea required minLength={6} value={listenRepeatTheme} onChange={(event) => setListenRepeatTheme(event.target.value)} /></Label>
+              <Label><FieldKicker>{t.examCenter.takeInterview}</FieldKicker>{t.examCenter.interviewBrief}<Textarea required minLength={6} value={interviewTheme} onChange={(event) => setInterviewTheme(event.target.value)} /></Label>
+            </ThemeGrid>
+            <GenerateRow><Button type="submit" disabled={!selected || !title.trim() || !listenRepeatTheme.trim() || !interviewTheme.trim() || suggesting || submitting}>{submitting ? t.examCenter.buildingDraft : t.examCenter.buildDraft}<ArrowRightIcon /></Button><small>{t.examCenter.draftGenerationNote}</small></GenerateRow>
+          </FormCard>
+          <InterviewerCard>
+            <PipelineEyebrow>{t.examCenter.interviewerForSet}</PipelineEyebrow>
+            {selected ? <><Portrait><ExamAvatar interviewer={selected} large /></Portrait><InterviewerName>{selected.name}</InterviewerName><InterviewerMeta>{selected.occupation} · {selected.voice_tone}</InterviewerMeta><PickerLabel>{t.examCenter.hiredInterviewer}<Picker value={interviewerId} disabled={suggesting || submitting} onChange={(event) => setInterviewerId(event.target.value)}>{interviewers.map((person) => <option key={person.id} value={person.id}>{person.name} · {person.occupation}</option>)}</Picker></PickerLabel><Facts><div><dt>{t.examCenter.gender}</dt><dd>{selected.gender}</dd></div><div><dt>{t.examCenter.voiceTone}</dt><dd>{selected.voice_tone}</dd></div><div><dt>{t.examCenter.attire}</dt><dd>{selected.attire}</dd></div><div><dt>{t.examCenter.personality}</dt><dd>{selected.personality}</dd></div></Facts></> : <NoInterviewer><strong>{t.examCenter.noApprovedInterviewer}</strong><p>{t.examCenter.noApprovedInterviewerLead}</p><Button as={Link} href="/admin/test-center" $tone="cream" style={{ marginTop: 12 }}>{t.examCenter.roster}</Button></NoInterviewer>}
+          </InterviewerCard>
+        </BuilderGrid>}
+      </>}
+    </ExamContent>
   </ExamPage>;
+}
+
+function ResumeWork({
+  set,
+  sets,
+  onSelect,
+  onContinue,
+  onStart,
+}: {
+  set: ExamSetSummary | null;
+  sets: ExamSetSummary[];
+  onSelect: (id: string) => void;
+  onContinue: () => void;
+  onStart: () => void;
+}) {
+  const { t } = useI18n();
+  return <ResumeCard>
+    <PipelineEyebrow>{t.examCenter.pickUpWork}</PipelineEyebrow>
+    <h2>{t.examCenter.resumeOrStart}<PipelinePeriod>.</PipelinePeriod></h2>
+    <p>{t.examCenter.resumeOrStartLead}</p>
+    <SetList>{sets.map((examSet) => <SetRow key={examSet.id} type="button" $selected={set?.id === examSet.id} onClick={() => onSelect(examSet.id)}><div><strong>{examSet.title}</strong><small>{examSet.interviewer?.name || "—"} · {examSet.ready_item_count ?? 0}/{examSet.item_count ?? 11} {t.examCenter.mediaReady}</small></div><SetStatusPill status={examSet.status} /></SetRow>)}</SetList>
+    <ResumeActions><Button type="button" disabled={!set} onClick={onContinue}>{t.examCenter.continueThisSet}</Button><Button type="button" $tone="cream" onClick={onStart}><PlusIcon />{t.examCenter.startNewExamSet}</Button></ResumeActions>
+  </ResumeCard>;
 }
