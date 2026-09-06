@@ -63,29 +63,11 @@ export function validateExamBriefs(listenRepeatTheme: unknown, interviewTheme: u
   };
 }
 
-function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function sharesFourWordPhrase(left: string, right: string) {
-  const phrases = (script: string) => {
-    const words = normalize(script).split(" ").filter(Boolean);
-    return new Set(words.flatMap((_, index) => index + 4 <= words.length ? [words.slice(index, index + 4).join(" ")] : []));
-  };
-  const leftPhrases = phrases(left);
-  return [...phrases(right)].some((phrase) => leftPhrases.has(phrase));
-}
-
-function uniqueScripts(scripts: string[], existingScripts: string[]) {
-  return scripts.every((script, index) => scripts.slice(0, index).every((prior) => normalize(prior) !== normalize(script) && !sharesFourWordPhrase(prior, script))
-    && existingScripts.every((prior) => normalize(prior) !== normalize(script) && !sharesFourWordPhrase(prior, script)));
-}
-
 function words(value: string) {
   return value.split(" ").filter(Boolean).length;
 }
 
-function parseText(value: string, existingScripts: string[]): GeneratedText {
+function parseText(value: string): GeneratedText {
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(value) as Record<string, unknown>;
@@ -110,8 +92,6 @@ function parseText(value: string, existingScripts: string[]): GeneratedText {
   if (listenRepeat.some((script) => words(script) < 8 || words(script) > 22)) throw new Error("Listen and Repeat sentences must be 8–22 words.");
   if (interviewQuestions.some((script) => words(script) < 5 || words(script) > 20 || !script.endsWith("?"))) throw new Error("Interview questions must be 5–20 words and end with a question mark.");
 
-  const scripts = [listenRepeatScenario, interviewScenario, ...listenRepeat, ...interviewQuestions];
-  if (!uniqueScripts(scripts, existingScripts)) throw new Error("Gemini returned a script too similar to an existing exam. Generate again.");
   return { listenRepeatScenario, interviewScenario, listenRepeat, interviewQuestions };
 }
 
@@ -179,7 +159,7 @@ export async function generateExamDraftContent(input: {
     config: { responseMimeType: "application/json", responseJsonSchema: textSchema, temperature: 1 },
   });
   if (!response.text) throw new Error("Gemini returned no exam draft.");
-  const text = parseText(response.text, input.existingScripts);
+  const text = parseText(response.text);
   return {
     sceneDescription: `A clear, inclusive generated scene for ${briefs.listenRepeatTheme}.`,
     narration: [

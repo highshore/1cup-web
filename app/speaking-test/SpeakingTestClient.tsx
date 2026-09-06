@@ -77,8 +77,12 @@ function ActionButton({
   return <button type="button" style={{ ...(secondaryTone ? secondary : primary), opacity: disabled ? 0.55 : 1, cursor: disabled ? "wait" : "pointer" }} disabled={disabled} onClick={onClick}>{children}</button>;
 }
 
-function categoryLabel(category: SpeakingTestCategory, copy: { topic: string; toefl: string; free: string }) {
-  return copy[category];
+function categoryLabel(category: SpeakingTestCategory, _copy: { topic: string; toefl: string; free: string }) {
+  return {
+    topic: "Opic",
+    toefl: "Toefl Speaking",
+    free: "Free style",
+  }[category];
 }
 
 function audioExtension(mimeType: string) {
