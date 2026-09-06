@@ -1,276 +1,45 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { styled } from "styled-components";
 import { useRouter, useSearchParams } from "next/navigation";
 import { invokeFunction } from "../../lib/supabase/client";
 
-// Styled components
-const Container = styled.div`
-  min-height: 100vh;
-  background: #faf8f4;
-  padding: 2rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
+// Shared class strings (styled-components migration).
+const containerClass =
+  "min-h-screen bg-[#faf8f4] py-8 px-4 flex items-center justify-center";
 
-const MaxWidthWrapper = styled.div`
-  max-width: 600px;
-  width: 100%;
-  margin: 0 auto;
-`;
+const maxWidthWrapperClass = "max-w-[600px] w-full mx-auto";
 
-const ResultCard = styled.div<{ success: boolean }>`
-  background: #fff;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  padding: 3rem 2rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
+// Card base shared by the result and loading cards; the ::before colour bar is set
+// per variant.
+const cardBaseClass =
+  "bg-white border-[3px] border-[#050505] rounded-[16px] py-12 px-8 text-center relative overflow-hidden shadow-[6px_6px_0_rgba(5,5,5,0.9)] before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[7px] max-[768px]:py-8 max-[768px]:px-6 max-[768px]:shadow-[5px_5px_0_rgba(5,5,5,0.9)]";
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 7px;
-    background: ${(props) => (props.success ? "#16a34a" : "#dc2626")};
-  }
+const titleClass =
+  "text-[2.25rem] font-[900] text-[#050505] mb-4 tracking-[-0.02em] max-[768px]:text-[1.875rem]";
 
-  @media (max-width: 768px) {
-    padding: 2rem 1.5rem;
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
+const subtitleClass =
+  "text-[1.125rem] text-[rgba(5,5,5,0.6)] mb-8 leading-[1.5] max-[768px]:text-[1rem]";
 
-const StatusIcon = styled.div<{ success: boolean }>`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 2px solid #050505;
-  background: ${(props) => (props.success ? "#dcfce7" : "#fee2e2")};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 2rem;
-  font-size: 2.5rem;
-  color: #050505;
-  font-weight: 900;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+const detailRowClass =
+  "flex justify-between items-center py-3 border-b-[1.5px] border-[#050505] last:border-b-0 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-1";
 
-  @media (max-width: 768px) {
-    width: 64px;
-    height: 64px;
-    font-size: 2rem;
-  }
-`;
+const detailLabelClass = "text-[0.875rem] text-[rgba(5,5,5,0.6)] font-bold";
 
-const Title = styled.h1`
-  font-size: 2.25rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+const detailValueClass = "text-[0.875rem] text-[#050505] font-extrabold";
 
-  @media (max-width: 768px) {
-    font-size: 1.875rem;
-  }
-`;
+const actionButtonBaseClass =
+  "w-full py-4 px-8 border-2 border-[#050505] rounded-full text-[1.125rem] font-extrabold cursor-pointer [transition:transform_0.15s_ease,box-shadow_0.15s_ease,background_0.15s_ease] tracking-[-0.01em] mb-4 last:mb-0 shadow-[4px_4px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none max-[768px]:py-[0.875rem] max-[768px]:px-6 max-[768px]:text-[1rem]";
 
-const Subtitle = styled.p`
-  font-size: 1.125rem;
-  color: rgba(5, 5, 5, 0.6);
-  margin-bottom: 2rem;
-  line-height: 1.5;
+const actionButtonPrimaryClass = `${actionButtonBaseClass} bg-[#f47a4a] text-[#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[5px_5px_0_#050505] enabled:active:[transform:translate(1px,1px)] enabled:active:shadow-[2px_2px_0_#050505]`;
 
-  @media (max-width: 768px) {
-    font-size: 1rem;
-  }
-`;
+const actionButtonSecondaryClass = `${actionButtonBaseClass} bg-white text-[#050505] enabled:hover:bg-[#f3f3f1] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[5px_5px_0_#050505]`;
 
-const ResultDetails = styled.div`
-  background: #faf8f4;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin: 2rem 0;
-  text-align: left;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
+const errorTextClass =
+  "text-[0.875rem] text-[rgba(5,5,5,0.72)] leading-[1.5] mb-2 last:mb-0";
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
-
-const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1.5px solid #050505;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-`;
-
-const DetailLabel = styled.span`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
-
-const DetailValue = styled.span`
-  font-size: 0.875rem;
-  color: #050505;
-  font-weight: 800;
-`;
-
-const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
-  width: 100%;
-  padding: 1rem 2rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 1.125rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  letter-spacing: -0.01em;
-  margin-bottom: 1rem;
-  box-shadow: 4px 4px 0 #050505;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  ${(props) =>
-    props.variant === "secondary"
-      ? `
-    background: #fff;
-    color: #050505;
-
-    &:hover:not(:disabled) {
-      background: #f3f3f1;
-      transform: translate(-1px, -1px);
-      box-shadow: 5px 5px 0 #050505;
-    }
-  `
-      : `
-    background: #f47a4a;
-    color: #050505;
-
-    &:hover:not(:disabled) {
-      transform: translate(-1px, -1px);
-      box-shadow: 5px 5px 0 #050505;
-    }
-
-    &:active:not(:disabled) {
-      transform: translate(1px, 1px);
-      box-shadow: 2px 2px 0 #050505;
-    }
-  `}
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1.5rem;
-    font-size: 1rem;
-  }
-`;
-
-const ErrorDetails = styled.div`
-  background: #fee2e2;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin: 2rem 0;
-  text-align: left;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
-
-const ErrorTitle = styled.h3`
-  font-size: 1rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 1rem;
-`;
-
-const ErrorText = styled.p`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.5;
-  margin-bottom: 0.5rem;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const LoadingCard = styled.div`
-  background: #fff;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  padding: 3rem 2rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 7px;
-    background: #f47a4a;
-  }
-
-  @media (max-width: 768px) {
-    padding: 2rem 1.5rem;
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const LoadingSpinner = styled.div`
-  border: 3px solid #faf8f4;
-  border-left-color: #f47a4a;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem;
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const LoadingText = styled.p`
-  font-size: 1.125rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
+const resultDetailsClass =
+  "bg-[#faf8f4] border-2 border-[#050505] rounded-[12px] p-6 my-8 text-left shadow-[4px_4px_0_rgba(5,5,5,0.9)] max-[768px]:p-4";
 
 interface PaymentResult {
   success: boolean;
@@ -656,67 +425,77 @@ export default function PaymentResultClient() {
 
   if (loading) {
     return (
-      <Container>
-        <MaxWidthWrapper>
-          <LoadingCard>
-            <LoadingSpinner />
-            <LoadingText>결제 결과 처리 중...</LoadingText>
-          </LoadingCard>
-        </MaxWidthWrapper>
-      </Container>
+      <div className={containerClass}>
+        <div className={maxWidthWrapperClass}>
+          <div className={`${cardBaseClass} before:bg-[#f47a4a]`}>
+            <div className="border-[3px] border-[#faf8f4] border-l-[#f47a4a] rounded-full w-12 h-12 animate-spin mx-auto mb-6" />
+            <p className="text-[1.125rem] text-[rgba(5,5,5,0.6)] font-bold">
+              결제 결과 처리 중...
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container>
-      <MaxWidthWrapper>
-        <ResultCard success={paymentResult?.success || false}>
-          <StatusIcon success={paymentResult?.success || false}>
+    <div className={containerClass}>
+      <div className={maxWidthWrapperClass}>
+        <div
+          className={`${cardBaseClass} ${
+            paymentResult?.success ? "before:bg-[#16a34a]" : "before:bg-[#dc2626]"
+          }`}
+        >
+          <div
+            className={`w-20 h-20 rounded-full border-2 border-[#050505] flex items-center justify-center mx-auto mb-8 text-[2.5rem] text-[#050505] font-[900] shadow-[3px_3px_0_rgba(5,5,5,0.9)] max-[768px]:w-16 max-[768px]:h-16 max-[768px]:text-[2rem] ${
+              paymentResult?.success ? "bg-[#dcfce7]" : "bg-[#fee2e2]"
+            }`}
+          >
             {paymentResult?.success ? "✓" : "×"}
-          </StatusIcon>
+          </div>
 
           {paymentResult?.success ? (
             <>
-              <Title>{isParticipationPack ? "참여권 구매 완료" : "구독 등록 완료"}</Title>
-              <Subtitle>
+              <h1 className={titleClass}>{isParticipationPack ? "참여권 구매 완료" : "구독 등록 완료"}</h1>
+              <p className={subtitleClass}>
                 {isParticipationPack
                   ? `${paymentResult.creditsGranted ?? 5}회 참여권을 구매했습니다. 멤버십은 별도로 유지됩니다.`
                   : "One Cup English 프리미엄 멤버십에 가입되었습니다"}
-              </Subtitle>
+              </p>
 
               {isParticipationPack ? (
-                <ResultDetails>
-                  <DetailRow>
-                    <DetailLabel>현재 잔여 참여권</DetailLabel>
-                    <DetailValue>{paymentResult.creditBalance ?? 0}회</DetailValue>
-                  </DetailRow>
-                  <DetailRow>
-                    <DetailLabel>유효기간</DetailLabel>
-                    <DetailValue>
+                <div className={resultDetailsClass}>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>현재 잔여 참여권</span>
+                    <span className={detailValueClass}>{paymentResult.creditBalance ?? 0}회</span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>유효기간</span>
+                    <span className={detailValueClass}>
                       {paymentResult.creditExpiresAt
                         ? new Date(paymentResult.creditExpiresAt).toLocaleDateString()
                         : "구매 내역에서 확인"}
-                    </DetailValue>
-                  </DetailRow>
-                </ResultDetails>
+                    </span>
+                  </div>
+                </div>
               ) : paymentResult.data && (
-                <ResultDetails>
-                  <DetailRow>
-                    <DetailLabel>결제 결과</DetailLabel>
-                    <DetailValue>
+                <div className={resultDetailsClass}>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>결제 결과</span>
+                    <span className={detailValueClass}>
                       {paymentResult.data.PCD_PAY_RST || "완료"}
-                    </DetailValue>
-                  </DetailRow>
-                  <DetailRow>
-                    <DetailLabel>상품명</DetailLabel>
-                    <DetailValue>
+                    </span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>상품명</span>
+                    <span className={detailValueClass}>
                       {paymentResult.data.PCD_PAY_GOODS ||
                         "One Cup English 프리미엄 멤버십"}
-                    </DetailValue>
-                  </DetailRow>
-                  <DetailRow>
-                    <DetailLabel>구독 금액</DetailLabel>
-                    <DetailValue>
+                    </span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>구독 금액</span>
+                    <span className={detailValueClass}>
                       ₩
                       {paymentResult.data.PCD_PAY_TOTAL
                         ? Number(
@@ -724,53 +503,60 @@ export default function PaymentResultClient() {
                           ).toLocaleString()
                         : "4,700"}
                       /월
-                    </DetailValue>
-                  </DetailRow>
-                  <DetailRow>
-                    <DetailLabel>다음 결제일</DetailLabel>
-                    <DetailValue>
+                    </span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>다음 결제일</span>
+                    <span className={detailValueClass}>
                       {new Date(
                         new Date().setMonth(new Date().getMonth() + 1)
                       ).toLocaleDateString()}
-                    </DetailValue>
-                  </DetailRow>
-                </ResultDetails>
+                    </span>
+                  </div>
+                </div>
               )}
 
-              <ActionButton onClick={handleContinue}>
+              <button className={actionButtonPrimaryClass} onClick={handleContinue}>
                 프로필로 이동
-              </ActionButton>
+              </button>
             </>
           ) : (
             <>
-              <Title>구독 등록 실패</Title>
-              <Subtitle>
+              <h1 className={titleClass}>구독 등록 실패</h1>
+              <p className={subtitleClass}>
                 {paymentResult?.message || "결제 처리 중 오류가 발생했습니다"}
-              </Subtitle>
+              </p>
 
-              <ErrorDetails>
-                <ErrorTitle>문제 해결 방법</ErrorTitle>
-                <ErrorText>• 카드 정보를 다시 확인해 주세요</ErrorText>
-                <ErrorText>• 결제 한도를 확인해 주세요</ErrorText>
-                <ErrorText>• 다른 카드로 시도해 보세요</ErrorText>
-                <ErrorText>
+              <div className="bg-[#fee2e2] border-2 border-[#050505] rounded-[12px] p-6 my-8 text-left shadow-[4px_4px_0_rgba(5,5,5,0.9)] max-[768px]:p-4">
+                <h3 className="text-[1rem] font-[900] text-[#050505] mb-4">
+                  문제 해결 방법
+                </h3>
+                <p className={errorTextClass}>• 카드 정보를 다시 확인해 주세요</p>
+                <p className={errorTextClass}>• 결제 한도를 확인해 주세요</p>
+                <p className={errorTextClass}>• 다른 카드로 시도해 보세요</p>
+                <p className={errorTextClass}>
                   • 문제가 지속되면 고객센터로 문의해 주세요
-                </ErrorText>
+                </p>
                 {errorCode && (
-                  <ErrorText style={{ marginTop: "1rem", fontWeight: 600 }}>
+                  <p
+                    className={errorTextClass}
+                    style={{ marginTop: "1rem", fontWeight: 600 }}
+                  >
                     오류 코드: {errorCode}
-                  </ErrorText>
+                  </p>
                 )}
-              </ErrorDetails>
+              </div>
 
-              <ActionButton onClick={handleRetry}>다시 시도하기</ActionButton>
-              <ActionButton variant="secondary" onClick={handleContinue}>
+              <button className={actionButtonPrimaryClass} onClick={handleRetry}>
+                다시 시도하기
+              </button>
+              <button className={actionButtonSecondaryClass} onClick={handleContinue}>
                 홈으로 돌아가기
-              </ActionButton>
+              </button>
             </>
           )}
-        </ResultCard>
-      </MaxWidthWrapper>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 }

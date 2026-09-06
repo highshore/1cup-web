@@ -1,10 +1,9 @@
 import React from "react";
 import type { Metadata } from "next";
+import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import StyledComponentsRegistry from "./lib/styled-components/registry";
 import AuthProvider from "./lib/contexts/auth_context";
-import GlobalStyles from "./lib/components/GlobalStyles";
 import ConditionalLayoutWrapper from "./lib/components/ConditionalLayoutWrapper";
 import ServiceErrorProvider from "./lib/components/ServiceErrorProvider";
 
@@ -57,14 +56,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body suppressHydrationWarning={true}>
-        <StyledComponentsRegistry>
-          <GlobalStyles />
-          <ServiceErrorProvider>
-            <AuthProvider>
-              <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
-            </AuthProvider>
-          </ServiceErrorProvider>
-        </StyledComponentsRegistry>
+        <ServiceErrorProvider>
+          <AuthProvider>
+            <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
+          </AuthProvider>
+        </ServiceErrorProvider>
         <Analytics />
         <SpeedInsights />
       </body>

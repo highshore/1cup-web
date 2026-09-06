@@ -1,76 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { styled } from "styled-components";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 
-const Container = styled.div`
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem 0rem;
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-`;
-
-const Title = styled.h1`
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin: 0;
-`;
-
-const Subtle = styled.div`
-  color: #6b7280;
-  font-size: 0.9rem;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-`;
-
-const Card = styled.div`
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-`;
-
-const Stat = styled.div`
-  font-size: 28px;
-  font-weight: 800;
-  color: #111827;
-`;
-
-const Label = styled.div`
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 4px;
-`;
-
-const List = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-`;
-
-const Item = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  background: #fff;
-`;
+const cardClasses = "rounded-xl border border-[#e5e7eb] bg-white p-4";
 
 export default function UserReportClient() {
   const router = useRouter();
@@ -146,62 +81,60 @@ export default function UserReportClient() {
     return { sessions, totalWords, totalSec, avgWpm, avgOverall };
   }, [reports]);
 
+  const stats = [
+    { value: String(agg.sessions), label: "세션 수" },
+    { value: agg.totalWords.toLocaleString(), label: "총 단어 수" },
+    { value: `${Math.round(agg.totalSec)}s`, label: "총 발화 시간" },
+    { value: String(Math.round(agg.avgWpm)), label: "평균 WPM" },
+    { value: `${agg.avgOverall.toFixed(1)}/10`, label: "평균 종합 점수" },
+  ];
+
   return (
-    <Container>
-      <Header>
-        <Title>내 스피킹 리포트</Title>
-        <Subtle>{reports.length}개의 세션</Subtle>
-      </Header>
+    <div className="mx-auto max-w-[1100px] px-0 py-8">
+      <div className="mb-6 flex items-baseline justify-between">
+        <h1 className="m-0 text-[1.75rem] font-extrabold">내 스피킹 리포트</h1>
+        <div className="text-[0.9rem] text-[#6b7280]">{reports.length}개의 세션</div>
+      </div>
 
-      <Grid>
-        <Card>
-          <Stat>{agg.sessions}</Stat>
-          <Label>세션 수</Label>
-        </Card>
-        <Card>
-          <Stat>{agg.totalWords.toLocaleString()}</Stat>
-          <Label>총 단어 수</Label>
-        </Card>
-        <Card>
-          <Stat>{Math.round(agg.totalSec)}s</Stat>
-          <Label>총 발화 시간</Label>
-        </Card>
-        <Card>
-          <Stat>{Math.round(agg.avgWpm)}</Stat>
-          <Label>평균 WPM</Label>
-        </Card>
-        <Card>
-          <Stat>{agg.avgOverall.toFixed(1)}/10</Stat>
-          <Label>평균 종합 점수</Label>
-        </Card>
-      </Grid>
+      <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-[14px]">
+        {stats.map((stat) => (
+          <div key={stat.label} className={cardClasses}>
+            <div className="text-[28px] font-extrabold text-[#111827]">{stat.value}</div>
+            <div className="mt-1 text-[12px] text-[#6b7280]">{stat.label}</div>
+          </div>
+        ))}
+      </div>
 
-      <Card>
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>세션 목록</div>
+      <div className={cardClasses}>
+        <div className="mb-3 font-bold">세션 목록</div>
         {loading ? (
-          <div style={{ padding: "1rem", color: "#666" }}>불러오는 중...</div>
+          <div className="p-4 text-[#666]">불러오는 중...</div>
         ) : reports.length === 0 ? (
-          <div style={{ padding: "1rem", color: "#888" }}>아직 리포트가 없습니다.</div>
+          <div className="p-4 text-[#888]">아직 리포트가 없습니다.</div>
         ) : (
-          <List>
+          <div className="grid grid-cols-1 gap-2.5">
             {reports.map((r) => (
-              <Item key={r.id} onClick={() => router.push(`/transcript/${r.transcriptId}`)}>
+              <div
+                key={r.id}
+                className="flex items-center justify-between rounded-[10px] border border-[#eee] bg-white px-3.5 py-3"
+                onClick={() => router.push(`/transcript/${r.transcriptId}`)}
+              >
                 <div>
-                  <div style={{ fontWeight: 700 }}>
+                  <div className="font-bold">
                     세션 {r?.session_number || "-"}
                   </div>
-                  <div style={{ color: "#6b7280", fontSize: 12 }}>
+                  <div className="text-[12px] text-[#6b7280]">
                     {r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}
                   </div>
                 </div>
-                <div style={{ fontWeight: 800 }}>
+                <div className="font-extrabold">
                   {typeof r?.overall_score === "number" ? `${r.overall_score.toFixed(1)}/10` : "-"}
                 </div>
-              </Item>
+              </div>
             ))}
-          </List>
+          </div>
         )}
-      </Card>
-    </Container>
+      </div>
+    </div>
   );
 }

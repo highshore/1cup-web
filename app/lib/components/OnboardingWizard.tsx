@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import styled from "styled-components";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/auth_context";
 import { useI18n } from "../i18n/I18nProvider";
@@ -13,225 +12,41 @@ type OnboardingWizardProps = {
   onComplete: () => void;
 };
 
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  overflow-y: auto;
-  background: rgba(23, 18, 13, 0.58);
-  backdrop-filter: blur(12px);
-`;
+const stepLabelClass =
+  "m-0 mb-3 text-[0.76rem] font-extrabold uppercase tracking-[0.12em] text-[#a05a2c]";
 
-const Dialog = styled.section`
-  width: min(100%, 650px);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 28px;
-  background: #fffdf8;
-  box-shadow: 0 28px 90px rgba(24, 14, 7, 0.35);
-`;
+const titleClass =
+  "m-0 text-[clamp(1.8rem,4vw,2.55rem)] leading-[1.14] tracking-[-0.045em] text-[#22170f]";
 
-const Accent = styled.div`
-  height: 7px;
-  background: linear-gradient(90deg, #ef7d34, #f5bf45, #57855d);
-`;
+const descriptionClass =
+  "mx-0 mt-[0.9rem] mb-[1.8rem] max-w-[520px] text-[1rem] leading-[1.65] text-[#71665c]";
 
-const Content = styled.div`
-  padding: clamp(1.5rem, 5vw, 3rem);
-`;
+const fieldLabelClass =
+  "mb-[0.55rem] block text-[0.85rem] font-[750] text-[#42362c]";
 
-const Progress = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-`;
+const inputClass =
+  "box-border w-full rounded-[14px] border border-[#dcd1c3] bg-white px-[1.1rem] py-4 [font-family:inherit] text-[1rem] text-[#22170f] focus:border-[#e57732] focus:[outline:3px_solid_rgba(239,125,52,0.2)]";
 
-const ProgressDot = styled.span<{ $active: boolean; $complete: boolean }>`
-  height: 7px;
-  flex: 1;
-  border-radius: 999px;
-  background: ${({ $active, $complete }) => ($active || $complete ? "#2c1810" : "#e6ded3")};
-  transition: background 180ms ease;
-`;
+const textareaClass = `${inputClass} min-h-[122px] resize-y leading-[1.55]`;
 
-const StepLabel = styled.p`
-  margin: 0 0 0.75rem;
-  color: #a05a2c;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-`;
+const choiceClass = (selected: boolean) =>
+  `min-h-[86px] cursor-pointer rounded-2xl border p-4 text-left [font-family:inherit] text-[1rem] font-[750] text-[#2c1810] [transition:transform_160ms_ease,border-color_160ms_ease,background_160ms_ease] hover:border-[#b46936] hover:[transform:translateY(-2px)] focus-visible:outline-offset-2 focus-visible:[outline:3px_solid_rgba(239,125,52,0.35)] ${
+    selected ? "border-[#2c1810] bg-[#f9eadc]" : "border-[#ded4c7] bg-white"
+  }`;
 
-const Title = styled.h2`
-  margin: 0;
-  color: #22170f;
-  font-size: clamp(1.8rem, 4vw, 2.55rem);
-  line-height: 1.14;
-  letter-spacing: -0.045em;
-`;
+const chipClass = (selected: boolean) =>
+  `cursor-pointer rounded-full border px-[0.95rem] py-[0.72rem] [font-family:inherit] text-[0.9rem] font-bold [transition:all_150ms_ease] focus-visible:outline-offset-2 focus-visible:[outline:3px_solid_rgba(239,125,52,0.35)] ${
+    selected
+      ? "border-[#2c1810] bg-[#2c1810] text-white"
+      : "border-[#ded4c7] bg-white text-[#514336]"
+  }`;
 
-const Description = styled.p`
-  max-width: 520px;
-  margin: 0.9rem 0 1.8rem;
-  color: #71665c;
-  font-size: 1rem;
-  line-height: 1.65;
-`;
-
-const FieldLabel = styled.label`
-  display: block;
-  margin-bottom: 0.55rem;
-  color: #42362c;
-  font-size: 0.85rem;
-  font-weight: 750;
-`;
-
-const Input = styled.input`
-  box-sizing: border-box;
-  width: 100%;
-  padding: 1rem 1.1rem;
-  border: 1px solid #dcd1c3;
-  border-radius: 14px;
-  background: #fff;
-  color: #22170f;
-  font: inherit;
-  font-size: 1rem;
-
-  &:focus {
-    outline: 3px solid rgba(239, 125, 52, 0.2);
-    border-color: #e57732;
-  }
-`;
-
-const Textarea = styled.textarea`
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 122px;
-  resize: vertical;
-  padding: 1rem 1.1rem;
-  border: 1px solid #dcd1c3;
-  border-radius: 14px;
-  background: #fff;
-  color: #22170f;
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1.55;
-
-  &:focus {
-    outline: 3px solid rgba(239, 125, 52, 0.2);
-    border-color: #e57732;
-  }
-`;
-
-const CardGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Choice = styled.button<{ $selected: boolean }>`
-  min-height: 86px;
-  padding: 1rem;
-  border: 1px solid ${({ $selected }) => ($selected ? "#2c1810" : "#ded4c7")};
-  border-radius: 16px;
-  background: ${({ $selected }) => ($selected ? "#f9eadc" : "#fff")};
-  color: #2c1810;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 750;
-  text-align: left;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
-
-  &:hover { transform: translateY(-2px); border-color: #b46936; }
-  &:focus-visible { outline: 3px solid rgba(239, 125, 52, 0.35); outline-offset: 2px; }
-`;
-
-const ChoiceDetail = styled.span`
-  display: block;
-  margin-top: 0.28rem;
-  color: #776a5d;
-  font-size: 0.8rem;
-  font-weight: 500;
-  line-height: 1.4;
-`;
-
-const ChipList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-`;
-
-const Chip = styled.button<{ $selected: boolean }>`
-  padding: 0.72rem 0.95rem;
-  border: 1px solid ${({ $selected }) => ($selected ? "#2c1810" : "#ded4c7")};
-  border-radius: 999px;
-  background: ${({ $selected }) => ($selected ? "#2c1810" : "#fff")};
-  color: ${({ $selected }) => ($selected ? "#fff" : "#514336")};
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  transition: all 150ms ease;
-
-  &:focus-visible { outline: 3px solid rgba(239, 125, 52, 0.35); outline-offset: 2px; }
-`;
-
-const PrivacyCard = styled.label`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 14px;
-  background: #f5efe7;
-  color: #56493d;
-  cursor: pointer;
-  font-size: 0.9rem;
-  line-height: 1.5;
-
-  input { margin-top: 0.2rem; accent-color: #2c1810; }
-`;
-
-const Footer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 2.25rem;
-`;
-
-const Button = styled.button<{ $primary?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  min-height: 47px;
-  padding: 0.75rem 1.15rem;
-  border: ${({ $primary }) => ($primary ? "1px solid #2c1810" : "1px solid #d7ccbd")};
-  border-radius: 12px;
-  background: ${({ $primary }) => ($primary ? "#2c1810" : "#fffdf8")};
-  color: ${({ $primary }) => ($primary ? "#fff" : "#4c4035")};
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 800;
-
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-`;
-
-const ErrorText = styled.p`
-  margin: 1rem 0 0;
-  color: #b42318;
-  font-size: 0.87rem;
-`;
+const buttonClass = (primary?: boolean) =>
+  `inline-flex min-h-[47px] cursor-pointer items-center justify-center gap-[0.45rem] rounded-xl border px-[1.15rem] py-3 [font-family:inherit] text-[0.92rem] font-extrabold disabled:cursor-not-allowed disabled:opacity-55 ${
+    primary
+      ? "border-[#2c1810] bg-[#2c1810] text-white"
+      : "border-[#d7ccbd] bg-[#fffdf8] text-[#4c4035]"
+  }`;
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const { currentUser } = useAuth();
@@ -324,72 +139,81 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
   const stepContent = [
     <div key="name">
-      <StepLabel>{t.onboarding.steps[0]}</StepLabel>
-      <Title>{t.onboarding.name.title}</Title>
-      <Description>{t.onboarding.name.description}</Description>
-      <FieldLabel htmlFor="onboarding-name">{t.onboarding.name.label}</FieldLabel>
-      <Input id="onboarding-name" autoFocus value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={t.onboarding.name.placeholder} maxLength={60} />
+      <p className={stepLabelClass}>{t.onboarding.steps[0]}</p>
+      <h2 className={titleClass}>{t.onboarding.name.title}</h2>
+      <p className={descriptionClass}>{t.onboarding.name.description}</p>
+      <label className={fieldLabelClass} htmlFor="onboarding-name">{t.onboarding.name.label}</label>
+      <input className={inputClass} id="onboarding-name" autoFocus value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={t.onboarding.name.placeholder} maxLength={60} />
     </div>,
     <div key="context">
-      <StepLabel>{t.onboarding.steps[1]}</StepLabel>
-      <Title>{t.onboarding.context.title}</Title>
-      <Description>{t.onboarding.context.description}</Description>
-      <CardGrid>
-        <Choice type="button" $selected={location === "anam"} onClick={() => setLocation("anam")}>
-          {t.onboarding.locations.anam}<ChoiceDetail>{t.onboarding.locations.anamDetail}</ChoiceDetail>
-        </Choice>
-        <Choice type="button" $selected={location === "yeouido"} onClick={() => setLocation("yeouido")}>
-          {t.onboarding.locations.yeouido}<ChoiceDetail>{t.onboarding.locations.yeouidoDetail}</ChoiceDetail>
-        </Choice>
-      </CardGrid>
+      <p className={stepLabelClass}>{t.onboarding.steps[1]}</p>
+      <h2 className={titleClass}>{t.onboarding.context.title}</h2>
+      <p className={descriptionClass}>{t.onboarding.context.description}</p>
+      <div className="grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
+        <button type="button" className={choiceClass(location === "anam")} onClick={() => setLocation("anam")}>
+          {t.onboarding.locations.anam}
+          <span className="mt-[0.28rem] block text-[0.8rem] font-medium leading-[1.4] text-[#776a5d]">{t.onboarding.locations.anamDetail}</span>
+        </button>
+        <button type="button" className={choiceClass(location === "yeouido")} onClick={() => setLocation("yeouido")}>
+          {t.onboarding.locations.yeouido}
+          <span className="mt-[0.28rem] block text-[0.8rem] font-medium leading-[1.4] text-[#776a5d]">{t.onboarding.locations.yeouidoDetail}</span>
+        </button>
+      </div>
       <div style={{ marginTop: "1.3rem" }}>
-        <FieldLabel htmlFor="onboarding-work">{t.onboarding.context.workLabel}</FieldLabel>
-        <Input id="onboarding-work" value={work} onChange={(event) => setWork(event.target.value)} placeholder={t.onboarding.context.workPlaceholder} maxLength={120} />
+        <label className={fieldLabelClass} htmlFor="onboarding-work">{t.onboarding.context.workLabel}</label>
+        <input className={inputClass} id="onboarding-work" value={work} onChange={(event) => setWork(event.target.value)} placeholder={t.onboarding.context.workPlaceholder} maxLength={120} />
       </div>
     </div>,
     <div key="focus">
-      <StepLabel>{t.onboarding.steps[2]}</StepLabel>
-      <Title>{t.onboarding.focus.title}</Title>
-      <Description>{t.onboarding.focus.description}</Description>
-      <ChipList>
+      <p className={stepLabelClass}>{t.onboarding.steps[2]}</p>
+      <h2 className={titleClass}>{t.onboarding.focus.title}</h2>
+      <p className={descriptionClass}>{t.onboarding.focus.description}</p>
+      <div className="flex flex-wrap gap-[0.65rem]">
         {topicOptions.map((topic) => (
-          <Chip key={topic.id} type="button" $selected={interests.includes(topic.id)} onClick={() => toggleInterest(topic.id)} aria-pressed={interests.includes(topic.id)}>
+          <button key={topic.id} type="button" className={chipClass(interests.includes(topic.id))} onClick={() => toggleInterest(topic.id)} aria-pressed={interests.includes(topic.id)}>
             {interests.includes(topic.id) && <CheckIcon width={15} />} {topic.label}
-          </Chip>
+          </button>
         ))}
-      </ChipList>
+      </div>
     </div>,
     <div key="story">
-      <StepLabel>{t.onboarding.steps[3]}</StepLabel>
-      <Title>{t.onboarding.story.title}</Title>
-      <Description>{t.onboarding.story.description}</Description>
-      <FieldLabel htmlFor="onboarding-bio">{t.onboarding.story.label}</FieldLabel>
-      <Textarea id="onboarding-bio" value={bio} onChange={(event) => setBio(event.target.value)} placeholder={t.onboarding.story.placeholder} maxLength={300} />
-      <PrivacyCard>
-        <input type="checkbox" checked={profilePublic} onChange={(event) => setProfilePublic(event.target.checked)} />
+      <p className={stepLabelClass}>{t.onboarding.steps[3]}</p>
+      <h2 className={titleClass}>{t.onboarding.story.title}</h2>
+      <p className={descriptionClass}>{t.onboarding.story.description}</p>
+      <label className={fieldLabelClass} htmlFor="onboarding-bio">{t.onboarding.story.label}</label>
+      <textarea className={textareaClass} id="onboarding-bio" value={bio} onChange={(event) => setBio(event.target.value)} placeholder={t.onboarding.story.placeholder} maxLength={300} />
+      <label className="mt-4 flex cursor-pointer items-start gap-[0.8rem] rounded-[14px] bg-[#f5efe7] p-4 text-[0.9rem] leading-[1.5] text-[#56493d]">
+        <input className="mt-[0.2rem] accent-[#2c1810]" type="checkbox" checked={profilePublic} onChange={(event) => setProfilePublic(event.target.checked)} />
         <span>{t.onboarding.story.publicProfile}</span>
-      </PrivacyCard>
+      </label>
     </div>,
   ];
 
   return (
-    <Overlay role="presentation">
-      <Dialog role="dialog" aria-modal="true" aria-labelledby="member-onboarding-title">
-        <Accent />
-        <Content>
-          <Progress aria-label={t.onboarding.progress.replace("{current}", String(step + 1)).replace("{total}", "4")}>
-            {[0, 1, 2, 3].map((index) => <ProgressDot key={index} $active={index === step} $complete={index < step} />)}
-          </Progress>
+    <div className="fixed inset-0 z-[10000] grid place-items-center overflow-y-auto bg-[rgba(23,18,13,0.58)] p-4 backdrop-blur-[12px]" role="presentation">
+      <section className="w-full max-w-[650px] overflow-hidden rounded-[28px] border border-white/55 bg-[#fffdf8] shadow-[0_28px_90px_rgba(24,14,7,0.35)]" role="dialog" aria-modal="true" aria-labelledby="member-onboarding-title">
+        <div className="h-[7px] bg-[linear-gradient(90deg,#ef7d34,#f5bf45,#57855d)]" />
+        <div className="p-[clamp(1.5rem,5vw,3rem)]">
+          <div className="mb-8 flex items-center gap-2" aria-label={t.onboarding.progress.replace("{current}", String(step + 1)).replace("{total}", "4")}>
+            {[0, 1, 2, 3].map((index) => (
+              <span
+                key={index}
+                className={`h-[7px] flex-1 rounded-full [transition:background_180ms_ease] ${
+                  index === step || index < step ? "bg-[#2c1810]" : "bg-[#e6ded3]"
+                }`}
+              />
+            ))}
+          </div>
           <form onSubmit={submit}>
             <div id="member-onboarding-title">{stepContent[step]}</div>
-            {error && <ErrorText role="alert">{error}</ErrorText>}
-            <Footer>
-              {step > 0 ? <Button type="button" onClick={() => { setError(""); setStep((current) => current - 1); }} disabled={saving}><ArrowLeftIcon width={17} /> {t.onboarding.back}</Button> : <span />}
-              {step < 3 ? <Button $primary type="button" onClick={continueToNextStep}>{t.onboarding.next} <ArrowRightIcon width={17} /></Button> : <Button $primary type="submit" disabled={saving}>{saving ? t.onboarding.saving : <><SparklesIcon width={17} /> {t.onboarding.finish}</>}</Button>}
-            </Footer>
+            {error && <p className="mx-0 mt-4 mb-0 text-[0.87rem] text-[#b42318]" role="alert">{error}</p>}
+            <div className="mt-9 flex justify-between gap-3">
+              {step > 0 ? <button type="button" className={buttonClass()} onClick={() => { setError(""); setStep((current) => current - 1); }} disabled={saving}><ArrowLeftIcon width={17} /> {t.onboarding.back}</button> : <span />}
+              {step < 3 ? <button type="button" className={buttonClass(true)} onClick={continueToNextStep}>{t.onboarding.next} <ArrowRightIcon width={17} /></button> : <button type="submit" className={buttonClass(true)} disabled={saving}>{saving ? t.onboarding.saving : <><SparklesIcon width={17} /> {t.onboarding.finish}</>}</button>}
+            </div>
           </form>
-        </Content>
-      </Dialog>
-    </Overlay>
+        </div>
+      </section>
+    </div>
   );
 }

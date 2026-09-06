@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import styled from "styled-components";
 
 import { Celebration } from "../types/celebration_types";
 import { uploadCelebrationImage } from "../services/celebration_image_service";
@@ -13,165 +12,16 @@ interface CelebrationEditorProps {
   onDelete?: (id: string) => Promise<void> | void;
 }
 
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(5, 5, 5, 0.55);
-  overflow-y: auto;
-`;
+const fieldClass =
+  "flex flex-col gap-[0.35rem] text-[0.85rem] font-extrabold text-[#050505]";
 
-const Modal = styled.div`
-  width: min(560px, 100%);
-  max-height: 92vh;
-  overflow-y: auto;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 6px 6px 0 #f47a4a;
-`;
+const inputClass =
+  "w-full rounded-[10px] border-2 border-[#050505] bg-white px-[0.7rem] py-[0.6rem] [font-family:inherit] text-[0.92rem] font-semibold text-[#050505] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a]";
 
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 2px solid #050505;
-  padding: 1rem 1.15rem;
-`;
-
-const Title = styled.h2`
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 950;
-  color: #050505;
-`;
-
-const CloseButton = styled.button`
-  border: 0;
-  background: transparent;
-  color: #050505;
-  font-size: 1.4rem;
-  line-height: 1;
-  cursor: pointer;
-`;
-
-const Body = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.15rem;
-`;
-
-const Field = styled.label`
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #050505;
-`;
-
-const inputStyles = `
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.6rem 0.7rem;
-  font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: #050505;
-  width: 100%;
-  &:focus { outline: none; box-shadow: 2px 2px 0 #f47a4a; }
-`;
-
-const Input = styled.input`
-  ${inputStyles}
-`;
-
-const Textarea = styled.textarea`
-  ${inputStyles}
-  min-height: 90px;
-  resize: vertical;
-`;
-
-const ImageRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-`;
-
-const Preview = styled.div`
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  flex-shrink: 0;
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #f3f3f1;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-`;
-
-const SmallButton = styled.button<{ $variant?: "ghost" | "danger" }>`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: ${({ $variant }) =>
-    $variant === "danger" ? "#fee2e2" : "#ffffff"};
-  color: ${({ $variant }) => ($variant === "danger" ? "#991b1b" : "#050505")};
-  padding: 0.4rem 0.85rem;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
-  cursor: pointer;
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const Footer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  border-top: 2px solid #050505;
-  padding: 1rem 1.15rem;
-`;
-
-const PrimaryButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.55rem 1.3rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-`;
-
-const ErrorText = styled.p`
-  margin: 0;
-  color: #991b1b;
-  font-size: 0.82rem;
-  font-weight: 700;
-`;
+const smallButtonClass = (variant?: "ghost" | "danger") =>
+  `cursor-pointer rounded-full border-2 border-[#050505] px-[0.85rem] py-[0.4rem] [font-family:inherit] text-[0.82rem] font-extrabold disabled:cursor-not-allowed disabled:opacity-50 ${
+    variant === "danger" ? "bg-[#fee2e2] text-[#991b1b]" : "bg-white text-[#050505]"
+  }`;
 
 // Convert an ISO string to the yyyy-MM-dd value an <input type="date"> expects.
 const toDateInputValue = (iso?: string | null): string => {
@@ -256,73 +106,95 @@ const CelebrationEditor: React.FC<CelebrationEditorProps> = ({
   };
 
   return (
-    <Overlay onClick={onClose}>
-      <Modal onClick={(e) => e.stopPropagation()}>
-        <Header>
-          <Title>{isEditing ? "축하 항목 수정" : "축하 항목 추가"}</Title>
-          <CloseButton type="button" aria-label="닫기" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-[rgba(5,5,5,0.55)] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92vh] w-[min(560px,100%)] overflow-y-auto rounded-2xl border-2 border-[#050505] bg-white shadow-[6px_6px_0_#f47a4a]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b-2 border-[#050505] px-[1.15rem] py-4">
+          <h2 className="m-0 text-[1.05rem] font-[950] text-[#050505]">
+            {isEditing ? "축하 항목 수정" : "축하 항목 추가"}
+          </h2>
+          <button
+            className="cursor-pointer border-0 bg-transparent text-[1.4rem] leading-none text-[#050505]"
+            type="button"
+            aria-label="닫기"
+            onClick={onClose}
+          >
             ×
-          </CloseButton>
-        </Header>
-        <Body>
-          <Field>
+          </button>
+        </div>
+        <div className="flex flex-col gap-4 p-[1.15rem]">
+          <label className={fieldClass}>
             멤버 이름
-            <Input
+            <input
+              className={inputClass}
               value={memberName}
               onChange={(e) => setMemberName(e.target.value)}
               placeholder="예: 남OO"
             />
-          </Field>
-          <Field>
+          </label>
+          <label className={fieldClass}>
             헤드라인
-            <Input
+            <input
+              className={inputClass}
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="예: SK하이닉스 합격"
             />
-          </Field>
-          <Field>
+          </label>
+          <label className={fieldClass}>
             설명 (선택)
-            <Textarea
+            <textarea
+              className={`${inputClass} min-h-[90px] resize-y`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="축하 내용에 대한 짧은 설명"
             />
-          </Field>
-          <Field>
+          </label>
+          <label className={fieldClass}>
             달성 일자 (선택)
-            <Input
+            <input
+              className={inputClass}
               type="date"
               value={achievedAt}
               onChange={(e) => setAchievedAt(e.target.value)}
             />
-          </Field>
-          <Field as="div">
+          </label>
+          <div className={fieldClass}>
             로고 / 이미지 (선택)
-            <ImageRow>
-              <Preview>
+            <div className="flex items-center gap-[0.85rem]">
+              <div className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-[#050505] bg-[#f3f3f1]">
                 {logoUrl ? (
-                  <img src={logoUrl} alt="logo preview" />
+                  <img
+                    className="h-full w-full object-contain"
+                    src={logoUrl}
+                    alt="logo preview"
+                  />
                 ) : (
                   <span style={{ fontSize: "0.7rem", color: "#999" }}>없음</span>
                 )}
-              </Preview>
+              </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <SmallButton
+                <button
+                  className={smallButtonClass()}
                   type="button"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploading ? "업로드 중…" : "업로드"}
-                </SmallButton>
+                </button>
                 {logoUrl && (
-                  <SmallButton
+                  <button
+                    className={smallButtonClass("ghost")}
                     type="button"
-                    $variant="ghost"
                     onClick={() => setLogoUrl("")}
                   >
                     제거
-                  </SmallButton>
+                  </button>
                 )}
               </div>
               <input
@@ -332,38 +204,48 @@ const CelebrationEditor: React.FC<CelebrationEditorProps> = ({
                 style={{ display: "none" }}
                 onChange={handleImageChange}
               />
-            </ImageRow>
-          </Field>
-          {error && <ErrorText>{error}</ErrorText>}
-        </Body>
-        <Footer>
+            </div>
+          </div>
+          {error && (
+            <p className="m-0 text-[0.82rem] font-bold text-[#991b1b]">
+              {error}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-[0.6rem] border-t-2 border-[#050505] px-[1.15rem] py-4">
           {isEditing && onDelete ? (
-            <SmallButton
+            <button
+              className={smallButtonClass("danger")}
               type="button"
-              $variant="danger"
               disabled={saving}
               onClick={handleDelete}
             >
               삭제
-            </SmallButton>
+            </button>
           ) : (
             <span />
           )}
           <div style={{ display: "flex", gap: "0.6rem" }}>
-            <SmallButton type="button" onClick={onClose} disabled={saving}>
+            <button
+              className={smallButtonClass()}
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+            >
               취소
-            </SmallButton>
-            <PrimaryButton
+            </button>
+            <button
+              className="cursor-pointer rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[1.3rem] py-[0.55rem] [font-family:inherit] text-[0.9rem] font-[900] text-[#050505] shadow-[3px_3px_0_#050505] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none"
               type="button"
               onClick={handleSave}
               disabled={saving || uploading}
             >
               {saving ? "저장 중…" : "저장"}
-            </PrimaryButton>
+            </button>
           </div>
-        </Footer>
-      </Modal>
-    </Overlay>
+        </div>
+      </div>
+    </div>
   );
 };
 

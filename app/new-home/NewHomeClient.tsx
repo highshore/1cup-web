@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import styled, { createGlobalStyle, css, keyframes } from "styled-components";
-import { colors } from "../lib/constants/colors";
 import React from "react";
 import Image from "next/image";
+import "./new-home.css";
 // GNB and Footer are now handled by the layout
 
 // Imports for Meetup Event Display
@@ -42,30 +41,9 @@ import FaqSection from "./sections/FaqSection";
 import CtaSection from "./sections/CtaSection";
 import { useI18n } from "../lib/i18n/I18nProvider";
 
-const GlobalStyle = createGlobalStyle<{ $machineMode: boolean }>`
-  ${({ $machineMode }) =>
-    $machineMode &&
-    css`
-      html,
-      body {
-        background: #000000 !important;
-      }
+// The old createGlobalStyle lives in ./new-home.css; machine mode toggles the
+// `nh-machine-mode` class on <html> (see effect inside NewHomeClient).
 
-      body nav,
-      body footer {
-        display: none !important;
-      }
-    `}
-
-  body[data-home-image-guard="true"] img {
-    -webkit-user-drag: none;
-    user-select: none;
-  }
-`;
-
-// Use shared colors
-
-const MOBILE_NAV_GUTTER = "1rem";
 const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
 
 const MEMBER_COMPANY_LOGOS = [
@@ -166,1095 +144,9 @@ const NETWORKING_IMAGES = [
   { id: "activity", src: "/assets/homepage/activity.webp", width: 768, height: 1024, altKey: "activity", objectPosition: "center 72%" },
 ] as const;
 
-// Common section styles
-const SectionBase = css`
-  min-height: 450px;
-  padding: 5rem 2rem;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 0;
-
-  @media (max-width: 768px) {
-    padding: 3rem ${MOBILE_NAV_GUTTER};
-    text-align: center;
-  }
-`;
-
-// Hero Section
-const HeroSection = styled.section`
-  color: white;
-  padding: clamp(6rem, 5vw, 7.5rem) 0; /* Reduced vertical padding */
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  video {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: translate(-50%, -50%);
-    z-index: 0;
-  }
-
-  @media (max-width: 768px) {
-    min-height: 100svh;
-    padding: 0;
-    display: flex;
-  }
-`;
-
-const MainContent = styled.div`
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  background: #ffffff;
-  isolation: isolate;
-`;
-
-const MemberBackgroundSection = styled.section`
-  width: 100%;
-  background: #111111;
-  color: #ffffff;
-  padding: clamp(3.5rem, 7vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
-`;
-
-const MemberBackgroundHeader = styled.div`
-  max-width: 48rem;
-  margin-bottom: 3rem;
-
-  @media (max-width: 768px) {
-    margin: 0 auto 2.25rem;
-    text-align: center;
-  }
-`;
-
-const MemberBackgroundTitle = styled.h2`
-  margin: 0;
-  color: #ffffff;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.2;
-  letter-spacing: 0;
-
-  @media (max-width: 768px) {
-    text-align: center;
-  }
-`;
-
-const MemberBackgroundTitleAccent = styled.span`
-  color: #f47a4a;
-`;
-
-const MemberBackgroundLayout = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 20px;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const memberLogoMarqueeForward = keyframes`
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-50%, 0, 0); }
-`;
-
-const memberLogoMarqueeReverse = keyframes`
-  from { transform: translate3d(-50%, 0, 0); }
-  to { transform: translate3d(0, 0, 0); }
-`;
-
-const MemberLogoMarquee = styled.div`
-  overflow: hidden;
-  position: relative;
-  display: grid;
-  gap: 1.05rem;
-  margin: 0;
-  padding: 0;
-  mask-image: linear-gradient(
-    90deg,
-    transparent,
-    #000 7%,
-    #000 93%,
-    transparent
-  );
-
-  @media (max-width: 768px) {
-    gap: 0.8rem;
-    mask-image: linear-gradient(
-      90deg,
-      transparent,
-      #000 4%,
-      #000 96%,
-      transparent
-    );
-  }
-`;
-
-const MemberLogoTrack = styled.div<{ $reverse?: boolean }>`
-  display: flex;
-  width: max-content;
-  align-items: center;
-  gap: clamp(2.1rem, 5vw, 4.6rem);
-  will-change: transform;
-  animation: ${({ $reverse }) =>
-      $reverse ? memberLogoMarqueeReverse : memberLogoMarqueeForward}
-    ${({ $reverse }) => ($reverse ? "34s" : "38s")} linear infinite;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
-
-const MemberLogoItem = styled.div`
-  display: flex;
-  box-sizing: border-box;
-  width: clamp(10.5rem, 17vw, 13rem);
-  height: clamp(5.2rem, 9vw, 6.4rem);
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.9rem 1.3rem;
-
-  @media (max-width: 768px) {
-    width: 9rem;
-    height: 5.15rem;
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-  }
-`;
-
-const MemberLogoMark = styled.div<{ $scale: number }>`
-  display: grid;
-  width: 100%;
-  height: 100%;
-  place-items: center;
-  min-width: 0;
-
-  img {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 52px;
-    object-fit: contain;
-    object-position: center;
-  }
-
-  @media (max-width: 768px) {
-    img {
-      max-height: 40px;
-    }
-  }
-`;
-
-const MethodFlowWrapper = styled.div`
-  position: relative;
-  overflow: hidden;
-  background: #f3f3f1;
-  isolation: isolate;
-
-  &::before {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 18%),
-      radial-gradient(circle at 76% 18%, rgba(244, 122, 74, 0.06), transparent 24rem),
-      radial-gradient(circle at 16% 62%, rgba(5, 5, 5, 0.045), transparent 28rem);
-    content: "";
-  }
-`;
-
-const MethodFlowRoute = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-
-  svg {
-    position: absolute;
-    top: clamp(3rem, 5vw, 4.4rem);
-    left: 50%;
-    width: min(1120px, calc(100% - 2rem));
-    height: calc(100% - clamp(6rem, 10vw, 8rem));
-    overflow: visible;
-    transform: translateX(-50%);
-  }
-
-  .mobile-route {
-    display: none;
-  }
-
-  .route-shadow {
-    fill: none;
-    stroke: rgba(244, 122, 74, 0.11);
-    stroke-width: 8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    filter: drop-shadow(0 0 8px rgba(244, 122, 74, 0.11));
-    vector-effect: non-scaling-stroke;
-  }
-
-  .route-line {
-    fill: none;
-    stroke: rgba(244, 122, 74, 0.28);
-    stroke-width: 1.9;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 12 14;
-    filter: drop-shadow(0 0 5px rgba(244, 122, 74, 0.13));
-    vector-effect: non-scaling-stroke;
-  }
-
-  .route-anchor {
-    display: none;
-  }
-
-  .route-anchor-core {
-    display: none;
-  }
-
-  @media (max-width: 820px) {
-    svg {
-      top: 2.25rem;
-      width: calc(100% - 1.5rem);
-      height: calc(100% - 4rem);
-    }
-
-    .desktop-route {
-      display: none;
-    }
-
-    .mobile-route {
-      display: block;
-    }
-
-    .route-shadow {
-      stroke-width: 7;
-    }
-
-    .route-line {
-      stroke-width: 1.65;
-      stroke-dasharray: 10 12;
-    }
-  }
-`;
-
-const TopicVideoSection = styled.section`
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  color: #0f172a;
-  padding: clamp(4rem, 7vw, 5.5rem) 0;
-`;
-
-const TopicVideoLayout = styled.div`
-  position: relative;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: clamp(2rem, 5vw, 3.5rem);
-  align-items: center;
-
-  @media (max-width: 820px) {
-    grid-template-columns: 1fr;
-    padding: 0 ${MOBILE_NAV_GUTTER};
-    text-align: center;
-  }
-`;
-
-const TopicVideoCopy = styled.div`
-  max-width: 28rem;
-
-  @media (max-width: 820px) {
-    max-width: 100%;
-  }
-`;
-
-const TopicVideoSectionTitle = styled.p`
-  display: inline-flex;
-  max-width: min(100%, 18rem);
-  align-items: center;
-  justify-content: center;
-  margin: 0 0 0.85rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.34rem 0.72rem;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-  text-align: center;
-  white-space: normal;
-  word-break: keep-all;
-
-  @media (max-width: 768px) {
-    max-width: 100%;
-  }
-`;
-
-const TopicVideoTitle = styled.h2`
-  margin: 0;
-  color: #0f172a;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  white-space: pre-line;
-  word-break: keep-all;
-`;
-
-const TopicVideoDescription = styled.p`
-  margin: 1.2rem 0 0;
-  color: #475569;
-  font-size: clamp(0.98rem, 1.5vw, 1.08rem);
-  font-weight: 560;
-  line-height: 1.65;
-  white-space: pre-line;
-  word-break: keep-all;
-`;
-
-const TopicVideoCaveat = styled.p`
-  margin: 0.75rem 0 0;
-  color: rgba(100, 116, 139, 0.66);
-  font-size: 0.76rem;
-  font-weight: 520;
-  line-height: 1.55;
-  word-break: keep-all;
-`;
-
-const TopicVideoFrameGroup = styled.div`
-  min-width: 0;
-`;
-
-const TopicVideoFrame = styled.div`
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #0f172a;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-
-  iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-  }
-
-  @media (max-width: 768px) {
-    border-radius: 14px;
-  }
-`;
-
-const TopicVideoCaption = styled.div`
-  margin-top: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  color: #334155;
-  font-size: 0.84rem;
-  font-weight: 760;
-  text-align: right;
-
-  @media (max-width: 768px) {
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    gap: 0.35rem;
-    text-align: center;
-  }
-`;
-
-const LeaderMethodSection = styled.section`
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  color: #0f172a;
-  padding: 0 0 clamp(4.5rem, 8vw, 6rem);
-  overflow: hidden;
-`;
-
-const LeaderMethodLayout = styled.div`
-  position: relative;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 20px;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const LeaderMethodHeader = styled.div`
-  display: grid;
-  justify-items: end;
-  margin-bottom: clamp(2rem, 5vw, 3rem);
-  text-align: right;
-
-  @media (max-width: 820px) {
-    justify-items: center;
-    text-align: center;
-  }
-`;
-
-const LeaderMethodSectionTitle = styled.p`
-  display: inline-flex;
-  max-width: min(100%, 18rem);
-  align-items: center;
-  justify-content: center;
-  margin: 0 0 0.85rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.34rem 0.72rem;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-  text-align: center;
-  white-space: normal;
-  word-break: keep-all;
-`;
-
-const LeaderMethodTitle = styled.h2`
-  max-width: 35rem;
-  margin: 0;
-  color: #0f172a;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  white-space: pre-line;
-  word-break: keep-all;
-
-  @media (max-width: 820px) {
-    max-width: 100%;
-    text-align: center;
-  }
-`;
-
-const LeaderMethodContent = styled.div`
-  display: grid;
-  grid-template-columns: minmax(280px, 0.86fr) minmax(0, 1.14fr);
-  gap: clamp(1.25rem, 4vw, 2rem);
-  align-items: center;
-
-  @media (max-width: 860px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-// === 모임 진행 방식 #2 — conversation diagram (bold / flat, page-native) ===
-// Coffee-cup hub at the centre, five speech bubbles wired to it by dashed
-// spokes; the leader sits crowned at the top. Black outlines + hard offset
-// shadows + #f47a4a to match the rest of the page.
-const LeaderDiagramPanel = styled.div`
-  position: relative;
-  width: min(100%, 420px, 72vw);
-  aspect-ratio: 1 / 1;
-  justify-self: center;
-  align-self: center;
-  overflow: visible;
-`;
-
-// Dashed spokes connecting the cup to each speaker (drawn behind everything).
-const LeaderDiagramWeb = styled.svg`
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-
-  line {
-    stroke: #050505;
-    stroke-width: 0.9;
-    stroke-dasharray: 2.4 2.6;
-    stroke-linecap: round;
-    opacity: 0.5;
-  }
-`;
-
-// Abstract steam: wavy strokes that fade and drift upward.
-const leaderSteamRise = keyframes`
-  0% { opacity: 0; transform: translateY(2px) scaleY(0.75); }
-  30% { opacity: 0.95; }
-  70% { opacity: 0.5; }
-  100% { opacity: 0; transform: translateY(-5px) scaleY(1.2); }
-`;
-
-// Coffee-cup hub: a bold outlined disc with an abstract cup + steam mark.
-const LeaderCupBadge = styled.div`
-  position: absolute;
-  z-index: 3;
-  top: 52%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  width: 33%;
-  height: 33%;
-  border: 3px solid #050505;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 5px 5px 0 #f47a4a;
-  transform: translate(-50%, -50%);
-
-  svg {
-    width: 74%;
-    height: 74%;
-    overflow: visible;
-  }
-
-  .steam {
-    transform-box: fill-box;
-    transform-origin: center bottom;
-    animation: ${leaderSteamRise} 2.8s ease-in-out infinite;
-  }
-  .steam-2 {
-    animation-delay: 0.55s;
-  }
-  .steam-3 {
-    animation-delay: 1.1s;
-  }
-`;
-
-// Speech bubbles pop in on a stagger, then breathe gently — a live chat feel.
-const leaderBubblePop = keyframes`
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
-  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-`;
-
-const leaderBubbleBob = keyframes`
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50% { transform: translate(-50%, -50%) translateY(-6px); }
-`;
-
-const LeaderDiagramSeat = styled.div<{
-  $top: string;
-  $left: string;
-  $accent: string;
-  $delay: string;
-  $leader: boolean;
-}>`
-  position: absolute;
-  top: ${({ $top }) => $top};
-  left: ${({ $left }) => $left};
-  z-index: ${({ $leader }) => ($leader ? 6 : 5)};
-  display: grid;
-  place-items: center;
-  width: ${({ $leader }) =>
-    $leader ? "clamp(4.7rem, 9.4vw, 5.5rem)" : "clamp(3.9rem, 7.6vw, 4.6rem)"};
-  aspect-ratio: 1;
-  border: ${({ $leader }) => ($leader ? "3px" : "2.5px")} solid #050505;
-  border-radius: 50%;
-  background: ${({ $leader }) => ($leader ? "#f47a4a" : "#ffffff")};
-  box-shadow: ${({ $leader }) =>
-    $leader ? "4px 4px 0 #050505" : "3px 3px 0 #050505"};
-  transform: translate(-50%, -50%);
-  animation:
-    ${leaderBubblePop} 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-    ${leaderBubbleBob} 4.4s ease-in-out infinite;
-  animation-delay: ${({ $delay }) => `${$delay}, calc(${$delay} + 0.7s)`};
-`;
-
-// Crown marking the leader at the top.
-const LeaderCrown = styled.span`
-  position: absolute;
-  z-index: 7;
-  top: -44%;
-  left: 50%;
-  width: 60%;
-  transform: translateX(-50%);
-  pointer-events: none;
-
-  svg {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-`;
-
-const leaderTypingBounce = keyframes`
-  0%, 70%, 100% { transform: translateY(0); opacity: 0.4; }
-  35% { transform: translateY(-0.26rem); opacity: 1; }
-`;
-
-// Animated "typing" dots inside each bubble — the conversation in motion.
-const LeaderTypingDots = styled.span<{ $leader: boolean; $accent: string }>`
-  display: flex;
-  align-items: center;
-  gap: 0.18rem;
-
-  span {
-    width: ${({ $leader }) => ($leader ? "0.36rem" : "0.3rem")};
-    height: ${({ $leader }) => ($leader ? "0.36rem" : "0.3rem")};
-    border-radius: 50%;
-    background: ${({ $leader, $accent }) => ($leader ? "#ffffff" : $accent)};
-    animation: ${leaderTypingBounce} 1.4s ease-in-out infinite;
-  }
-
-  span:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
-  span:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-`;
-
-const LeaderAccordionColumn = styled.div`
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-`;
-
-const LeaderLocationTabs = styled.div`
-  display: inline-grid;
-  grid-template-columns: repeat(2, minmax(88px, 1fr));
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.35rem;
-  box-shadow: 3px 3px 0 #f47a4a;
-
-  @media (max-width: 820px) {
-    justify-self: center;
-  }
-`;
-
-const LeaderLocationButton = styled.button<{ $active: boolean }>`
-  min-height: 36px;
-  border: 0;
-  border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#050505" : "transparent")};
-  color: ${({ $active }) => ($active ? "#ffffff" : "#475569")};
-  padding: 0.42rem 0.95rem;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
-
-  &:hover {
-    color: ${({ $active }) => ($active ? "#ffffff" : "#0f172a")};
-    transform: translateY(-1px);
-  }
-`;
-
-const LeaderAccordionList = styled.div`
-  display: grid;
-  gap: 0.75rem;
-`;
-
-const LeaderAccordionItem = styled.article<{ $active: boolean; $accent: string }>`
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: ${({ $active }) =>
-    $active ? "5px 5px 0 #f47a4a" : "3px 3px 0 rgba(5, 5, 5, 0.82)"};
-  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
-`;
-
-const LeaderAccordionButton = styled.button`
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0.95rem 1rem;
-  color: #0f172a;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 2px solid #f47a4a;
-    outline-offset: -4px;
-  }
-`;
-
-const LeaderAccordionSummary = styled.span`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.8rem;
-  align-items: center;
-`;
-
-const LeaderAccordionInitial = styled.span<{ $accent: string }>`
-  display: grid;
-  width: 3.15rem;
-  height: 3.15rem;
-  place-items: center;
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: ${({ $accent }) => $accent};
-  color: #ffffff;
-  font-size: 1.1rem;
-  font-weight: 950;
-  line-height: 1;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const LeaderAccordionName = styled.strong`
-  display: block;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 920;
-  line-height: 1.22;
-
-  span {
-    color: rgba(5, 5, 5, 0.58);
-    font-weight: 760;
-  }
-`;
-
-const LeaderAccordionIcon = styled.span<{ $active: boolean }>`
-  display: grid;
-  width: 1.8rem;
-  height: 1.8rem;
-  place-items: center;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
-  background: #f3f3f1;
-  color: #050505;
-  font-size: 1.3rem;
-  font-weight: 500;
-
-  &::before {
-    content: "${({ $active }) => ($active ? "−" : "+")}";
-  }
-`;
-
-const LeaderAccordionPanel = styled.div<{ $active: boolean }>`
-  display: grid;
-  grid-template-rows: ${({ $active }) => ($active ? "1fr" : "0fr")};
-  opacity: ${({ $active }) => ($active ? 1 : 0)};
-  transition: grid-template-rows 240ms ease, opacity 180ms ease;
-`;
-
-const LeaderAccordionPanelInner = styled.div`
-  min-height: 0;
-  overflow: hidden;
-`;
-
-const LeaderAccordionContent = styled.div`
-  padding: 0 1rem 1rem 5rem;
-
-  @media (max-width: 520px) {
-    padding-left: 1rem;
-  }
-`;
-
-const LeaderLinkedInButton = styled.a<{ $disabled: boolean }>`
-  margin-top: 0.95rem;
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border: 2px solid ${({ $disabled }) => ($disabled ? "rgba(15, 23, 42, 0.12)" : "#050505")};
-  border-radius: 999px;
-  background: ${({ $disabled }) =>
-    $disabled ? "rgba(15, 23, 42, 0.04)" : "#0a66c2"};
-  color: ${({ $disabled }) => ($disabled ? "#94a3b8" : "#ffffff")};
-  padding: 0.5rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 880;
-  text-decoration: none;
-  pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
-  box-shadow: ${({ $disabled }) => ($disabled ? "none" : "3px 3px 0 #050505")};
-  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-
-  &:hover {
-    background: ${({ $disabled }) =>
-      $disabled ? "rgba(15, 23, 42, 0.04)" : "#004182"};
-    color: ${({ $disabled }) => ($disabled ? "#94a3b8" : "#ffffff")};
-    text-decoration: none;
-    transform: ${({ $disabled }) => ($disabled ? "none" : "translate(-1px, -1px)")};
-    box-shadow: ${({ $disabled }) => ($disabled ? "none" : "4px 4px 0 #050505")};
-  }
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
-const LeaderEmptyState = styled.div`
-  display: grid;
-  min-height: 250px;
-  place-items: center;
-  border: 1px dashed rgba(15, 23, 42, 0.18);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.58);
-  padding: 2rem;
-  color: #64748b;
-  text-align: center;
-  font-weight: 720;
-  line-height: 1.55;
-`;
-
-const LeaderStatList = styled.div`
-  margin: 0;
-  padding: 0;
-`;
-
-const LeaderCredentialList = styled.ul`
-  display: grid;
-  gap: 0.46rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
-
-const LeaderCredentialItem = styled.li`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.48rem;
-  align-items: start;
-  color: rgba(5, 5, 5, 0.74);
-  font-size: 0.86rem;
-  font-weight: 720;
-  line-height: 1.48;
-  word-break: keep-all;
-`;
-
-const LeaderStatEmoji = styled.span`
-  display: inline-flex;
-  width: 1.25rem;
-  justify-content: center;
-`;
-
-const LeaderReadingStyle = styled.div`
-  margin-top: 0.9rem;
-  border: 1px solid rgba(5, 5, 5, 0.12);
-  border-radius: 10px;
-  background: #f3f3f1;
-  padding: 0.78rem 0.85rem;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.84rem;
-  font-weight: 680;
-  line-height: 1.55;
-  word-break: keep-all;
-
-  strong {
-    display: block;
-    margin-bottom: 0.35rem;
-    color: #050505;
-    font-size: 0.74rem;
-    font-weight: 920;
-    letter-spacing: 0.04em;
-  }
-`;
-
-const getLeaderBulletEmoji = (icon: string) => {
-  if (icon === "work") {
-    return "💼";
-  }
-
-  if (icon === "military") {
-    return "🪖";
-  }
-
-  if (icon === "school") {
-    return "🎓";
-  }
-
-  return "🇬🇧";
-};
-
-const NetworkingMethodSection = styled.section`
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  color: #0f172a;
-  padding: 0 0 clamp(2rem, 4vw, 3rem);
-  overflow: hidden;
-`;
-
-const NetworkingMethodLayout = styled.div`
-  position: relative;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 20px;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const NetworkingMethodHeader = styled.div`
-  max-width: 44rem;
-  margin: 0 0 clamp(1.5rem, 4vw, 2.4rem);
-
-  @media (max-width: 768px) {
-    margin-right: auto;
-    margin-left: auto;
-    text-align: center;
-  }
-`;
-
-const NetworkingMethodSectionTitle = styled.p`
-  display: inline-flex;
-  max-width: min(100%, 18rem);
-  align-items: center;
-  justify-content: center;
-  margin: 0 0 0.85rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.34rem 0.72rem;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-  text-align: center;
-  white-space: normal;
-  word-break: keep-all;
-
-  @media (max-width: 768px) {
-    max-width: 100%;
-  }
-`;
-
-const NetworkingMethodTitle = styled.h2`
-  margin: 0;
-  color: #0f172a;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  white-space: pre-line;
-  word-break: keep-all;
-`;
-
-const NetworkingMethodDescription = styled.p`
-  max-width: 32rem;
-  margin: 1rem 0 0;
-  color: #64748b;
-  font-size: 0.98rem;
-  font-weight: 620;
-  line-height: 1.65;
-  word-break: keep-all;
-
-  @media (max-width: 768px) {
-    margin-right: auto;
-    margin-left: auto;
-    text-align: center;
-  }
-`;
-
-const NetworkingGallery = styled.div`
-  display: flex;
-  max-width: 100%;
-  gap: clamp(0.85rem, 2vw, 1.1rem);
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 0 1rem;
-  scroll-padding: 0;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.24);
-  }
-`;
-
-const NetworkingImageCard = styled.figure<{ $objectPosition?: string; $rotate?: number }>`
-  flex: 0 0 min(78vw, 420px);
-  aspect-ratio: 4 / 3;
-  margin: 0;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #ffffff;
-  scroll-snap-align: start;
-  box-shadow: 0 18px 52px rgba(15, 23, 42, 0.08);
-
-  img {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: cover;
-    object-position: ${({ $objectPosition }) => $objectPosition ?? "center center"};
-    transform: ${({ $rotate }) => ($rotate ? `rotate(${$rotate}deg) scale(1.34)` : "none")};
-    transform-origin: center;
-  }
-
-  @media (max-width: 760px) {
-    flex-basis: min(84vw, 340px);
-    border-radius: 12px;
-  }
-`;
-
-
-// New styled component for the video overlay
-const VideoOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(4, 4, 20, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 1;
-`;
-
-// Common style utilities
-const breakpoints = {
-  mobile: "768px",
-};
-
-const MobileBreak = styled.br`
-  display: none;
-  @media (max-width: ${breakpoints.mobile}) {
-    display: block;
-  }
-`;
+// Section title pill shared by the "모임 진행 방식" sections.
+const sectionPillClass =
+  "inline-flex max-w-[min(100%,18rem)] items-center justify-center mt-0 mx-0 mb-[0.85rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] px-[0.72rem] py-[0.34rem] text-[0.78rem] font-black tracking-[0.02em] leading-[1.25] text-center whitespace-normal break-keep";
 
 interface MemberProfile {
   id: string;
@@ -1275,947 +167,21 @@ interface PricingBenefit {
   description: string;
 }
 
-// --- New Membership Section Styles ---
-const MembershipSectionContainer = styled.div`
-  padding: 5rem 0;
-  background: #0f172a;
-  position: relative;
-  overflow: hidden;
-  color: white;
-`;
-
-const MembershipWrapper = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.25rem; /* 20px padding on left/right always */
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const MembershipGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 3rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: 1.1fr 0.9fr;
-    align-items: center;
-    gap: 4rem;
-  }
-`;
-
-const LeftCol = styled.div`
-  color: white;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  position: relative;
-  z-index: 1;
-`;
-
-const RightCol = styled.div`
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  position: relative;
-  z-index: 1;
-  overflow: visible;
-
-  @media (max-width: 768px) {
-    margin-top: 1.5rem;
-    align-items: center;
-  }
-`;
-
-const CtaButton = styled.button`
-  background: rgb(128, 0, 33);
-  color: white;
-  font-weight: 700;
-  padding: 1rem 2.5rem;
-  border-radius: 9999px;
-  transition: all 0.2s;
-  box-shadow: 0 10px 15px -3px rgba(128, 0, 33, 0.3);
-  width: max-content;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-
-  &:hover {
-    background: rgb(150, 0, 40);
-    transform: translateY(-2px);
-    box-shadow: 0 15px 20px -3px rgba(128, 0, 33, 0.4);
-  }
-`;
-
-const BulletList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const BulletItem = styled.p`
-  font-size: 1.05rem;
-  color: #ffb7c5;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-`;
-
-const ChartHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #9ca3af;
-`;
-
-const CostBarContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const fadeInUp = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const CostItem = styled.div<{ $delay: number }>`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: ${fadeInUp} 0.45s ease forwards;
-  animation-delay: ${({ $delay }) => `${$delay}s`};
-`;
-
-const CostLabelRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-  color: #e5e7eb;
-  font-weight: 500;
-`;
-
-const CostBarWrapper = styled.div`
-  width: 100%;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 9999px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
-`;
-
-const growBar = keyframes`
-  from { width: 0; }
-  to { width: var(--target-width, 100%); }
-`;
-
-const shimmer = keyframes`
-  0% { transform: translateX(-120%); opacity: 0; }
-  30% { opacity: 0.8; }
-  100% { transform: translateX(120%); opacity: 0; }
-`;
-
-const CostBar = styled.div<{ $color: string }>`
-  position: relative;
-  height: 100%;
-  width: 0;
-  background: ${props => props.$color};
-  border-radius: 9999px;
-  animation: ${growBar} 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--delay, 0s);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
-  overflow: hidden;
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 45%, rgba(255,255,255,0) 80%);
-    transform: translateX(-120%);
-    animation: ${shimmer} 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    animation-delay: calc(var(--delay, 0s) + 0.2s);
-  }
-`;
-
-const CostValue = styled.span<{ $highlight?: boolean }>`
-  color: ${props => props.$highlight ? 'rgb(255, 100, 130)' : '#9ca3af'};
-  font-weight: ${props => props.$highlight ? '700' : '400'};
-  font-size: 0.85rem;
-`;
-
-const ChartGridOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(0deg, rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 100% 28px, 48px 100%;
-  opacity: 0.5;
-  pointer-events: none;
-`;
-
-const floatOrb = keyframes`
-  0% { transform: translate3d(0, 0, 0); opacity: 0.45; }
-  100% { transform: translate3d(20px, -15px, 0); opacity: 0.75; }
-`;
-
-const ChartOrb = styled.div`
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  background: radial-gradient(circle, rgba(255, 120, 150, 0.35), transparent 70%);
-  filter: blur(6px);
-  top: -40px;
-  right: -60px;
-  animation: ${floatOrb} 9s ease-in-out infinite alternate;
-  pointer-events: none;
-`;
-
-const spinCycle = keyframes`
-  0% { transform: perspective(1000px) rotateY(-5deg) scale(1); }
-  5% { transform: perspective(1000px) rotateY(0deg) scale(1.02); }
-  15% { transform: perspective(1000px) rotateY(360deg) scale(1.05); }
-  25% { transform: perspective(1000px) rotateY(0deg) scale(1.02); }
-  35% { transform: perspective(1000px) rotateY(-3deg) scale(1); }
-  100% { transform: perspective(1000px) rotateY(-5deg) scale(1); }
-`;
-
-const ComparisonChart = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
-  transform: perspective(1000px) rotateY(-5deg);
-  transition: transform 0.5s ease;
-  position: relative;
-  overflow: hidden;
-  animation: ${spinCycle} 5s ease-in-out infinite;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
-    pointer-events: none;
-    transform: rotate(45deg);
-  }
-  
-  &:hover {
-    transform: perspective(1000px) rotateY(0deg) scale(1.02);
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-  }
-  
-  @media (max-width: 768px) {
-    transform: none;
-    &:hover {
-      transform: none;
-    }
-  }
-`;
-
-// --- Hero Section 2-Column Styles ---
-const HeroGrid = styled.div`
-  max-width: 960px; /* Changed from 1024px to 960px to match content width */
-  width: 100%;
-  margin: 0 auto;
-  display: grid;
-  gap: 3rem;
-  align-items: center;
-  position: relative;
-  z-index: 2;
-  padding: 0 1.5rem; /* Add horizontal padding (24px) */
-  
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
+const getLeaderBulletEmoji = (icon: string) => {
+  if (icon === "work") {
+    return "💼";
   }
 
-  @media (max-width: 768px) {
-    width: min(100%, 580px);
-    padding: 0 clamp(1.15rem, 4.4vw, 1.75rem);
-    display: flex;
-    flex-direction: column;
-    gap: clamp(1.35rem, 4.8vw, 1.9rem);
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    min-height: 100svh;
-  }
-`;
-
-const HeroLeft = styled.div`
-  text-align: left;
-  z-index: 10;
-  
-  @media (max-width: 768px) {
-    width: 100%;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(0.95rem, 3.5vw, 1.25rem);
-    padding: clamp(4.3rem, 14vw, 5.8rem) 0 0;
-  }
-`;
-
-const HeroTitle = styled.h1`
-  font-size: clamp(1.9rem, 3.4vw, 3rem);
-  font-weight: 800;
-  line-height: 1.2;
-  color: white;
-  margin-bottom: 1.5rem;
-  white-space: pre-wrap;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-
-  @media (max-width: 768px) {
-    font-size: clamp(2.08rem, 8.35vw, 2.65rem);
-    font-weight: 760;
-    line-height: 1.18;
-    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-    letter-spacing: 0;
-    margin-bottom: 0;
-    white-space: normal;
-  }
-`;
-
-const HeroSubtitle = styled.p`
-  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 2.5rem;
-  font-weight: 500;
-  line-height: 1.6;
-  max-width: 500px;
-  white-space: pre-wrap;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  @media (max-width: 768px) {
-    margin-bottom: 0;
-    font-size: clamp(1.02rem, 3.85vw, 1.13rem);
-    line-height: 1.56;
-    max-width: 380px;
-    white-space: normal;
-  }
-`;
-
-const DesktopHeroTitle = styled(HeroTitle)`
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const MobileHeroTitle = styled(HeroTitle)`
-  display: none;
-
-  @media (max-width: 768px) {
-    display: block;
-    white-space: pre-wrap;
-  }
-`;
-
-const DesktopHeroSubtitle = styled(HeroSubtitle)`
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const MobileHeroSubtitle = styled(HeroSubtitle)`
-  display: none;
-
-  @media (max-width: 768px) {
-    display: block;
-    white-space: pre-wrap;
-  }
-`;
-
-const HeroRight = styled.div`
-  position: relative;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 0 clamp(${MOBILE_NAV_GUTTER}, 3vw, 1.5rem);
-  
-  @media (max-width: 768px) {
-    margin-top: 0;
-    padding: 0;
-    align-items: center;
-    flex-direction: column;
-    gap: 0;
-  }
-`;
-
-const StackContainer = styled.div`
-  position: relative;
-  width: 100%;
-  max-width: 380px;
-  display: grid;
-  grid-template-columns: 1fr;
-  justify-items: stretch;
-  
-  @media (max-width: 768px) {
-    max-width: 100%;
-    padding: 0 14px 18px 0;
-  }
-`;
-
-const StackCardWrapper = styled.div<{
-  $position: number;
-  $isAnimating?: boolean;
-  $isInteractive?: boolean;
-}>`
-  position: relative;
-  grid-area: 1 / 1;
-  border-radius: 20px;
-  transform-origin: center top;
-  transform: ${({ $position }) => {
-    switch ($position) {
-      case 0:
-        return "translate(0px, 0px)";
-      case 1:
-        return "translate(18px, 18px)";
-      default:
-        return "translate(36px, 36px)";
-    }
-  }};
-
-  @media (max-width: 768px) {
-    border-radius: 18px;
-    transform: ${({ $position }) => {
-      switch ($position) {
-        case 0:
-          return "translate(0px, 0px)";
-        case 1:
-          return "translate(7px, 9px)";
-        default:
-          return "translate(14px, 18px)";
-      }
-    }};
-    opacity: ${({ $position }) => ($position === 0 ? 1 : $position === 1 ? 0.82 : 0.56)};
+  if (icon === "military") {
+    return "🪖";
   }
 
-  z-index: ${({ $position }) => 3 - $position};
-  opacity: ${({ $position }) => ($position === 2 ? 0.75 : 1)};
-  transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-  pointer-events: ${({ $isInteractive }) =>
-    $isInteractive ? "auto" : "none"};
-  box-shadow: ${({ $position }) => {
-    switch ($position) {
-      case 0:
-        return "0 35px 60px -22px rgba(15, 23, 42, 0.45)";
-      case 1:
-        return "0 28px 55px -25px rgba(15, 23, 42, 0.32)";
-      default:
-        return "0 22px 45px -30px rgba(15, 23, 42, 0.24)";
-    }
-  }};
-  ${({ $isAnimating }) =>
-    $isAnimating &&
-    css`
-      transform: translate(-18px, -22px);
-      opacity: 0;
-    `}
-`;
-
-const PlaceholderCardShell = styled.div`
-  width: 100%;
-  height: 100%;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.99);
-  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.05);
-`;
-
-const MobileEventPrompt = styled.div`
-  display: none;
-
-  @media (max-width: 768px) {
-    display: inline-flex;
-    width: min(100%, 470px);
-    min-height: 38px;
-    align-items: center;
-    justify-content: center;
-    gap: 0.45rem;
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 0.55rem 0.9rem;
-    color: #0f172a;
-    font-size: clamp(0.75rem, 2.6vw, 0.86rem);
-    font-weight: 850;
-    line-height: 1.35;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
-
-    svg {
-      width: 15px;
-      height: 15px;
-      flex-shrink: 0;
-    }
-  }
-`;
-
-// ... [Existing FAQ and CTA Styles] ...
-
-// Gradient shining sweep animation for CTA button
-const gradientShine = keyframes`
-  0% {
-    background-position: -100% center;
-  }
-  100% {
-    background-position: 100% center;
-  }
-`;
-
-const CTAWrapper = styled.div`
-  width: 100%;
-  background: #f5f5f5;
-  margin: 0;
-  padding: 4rem 0;
-
-  @media (max-width: 768px) {
-    padding: 3rem 0;
-  }
-`;
-
-const CTAInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const CTASection = styled.div`
-  position: relative;
-  border-radius: 20px;
-  padding: 3rem;
-  text-align: center;
-  width: 100%;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    padding: 2rem;
-  }
-`;
-
-const CTAVideoBackground = styled.video`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-`;
-
-const CTAOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1;
-`;
-
-const CTAContent = styled.div`
-  position: relative;
-  z-index: 2;
-  max-width: 760px; /* Constrain width for better reading */
-  margin: 0 auto;
-`;
-
-const CTATitle = styled.h3`
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 1rem;
-  font-family: inherit;
-  white-space: pre-wrap; /* Allow newlines */
-
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const CTADescription = styled.p`
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-  font-family: inherit;
-  white-space: pre-wrap; /* Allow newlines */
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-  }
-`;
-
-const CTAButton = styled.button`
-  padding: 0.85rem 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-  color: white;
-  font-family: inherit;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 15%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 85%
-    );
-    background-size: 200% 100%;
-    animation: ${gradientShine} 2.5s linear infinite;
-    pointer-events: none;
+  if (icon === "school") {
+    return "🎓";
   }
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
-  }
-
-  svg {
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1.5rem;
-    font-size: 0.9rem;
-    gap: 0.375rem;
-  }
-`;
-
-const HeroCTAButton = styled(CTAButton)`
-  min-height: 52px;
-  padding: 0.875rem 1.9rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 850;
-  box-shadow: 5px 5px 0 #f47a4a;
-  backdrop-filter: none;
-
-  &::before {
-    display: none;
-  }
-
-  &:hover {
-    background: #fff8dc;
-    border-color: #050505;
-    box-shadow: 7px 7px 0 #f47a4a;
-    transform: translate(-1px, -1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-// Define styled component for page wrapper
-const PageWrapper = styled.div<{ $machineMode?: boolean }>`
-  padding-top: 0; /* Always 0 for homepage */
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: ${({ $machineMode }) => ($machineMode ? "#000000" : "transparent")};
-
-  img {
-    -webkit-user-drag: none;
-    user-select: none;
-  }
-`;
-
-// New styled components for marketing text
-const MarketingText = styled.h2`
-  font-size: 2.8rem;
-  font-weight: 700;
-  color: #ffffff;
-  text-align: center;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  font-family: "Noto Sans KR", sans-serif;
-  z-index: 2; /* Ensure it's above canvas */
-  position: relative; /* For z-index to take effect */
-  white-space: pre-wrap; /* Allow newlines from locale */
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
-  }
-`;
-
-const MarketingSubText = styled.p`
-  font-size: 1.3rem;
-  font-weight: 500;
-  color: #e0e0e0; /* Lighter than pure white for subtlety */
-  text-align: center;
-  line-height: 1.6;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-  font-family: "Noto Sans KR", sans-serif;
-  z-index: 2; /* Ensure it's above canvas */
-  position: relative; /* For z-index to take effect */
-  white-space: pre-wrap; /* Allow newlines from locale */
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-  }
-`;
-
-// ... [EventCard styles omitted for brevity as they are unchanged] ...
-// --- START: Copied/Adapted Meetup Card Styles from meetup.tsx ---
-// (Styles removed as requested)
-
-// Removed unused CopiedEvent styles
-
-// --- Hero Scroll Card Styles ---
-const ScrollCard = styled.div`
-  width: 100%;
-  background: white;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  }
-
-  @media (max-width: 768px) {
-    min-height: clamp(126px, 30vw, 148px);
-    height: auto;
-    flex-direction: row;
-    align-items: stretch;
-    border: 1px solid rgba(255, 255, 255, 0.92);
-    border-radius: 18px;
-    box-shadow: 0 18px 34px rgba(16, 185, 129, 0.18),
-      0 16px 40px rgba(0, 0, 0, 0.24);
-
-    &:hover {
-      transform: none;
-    }
-  }
-`;
-
-const ScrollCardImageArea = styled.div`
-  width: 100%;
-  position: relative;
-  background: #f3f4f6;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    display: block;
-    padding-top: 75%; /* 4:3 ratio (height / width = 0.75) */
-  }
-  
-  img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  @media (max-width: 768px) {
-    width: clamp(104px, 27vw, 132px);
-    aspect-ratio: 1 / 1;
-    align-self: center;
-    flex: 0 0 clamp(104px, 27vw, 132px);
-    margin-left: clamp(0.55rem, 2vw, 0.75rem);
-    border-radius: 14px;
-    background: #0f172a;
-
-    &::before {
-      display: none;
-      padding-top: 0;
-    }
-
-    img {
-      object-fit: cover;
-    }
-  }
-`;
-
-const ScrollCardBadge = styled.div`
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.25rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #111827;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  
-  span {
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
-  }
-
-  svg {
-    width: 13px;
-    height: 13px;
-  }
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const ScrollCardContent = styled.div`
-  flex: 1;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: white;
-
-  @media (max-width: 768px) {
-    min-width: 0;
-    padding: clamp(0.78rem, 2.9vw, 0.95rem);
-    gap: clamp(0.48rem, 1.8vw, 0.62rem);
-    justify-content: center;
-  }
-`;
-
-const ScrollCardTitle = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #111827;
-  line-height: 1.35;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-align: left;
-
-  @media (max-width: 768px) {
-    font-size: clamp(0.88rem, 3.25vw, 1rem);
-    line-height: 1.28;
-  }
-`;
-
-const ScrollCardMetaContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-`;
-
-const ScrollCardMetaRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #6b7280;
-  font-weight: 500;
-
-  svg {
-    width: 0.9rem;
-    height: 0.9rem;
-    color: #9ca3af;
-    flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    gap: 0.34rem;
-    font-size: clamp(0.74rem, 2.7vw, 0.82rem);
-    line-height: 1.25;
-
-    svg {
-      width: 0.78rem;
-      height: 0.78rem;
-    }
-  }
-`;
-
-const ScrollCardFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.25rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #f3f4f6;
-  gap: 0.75rem;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  flex-wrap: nowrap;
-
-  @media (max-width: 768px) {
-    margin-top: 0;
-    padding-top: 0.56rem;
-    gap: 0.45rem;
-  }
-`;
-
-const ScrollAvatarStackSlot = styled.div`
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-`;
-
-// Removed JoinCta and ParticipantCount since they are replaced by UrgencyButton
+  return "🇬🇧";
+};
 
 interface ScrollCardProps {
   meetup: MeetupEvent;
@@ -2235,10 +201,10 @@ const buildStackLayers = (
   offset: number
 ): StackLayer[] => {
   if (!events || events.length === 0) {
-    return PLACEHOLDER_IDS.map((id, i) => ({ 
-      type: "placeholder", 
-      id, 
-      instanceKey: `${id}-${i}` 
+    return PLACEHOLDER_IDS.map((id, i) => ({
+      type: "placeholder",
+      id,
+      instanceKey: `${id}-${i}`
     }));
   }
 
@@ -2247,10 +213,10 @@ const buildStackLayers = (
 
   for (let i = 0; i < 3; i++) {
     const absoluteIndex = offset + i;
-    
+
     if (count === 1 && i > 0) {
-      layers.push({ 
-        type: "placeholder", 
+      layers.push({
+        type: "placeholder",
         id: `${PLACEHOLDER_IDS[i - 1]}-${i}`,
         instanceKey: `placeholder-${i}-${absoluteIndex}`
       });
@@ -2258,8 +224,8 @@ const buildStackLayers = (
     }
 
     if (count === 2 && i === 2) {
-      layers.push({ 
-        type: "placeholder", 
+      layers.push({
+        type: "placeholder",
         id: `${PLACEHOLDER_IDS[2]}-${i}`,
         instanceKey: `placeholder-${i}-${absoluteIndex}`
       });
@@ -2268,8 +234,8 @@ const buildStackLayers = (
 
     const index = absoluteIndex % count;
     const event = events[index];
-    layers.push({ 
-      type: "event", 
+    layers.push({
+      type: "event",
       event,
       instanceKey: `${event.id}-${absoluteIndex}`
     });
@@ -2277,61 +243,6 @@ const buildStackLayers = (
 
   return layers;
 };
-
-const UrgencyButton = styled.button<{ $isHigh?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 38px;
-  background: ${(props) => (props.$isHigh ? "#fff8dc" : "#050505")};
-  color: ${(props) => (props.$isHigh ? "#050505" : "#ffffff")};
-  padding: 0.55rem 0.9rem;
-  border-radius: 999px;
-  border: 2px solid #050505;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease,
-    color 160ms ease, transform 160ms ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-  max-width: 58%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-shadow: none;
-
-  &:hover {
-    background: ${(props) => (props.$isHigh ? "#ffffff" : "#050505")};
-    border-color: #050505;
-    transform: translateY(-1px);
-    box-shadow: none;
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-  
-  span {
-    display: inline-block;
-    flex: 0 0 auto;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: ${(props) => (props.$isHigh ? "#e11d48" : "#22c55e")};
-    box-shadow: 0 0 0 3px
-      ${(props) =>
-        props.$isHigh ? "rgba(225, 29, 72, 0.13)" : "rgba(34, 197, 94, 0.16)"};
-  }
-
-  @media (max-width: 768px) {
-    min-height: 32px;
-    padding: 0.38rem 0.7rem;
-    font-size: clamp(0.68rem, 2.45vw, 0.76rem);
-    max-width: 62%;
-  }
-`;
 
 const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }: ScrollCardProps) => {
   const { t } = useI18n();
@@ -2341,10 +252,14 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
   const isUrgent = spotsLeft <= 5; // Urgency threshold
 
   return (
-    <ScrollCard onClick={() => onNavigate(meetup.id)}>
-      <ScrollCardImageArea>
-        <img 
-          src={meetup.image_urls?.[0] || "/images/placeholder.jpg"} 
+    <div
+      className="w-full bg-white rounded-[20px] overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] relative flex flex-col [transition:transform_0.2s_ease,box-shadow_0.2s_ease] cursor-pointer hover:[transform:translateY(-2px)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] max-[768px]:min-h-[clamp(126px,30vw,148px)] max-[768px]:h-auto max-[768px]:flex-row max-[768px]:items-stretch max-[768px]:border max-[768px]:border-[rgba(255,255,255,0.92)] max-[768px]:rounded-[18px] max-[768px]:shadow-[0_18px_34px_rgba(16,185,129,0.18),0_16px_40px_rgba(0,0,0,0.24)] max-[768px]:hover:[transform:none] max-[768px]:hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
+      onClick={() => onNavigate(meetup.id)}
+    >
+      <div className="w-full relative bg-[#f3f4f6] overflow-hidden before:content-[''] before:block before:pt-[75%] max-[768px]:w-[clamp(104px,27vw,132px)] max-[768px]:aspect-square max-[768px]:self-center max-[768px]:flex-[0_0_clamp(104px,27vw,132px)] max-[768px]:ml-[clamp(0.55rem,2vw,0.75rem)] max-[768px]:rounded-[14px] max-[768px]:bg-[#0f172a] max-[768px]:before:hidden">
+        <img
+          className="absolute inset-0 w-full h-full object-cover"
+          src={meetup.image_urls?.[0] || "/images/placeholder.jpg"}
           alt={meetup.title}
           width={360}
           height={270}
@@ -2355,47 +270,61 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
             e.currentTarget.parentElement!.style.backgroundColor = '#e5e7eb';
           }}
         />
-        <ScrollCardBadge>
+        <div className="absolute top-3 left-3 bg-[rgba(255,255,255,0.95)] py-1 px-[0.6rem] rounded-full text-[0.7rem] font-bold text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center gap-[0.35rem] [&_span]:shadow-[0_0_0_2px_rgba(255,255,255,0.5)] [&_svg]:w-[13px] [&_svg]:h-[13px] max-[768px]:hidden">
           <SparklesIcon />
           {t.home.meetupCard.join}
-        </ScrollCardBadge>
-      </ScrollCardImageArea>
-      <ScrollCardContent>
+        </div>
+      </div>
+      <div className="flex-1 p-4 flex flex-col gap-3 bg-white max-[768px]:min-w-0 max-[768px]:p-[clamp(0.78rem,2.9vw,0.95rem)] max-[768px]:gap-[clamp(0.48rem,1.8vw,0.62rem)] max-[768px]:justify-center">
         <div>
-          <ScrollCardTitle>{meetup.title}</ScrollCardTitle>
-          <ScrollCardMetaContainer style={{ marginTop: '0.5rem' }}>
-            <ScrollCardMetaRow>
+          <h3 className="text-[1.1rem] font-bold text-[#111827] leading-[1.35] m-0 line-clamp-2 text-left max-[768px]:text-[clamp(0.88rem,3.25vw,1rem)] max-[768px]:leading-[1.28]">
+            {meetup.title}
+          </h3>
+          <div className="flex flex-col gap-[0.35rem]" style={{ marginTop: '0.5rem' }}>
+            <div className="flex items-center gap-2 text-[0.85rem] text-[#6b7280] font-medium [&_svg]:w-[0.9rem] [&_svg]:h-[0.9rem] [&_svg]:text-[#9ca3af] [&_svg]:shrink-0 max-[768px]:gap-[0.34rem] max-[768px]:text-[clamp(0.74rem,2.7vw,0.82rem)] max-[768px]:leading-[1.25] max-[768px]:[&_svg]:w-[0.78rem] max-[768px]:[&_svg]:h-[0.78rem]">
               <CalendarIconOutline />
               {formatEventDateTime(meetup)}
-            </ScrollCardMetaRow>
-            <ScrollCardMetaRow>
+            </div>
+            <div className="flex items-center gap-2 text-[0.85rem] text-[#6b7280] font-medium [&_svg]:w-[0.9rem] [&_svg]:h-[0.9rem] [&_svg]:text-[#9ca3af] [&_svg]:shrink-0 max-[768px]:gap-[0.34rem] max-[768px]:text-[clamp(0.74rem,2.7vw,0.82rem)] max-[768px]:leading-[1.25] max-[768px]:[&_svg]:w-[0.78rem] max-[768px]:[&_svg]:h-[0.78rem]">
               <MapPinIcon />
               {meetup.location_name}
-            </ScrollCardMetaRow>
-          </ScrollCardMetaContainer>
+            </div>
+          </div>
         </div>
-        <ScrollCardFooter>
-           <ScrollAvatarStackSlot>
+        <div className="flex items-center justify-between mt-1 pt-3 border-t border-[#f3f4f6] gap-3 w-full min-w-0 overflow-hidden flex-nowrap max-[768px]:mt-0 max-[768px]:pt-[0.56rem] max-[768px]:gap-[0.45rem]">
+           <div className="flex-auto min-w-0 overflow-hidden flex items-center">
              <UserAvatarStack
                 uids={[...meetup.leaders, ...meetup.participants]}
                 maxAvatars={maxAvatars}
                 size={32}
                 userProfilesMap={userProfilesMap}
               />
-           </ScrollAvatarStackSlot>
-           <UrgencyButton $isHigh={isUrgent}>
-             <span />
+           </div>
+           <button
+             className={`inline-flex items-center justify-center gap-2 min-h-[38px] py-[0.55rem] px-[0.9rem] rounded-full border-2 border-[#050505] [font-family:inherit] text-[0.82rem] font-extrabold cursor-pointer [transition:background-color_160ms_ease,border-color_160ms_ease,color_160ms_ease,transform_160ms_ease] whitespace-nowrap shrink-0 max-w-[58%] overflow-hidden text-ellipsis shadow-none hover:border-[#050505] hover:[transform:translateY(-1px)] hover:shadow-none active:[transform:translateY(0)] max-[768px]:min-h-8 max-[768px]:py-[0.38rem] max-[768px]:px-[0.7rem] max-[768px]:text-[clamp(0.68rem,2.45vw,0.76rem)] max-[768px]:max-w-[62%] ${
+               isUrgent
+                 ? "bg-[#fff8dc] text-[#050505] hover:bg-white"
+                 : "bg-[#050505] text-white hover:bg-[#050505]"
+             }`}
+           >
+             <span
+               className={`inline-block flex-none w-[7px] h-[7px] rounded-full ${
+                 isUrgent
+                   ? "bg-[#e11d48] shadow-[0_0_0_3px_rgba(225,29,72,0.13)]"
+                   : "bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.16)]"
+               }`}
+             />
              {isUrgent
                ? t.home.meetupCard.almostFull
                : `${spotsTaken}/${spotsTotal} ${t.home.meetupCard.filled}`}
-           </UrgencyButton>
-        </ScrollCardFooter>
-      </ScrollCardContent>
-    </ScrollCard>
+           </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
-// --- END: Hero Scroll Card Styles ---
+// --- END: Hero Scroll Card ---
 
 interface HomePageClientProps {
   initialUpcomingEvents?: MeetupEvent[];
@@ -2404,234 +333,6 @@ interface HomePageClientProps {
 }
 
 type RenderMode = "human" | "machine";
-
-const FloatingModeToggle = styled.div`
-  position: fixed;
-  left: 50%;
-  bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  z-index: 60;
-  display: inline-flex;
-  align-items: center;
-  transform: translateX(-50%);
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 3px;
-  white-space: nowrap;
-  box-shadow: 4px 4px 0 #f47a4a;
-  transition: border-color 360ms ease, background-color 360ms ease,
-    box-shadow 360ms ease, filter 360ms ease;
-
-  @media (max-width: 480px) {
-    bottom: calc(0.9rem + env(safe-area-inset-bottom));
-    padding: 3px;
-    box-shadow: 3px 3px 0 #f47a4a;
-  }
-`;
-
-const ModeToggleOptions = styled.div<{ $mode: RenderMode }>`
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(78px, 1fr));
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 999px;
-
-  &::before {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: -1;
-    width: 50%;
-    border-radius: 999px;
-    background: #050505;
-    box-shadow: none;
-    content: "";
-    transform: translateX(
-      ${({ $mode }) => ($mode === "machine" ? "100%" : "0")}
-    );
-    transition: transform 420ms cubic-bezier(0.19, 1, 0.22, 1);
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: repeat(2, minmax(64px, 1fr));
-  }
-`;
-
-const ModeToggleButton = styled.button<{ $active: boolean }>`
-  min-width: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: ${({ $active }) => ($active ? "#ffffff" : "rgba(5, 5, 5, 0.66)")};
-  padding: 0.5rem 0.72rem;
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  cursor: pointer;
-  transition: color 280ms ease, transform 280ms ease;
-
-  ${({ $active }) =>
-    $active &&
-    css`
-      transform: translateY(-1px);
-    `}
-
-  &:hover {
-    color: ${({ $active }) => ($active ? "#ffffff" : "#050505")};
-  }
-
-  @media (max-width: 480px) {
-    padding: 0.46rem 0.58rem;
-    font-size: 0.72rem;
-  }
-`;
-
-const supportBob = keyframes`
-  0%, 100% {
-    transform: translateY(0) rotate(-1deg);
-  }
-  50% {
-    transform: translateY(-4px) rotate(1deg);
-  }
-`;
-
-const FloatingSupportLink = styled.a`
-  position: fixed;
-  right: clamp(1rem, 3vw, 1.5rem);
-  bottom: calc(1.45rem + env(safe-area-inset-bottom));
-  z-index: 61;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.48rem;
-  min-height: 48px;
-  padding: 0.55rem 0.78rem 0.55rem 0.6rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-decoration: none;
-  box-shadow: 4px 4px 0 #f47a4a;
-  animation: ${supportBob} 3.2s ease-in-out infinite;
-  transition: background-color 180ms ease, box-shadow 180ms ease,
-    transform 180ms ease;
-
-  &:hover {
-    background: #fff8dc;
-    box-shadow: 6px 6px 0 #f47a4a;
-    transform: translate(-1px, -1px);
-  }
-
-  &:focus-visible {
-    outline: 3px solid rgba(244, 122, 74, 0.38);
-    outline-offset: 3px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-
-  @media (max-width: 620px) {
-    right: calc(0.9rem + env(safe-area-inset-right));
-    bottom: calc(0.9rem + env(safe-area-inset-bottom));
-    box-sizing: border-box;
-    padding: 0.5rem;
-    width: 52px;
-    height: 52px;
-    justify-content: center;
-    gap: 0;
-    box-shadow: 3px 3px 0 #f47a4a;
-    animation: none;
-  }
-`;
-
-const FloatingSupportIcon = styled.span`
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 2.4;
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 4px;
-    right: 5px;
-    width: 6px;
-    height: 6px;
-    border: 1.5px solid #050505;
-    border-radius: 999px;
-    background: #ffffff;
-  }
-`;
-
-const FloatingSupportText = styled.span`
-  white-space: nowrap;
-
-  @media (max-width: 620px) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-`;
-
-const MachineMarkdownView = styled.main`
-  min-height: 100vh;
-  background: #000000;
-  color: #d7d7d7;
-  padding: clamp(4rem, 7vw, 6.5rem) clamp(1.25rem, 12vw, 11rem)
-    clamp(7rem, 9vw, 8rem);
-  animation: ${keyframes`
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  `} 420ms ease both;
-
-  @media (max-width: 768px) {
-    padding: 2rem 1.1rem 6.5rem;
-  }
-`;
-
-const MachineMarkdownBlock = styled.pre`
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: #d7d7d7;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-  font-size: clamp(1rem, 1.55vw, 1.45rem);
-  line-height: 1.65;
-  white-space: pre-wrap;
-  word-break: break-word;
-`;
 
 const sanitizeMarkdownText = (value: string | number | undefined | null) => {
   return String(value ?? "")
@@ -2906,6 +607,21 @@ export default function NewHomeClient({
     }, 420);
   }, [clearModeTransitionTimeout]);
 
+  // Replacement for the old styled-components createGlobalStyle with the
+  // $machineMode prop: the global rules live in ./new-home.css scoped under
+  // html.nh-machine-mode, toggled here while machine mode is displayed.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (displayMode === "machine") {
+      root.classList.add("nh-machine-mode");
+    } else {
+      root.classList.remove("nh-machine-mode");
+    }
+    return () => {
+      root.classList.remove("nh-machine-mode");
+    };
+  }, [displayMode]);
+
   const handleEventNavigation = useCallback(
     (eventId: string) => {
       router.push(`/meetup/${eventId}`);
@@ -2915,7 +631,7 @@ export default function NewHomeClient({
   const [homeStats, setHomeStats] = useState<HomeStats | undefined>(
     initialStats
   );
-  
+
   // Cache for user profiles
   const [userProfilesMap, setUserProfilesMap] = useState<Record<string, UserProfile>>({});
 
@@ -2923,7 +639,7 @@ export default function NewHomeClient({
   const [upcomingEvents, setUpcomingEvents] = useState<MeetupEvent[]>(
     initialUpcomingEvents || []
   );
-  
+
   // The server render is intentionally only the first paint. Subscribe immediately so
   // the hero card always reflects the same Supabase meetup and participant rows as the
   // event detail page, including joins made after the page was built.
@@ -2976,7 +692,7 @@ export default function NewHomeClient({
       : null
   );
   const [loadingEvent, setLoadingEvent] = useState(!initialUpcomingEvents);
-  
+
   // Dynamically determine max avatars based on available space
   const [maxAvatars, setMaxAvatars] = useState(8);
   const [cardOffset, setCardOffset] = useState(0);
@@ -3132,7 +848,7 @@ export default function NewHomeClient({
 
   // Effect to fetch upcoming events
   // Logic moved to the combined effect above
-  /* 
+  /*
   useEffect(() => {
     // If we already have initial events, don't fetch again
     if (initialUpcomingEvents && initialUpcomingEvents.length > 0) {
@@ -3185,92 +901,136 @@ export default function NewHomeClient({
   }, []);
 
   return (
-    <PageWrapper
-      $machineMode={displayMode === "machine"}
+    <div
+      className={`pt-0 flex flex-col min-h-screen [&_img]:[-webkit-user-drag:none] [&_img]:select-none ${
+        displayMode === "machine" ? "bg-black" : "bg-transparent"
+      }`}
       onContextMenu={handleHomepageContextMenu}
       onDragStart={handleHomepageDragStart}
     >
-      <GlobalStyle $machineMode={displayMode === "machine"} />
       {displayMode === "machine" ? (
-        <MachineMarkdownView>
-          <MachineMarkdownBlock>{markdownContent}</MachineMarkdownBlock>
-        </MachineMarkdownView>
+        <main className="min-h-screen bg-black text-[#d7d7d7] pt-[clamp(4rem,7vw,6.5rem)] px-[clamp(1.25rem,12vw,11rem)] pb-[clamp(7rem,9vw,8rem)] animate-[nh-fade-in-up_420ms_ease_both] max-[768px]:pt-8 max-[768px]:px-[1.1rem] max-[768px]:pb-[6.5rem]">
+          <pre className="w-full max-w-none m-0 border-0 bg-transparent p-0 text-[#d7d7d7] font-[ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation_Mono','Courier_New',monospace] text-[clamp(1rem,1.55vw,1.45rem)] leading-[1.65] whitespace-pre-wrap [word-break:break-word]">
+            {markdownContent}
+          </pre>
+        </main>
       ) : (
         <>
-          <HeroSection>
-            <video autoPlay loop muted playsInline ref={videoRef}>
+          <section className="text-white py-[clamp(6rem,5vw,7.5rem)] px-0 relative overflow-hidden min-h-screen flex justify-center items-center max-[768px]:min-h-[100svh] max-[768px]:py-0">
+            <video
+              className="absolute top-1/2 left-1/2 w-full h-full object-cover [transform:translate(-50%,-50%)] z-0"
+              autoPlay
+              loop
+              muted
+              playsInline
+              ref={videoRef}
+            >
               <source src="/assets/homepage/alphabet.mp4" type="video/mp4" />
               {t.home.hero.videoUnsupported}
             </video>
-            <VideoOverlay />
+            <div className="absolute top-0 left-0 w-full h-full bg-[rgba(4,4,20,0.5)] backdrop-blur-[2px] z-[1]" />
 
-            <HeroGrid>
-              <HeroLeft>
-                <DesktopHeroTitle>{t.home.hero.title}</DesktopHeroTitle>
-                <MobileHeroTitle>
+            <div className="max-w-page w-full mx-auto grid gap-12 items-center relative z-[2] px-6 min-[769px]:grid-cols-2 min-[769px]:gap-16 max-[768px]:w-[min(100%,580px)] max-[768px]:px-[clamp(1.15rem,4.4vw,1.75rem)] max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-[clamp(1.35rem,4.8vw,1.9rem)] max-[768px]:items-center max-[768px]:justify-center max-[768px]:text-center max-[768px]:min-h-[100svh]">
+              <div className="text-left z-10 max-[768px]:w-full max-[768px]:text-center max-[768px]:flex max-[768px]:flex-col max-[768px]:items-center max-[768px]:justify-center max-[768px]:gap-[clamp(0.95rem,3.5vw,1.25rem)] max-[768px]:pt-[clamp(4.3rem,14vw,5.8rem)] max-[768px]:pb-0 max-[768px]:px-0">
+                <h1 className="max-[768px]:hidden text-[clamp(1.9rem,3.4vw,3rem)] font-extrabold leading-[1.2] text-white mb-6 whitespace-pre-wrap [text-shadow:0_4px_12px_rgba(0,0,0,0.3)]">
+                  {t.home.hero.title}
+                </h1>
+                <h1 className="hidden max-[768px]:block text-[clamp(2.08rem,8.35vw,2.65rem)] font-[760] leading-[1.18] text-white mb-0 whitespace-pre-wrap [text-shadow:0_6px_16px_rgba(0,0,0,0.45)] tracking-[0]">
                   {t.home.hero.mobileTitle ?? t.home.hero.title}
-                </MobileHeroTitle>
-                <DesktopHeroSubtitle>{t.home.hero.subtitle}</DesktopHeroSubtitle>
-                <MobileHeroSubtitle>
+                </h1>
+                <p className="max-[768px]:hidden text-[clamp(1.05rem,1.8vw,1.25rem)] text-[rgba(255,255,255,0.9)] mb-10 font-medium leading-[1.6] max-w-[500px] whitespace-pre-wrap [text-shadow:0_2px_8px_rgba(0,0,0,0.2)]">
+                  {t.home.hero.subtitle}
+                </p>
+                <p className="hidden max-[768px]:block text-[clamp(1.02rem,3.85vw,1.13rem)] text-[rgba(255,255,255,0.9)] mb-0 font-medium leading-[1.56] max-w-[380px] whitespace-pre-wrap [text-shadow:0_2px_8px_rgba(0,0,0,0.2)]">
                   {t.home.hero.mobileSubtitle ?? t.home.hero.subtitle}
-                </MobileHeroSubtitle>
-                <HeroCTAButton onClick={() => router.push("/meetup")}>
+                </p>
+                <button
+                  className="max-[768px]:hidden inline-flex min-h-[52px] items-center justify-center gap-2 py-3.5 px-[1.9rem] border-2 border-[#050505] rounded-full bg-white text-[#050505] text-[1rem] font-[850] cursor-pointer [transition:all_0.25s_ease] relative overflow-hidden [font-family:inherit] shadow-[5px_5px_0_#f47a4a] hover:bg-[#fff8dc] hover:border-[#050505] hover:shadow-[7px_7px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] active:[transform:translateY(0)] [&_svg]:w-[18px] [&_svg]:h-[18px]"
+                  onClick={() => router.push("/meetup")}
+                >
                   <CalendarIconOutline />
                   {t.home.cta.button}
-                </HeroCTAButton>
-              </HeroLeft>
+                </button>
+              </div>
 
-              <HeroRight>
-                <StackContainer>
-                  {stackLayers.map((layer, index) => (
-                    <StackCardWrapper
-                      key={layer.instanceKey}
-                      $position={index}
-                      $isAnimating={
-                        isStackSwapping &&
-                        index === 0 &&
-                        upcomingEvents.length >= 2
-                      }
-                      $isInteractive={layer.type === "event" && index === 0}
-                    >
-                      {layer.type === "event" ? (
-                        <HeroScrollCard
-                          meetup={layer.event}
-                          maxAvatars={maxAvatars}
-                          onNavigate={handleEventNavigation}
-                          userProfilesMap={userProfilesMap}
-                        />
-                      ) : (
-                        <PlaceholderCardShell />
-                      )}
-                    </StackCardWrapper>
-                  ))}
-                </StackContainer>
-              </HeroRight>
-            </HeroGrid>
-          </HeroSection>
+              <div className="relative w-full flex justify-center items-start px-[clamp(1rem,3vw,1.5rem)] max-[768px]:mt-0 max-[768px]:p-0 max-[768px]:items-center max-[768px]:flex-col max-[768px]:gap-0">
+                <div className="relative w-full max-w-[380px] grid grid-cols-1 justify-items-stretch max-[768px]:max-w-full max-[768px]:pt-0 max-[768px]:pr-[14px] max-[768px]:pb-[18px] max-[768px]:pl-0">
+                  {stackLayers.map((layer, index) => {
+                    const isAnimating =
+                      isStackSwapping && index === 0 && upcomingEvents.length >= 2;
+                    const isInteractive = layer.type === "event" && index === 0;
+                    const positionClasses =
+                      index === 0
+                        ? "z-[3] shadow-[0_35px_60px_-22px_rgba(15,23,42,0.45)]"
+                        : index === 1
+                          ? "z-[2] shadow-[0_28px_55px_-25px_rgba(15,23,42,0.32)]"
+                          : "z-[1] shadow-[0_22px_45px_-30px_rgba(15,23,42,0.24)]";
+                    const motionClasses = isAnimating
+                      ? "[transform:translate(-18px,-22px)] opacity-0"
+                      : index === 0
+                        ? "[transform:translate(0px,0px)] opacity-100"
+                        : index === 1
+                          ? "[transform:translate(18px,18px)] max-[768px]:[transform:translate(7px,9px)] opacity-100 max-[768px]:opacity-[0.82]"
+                          : "[transform:translate(36px,36px)] max-[768px]:[transform:translate(14px,18px)] opacity-75 max-[768px]:opacity-[0.56]";
+                    return (
+                      <div
+                        key={layer.instanceKey}
+                        className={`relative [grid-area:1/1] rounded-[20px] max-[768px]:rounded-[18px] origin-top [transition:transform_0.6s_cubic-bezier(0.25,0.8,0.25,1),opacity_0.6s_cubic-bezier(0.25,0.8,0.25,1),box-shadow_0.6s_cubic-bezier(0.25,0.8,0.25,1)] ${
+                          isInteractive ? "pointer-events-auto" : "pointer-events-none"
+                        } ${positionClasses} ${motionClasses}`}
+                      >
+                        {layer.type === "event" ? (
+                          <HeroScrollCard
+                            meetup={layer.event}
+                            maxAvatars={maxAvatars}
+                            onNavigate={handleEventNavigation}
+                            userProfilesMap={userProfilesMap}
+                          />
+                        ) : (
+                          <div className="w-full h-full rounded-[20px] border border-[rgba(255,255,255,0.95)] bg-[rgba(255,255,255,0.99)] shadow-[inset_0_1px_8px_rgba(0,0,0,0.05)]" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
 
-          <MainContent>
-            <MemberBackgroundSection>
-              <MemberBackgroundLayout>
-                <MemberBackgroundHeader>
-                  <MemberBackgroundTitle>
+          <div className="relative flex flex-col flex-1 bg-white isolate">
+            <section className="w-full bg-[#111111] text-white pt-[clamp(3.5rem,7vw,5rem)] px-0 pb-[clamp(4rem,8vw,6rem)]">
+              <div className="max-w-page mx-auto px-5 max-[768px]:px-4">
+                <div className="max-w-3xl mb-12 max-[768px]:mx-auto max-[768px]:mt-0 max-[768px]:mb-9 max-[768px]:text-center">
+                  <h2 className="m-0 text-white font-['Noto_Sans_KR',sans-serif] text-[clamp(1.6rem,2.4vw,2.05rem)] font-black leading-[1.2] tracking-[0] max-[768px]:text-center">
                     {t.home.memberLogos.titleLine1}
                     <br />
-                    <MemberBackgroundTitleAccent>
+                    <span className="text-[#f47a4a]">
                       {t.home.memberLogos.titleHighlight}
-                    </MemberBackgroundTitleAccent>
+                    </span>
                     {t.home.memberLogos.titleLine2Suffix}
-                  </MemberBackgroundTitle>
-                </MemberBackgroundHeader>
-                <MemberLogoMarquee aria-label={t.home.memberLogos.additionalAria}>
+                  </h2>
+                </div>
+                <div
+                  className="overflow-hidden relative grid gap-[1.05rem] m-0 p-0 [mask-image:linear-gradient(90deg,transparent,#000_7%,#000_93%,transparent)] max-[768px]:gap-[0.8rem] max-[768px]:[mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]"
+                  aria-label={t.home.memberLogos.additionalAria}
+                >
                   {MEMBER_COMPANY_LOGO_ROWS.map((row, rowIndex) => (
-                    <MemberLogoTrack key={rowIndex} $reverse={rowIndex === 1}>
+                    <div
+                      key={rowIndex}
+                      className={`flex w-max items-center gap-[clamp(2.1rem,5vw,4.6rem)] will-change-transform motion-reduce:animate-none ${
+                        rowIndex === 1
+                          ? "animate-[nh-logo-marquee-reverse_34s_linear_infinite]"
+                          : "animate-[nh-logo-marquee-forward_38s_linear_infinite]"
+                      }`}
+                    >
                       {[...row, ...row].map((company, copyIndex) => {
                         const logoIndex = MEMBER_COMPANY_LOGOS.indexOf(company);
                         return (
-                          <MemberLogoItem key={`${company.label}-${copyIndex}`}>
-                            <MemberLogoMark $scale={company.scale}>
+                          <div
+                            key={`${company.label}-${copyIndex}`}
+                            className="flex box-border w-[clamp(10.5rem,17vw,13rem)] h-[clamp(5.2rem,9vw,6.4rem)] flex-none items-center justify-center rounded-xl bg-white py-[0.9rem] px-[1.3rem] max-[768px]:w-36 max-[768px]:h-[5.15rem] max-[768px]:rounded-[10px] max-[768px]:py-3 max-[768px]:px-4"
+                          >
+                            <div className="grid w-full h-full place-items-center min-w-0 [&_img]:block [&_img]:w-full [&_img]:max-w-full [&_img]:h-full [&_img]:max-h-[52px] [&_img]:object-contain [&_img]:object-center max-[768px]:[&_img]:max-h-[40px]">
                               <Image
                                 src={company.src}
                                 alt={t.home.memberLogos.items[logoIndex] ?? company.label}
@@ -3279,118 +1039,130 @@ export default function NewHomeClient({
                                 sizes="(max-width: 768px) 108px, 152px"
                                 loading="lazy"
                               />
-                            </MemberLogoMark>
-                          </MemberLogoItem>
+                            </div>
+                          </div>
                         );
                       })}
-                    </MemberLogoTrack>
+                    </div>
                   ))}
-                </MemberLogoMarquee>
-              </MemberBackgroundLayout>
-            </MemberBackgroundSection>
-            <MethodFlowWrapper>
-              <MethodFlowRoute aria-hidden="true">
+                </div>
+              </div>
+            </section>
+            <div className="relative overflow-hidden bg-[#f3f3f1] isolate before:absolute before:inset-0 before:z-0 before:content-[''] before:[background:linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0)_18%),radial-gradient(circle_at_76%_18%,rgba(244,122,74,0.06),transparent_24rem),radial-gradient(circle_at_16%_62%,rgba(5,5,5,0.045),transparent_28rem)]">
+              <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
                 <svg
-                  className="desktop-route"
+                  className="desktop-route absolute top-[clamp(3rem,5vw,4.4rem)] left-1/2 w-[min(1120px,calc(100%_-_2rem))] h-[calc(100%_-_clamp(6rem,10vw,8rem))] overflow-visible [transform:translateX(-50%)] max-[820px]:hidden"
                   viewBox="0 0 1000 1680"
                   preserveAspectRatio="none"
                 >
                   <path
-                    className="route-shadow"
+                    className="route-shadow fill-none stroke-[rgba(244,122,74,0.11)] [stroke-width:8] [stroke-linecap:round] [stroke-linejoin:round] [filter:drop-shadow(0_0_8px_rgba(244,122,74,0.11))] [vector-effect:non-scaling-stroke]"
                     d="M 130 115 C 245 58 366 112 365 202 C 364 278 255 296 230 224 C 200 136 337 107 454 180 C 548 238 635 226 732 176 C 832 125 918 205 900 324 C 878 468 748 465 704 560 C 657 662 794 713 782 810 C 768 929 618 924 508 865 C 386 799 270 866 252 988 C 232 1118 372 1182 506 1132 C 646 1080 798 1168 768 1322 C 742 1457 579 1472 460 1438 C 350 1406 246 1432 176 1518"
                   />
                   <path
-                    className="route-line"
+                    className="route-line fill-none stroke-[rgba(244,122,74,0.28)] [stroke-width:1.9] [stroke-linecap:round] [stroke-linejoin:round] [stroke-dasharray:12_14] [filter:drop-shadow(0_0_5px_rgba(244,122,74,0.13))] [vector-effect:non-scaling-stroke]"
                     d="M 130 115 C 245 58 366 112 365 202 C 364 278 255 296 230 224 C 200 136 337 107 454 180 C 548 238 635 226 732 176 C 832 125 918 205 900 324 C 878 468 748 465 704 560 C 657 662 794 713 782 810 C 768 929 618 924 508 865 C 386 799 270 866 252 988 C 232 1118 372 1182 506 1132 C 646 1080 798 1168 768 1322 C 742 1457 579 1472 460 1438 C 350 1406 246 1432 176 1518"
                   />
                 </svg>
                 <svg
-                  className="mobile-route"
+                  className="mobile-route absolute left-1/2 overflow-visible [transform:translateX(-50%)] hidden max-[820px]:block max-[820px]:top-9 max-[820px]:w-[calc(100%_-_1.5rem)] max-[820px]:h-[calc(100%_-_4rem)]"
                   viewBox="0 0 360 1900"
                   preserveAspectRatio="none"
                 >
                   <path
-                    className="route-shadow"
+                    className="route-shadow fill-none stroke-[rgba(244,122,74,0.11)] [stroke-width:7] [stroke-linecap:round] [stroke-linejoin:round] [filter:drop-shadow(0_0_8px_rgba(244,122,74,0.11))] [vector-effect:non-scaling-stroke]"
                     d="M 178 92 C 94 172 96 300 176 352 C 260 406 270 532 184 596 C 92 665 106 820 204 884 C 290 940 284 1074 190 1138 C 96 1202 92 1364 190 1432 C 274 1490 278 1632 182 1716"
                   />
                   <path
-                    className="route-line"
+                    className="route-line fill-none stroke-[rgba(244,122,74,0.28)] [stroke-width:1.65] [stroke-linecap:round] [stroke-linejoin:round] [stroke-dasharray:10_12] [filter:drop-shadow(0_0_5px_rgba(244,122,74,0.13))] [vector-effect:non-scaling-stroke]"
                     d="M 178 92 C 94 172 96 300 176 352 C 260 406 270 532 184 596 C 92 665 106 820 204 884 C 290 940 284 1074 190 1138 C 96 1202 92 1364 190 1432 C 274 1490 278 1632 182 1716"
                   />
                 </svg>
-              </MethodFlowRoute>
-              <TopicVideoSection>
-                <TopicVideoLayout>
-                  <TopicVideoCopy>
-                    <TopicVideoSectionTitle>
+              </div>
+              <section className="relative z-[1] w-full text-[#0f172a] py-[clamp(4rem,7vw,5.5rem)] px-0">
+                <div className="relative max-w-page mx-auto px-5 grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-[clamp(2rem,5vw,3.5rem)] items-center max-[820px]:grid-cols-1 max-[820px]:px-4 max-[820px]:text-center">
+                  <div className="max-w-md max-[820px]:max-w-full">
+                    <p className={`${sectionPillClass} max-[768px]:max-w-full`}>
                       {t.home.topicVideo.sectionTitle}
-                    </TopicVideoSectionTitle>
-                    <TopicVideoTitle>{t.home.topicVideo.title}</TopicVideoTitle>
-                    <TopicVideoDescription>
+                    </p>
+                    <h2 className="m-0 text-[#0f172a] font-['Noto_Sans_KR',sans-serif] text-[clamp(1.6rem,2.4vw,2.05rem)] font-black leading-[1.18] tracking-[0] whitespace-pre-line break-keep">
+                      {t.home.topicVideo.title}
+                    </h2>
+                    <p className="mt-[1.2rem] mb-0 mx-0 text-[#475569] text-[clamp(0.98rem,1.5vw,1.08rem)] font-[560] leading-[1.65] whitespace-pre-line break-keep">
                       {t.home.topicVideo.description}
-                    </TopicVideoDescription>
-                    <TopicVideoCaveat>{t.home.topicVideo.caveat}</TopicVideoCaveat>
-                  </TopicVideoCopy>
-                  <TopicVideoFrameGroup>
-                    <TopicVideoFrame>
+                    </p>
+                    <p className="mt-3 mb-0 mx-0 text-[rgba(100,116,139,0.66)] text-[0.76rem] font-[520] leading-[1.55] break-keep">
+                      {t.home.topicVideo.caveat}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="relative w-full aspect-video overflow-hidden border-2 border-[#050505] rounded-[14px] bg-[#0f172a] shadow-[5px_5px_0_rgba(5,5,5,0.88)]">
                       <iframe
+                        className="absolute inset-0 w-full h-full border-0"
                         src="https://www.youtube-nocookie.com/embed/yKtw4of-j0E?start=2143&end=2203&rel=0&modestbranding=1"
                         title={t.home.topicVideo.videoTitle}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
                       />
-                    </TopicVideoFrame>
-                    <TopicVideoCaption>
-                      <span>{t.home.topicVideo.videoTitle}</span>
-                    </TopicVideoCaption>
-                  </TopicVideoFrameGroup>
-                </TopicVideoLayout>
-              </TopicVideoSection>
-              <LeaderMethodSection>
-                <LeaderMethodLayout>
-                  <LeaderMethodHeader>
-                    <div>
-                      <LeaderMethodSectionTitle>
-                        {t.home.leaderMethod.sectionTitle}
-                      </LeaderMethodSectionTitle>
-                      <LeaderMethodTitle>{t.home.leaderMethod.title}</LeaderMethodTitle>
                     </div>
-                  </LeaderMethodHeader>
+                    <div className="mt-[0.9rem] flex items-center justify-end gap-4 text-[#334155] text-[0.84rem] font-[760] text-right max-[768px]:justify-center max-[768px]:items-center max-[768px]:flex-col max-[768px]:gap-[0.35rem] max-[768px]:text-center">
+                      <span>{t.home.topicVideo.videoTitle}</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="relative z-[1] w-full text-[#0f172a] pt-0 px-0 pb-[clamp(4.5rem,8vw,6rem)] overflow-hidden">
+                <div className="relative max-w-page mx-auto px-5 max-[768px]:px-4">
+                  <div className="grid justify-items-end mb-[clamp(2rem,5vw,3rem)] text-right max-[820px]:justify-items-center max-[820px]:text-center">
+                    <div>
+                      <p className={sectionPillClass}>
+                        {t.home.leaderMethod.sectionTitle}
+                      </p>
+                      <h2 className="max-w-[35rem] m-0 text-[#0f172a] font-['Noto_Sans_KR',sans-serif] text-[clamp(1.6rem,2.4vw,2.05rem)] font-black leading-[1.18] tracking-[0] whitespace-pre-line break-keep max-[820px]:max-w-full max-[820px]:text-center">
+                        {t.home.leaderMethod.title}
+                      </h2>
+                    </div>
+                  </div>
 
-                  <LeaderMethodContent>
-                    <LeaderDiagramPanel aria-hidden="true">
-                      <LeaderDiagramWeb
+                  <div className="grid grid-cols-[minmax(280px,0.86fr)_minmax(0,1.14fr)] gap-[clamp(1.25rem,4vw,2rem)] items-center max-[860px]:grid-cols-1">
+                    <div
+                      className="relative w-[min(100%,420px,72vw)] aspect-square justify-self-center self-center overflow-visible"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        className="absolute inset-0 z-0 w-full h-full overflow-visible"
                         viewBox="0 0 100 100"
                         preserveAspectRatio="xMidYMid meet"
                       >
                         {DISCUSSION_SEATS.map((seat) => (
                           <line
                             key={seat.id}
+                            className="stroke-[#050505] [stroke-width:0.9] [stroke-dasharray:2.4_2.6] [stroke-linecap:round] opacity-50"
                             x1="50"
                             y1="52"
                             x2={parseFloat(seat.left)}
                             y2={parseFloat(seat.top)}
                           />
                         ))}
-                      </LeaderDiagramWeb>
-                      <LeaderCupBadge>
-                        <svg viewBox="0 0 64 64" fill="none">
+                      </svg>
+                      <div className="absolute z-[3] top-[52%] left-1/2 grid place-items-center w-[33%] h-[33%] border-[3px] border-[#050505] rounded-full bg-white shadow-[5px_5px_0_#f47a4a] [transform:translate(-50%,-50%)]">
+                        <svg className="w-[74%] h-[74%] overflow-visible" viewBox="0 0 64 64" fill="none">
                           <path
-                            className="steam steam-1"
+                            className="steam steam-1 [transform-box:fill-box] [transform-origin:center_bottom] animate-[nh-leader-steam-rise_2.8s_ease-in-out_infinite]"
                             d="M24 26 C21 22 27 20 24 16 C22 13 26 11 24 8"
                             stroke="#f47a4a"
                             strokeWidth="2.4"
                             strokeLinecap="round"
                           />
                           <path
-                            className="steam steam-2"
+                            className="steam steam-2 [transform-box:fill-box] [transform-origin:center_bottom] animate-[nh-leader-steam-rise_2.8s_ease-in-out_infinite] [animation-delay:0.55s]"
                             d="M31 27 C28 22 34 20 31 15 C29 11 33 9 31 6"
                             stroke="#f47a4a"
                             strokeWidth="2.4"
                             strokeLinecap="round"
                           />
                           <path
-                            className="steam steam-3"
+                            className="steam steam-3 [transform-box:fill-box] [transform-origin:center_bottom] animate-[nh-leader-steam-rise_2.8s_ease-in-out_infinite] [animation-delay:1.1s]"
                             d="M38 26 C35 22 41 20 38 16 C36 13 40 11 38 8"
                             stroke="#f47a4a"
                             strokeWidth="2.4"
@@ -3411,19 +1183,24 @@ export default function NewHomeClient({
                             strokeLinecap="round"
                           />
                         </svg>
-                      </LeaderCupBadge>
+                      </div>
                       {DISCUSSION_SEATS.map((seat) => (
-                        <LeaderDiagramSeat
+                        <div
                           key={seat.id}
-                          $top={seat.top}
-                          $left={seat.left}
-                          $accent={seat.accent}
-                          $delay={seat.delay}
-                          $leader={seat.leader}
+                          className={`absolute grid place-items-center aspect-square rounded-full border-solid border-[#050505] [transform:translate(-50%,-50%)] animate-[nh-leader-bubble-pop_0.7s_cubic-bezier(0.34,1.56,0.64,1)_both,nh-leader-bubble-bob_4.4s_ease-in-out_infinite] ${
+                            seat.leader
+                              ? "z-[6] w-[clamp(4.7rem,9.4vw,5.5rem)] border-[3px] bg-[#f47a4a] shadow-[4px_4px_0_#050505]"
+                              : "z-[5] w-[clamp(3.9rem,7.6vw,4.6rem)] border-[2.5px] bg-white shadow-[3px_3px_0_#050505]"
+                          }`}
+                          style={{
+                            top: seat.top,
+                            left: seat.left,
+                            animationDelay: `${seat.delay}, calc(${seat.delay} + 0.7s)`,
+                          }}
                         >
                           {seat.leader && (
-                            <LeaderCrown>
-                              <svg viewBox="0 0 28 18" fill="none">
+                            <span className="absolute z-[7] top-[-44%] left-1/2 w-[60%] [transform:translateX(-50%)] pointer-events-none">
+                              <svg className="block w-full h-auto" viewBox="0 0 28 18" fill="none">
                                 <path
                                   d="M3 16 L3 6 L9 11 L14 2 L19 11 L25 6 L25 16 Z"
                                   fill="#f47a4a"
@@ -3432,33 +1209,58 @@ export default function NewHomeClient({
                                   strokeLinejoin="round"
                                 />
                               </svg>
-                            </LeaderCrown>
+                            </span>
                           )}
-                          <LeaderTypingDots $leader={seat.leader} $accent={seat.accent}>
-                            <span />
-                            <span />
-                            <span />
-                          </LeaderTypingDots>
-                        </LeaderDiagramSeat>
+                          <span className="flex items-center gap-[0.18rem]">
+                            <span
+                              className={`rounded-full animate-[nh-leader-typing-bounce_1.4s_ease-in-out_infinite] ${
+                                seat.leader ? "w-[0.36rem] h-[0.36rem]" : "w-[0.3rem] h-[0.3rem]"
+                              }`}
+                              style={{ background: seat.leader ? "#ffffff" : seat.accent }}
+                            />
+                            <span
+                              className={`rounded-full animate-[nh-leader-typing-bounce_1.4s_ease-in-out_infinite] [animation-delay:0.2s] ${
+                                seat.leader ? "w-[0.36rem] h-[0.36rem]" : "w-[0.3rem] h-[0.3rem]"
+                              }`}
+                              style={{ background: seat.leader ? "#ffffff" : seat.accent }}
+                            />
+                            <span
+                              className={`rounded-full animate-[nh-leader-typing-bounce_1.4s_ease-in-out_infinite] [animation-delay:0.4s] ${
+                                seat.leader ? "w-[0.36rem] h-[0.36rem]" : "w-[0.3rem] h-[0.3rem]"
+                              }`}
+                              style={{ background: seat.leader ? "#ffffff" : seat.accent }}
+                            />
+                          </span>
+                        </div>
                       ))}
-                    </LeaderDiagramPanel>
+                    </div>
 
-                    <LeaderAccordionColumn>
-                      <LeaderLocationTabs aria-label={t.home.leaderMethod.locationTabsAria}>
-                        {LEADER_LOCATIONS.map((location) => (
-                          <LeaderLocationButton
-                            key={location}
-                            type="button"
-                            $active={selectedLeaderLocation === location}
-                            onClick={() => handleLeaderLocationChange(location)}
-                          >
-                            {t.home.leaderMethod.locations[location]}
-                          </LeaderLocationButton>
-                        ))}
-                      </LeaderLocationTabs>
+                    <div className="grid content-start gap-4">
+                      <div
+                        className="inline-grid grid-cols-[repeat(2,minmax(88px,1fr))] gap-[0.35rem] border-2 border-[#050505] rounded-full bg-white p-[0.35rem] shadow-[3px_3px_0_#f47a4a] max-[820px]:justify-self-center"
+                        aria-label={t.home.leaderMethod.locationTabsAria}
+                      >
+                        {LEADER_LOCATIONS.map((location) => {
+                          const active = selectedLeaderLocation === location;
+                          return (
+                            <button
+                              key={location}
+                              type="button"
+                              className={`min-h-9 border-0 rounded-full py-[0.42rem] px-[0.95rem] [font-family:inherit] text-[0.84rem] font-extrabold cursor-pointer [transition:background_180ms_ease,color_180ms_ease,transform_180ms_ease] hover:[transform:translateY(-1px)] ${
+                                active
+                                  ? "bg-[#050505] text-white hover:text-white"
+                                  : "bg-transparent text-[#475569] hover:text-[#0f172a]"
+                              }`}
+                              onClick={() => handleLeaderLocationChange(location)}
+                            >
+                              {t.home.leaderMethod.locations[location]}
+                            </button>
+                          );
+                        })}
+                      </div>
 
                       {visibleLeaders.length > 0 ? (
-                        <LeaderAccordionList aria-label={t.home.leaderMethod.profilesAria}>
+                        <div className="grid gap-3" aria-label={t.home.leaderMethod.profilesAria}>
                           {visibleLeaders.map((leader) => {
                             const hasLeaderDetails =
                               leader.bullets.length > 0 ||
@@ -3467,13 +1269,17 @@ export default function NewHomeClient({
                             const isActive = activeLeader?.id === leader.id;
 
                             return (
-                              <LeaderAccordionItem
+                              <article
                                 key={leader.id}
-                                $active={isActive}
-                                $accent={leader.accent}
+                                className={`overflow-hidden border-2 border-[#050505] rounded-[14px] bg-white [transition:border-color_180ms_ease,box-shadow_180ms_ease,background_180ms_ease] ${
+                                  isActive
+                                    ? "shadow-[5px_5px_0_#f47a4a]"
+                                    : "shadow-[3px_3px_0_rgba(5,5,5,0.82)]"
+                                }`}
                               >
-                                <LeaderAccordionButton
+                                <button
                                   type="button"
+                                  className="w-full border-0 bg-transparent py-[0.95rem] px-4 text-[#0f172a] [font-family:inherit] text-left cursor-pointer focus-visible:[outline:2px_solid_#f47a4a] focus-visible:[outline-offset:-4px]"
                                   aria-expanded={isActive}
                                   aria-disabled={!hasLeaderDetails}
                                   onClick={() =>
@@ -3481,8 +1287,11 @@ export default function NewHomeClient({
                                     setActiveLeaderId(isActive ? "" : leader.id)
                                   }
                                 >
-                                  <LeaderAccordionSummary>
-                                    <LeaderAccordionInitial $accent={leader.accent}>
+                                  <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-[0.8rem] items-center">
+                                    <span
+                                      className="grid w-[3.15rem] h-[3.15rem] place-items-center overflow-hidden border-2 border-[#050505] rounded-full text-white text-[1.1rem] font-[950] leading-none shadow-[2px_2px_0_rgba(5,5,5,0.9)] [&_img]:w-full [&_img]:h-full [&_img]:object-cover"
+                                      style={{ background: leader.accent }}
+                                    >
                                       {leader.imageSrc ? (
                                         <Image
                                           src={leader.imageSrc}
@@ -3495,156 +1304,205 @@ export default function NewHomeClient({
                                       ) : (
                                         leader.initials
                                       )}
-                                    </LeaderAccordionInitial>
+                                    </span>
                                     <span>
-                                      <LeaderAccordionName>
-                                        {leader.name} <span>| {leader.role}</span>
-                                      </LeaderAccordionName>
+                                      <strong className="block text-[#050505] text-[1rem] font-[920] leading-[1.22]">
+                                        {leader.name}{" "}
+                                        <span className="text-[rgba(5,5,5,0.58)] font-[760]">
+                                          | {leader.role}
+                                        </span>
+                                      </strong>
                                     </span>
                                     {hasLeaderDetails && (
-                                      <LeaderAccordionIcon
-                                        $active={isActive}
+                                      <span
+                                        className={`grid w-[1.8rem] h-[1.8rem] place-items-center border border-[rgba(15,23,42,0.08)] rounded-full bg-[#f3f3f1] text-[#050505] text-[1.3rem] font-medium ${
+                                          isActive
+                                            ? "before:content-['−']"
+                                            : "before:content-['+']"
+                                        }`}
                                         aria-hidden="true"
                                       />
                                     )}
-                                  </LeaderAccordionSummary>
-                                </LeaderAccordionButton>
+                                  </span>
+                                </button>
                                 {hasLeaderDetails && (
-                                  <LeaderAccordionPanel
-                                    $active={isActive}
+                                  <div
+                                    className={`grid [transition:grid-template-rows_240ms_ease,opacity_180ms_ease] ${
+                                      isActive
+                                        ? "grid-rows-[1fr] opacity-100"
+                                        : "grid-rows-[0fr] opacity-0"
+                                    }`}
                                     aria-hidden={!isActive}
                                   >
-                                    <LeaderAccordionPanelInner>
-                                      <LeaderAccordionContent>
+                                    <div className="min-h-0 overflow-hidden">
+                                      <div className="pt-0 pr-4 pb-4 pl-20 max-[520px]:pl-4">
                                         {leader.bullets.length > 0 && (
-                                          <LeaderStatList>
-                                            <LeaderCredentialList>
+                                          <div className="m-0 p-0">
+                                            <ul className="grid gap-[0.46rem] m-0 p-0 list-none">
                                               {leader.bullets.map((bullet) => (
-                                                <LeaderCredentialItem key={bullet.text}>
-                                                  <LeaderStatEmoji aria-hidden="true">
+                                                <li
+                                                  key={bullet.text}
+                                                  className="grid grid-cols-[auto_minmax(0,1fr)] gap-[0.48rem] items-start text-[rgba(5,5,5,0.74)] text-[0.86rem] font-[720] leading-[1.48] break-keep"
+                                                >
+                                                  <span
+                                                    className="inline-flex w-5 justify-center"
+                                                    aria-hidden="true"
+                                                  >
                                                     {getLeaderBulletEmoji(bullet.icon)}
-                                                  </LeaderStatEmoji>
+                                                  </span>
                                                   <span>{bullet.text}</span>
-                                                </LeaderCredentialItem>
+                                                </li>
                                               ))}
-                                            </LeaderCredentialList>
-                                          </LeaderStatList>
+                                            </ul>
+                                          </div>
                                         )}
                                         {leader.readingStyle && (
-                                          <LeaderReadingStyle>
-                                            <strong>{t.home.leaderMethod.readingStyleLabel}</strong>
+                                          <div className="mt-[0.9rem] border border-[rgba(5,5,5,0.12)] rounded-[10px] bg-[#f3f3f1] py-[0.78rem] px-[0.85rem] text-[rgba(5,5,5,0.72)] text-[0.84rem] font-[680] leading-[1.55] break-keep">
+                                            <strong className="block mb-[0.35rem] text-[#050505] text-[0.74rem] font-[920] tracking-[0.04em]">
+                                              {t.home.leaderMethod.readingStyleLabel}
+                                            </strong>
                                             <span>{leader.readingStyle}</span>
-                                          </LeaderReadingStyle>
+                                          </div>
                                         )}
                                         {leader.linkedinUrl && (
-                                          <LeaderLinkedInButton
+                                          <a
                                             href={leader.linkedinUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            $disabled={false}
+                                            className="mt-[0.95rem] inline-flex min-h-[38px] items-center justify-center gap-2 border-2 border-[#050505] rounded-full bg-[#0a66c2] text-white py-2 px-[0.9rem] text-[0.82rem] font-[880] no-underline shadow-[3px_3px_0_#050505] [transition:background-color_180ms_ease,box-shadow_180ms_ease,transform_180ms_ease] hover:bg-[#004182] hover:text-white hover:no-underline hover:[transform:translate(-1px,-1px)] hover:shadow-[4px_4px_0_#050505] [&_svg]:w-4 [&_svg]:h-4"
                                           >
                                             LinkedIn
                                             <ArrowTopRightOnSquareIcon aria-hidden="true" />
-                                          </LeaderLinkedInButton>
+                                          </a>
                                         )}
-                                      </LeaderAccordionContent>
-                                    </LeaderAccordionPanelInner>
-                                  </LeaderAccordionPanel>
+                                      </div>
+                                    </div>
+                                  </div>
                                 )}
-                              </LeaderAccordionItem>
+                              </article>
                             );
                           })}
-                        </LeaderAccordionList>
+                        </div>
                       ) : (
-                        <LeaderEmptyState>
+                        <div className="grid min-h-[250px] place-items-center border border-dashed border-[rgba(15,23,42,0.18)] rounded-3xl bg-[rgba(255,255,255,0.58)] p-8 text-[#64748b] text-center font-[720] leading-[1.55]">
                           <div>
                             <strong>{t.home.leaderMethod.emptyTitle}</strong>
                             <br />
                             {t.home.leaderMethod.emptyDescription}
                           </div>
-                        </LeaderEmptyState>
+                        </div>
                       )}
-                    </LeaderAccordionColumn>
-                  </LeaderMethodContent>
-                </LeaderMethodLayout>
-              </LeaderMethodSection>
-              <NetworkingMethodSection>
-                <NetworkingMethodLayout>
-                  <NetworkingMethodHeader>
-                    <NetworkingMethodSectionTitle>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="relative z-[1] w-full text-[#0f172a] pt-0 px-0 pb-[clamp(2rem,4vw,3rem)] overflow-hidden">
+                <div className="relative max-w-page mx-auto px-5 max-[768px]:px-4">
+                  <div className="max-w-[44rem] mt-0 mx-0 mb-[clamp(1.5rem,4vw,2.4rem)] max-[768px]:mx-auto max-[768px]:text-center">
+                    <p className={`${sectionPillClass} max-[768px]:max-w-full`}>
                       {t.home.networkingMethod.sectionTitle}
-                    </NetworkingMethodSectionTitle>
-                    <NetworkingMethodTitle>
+                    </p>
+                    <h2 className="m-0 text-[#0f172a] font-['Noto_Sans_KR',sans-serif] text-[clamp(1.6rem,2.4vw,2.05rem)] font-black leading-[1.18] tracking-[0] whitespace-pre-line break-keep">
                       {t.home.networkingMethod.title}
-                    </NetworkingMethodTitle>
-                    <NetworkingMethodDescription>
+                    </h2>
+                    <p className="max-w-lg mt-4 mb-0 mx-0 text-[#64748b] text-[0.98rem] font-[620] leading-[1.65] break-keep max-[768px]:mx-auto max-[768px]:text-center">
                       {t.home.networkingMethod.description}
-                    </NetworkingMethodDescription>
-                  </NetworkingMethodHeader>
-                  <NetworkingGallery>
-                    {networkingImages.map((image) => (
-                      <NetworkingImageCard
-                        key={image.id}
-                        $objectPosition={
-                          "objectPosition" in image ? image.objectPosition : undefined
-                        }
-                        $rotate={"rotate" in image ? image.rotate : undefined}
-                      >
-                        <Image
-                          src={image.src}
-                          alt={image.alt}
-                          width={image.width}
-                          height={image.height}
-                          sizes="(max-width: 760px) 84vw, 420px"
-                          loading="lazy"
-                        />
-                      </NetworkingImageCard>
-                    ))}
-                  </NetworkingGallery>
-                </NetworkingMethodLayout>
-              </NetworkingMethodSection>
+                    </p>
+                  </div>
+                  <div className="flex max-w-full gap-[clamp(0.85rem,2vw,1.1rem)] overflow-x-auto overflow-y-hidden pt-0 px-0 pb-4 [scroll-padding:0] snap-x snap-mandatory [scrollbar-width:thin] [scrollbar-color:rgba(15,23,42,0.28)_transparent] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(15,23,42,0.24)]">
+                    {networkingImages.map((image) => {
+                      const objectPosition =
+                        "objectPosition" in image ? image.objectPosition : undefined;
+                      const rotate = "rotate" in image ? image.rotate : undefined;
+                      return (
+                        <figure
+                          key={image.id}
+                          className="flex-[0_0_min(78vw,420px)] aspect-[4/3] m-0 overflow-hidden rounded-[14px] bg-white snap-start shadow-[0_18px_52px_rgba(15,23,42,0.08)] max-[760px]:basis-[min(84vw,340px)] max-[760px]:rounded-xl"
+                        >
+                          <Image
+                            className="block w-full h-full object-cover origin-center"
+                            src={image.src}
+                            alt={image.alt}
+                            width={image.width}
+                            height={image.height}
+                            sizes="(max-width: 760px) 84vw, 420px"
+                            loading="lazy"
+                            style={{
+                              objectPosition: objectPosition ?? "center center",
+                              transform: rotate
+                                ? `rotate(${rotate}deg) scale(1.34)`
+                                : "none",
+                            }}
+                          />
+                        </figure>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
               <StatsSection stats={homeStats} />
-            </MethodFlowWrapper>
+            </div>
             <TopicsShowcase topics={initialTopics || []} />
             <MembershipSection />
             <FaqSection />
             <CtaSection />
-          </MainContent>
+          </div>
         </>
       )}
       {displayMode === "human" && (
-        <FloatingSupportLink
+        <a
+          className="fixed right-[clamp(1rem,3vw,1.5rem)] bottom-[calc(1.45rem_+_env(safe-area-inset-bottom))] z-[61] inline-flex items-center gap-[0.48rem] min-h-12 py-[0.55rem] pr-[0.78rem] pl-[0.6rem] border-2 border-[#050505] rounded-full bg-white text-[#050505] text-[0.82rem] font-black no-underline shadow-[4px_4px_0_#f47a4a] animate-[nh-support-bob_3.2s_ease-in-out_infinite] [transition:background-color_180ms_ease,box-shadow_180ms_ease,transform_180ms_ease] hover:bg-[#fff8dc] hover:shadow-[6px_6px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] focus-visible:[outline:3px_solid_rgba(244,122,74,0.38)] focus-visible:[outline-offset:3px] motion-reduce:animate-none max-[620px]:right-[calc(0.9rem_+_env(safe-area-inset-right))] max-[620px]:bottom-[calc(0.9rem_+_env(safe-area-inset-bottom))] max-[620px]:box-border max-[620px]:p-2 max-[620px]:w-[52px] max-[620px]:h-[52px] max-[620px]:justify-center max-[620px]:gap-0 max-[620px]:shadow-[3px_3px_0_#f47a4a] max-[620px]:animate-none"
           href={SUPPORT_URL}
           target="_blank"
           rel="noreferrer"
           aria-label={t.home.support.ariaLabel}
         >
-          <FloatingSupportIcon aria-hidden="true">
+          <span
+            className="relative inline-grid place-items-center w-8 h-8 flex-none border-2 border-[#050505] rounded-full bg-[#f47a4a] [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:[stroke-width:2.4] after:content-[''] after:absolute after:top-1 after:right-[5px] after:w-[6px] after:h-[6px] after:border-[1.5px] after:border-[#050505] after:rounded-full after:bg-white"
+            aria-hidden="true"
+          >
             <ChatBubbleOvalLeftEllipsisIcon />
-          </FloatingSupportIcon>
-          <FloatingSupportText>{t.home.support.label}</FloatingSupportText>
-        </FloatingSupportLink>
+          </span>
+          <span className="whitespace-nowrap max-[620px]:absolute max-[620px]:w-px max-[620px]:h-px max-[620px]:p-0 max-[620px]:-m-px max-[620px]:overflow-hidden max-[620px]:[clip:rect(0,0,0,0)] max-[620px]:border-0">
+            {t.home.support.label}
+          </span>
+        </a>
       )}
-      <FloatingModeToggle
+      <div
+        className="fixed left-1/2 bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] z-[60] inline-flex items-center [transform:translateX(-50%)] border-2 border-[#050505] rounded-full bg-white p-[3px] whitespace-nowrap shadow-[4px_4px_0_#f47a4a] [transition:border-color_360ms_ease,background-color_360ms_ease,box-shadow_360ms_ease,filter_360ms_ease] max-[480px]:bottom-[calc(0.9rem_+_env(safe-area-inset-bottom))] max-[480px]:shadow-[3px_3px_0_#f47a4a]"
         aria-label={t.home.renderMode.ariaLabel}
       >
-        <ModeToggleOptions $mode={renderMode}>
-          <ModeToggleButton
+        <div
+          className={`relative grid grid-cols-[repeat(2,minmax(78px,1fr))] isolate overflow-hidden rounded-full max-[480px]:grid-cols-[repeat(2,minmax(64px,1fr))] before:absolute before:top-0 before:bottom-0 before:left-0 before:z-[-1] before:w-1/2 before:rounded-full before:bg-[#050505] before:shadow-none before:content-[''] before:[transition:transform_420ms_cubic-bezier(0.19,1,0.22,1)] ${
+            renderMode === "machine"
+              ? "before:[transform:translateX(100%)]"
+              : "before:[transform:translateX(0)]"
+          }`}
+        >
+          <button
             type="button"
-            $active={renderMode === "human"}
+            className={`min-w-0 border-0 rounded-full bg-transparent py-2 px-[0.72rem] [font-family:inherit] text-[0.76rem] font-black tracking-[0] cursor-pointer [transition:color_280ms_ease,transform_280ms_ease] max-[480px]:py-[0.46rem] max-[480px]:px-[0.58rem] max-[480px]:text-[0.72rem] ${
+              renderMode === "human"
+                ? "text-white [transform:translateY(-1px)] hover:text-white"
+                : "text-[rgba(5,5,5,0.66)] hover:text-[#050505]"
+            }`}
             onClick={handleHumanMode}
           >
             {t.home.renderMode.human}
-          </ModeToggleButton>
-          <ModeToggleButton
+          </button>
+          <button
             type="button"
-            $active={renderMode === "machine"}
+            className={`min-w-0 border-0 rounded-full bg-transparent py-2 px-[0.72rem] [font-family:inherit] text-[0.76rem] font-black tracking-[0] cursor-pointer [transition:color_280ms_ease,transform_280ms_ease] max-[480px]:py-[0.46rem] max-[480px]:px-[0.58rem] max-[480px]:text-[0.72rem] ${
+              renderMode === "machine"
+                ? "text-white [transform:translateY(-1px)] hover:text-white"
+                : "text-[rgba(5,5,5,0.66)] hover:text-[#050505]"
+            }`}
             onClick={handleMachineMode}
           >
             {t.home.renderMode.machine}
-          </ModeToggleButton>
-        </ModeToggleOptions>
-      </FloatingModeToggle>
-    </PageWrapper>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

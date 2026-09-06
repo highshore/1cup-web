@@ -8,10 +8,16 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  LabelHTMLAttributes,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 
-import { appLayout } from "../../lib/constants/app_layout";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
@@ -45,916 +51,720 @@ const FEATURED_BRAND_NAMES = [
   "던킨",
 ];
 
-const Page = styled.main`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop} 2.5rem;
-
-  @media (max-width: 640px) {
-    padding-right: ${appLayout.pageGutterMobile};
-    padding-left: ${appLayout.pageGutterMobile};
-  }
-`;
-
-const Stack = styled.div`
-  display: grid;
-  gap: 1.25rem;
-`;
-
-const Card = styled.section`
-  overflow: hidden;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.25rem 0;
-
-  @media (max-width: 680px) {
-    flex-direction: column;
-  }
-`;
-
-const CardTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 900;
-`;
-
-const CardDescription = styled.p`
-  margin: 0.38rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const CardBody = styled.div`
-  padding: 1.05rem 1.25rem 1.25rem;
-`;
-
-const ProviderInfo = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-`;
-
-const Pill = styled.span<{ $tone?: "ok" | "warn" | "error" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${({ $tone }) =>
-    $tone === "ok" ? "#dcfce7" : $tone === "error" ? "#fee2e2" : "#fff3cd"};
-  padding: 0.28rem 0.55rem;
-  color: #050505;
-  font-size: 0.72rem;
-  font-weight: 900;
-`;
-
-const Balance = styled.span`
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 850;
-`;
-
-const Notice = styled.div`
-  margin-bottom: 1rem;
-  border: 1.5px solid #050505;
-  border-left: 5px solid #f47a4a;
-  border-radius: 10px;
-  background: #fff8f4;
-  padding: 0.72rem 0.78rem;
-  color: rgba(5, 5, 5, 0.74);
-  font-size: 0.74rem;
-  font-weight: 650;
-  line-height: 1.45;
-
-  strong {
-    color: #050505;
-    font-weight: 900;
-  }
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem 1.25rem;
-
-  @media (max-width: 820px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormColumn = styled.div`
-  min-width: 0;
-`;
-
-const Field = styled.label`
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 0.9rem;
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 900;
-
-  &:first-child {
-    margin-top: 0;
-  }
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.6rem 0.7rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.86rem;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const Textarea = styled.textarea`
-  width: 100%;
-  min-height: 150px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.65rem 0.7rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.86rem;
-  line-height: 1.5;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const FieldHint = styled.p`
-  margin: -0.05rem 0 0;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.7rem;
-  font-weight: 600;
-`;
-
-const MemberPicker = styled.div`
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-`;
-
-const SearchWrap = styled.div`
-  position: relative;
-  border-bottom: 1.5px solid #050505;
-
-  svg {
-    position: absolute;
-    top: 50%;
-    left: 0.7rem;
-    width: 1rem;
-    height: 1rem;
-    transform: translateY(-50%);
-    color: rgba(5, 5, 5, 0.52);
-  }
-`;
-
-const SearchInput = styled(Input)`
-  min-height: 40px;
-  border: 0;
-  border-radius: 0;
-  padding-left: 2.1rem;
-
-  &:focus {
-    outline: none;
-  }
-`;
-
-const RecipientList = styled.div`
-  max-height: 235px;
-  overflow-y: auto;
-`;
-
-const RecipientRow = styled.label<{ $selected: boolean; $disabled?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 48px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
-  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
-  padding: 0.55rem 0.72rem;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  opacity: ${({ $disabled }) => ($disabled ? 0.52 : 1)};
-
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  &:hover {
-    background: ${({ $disabled }) => ($disabled ? "#ffffff" : "#fff8f4")};
-  }
-
-  input {
-    width: 1rem;
-    height: 1rem;
-    accent-color: #f47a4a;
-  }
-`;
-
-const Avatar = styled.span`
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.7rem;
-  font-weight: 850;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-`;
-
-const RecipientText = styled.span`
-  display: grid;
-  min-width: 0;
-  gap: 0.08rem;
-`;
-
-const RecipientName = styled.span`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.81rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const RecipientMeta = styled.span`
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.67rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const EmptyRecipients = styled.p`
-  margin: 0;
-  padding: 1.25rem 0.75rem;
-  color: rgba(5, 5, 5, 0.54);
-  font-size: 0.8rem;
-  text-align: center;
-`;
-
-const LookupRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-`;
-
-const SecondaryButton = styled.button`
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.55rem 0.68rem;
-  box-shadow: 2px 2px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #fff1ea;
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  svg {
-    width: 0.95rem;
-    height: 0.95rem;
-  }
-`;
-
-const ProductCard = styled.div`
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  gap: 0.8rem;
-  margin-top: 0.8rem;
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  background: #fff8f4;
-  padding: 0.72rem;
-`;
-
-const ProductImage = styled.div`
-  width: 74px;
-  height: 74px;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 9px;
-  background: #ffffff;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const ProductName = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.85rem;
-  font-weight: 900;
-  line-height: 1.35;
-`;
-
-const ProductMeta = styled.p`
-  margin: 0.25rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.7rem;
-  font-weight: 650;
-  line-height: 1.4;
-`;
-
-const ProductActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-`;
-
-const FavoriteQuickPicks = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-top: 0.8rem;
-`;
-
-const FavoriteQuickPick = styled.button`
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 0.42rem;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 9px;
-  background: #fffef4;
-  padding: 0.4rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-
-  &:hover:not(:disabled) {
-    background: #fff1ea;
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.6;
-  }
-`;
-
-const FavoriteQuickImage = styled.div`
-  width: 28px;
-  height: 28px;
-  overflow: hidden;
-  border-radius: 6px;
-  background: #fff8f4;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  svg {
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    padding: 0.35rem;
-    color: #f47a4a;
-  }
-`;
-
-const FavoriteQuickText = styled.span`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.68rem;
-  font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const ManualLookup = styled.details`
-  margin-top: 0.7rem;
-
-  summary {
-    width: fit-content;
-    cursor: pointer;
-    color: rgba(5, 5, 5, 0.68);
-    font-size: 0.72rem;
-    font-weight: 800;
-  }
-`;
-
-const ManualLookupRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  margin-top: 0.5rem;
-`;
-
-const ModalBackdrop = styled.div`
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(5, 5, 5, 0.56);
-  padding: 1rem;
-`;
-
-const ModalCard = styled.section`
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(760px, 100%);
-  max-height: min(620px, calc(100vh - 2rem));
-  overflow: hidden;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 7px 7px 0 #050505;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 2px solid #050505;
-  padding: 1rem 1.1rem;
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 950;
-`;
-
-const ModalDescription = styled.p`
-  margin: 0.25rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.73rem;
-  font-weight: 650;
-  line-height: 1.45;
-`;
-
-const IconButton = styled.button`
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 2px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-
-  &:hover {
-    background: #fff1ea;
-  }
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
-const CatalogTools = styled.div`
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.18);
-  padding: 0.7rem;
-`;
-
-const CatalogSearch = styled(SearchWrap)`
-  border: 2px solid #050505;
-  border-radius: 10px;
-`;
-
-const CatalogSearchInput = styled(SearchInput)`
-  border-radius: 8px;
-`;
-
-const CatalogBody = styled.div`
-  display: grid;
-  min-height: 0;
-  grid-template-columns: 188px minmax(0, 1fr);
-
-  @media (max-width: 620px) {
-    grid-template-columns: 145px minmax(0, 1fr);
-  }
-`;
-
-const BrandPanel = styled.aside`
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  overflow: hidden;
-  border-right: 2px solid #050505;
-  background: #fff8f4;
-`;
-
-const BrandList = styled.div`
-  min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
-  padding: 0.35rem;
-`;
-
-const BrandButton = styled.button<{ $selected: boolean }>`
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  border: 0;
-  border-radius: 7px;
-  background: ${({ $selected }) => ($selected ? "#f47a4a" : "transparent")};
-  padding: 0.55rem 0.58rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 850;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  &:hover {
-    background: ${({ $selected }) => ($selected ? "#f47a4a" : "#fff1ea")};
-  }
-`;
-
-const CatalogItems = styled.div`
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0.85rem;
-`;
-
-const CatalogGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CatalogProduct = styled.div<{ $selected: boolean; $disabled: boolean }>`
-  position: relative;
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 0.65rem;
-  width: 100%;
-  min-height: 86px;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 11px;
-  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
-  padding: 0.58rem;
-  color: #050505;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  font: inherit;
-  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
-  text-align: left;
-
-  &:hover {
-    border-color: ${({ $disabled }) => ($disabled ? "#050505" : "#f47a4a")};
-    background: ${({ $disabled, $selected }) =>
-      $disabled ? ($selected ? "#fff1ea" : "#ffffff") : "#fff8f4"};
-  }
-`;
-
-const FavoriteToggle = styled.button<{ $active: boolean }>`
-  position: absolute;
-  top: 0.38rem;
-  right: 0.38rem;
-  display: grid;
-  width: 25px;
-  height: 25px;
-  place-items: center;
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#fef08a" : "#ffffff")};
-  color: #050505;
-  cursor: pointer;
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.55;
-  }
-
-  svg {
-    width: 0.86rem;
-    height: 0.86rem;
-  }
-`;
-
-const CatalogItemsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  margin-bottom: 0.7rem;
-`;
-
-const CatalogBrandName = styled.p`
-  margin: 0;
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const SortSelect = styled.select`
-  min-height: 32px;
-  max-width: 168px;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 0.3rem 0.4rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 800;
-`;
-
-const CatalogImage = styled.div`
-  width: 58px;
-  height: 58px;
-  overflow: hidden;
-  border: 1px solid rgba(5, 5, 5, 0.35);
-  border-radius: 8px;
-  background: #fff8f4;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const CatalogText = styled.span`
-  display: grid;
-  min-width: 0;
-  gap: 0.14rem;
-`;
-
-const CatalogName = styled.span`
-  overflow: hidden;
-  font-size: 0.76rem;
-  font-weight: 900;
-  line-height: 1.32;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const CatalogMeta = styled.span`
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.67rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const CatalogFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-top: 1.5px solid rgba(5, 5, 5, 0.18);
-  padding: 0.85rem 1.1rem;
-
-  @media (max-width: 560px) {
-    align-items: stretch;
-    flex-direction: column;
-  }
-`;
-
-const CatalogStatus = styled.div`
-  display: flex;
-  align-items: center;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.72rem;
-  font-weight: 800;
-`;
-
-const CatalogActions = styled.div`
-  display: flex;
-  gap: 0.55rem;
-
-  @media (max-width: 560px) {
-    > button {
-      flex: 1;
-    }
-  }
-`;
-
-const TwoColumns = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-
-  @media (max-width: 540px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const SubmitRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1.1rem;
-  border-top: 1.5px solid rgba(5, 5, 5, 0.16);
-  padding-top: 1rem;
-
-  @media (max-width: 560px) {
-    align-items: stretch;
-    flex-direction: column;
-  }
-`;
-
-const SendButton = styled.button`
-  min-height: 42px;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #f47a4a;
-  padding: 0.65rem 0.9rem;
-  box-shadow: 3px 3px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.81rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #f88d63;
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    box-shadow: none;
-  }
-`;
-
-const InlineStatus = styled.p<{ $error?: boolean }>`
-  margin: 0;
-  color: ${({ $error }) => ($error ? "#991b1b" : "#0f6b32")};
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.4;
-`;
-
-const HistoryWrap = styled.div`
-  overflow-x: auto;
-`;
-
-const HistoryTable = styled.div`
-  min-width: 880px;
-`;
-
-const HistoryRow = styled.div`
-  display: grid;
-  grid-template-columns: 150px minmax(150px, 1.05fr) minmax(220px, 1.5fr) 105px 125px minmax(170px, 1fr);
-  gap: 0.8rem;
-  align-items: center;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
-  padding: 0.72rem 0;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-`;
-
-const HistoryHeaderRow = styled(HistoryRow)`
-  border-bottom: 2px solid #050505;
-  padding-top: 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-`;
-
-const HistoryPrimary = styled.div`
-  min-width: 0;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 850;
-  line-height: 1.4;
-`;
-
-const HistorySecondary = styled.div`
-  margin-top: 0.15rem;
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.67rem;
-  font-weight: 650;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const Status = styled.span<{ $status: AdminGiftHistoryItem["status"] }>`
-  display: inline-flex;
-  width: fit-content;
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: ${({ $status }) =>
-    $status === "sent"
-      ? "#dcfce7"
-      : $status === "pending"
-        ? "#fff3cd"
-        : $status === "cancelled_after_timeout"
-          ? "#e0f2fe"
-          : "#fee2e2"};
-  padding: 0.22rem 0.44rem;
-  color: #050505;
-  font-size: 0.64rem;
-  font-weight: 900;
-`;
-
-const ProviderError = styled.div`
-  margin-top: 0.15rem;
-  color: #991b1b;
-  font-size: 0.65rem;
-  font-weight: 750;
-  line-height: 1.35;
-`;
-
-const EmptyState = styled.p`
-  margin: 0;
-  padding: 1.4rem 0.5rem;
-  color: rgba(5, 5, 5, 0.54);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-align: center;
-`;
-
-const LoadingState = styled.div`
-  display: grid;
-  min-height: 260px;
-  place-items: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.88rem;
-  font-weight: 800;
-`;
+type DivProps = HTMLAttributes<HTMLDivElement>;
+type SectionProps = HTMLAttributes<HTMLElement>;
+type SpanProps = HTMLAttributes<HTMLSpanElement>;
+type ParagraphProps = HTMLAttributes<HTMLParagraphElement>;
+type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+type InputProps = InputHTMLAttributes<HTMLInputElement>;
+
+function Page({ className = "", ...rest }: SectionProps) {
+  return (
+    <main
+      {...rest}
+      className={`w-full max-w-page box-border mx-auto px-gutter pb-10 max-[640px]:px-gutter-mobile ${className}`}
+    />
+  );
+}
+
+function Stack({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`grid gap-5 ${className}`} />;
+}
+
+function Card({ className = "", ...rest }: SectionProps) {
+  return (
+    <section
+      {...rest}
+      className={`overflow-hidden border-[3px] border-[#050505] rounded-[16px] bg-white shadow-[6px_6px_0_rgba(5,5,5,0.9)] ${className}`}
+    />
+  );
+}
+
+function CardHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-start justify-between gap-4 px-5 pt-5 max-[680px]:flex-col ${className}`}
+    />
+  );
+}
+
+function CardTitle({ className = "", ...rest }: HeadingProps) {
+  return <h2 {...rest} className={`m-0 text-[#050505] text-[1rem] font-black ${className}`} />;
+}
+
+function CardDescription({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[0.38rem] mb-0 text-[rgba(5,5,5,0.6)] text-[0.78rem] font-semibold leading-[1.5] ${className}`}
+    />
+  );
+}
+
+function CardBody({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`px-5 pt-[1.05rem] pb-5 ${className}`} />;
+}
+
+function ProviderInfo({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-wrap items-center justify-end gap-2 ${className}`} />;
+}
+
+function Pill({
+  $tone,
+  className = "",
+  ...rest
+}: { $tone?: "ok" | "warn" | "error" } & SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex items-center border-[1.5px] border-[#050505] rounded-full px-[0.55rem] py-[0.28rem] text-[#050505] text-[0.72rem] font-black ${
+        $tone === "ok" ? "bg-[#dcfce7]" : $tone === "error" ? "bg-[#fee2e2]" : "bg-[#fff3cd]"
+      } ${className}`}
+    />
+  );
+}
+
+function Balance({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`text-[#050505] text-[0.79rem] font-[850] ${className}`} />;
+}
+
+function Notice({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mb-4 border-[1.5px] border-l-[5px] border-[#050505] border-l-[#f47a4a] rounded-[10px] bg-[#fff8f4] px-[0.78rem] py-[0.72rem] text-[rgba(5,5,5,0.74)] text-[0.74rem] font-[650] leading-[1.45] [&_strong]:text-[#050505] [&_strong]:font-black ${className}`}
+    />
+  );
+}
+
+function FormGrid({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-5 gap-y-4 max-[820px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function FormColumn({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-w-0 ${className}`} />;
+}
+
+function Field({
+  as: As = "label",
+  className = "",
+  ...rest
+}: { as?: "div" | "label" } & LabelHTMLAttributes<HTMLElement>) {
+  return (
+    <As
+      {...rest}
+      className={`grid gap-[0.4rem] mt-[0.9rem] first:mt-0 text-[#050505] text-[0.79rem] font-black ${className}`}
+    />
+  );
+}
+
+function Input({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[42px] box-border border-2 border-[#050505] rounded-[10px] bg-white px-[0.7rem] py-[0.6rem] text-[#050505] text-[0.86rem] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function Textarea({ className = "", ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...rest}
+      className={`w-full min-h-[150px] box-border resize-y border-2 border-[#050505] rounded-[10px] bg-white px-[0.7rem] py-[0.65rem] text-[#050505] text-[0.86rem] leading-[1.5] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function FieldHint({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[-0.05rem] mb-0 text-[rgba(5,5,5,0.56)] text-[0.7rem] font-semibold ${className}`}
+    />
+  );
+}
+
+function MemberPicker({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`overflow-hidden border-2 border-[#050505] rounded-[10px] bg-white ${className}`}
+    />
+  );
+}
+
+const searchWrapSvgClasses =
+  "[&_svg]:absolute [&_svg]:top-1/2 [&_svg]:left-[0.7rem] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:translate-y-[-50%] [&_svg]:text-[rgba(5,5,5,0.52)]";
+
+function SearchWrap({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative border-b-[1.5px] border-[#050505] ${searchWrapSvgClasses} ${className}`}
+    />
+  );
+}
+
+function SearchInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[40px] box-border border-0 rounded-none bg-white py-[0.6rem] pr-[0.7rem] pl-[2.1rem] text-[#050505] text-[0.86rem] focus:outline-none ${className}`}
+    />
+  );
+}
+
+function RecipientList({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`max-h-[235px] overflow-y-auto ${className}`} />;
+}
+
+function RecipientRow({
+  $selected,
+  $disabled,
+  className = "",
+  ...rest
+}: { $selected: boolean; $disabled?: boolean } & LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      {...rest}
+      className={`flex items-center gap-[0.7rem] min-h-[48px] border-b border-[rgba(5,5,5,0.14)] px-[0.72rem] py-[0.55rem] last:border-b-0 [&_input]:w-4 [&_input]:h-4 [&_input]:accent-[#f47a4a] ${
+        $selected ? "bg-[#fff1ea]" : "bg-white"
+      } ${
+        $disabled
+          ? "cursor-not-allowed opacity-[0.52] hover:bg-white"
+          : "cursor-pointer hover:bg-[#fff8f4]"
+      } ${className}`}
+    />
+  );
+}
+
+function Avatar({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`grid w-7 h-7 flex-none place-items-center overflow-hidden rounded-full bg-[#f47a4a] text-[#050505] text-[0.7rem] font-[850] [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function RecipientText({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`grid min-w-0 gap-[0.08rem] ${className}`} />;
+}
+
+function RecipientName({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[#050505] text-[0.81rem] font-extrabold text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function RecipientMeta({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[rgba(5,5,5,0.55)] text-[0.67rem] font-[650] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function EmptyRecipients({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-3 py-5 text-[rgba(5,5,5,0.54)] text-[0.8rem] text-center ${className}`}
+    />
+  );
+}
+
+function SecondaryButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`inline-flex min-h-[42px] items-center justify-center gap-[0.35rem] border-2 border-[#050505] rounded-[10px] bg-white px-[0.68rem] py-[0.55rem] shadow-[2px_2px_0_#050505] text-[#050505] cursor-pointer text-[0.75rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#fff1ea] [&:hover:not(:disabled)]:shadow-[3px_3px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.55] [&_svg]:w-[0.95rem] [&_svg]:h-[0.95rem] ${className}`}
+    />
+  );
+}
+
+function ProductCard({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[74px_minmax(0,1fr)] gap-[0.8rem] mt-[0.8rem] border-[1.5px] border-[#050505] rounded-[12px] bg-[#fff8f4] p-[0.72rem] ${className}`}
+    />
+  );
+}
+
+function ProductImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-[74px] h-[74px] overflow-hidden border-[1.5px] border-[#050505] rounded-[9px] bg-white [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function ProductName({ className = "", ...rest }: HeadingProps) {
+  return (
+    <h3
+      {...rest}
+      className={`m-0 text-[#050505] text-[0.85rem] font-black leading-[1.35] ${className}`}
+    />
+  );
+}
+
+function ProductMeta({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-1 mb-0 text-[rgba(5,5,5,0.6)] text-[0.7rem] font-[650] leading-[1.4] ${className}`}
+    />
+  );
+}
+
+function ProductActions({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-wrap gap-[0.55rem] ${className}`} />;
+}
+
+function FavoriteQuickPicks({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`grid grid-cols-2 gap-2 mt-[0.8rem] ${className}`} />;
+}
+
+function FavoriteQuickPick({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`grid grid-cols-[28px_minmax(0,1fr)] items-center gap-[0.42rem] overflow-hidden border-[1.5px] border-[#050505] rounded-[9px] bg-[#fffef4] p-[0.4rem] text-[#050505] cursor-pointer text-left [&:hover:not(:disabled)]:bg-[#fff1ea] disabled:cursor-wait disabled:opacity-60 ${className}`}
+    />
+  );
+}
+
+function FavoriteQuickImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-7 h-7 overflow-hidden rounded-[6px] bg-[#fff8f4] [&_img]:w-full [&_img]:h-full [&_img]:object-cover [&_svg]:w-full [&_svg]:h-full [&_svg]:box-border [&_svg]:p-[0.35rem] [&_svg]:text-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function FavoriteQuickText({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[#050505] text-[0.68rem] font-[850] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function ManualLookup({ className = "", ...rest }: HTMLAttributes<HTMLDetailsElement>) {
+  return (
+    <details
+      {...rest}
+      className={`mt-[0.7rem] [&_summary]:w-fit [&_summary]:cursor-pointer [&_summary]:text-[rgba(5,5,5,0.68)] [&_summary]:text-[0.72rem] [&_summary]:font-extrabold ${className}`}
+    />
+  );
+}
+
+function ManualLookupRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] gap-[0.55rem] mt-2 ${className}`}
+    />
+  );
+}
+
+function ModalBackdrop({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`fixed z-[1000] inset-0 grid place-items-center bg-[rgba(5,5,5,0.56)] p-4 ${className}`}
+    />
+  );
+}
+
+function ModalCard({ className = "", ...rest }: SectionProps) {
+  return (
+    <section
+      {...rest}
+      className={`grid grid-rows-[auto_minmax(0,1fr)_auto] w-[min(760px,100%)] max-h-[min(620px,calc(100vh-2rem))] overflow-hidden border-[3px] border-[#050505] rounded-[16px] bg-white shadow-[7px_7px_0_#050505] ${className}`}
+    />
+  );
+}
+
+function ModalHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-start justify-between gap-4 border-b-2 border-[#050505] px-[1.1rem] py-4 ${className}`}
+    />
+  );
+}
+
+function ModalTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 {...rest} className={`m-0 text-[#050505] text-[1rem] font-[950] ${className}`} />;
+}
+
+function ModalDescription({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-1 mb-0 text-[rgba(5,5,5,0.62)] text-[0.73rem] font-[650] leading-[1.45] ${className}`}
+    />
+  );
+}
+
+function IconButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`grid w-[34px] h-[34px] flex-none place-items-center border-2 border-[#050505] rounded-[8px] bg-white text-[#050505] cursor-pointer hover:bg-[#fff1ea] [&_svg]:w-4 [&_svg]:h-4 ${className}`}
+    />
+  );
+}
+
+function CatalogTools({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`border-b-[1.5px] border-[rgba(5,5,5,0.18)] p-[0.7rem] ${className}`}
+    />
+  );
+}
+
+function CatalogSearch({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative border-2 border-[#050505] rounded-[10px] ${searchWrapSvgClasses} ${className}`}
+    />
+  );
+}
+
+function CatalogSearchInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[40px] box-border border-0 rounded-[8px] bg-white py-[0.6rem] pr-[0.7rem] pl-[2.1rem] text-[#050505] text-[0.86rem] focus:outline-none ${className}`}
+    />
+  );
+}
+
+function CatalogBody({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid min-h-0 grid-cols-[188px_minmax(0,1fr)] max-[620px]:grid-cols-[145px_minmax(0,1fr)] ${className}`}
+    />
+  );
+}
+
+function BrandPanel({ className = "", ...rest }: SectionProps) {
+  return (
+    <aside
+      {...rest}
+      className={`grid grid-rows-[auto_minmax(0,1fr)] min-h-0 overflow-hidden border-r-2 border-[#050505] bg-[#fff8f4] ${className}`}
+    />
+  );
+}
+
+function BrandList({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`min-h-0 max-h-full overflow-y-auto p-[0.35rem] ${className}`} />
+  );
+}
+
+function BrandButton({
+  $selected,
+  className = "",
+  ...rest
+}: { $selected: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`block w-full overflow-hidden border-0 rounded-[7px] px-[0.58rem] py-[0.55rem] text-[#050505] cursor-pointer text-[0.72rem] font-[850] text-left text-ellipsis whitespace-nowrap ${
+        $selected ? "bg-[#f47a4a] hover:bg-[#f47a4a]" : "bg-transparent hover:bg-[#fff1ea]"
+      } ${className}`}
+    />
+  );
+}
+
+function CatalogItems({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-h-0 overflow-y-auto p-[0.85rem] ${className}`} />;
+}
+
+function CatalogGrid({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-2 gap-[0.7rem] max-[480px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function CatalogProduct({
+  $selected,
+  $disabled,
+  className = "",
+  ...rest
+}: { $selected: boolean; $disabled: boolean } & DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative grid grid-cols-[58px_minmax(0,1fr)] gap-[0.65rem] w-full min-h-[86px] items-center border-2 border-[#050505] rounded-[11px] p-[0.58rem] text-[#050505] text-left ${
+        $selected ? "bg-[#fff1ea]" : "bg-white"
+      } ${
+        $disabled
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer hover:border-[#f47a4a] hover:bg-[#fff8f4]"
+      } ${className}`}
+    />
+  );
+}
+
+function FavoriteToggle({
+  $active,
+  className = "",
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`absolute top-[0.38rem] right-[0.38rem] grid w-[25px] h-[25px] place-items-center border border-[#050505] rounded-full text-[#050505] cursor-pointer disabled:cursor-wait disabled:opacity-[0.55] [&_svg]:w-[0.86rem] [&_svg]:h-[0.86rem] ${
+        $active ? "bg-[#fef08a]" : "bg-white"
+      } ${className}`}
+    />
+  );
+}
+
+function CatalogItemsHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-[0.65rem] mb-[0.7rem] ${className}`}
+    />
+  );
+}
+
+function CatalogBrandName({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 overflow-hidden text-[#050505] text-[0.78rem] font-black text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function SortSelect({ className = "", ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...rest}
+      className={`min-h-8 max-w-[168px] border-[1.5px] border-[#050505] rounded-[8px] bg-white px-[0.4rem] py-[0.3rem] text-[#050505] text-[0.68rem] font-extrabold ${className}`}
+    />
+  );
+}
+
+function CatalogImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-[58px] h-[58px] overflow-hidden border border-[rgba(5,5,5,0.35)] rounded-[8px] bg-[#fff8f4] [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function CatalogText({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`grid min-w-0 gap-[0.14rem] ${className}`} />;
+}
+
+function CatalogName({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[0.76rem] font-black leading-[1.32] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function CatalogMeta({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[rgba(5,5,5,0.6)] text-[0.67rem] font-[650] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function CatalogFooter({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-3 border-t-[1.5px] border-[rgba(5,5,5,0.18)] px-[1.1rem] py-[0.85rem] max-[560px]:flex-col max-[560px]:items-stretch ${className}`}
+    />
+  );
+}
+
+function CatalogStatus({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center text-[rgba(5,5,5,0.64)] text-[0.72rem] font-extrabold ${className}`}
+    />
+  );
+}
+
+function CatalogActions({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`flex gap-[0.55rem] max-[560px]:[&>button]:flex-1 ${className}`} />
+  );
+}
+
+function TwoColumns({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[1fr_1fr] gap-[0.65rem] max-[540px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function SubmitRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-3 mt-[1.1rem] border-t-[1.5px] border-[rgba(5,5,5,0.16)] pt-4 max-[560px]:flex-col max-[560px]:items-stretch ${className}`}
+    />
+  );
+}
+
+function SendButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[42px] border-2 border-[#050505] rounded-[10px] bg-[#f47a4a] px-[0.9rem] py-[0.65rem] shadow-[3px_3px_0_#050505] text-[#050505] cursor-pointer text-[0.81rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#f88d63] [&:hover:not(:disabled)]:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${className}`}
+    />
+  );
+}
+
+function InlineStatus({
+  $error,
+  className = "",
+  ...rest
+}: { $error?: boolean } & ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 text-[0.75rem] font-extrabold leading-[1.4] ${
+        $error ? "text-[#991b1b]" : "text-[#0f6b32]"
+      } ${className}`}
+    />
+  );
+}
+
+function HistoryWrap({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`overflow-x-auto ${className}`} />;
+}
+
+function HistoryTable({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-w-[880px] ${className}`} />;
+}
+
+const historyGridClasses =
+  "grid grid-cols-[150px_minmax(150px,1.05fr)_minmax(220px,1.5fr)_105px_125px_minmax(170px,1fr)] gap-[0.8rem] items-center";
+
+function HistoryRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`${historyGridClasses} border-b border-[rgba(5,5,5,0.14)] py-[0.72rem] last:border-b-0 ${className}`}
+    />
+  );
+}
+
+function HistoryHeaderRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`${historyGridClasses} border-b-2 border-[#050505] pt-0 pb-[0.72rem] text-[rgba(5,5,5,0.58)] text-[0.68rem] font-black tracking-[0.03em] ${className}`}
+    />
+  );
+}
+
+function HistoryPrimary({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`min-w-0 text-[#050505] text-[0.78rem] font-[850] leading-[1.4] ${className}`}
+    />
+  );
+}
+
+function HistorySecondary({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-[0.15rem] overflow-hidden text-[rgba(5,5,5,0.55)] text-[0.67rem] font-[650] leading-[1.35] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function Status({
+  $status,
+  className = "",
+  ...rest
+}: { $status: AdminGiftHistoryItem["status"] } & SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex w-fit border border-[#050505] rounded-full px-[0.44rem] py-[0.22rem] text-[#050505] text-[0.64rem] font-black ${
+        $status === "sent"
+          ? "bg-[#dcfce7]"
+          : $status === "pending"
+            ? "bg-[#fff3cd]"
+            : $status === "cancelled_after_timeout"
+              ? "bg-[#e0f2fe]"
+              : "bg-[#fee2e2]"
+      } ${className}`}
+    />
+  );
+}
+
+function ProviderError({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-[0.15rem] text-[#991b1b] text-[0.65rem] font-[750] leading-[1.35] ${className}`}
+    />
+  );
+}
+
+function EmptyState({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-2 py-[1.4rem] text-[rgba(5,5,5,0.54)] text-[0.78rem] font-bold text-center ${className}`}
+    />
+  );
+}
+
+function LoadingState({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid min-h-[260px] place-items-center text-[rgba(5,5,5,0.6)] text-[0.88rem] font-extrabold ${className}`}
+    />
+  );
+}
 
 function lastFour(value: string): string {
   const digits = value.replace(/\D/g, "");

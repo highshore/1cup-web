@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import styled, { createGlobalStyle, css, keyframes } from "styled-components";
-import { colors } from "../../../constants/colors";
 import React from "react";
+import "./home.css";
 // GNB and Footer are now handled by the layout
 
 // Imports for Meetup Event Display
@@ -48,185 +47,6 @@ import { supabase } from "../../../supabase/client";
 // }
 
 // Local global style removed; fonts are injected via <head>
-const GlobalStyle = createGlobalStyle``;
-
-// Use shared colors
-
-// Common section styles
-const SectionBase = css`
-  min-height: 450px;
-  padding: 5rem 2rem;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 0;
-
-  @media (max-width: 768px) {
-    padding: 3rem 1rem;
-  }
-`;
-
-const MOBILE_NAV_GUTTER = "1rem";
-
-// Hero Section
-const HeroSection = styled.section`
-  color: white;
-  padding: clamp(6rem, 10vw, 7.5rem) clamp(1.5rem, 8vw, 10rem) clamp(4.5rem, 10vw, 6.5rem);
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-
-  video {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: translate(-50%, -50%);
-    z-index: 0;
-  }
-
-  @media (max-width: 768px) {
-    min-height: 100vh;
-    padding: clamp(4rem, 14vw, 5.5rem) ${MOBILE_NAV_GUTTER}
-      clamp(6rem, 30vw, 9rem);
-  }
-`;
-
-const MainContent = styled.div`
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  background: #ffffff;
-  isolation: isolate;
-`;
-
-// Gallery Section Styles
-const GallerySection = styled.section`
-  padding: clamp(3rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2rem);
-  max-width: 960px;
-  margin: 0 auto;
-  width: 100%;
-  overflow: visible; /* Allow shadows to show */
-`;
-
-const GalleryInner = styled.div`
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const GalleryTitle = styled.h2`
-  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-  color: #1f2937;
-  margin-bottom: clamp(2rem, 4vw, 3rem);
-  text-align: center;
-  font-family: "Noto Sans KR", sans-serif;
-
-  @media (max-width: 768px) {
-    font-size: 1.6rem;
-    margin-bottom: 1.5rem;
-  }
-`;
-
-const GalleryGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 0.8fr;
-  gap: 1rem;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-`;
-
-const GalleryImageBase = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const GalleryImageLarge = styled(GalleryImageBase)`
-  grid-row: span 2;
-  aspect-ratio: 1 / 1;
-
-  @media (max-width: 768px) {
-    grid-row: span 1;
-    aspect-ratio: 1 / 1;
-  }
-`;
-
-const GalleryImageSmall = styled(GalleryImageBase)`
-  aspect-ratio: 16 / 9;
-
-  @media (max-width: 768px) {
-    aspect-ratio: 16 / 9;
-  }
-`;
-
-const HeroContent = styled.div`
-  position: relative;
-  z-index: 2;
-  max-width: 960px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(2.4rem, 6vw, 3.4rem);
-  padding: 0 clamp(0.75rem, 3vw, 2rem);
-
-  > div {
-    max-width: 640px;
-    margin: 0 auto;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-// New styled component for the video overlay
-const VideoOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(4, 4, 20, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 1;
-`;
-
-// Common style utilities
-const breakpoints = {
-  mobile: "768px",
-};
-
-const MobileBreak = styled.br`
-  display: none;
-  @media (max-width: ${breakpoints.mobile}) {
-    display: block;
-  }
-`;
 
 interface MemberProfile {
   id: string;
@@ -351,1044 +171,13 @@ const FAQ_ITEMS = [
   },
 ];
 
-const SectionTitle = styled.h2`
-  font-size: 2.5rem;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-  color: #1f2937;
-  margin-bottom: 3rem;
-  font-weight: 800;
-  font-family: "Noto Sans KR", sans-serif;
-  text-align: center;
-
-  @media (max-width: 768px) {
-    font-size: 1.8rem;
-    padding: 0 10px;
-    margin-bottom: 2rem;
-  }
-`;
-
-// Members Section
-const MembersSection = styled.section`
-  ${SectionBase}
-  background: #f8fafc;
-  height: 900px;
-  display: flex;
-  align-items: flex-start;
-  padding: 0;
-  overflow: hidden;
-
-  @media (max-width: 1024px) {
-    height: auto;
-    min-height: auto;
-    padding: clamp(4.5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 6rem);
-    overflow: visible;
-    align-items: stretch;
-  }
-`;
-
-const MembersInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(2rem, 4vw, 3rem);
-  padding: 0 1.5rem;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const MembersHeading = styled(SectionTitle)`
-  text-align: center;
-  margin: 0;
-  color: #0f172a;
-`;
-
-const MembersIntro = styled.p`
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0.5rem auto 0;
-  max-width: 640px;
-  line-height: 1.5;
-  text-align: center;
-`;
-
-const MembersLayout = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1.05fr;
-  gap: clamp(1.5rem, 4vw, 3rem);
-  align-items: start;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const MemberVisualPanel = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-`;
-
-const MemberVisualCard = styled.div<{ $background: string }>`
-  position: relative;
-  border-radius: 24px;
-  overflow: hidden;
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  background: ${(props) => props.$background};
-  display: flex;
-  align-items: stretch;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
-`;
-
-const MemberVisualMedia = styled.div`
-  position: relative;
-  flex: 1;
-`;
-
-const MemberVisualImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const MemberVisualFallback = styled.div`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(2rem, 5vw, 2.6rem);
-  font-weight: 700;
-  color: rgba(248, 250, 252, 0.9);
-`;
-
-
-const MembersAccordion = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const MemberAccordionItem = styled.div<{ $isActive: boolean }>`
-  border-radius: 18px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid
-    ${(props) => (props.$isActive ? colors.primary : "rgba(229, 231, 235, 1)")};
-  box-shadow: ${(props) =>
-    props.$isActive
-      ? "0 18px 42px rgba(15, 23, 42, 0.12)"
-      : "0 8px 22px rgba(15, 23, 42, 0.08)"};
-  transition: all 0.25s ease;
-`;
-
-const MemberAccordionHeader = styled.button<{ $accent: string; $accentSoft: string; $isActive: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding: ${(props) => (props.$isActive ? "1.5rem" : "1rem 1.5rem")};
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: padding 0.25s ease;
-
-  @media (max-width: 768px) {
-    padding: ${(props) => (props.$isActive ? "1.3rem" : "0.9rem 1.3rem")};
-  }
-`;
-
-const MemberIconCircle = styled.span<{ $accent: string; $accentSoft: string }>`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: ${(props) => props.$accentSoft};
-  color: ${(props) => props.$accent};
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-`;
-
-const MemberHeaderTitle = styled.span`
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  line-height: 1.4;
-  flex: 1;
-`;
-
-const MemberAccordionContent = styled.div<{ $isActive: boolean }>`
-  max-height: ${(props) => (props.$isActive ? "550px" : "0")};
-  overflow: hidden;
-  transition: max-height 0.35s ease;
-`;
-
-const MemberAccordionBody = styled.div`
-  padding: 0 1.5rem 1.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    padding: 0 1.3rem 1.3rem;
-  }
-`;
-
-const MemberName = styled.h4`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-`;
-
-const MemberBio = styled.p`
-  margin: 0;
-  font-size: 0.95rem;
-  color: #4b5563;
-  line-height: 1.65;
-`;
-
-const MemberHighlights = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const MemberHighlight = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  font-size: 0.92rem;
-  color: #1f2937;
-  line-height: 1.5;
-`;
-
-const MemberHighlightIcon = styled.span<{ $accent: string }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.2rem;
-  color: ${(props) => props.$accent};
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const LinkedInButton = styled.a<{ $accent: string; $accentSoft: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  background: ${(props) => props.$accentSoft};
-  color: ${(props) => props.$accent};
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  border: 1px solid ${(props) => props.$accent}33;
-
-  &:hover {
-    background: ${(props) => props.$accent};
-    color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px ${(props) => props.$accent}40;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-// Pricing Section with Golden Ticket Theme
-const PricingSection = styled.section`
-  ${SectionBase}
-  background: #000000;
-  color: #f8fafc;
-  padding: clamp(4.5rem, 9vw, 6.5rem) 0 clamp(4rem, 9vw, 6.5rem);
-  position: relative;
-  overflow: hidden;
-`;
-
-const PricingInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(1.5rem, 3vw, 2rem);
-  text-align: center;
-  padding: 0 1.5rem;
-  position: relative;
-  z-index: 1;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const PricingCard = styled.div`
-  width: 100%;
-  border-radius: 20px;
-  padding: clamp(2.4rem, 6vw, 3rem);
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(1.8rem, 4vw, 2.5rem);
-  position: relative;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-    border-color: #d1d5db;
-  }
-`;
-
-const PricingHeader = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  text-align: center;
-  position: relative;
-  z-index: 1;
-`;
-
-const PricingBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  align-self: center;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid #fdba74;
-`;
-
-const PricingPrice = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.6rem;
-  position: relative;
-  z-index: 1;
-`;
-
-const PricingCurrency = styled.span`
-  font-size: clamp(1.5rem, 4vw, 1.8rem);
-  font-weight: 700;
-  color: #111827;
-`;
-
-const PricingAmount = styled.span`
-  font-size: clamp(2.5rem, 6vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #111827;
-`;
-
-const PricingPeriod = styled.span`
-  font-size: 1rem;
-  font-weight: 500;
-  color: #6b7280;
-`;
-
-const PricingTagline = styled.p`
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #374151;
-  line-height: 1.6;
-`;
-
-const PricingHighlights = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  position: relative;
-  z-index: 1;
-`;
-
-const PricingHighlightItem = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  text-align: left;
-`;
-
-const PricingHighlightIcon = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #e5edff;
-  color: #1d4ed8;
-  flex-shrink: 0;
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-`;
-
-const PricingHighlightText = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-`;
-
-const PricingHighlightTitle = styled.span`
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-`;
-
-const PricingHighlightDescription = styled.span`
-  font-size: 0.9rem;
-  color: #4b5563;
-  line-height: 1.55;
-`;
-
-const PricingButton = styled.button`
-  align-self: stretch;
-  padding: 0.875rem 1.5rem;
-  border: 1px solid #111827;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  color: #ffffff;
-  font-family: inherit;
-  background: #111827;
-
-  &:hover {
-    background: #000000;
-    border-color: #000000;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1.25rem;
-    font-size: 0.9375rem;
-  }
-`;
-
-const PricingDisclaimer = styled.p`
-  font-size: 0.8125rem;
-  color: #9ca3af;
-  line-height: 1.6;
-  text-align: center;
-  margin: 0;
-  max-width: 760px;
-
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-  }
-`;
-
-const PricingSectionTitle = styled(SectionTitle)`
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  position: relative;
-  z-index: 1;
-`;
-
-// FAQ Section
-const FAQSection = styled.section`
-  ${SectionBase}
-  background: transparent;
-  padding: 5rem 0 0;
-  margin-bottom: 0;
-`;
-
-const FAQInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-// Gradient shining sweep animation for CTA button
-const gradientShine = keyframes`
-  0% {
-    background-position: -100% center;
-  }
-  100% {
-    background-position: 100% center;
-  }
-`;
-
-const CTAWrapper = styled.div`
-  max-width: 960px;
-  margin: 3rem auto 0;
-  padding: 0;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    margin: 2rem auto 0;
-  }
-`;
-
-const CTAInner = styled.div`
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const CTASection = styled.div`
-  position: relative;
-  border-radius: 20px;
-  padding: 3rem;
-  text-align: center;
-  width: 100%;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    padding: 2rem;
-  }
-`;
-
-const CTAVideoBackground = styled.video`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-`;
-
-const CTAOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1;
-`;
-
-const CTAContent = styled.div`
-  position: relative;
-  z-index: 2;
-`;
-
-const CTATitle = styled.h3`
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 1rem;
-  font-family: inherit;
-
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const CTADescription = styled.p`
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-  font-family: inherit;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-  }
-`;
-
-const CTAButton = styled.button`
-  padding: 0.85rem 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-  color: white;
-  font-family: inherit;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 15%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 85%
-    );
-    background-size: 200% 100%;
-    animation: ${gradientShine} 2.5s linear infinite;
-    pointer-events: none;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
-  }
-
-  svg {
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1.5rem;
-    font-size: 0.9rem;
-    gap: 0.375rem;
-  }
-`;
-
-const FAQContainer = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-`;
-
-const FAQItem = styled.div`
-  border-radius: 16px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-`;
-
-interface FAQQuestionProps {
-  $isOpen: boolean;
-}
-
-const FAQQuestion = styled.button<FAQQuestionProps>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 1.5rem;
-  background: transparent;
-  border: none;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #1f2937;
-  cursor: pointer;
-  font-family: "Noto Sans KR", sans-serif;
-  text-align: left;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: ${colors.primary};
-  }
-
-  span {
-    font-size: 1.4rem;
-    font-weight: 400;
-    color: ${colors.primary};
-    transition: transform 0.25s ease;
-    transform: ${(props) => (props.$isOpen ? "rotate(180deg)" : "none")};
-    flex-shrink: 0;
-    margin-left: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    padding: 1.2rem;
-    font-size: 0.95rem;
-  }
-`;
-
-const FAQAnswer = styled.div<{ $isOpen: boolean }>`
-  max-height: ${(props) => (props.$isOpen ? "500px" : "0")};
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  padding: ${(props) => (props.$isOpen ? "0 1.5rem 1.5rem" : "0 1.5rem")};
-  font-size: 0.95rem;
-  color: #6b7280;
-  line-height: 1.7;
-  font-family: "Noto Sans KR", sans-serif;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: ${(props) => (props.$isOpen ? "0 1.2rem 1.2rem" : "0 1.2rem")};
-  }
-`;
-
-// Define styled component for page wrapper
-const PageWrapper = styled.div`
-  padding-top: 0; /* Always 0 for homepage */
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-`;
-
-// New styled components for marketing text
-const MarketingText = styled.h2`
-  font-size: 2.8rem;
-  font-weight: 700;
-  color: #ffffff;
-  text-align: center;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  font-family: "Noto Sans KR", sans-serif;
-  z-index: 2; /* Ensure it's above canvas */
-  position: relative; /* For z-index to take effect */
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
-  }
-`;
-
-const MarketingSubText = styled.p`
-  font-size: 1.3rem;
-  font-weight: 500;
-  color: #e0e0e0; /* Lighter than pure white for subtlety */
-  text-align: center;
-  line-height: 1.6;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-  font-family: "Noto Sans KR", sans-serif;
-  z-index: 2; /* Ensure it's above canvas */
-  position: relative; /* For z-index to take effect */
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-  }
-`;
-
-// --- START: Copied/Adapted Meetup Card Styles from meetup.tsx ---
-const subtleGlow = keyframes`
-  0% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  50% {
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  100% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-`;
-
-const CopiedEventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
-  position: relative;
-  border-radius: 20px;
-  padding: 16px;
-  margin-bottom: 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 14px 36px rgba(84, 103, 168, 0.22);
-  width: 100%;
-  opacity: ${(props) => (props.$isPast ? 0.6 : 1)};
-  overflow: hidden;
-  background: #ffffff; /* Solid white background */
-  border: 1px solid rgba(220, 220, 220, 0.5); /* Subtle border */
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 42px rgba(70, 92, 170, 0.28);
-  }
-
-  & > * {
-    position: relative;
-    z-index: 2;
-  };
-  text-align: left; // Ensure text is left-aligned
-
-  ${(props) =>
-    props.$isClosest
-      ? css`
-          animation: ${subtleGlow} 3s ease-in-out infinite;
-          border: 1px solid rgba(76, 175, 80, 0.3);
-        `
-      : ""}
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    opacity: ${(props) => (props.$isPast ? 0.8 : 1)};
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    border-radius: 16px;
-  }
-`;
-
-const CopiedEventContent = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-
-  @media (max-width: 768px) {
-    gap: 12px;
-  }
-`;
-
-const CopiedEventImageContainer = styled.div<{ $isPast?: boolean }>`
-  width: 120px;
-  height: 120px;
-  border-radius: 20px;
-  overflow: hidden;
-  background-color: #000000;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: ${(props) => (props.$isPast ? "grayscale(50%)" : "none")};
-
-  @media (max-width: 768px) {
-    width: 80px;
-    height: 80px;
-    border-radius: 12px;
-  }
-`;
-
-const CopiedEventImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-`;
-
-const CopiedEventImagePlaceholder = styled.div`
-  color: #d1d5db;
-  font-size: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  @media (max-width: 768px) {
-    font-size: 1.5rem;
-  }
-
-  svg {
-    width: 42px;
-    height: 42px;
-  }
-`;
-
-const CopiedEventDetails = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-`;
-
-const CopiedEventTitle = styled.h3<{ $isPast?: boolean }>`
-  color: ${(props) =>
-    props.$isPast ? "#999" : colors.text.dark}; // Use theme color
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-
-  @media (max-width: 768px) {
-    font-size: 15px;
-    margin: 0 0 6px 0;
-    line-height: 1.2;
-  }
-`;
-
-// Using this for CountdownPrefix as it's identical to the one in meetup.tsx
-const CopiedCountdownPrefix = styled.span<{ $isUrgent?: boolean }>`
-  color: ${(props) => (props.$isUrgent ? "#DC143C" : "inherit")};
-  font-weight: ${(props) => (props.$isUrgent ? "bold" : "inherit")};
-`;
-
-const CopiedEventInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-`;
-
-const CopiedEventIcon = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) =>
-    props.$isPast ? "#999" : colors.text.medium}; // Use theme color
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-
-  svg {
-    fill: currentColor; // Ensure SVG inherits color
-  }
-`;
-
-const CopiedEventText = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) =>
-    props.$isPast ? "#999" : colors.text.medium}; // Use theme color
-  font-size: 16px;
-  letter-spacing: 0;
-  word-wrap: break-word;
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-  }
-`;
-
-const CopiedEventBottom = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-  gap: 8px;
-  min-height: 30px; /* Ensure consistent height */
-  flex-wrap: nowrap;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    margin-top: 4px;
-    gap: 6px;
-  }
-`;
-
-const CopiedAvatarStackSlot = styled.div`
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-`;
-
-const CopiedStatusBadge = styled.span<{ $statusColor: string }>`
-  display: inline-block;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  background-color: ${(props) => props.$statusColor};
-  border-radius: 20px;
-  text-align: center;
-  min-width: 80px;
-  flex-shrink: 0; /* Prevent badge from shrinking */
-  max-width: 52%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap; /* Keep badge text on one line */
-  transition: all 0.2s ease;
-
-  @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 6px 12px;
-    min-width: 80px;
-    max-width: 56%;
-  }
-`;
-// --- END: Copied/Adapted Meetup Card Styles ---
-
-// New Styled component for the enticing text/design element
-const EventCardPrompt = styled.div`
-  background: linear-gradient(135deg, ${colors.primaryPale} 0%, #ffffff 100%);
-  color: ${colors.primaryDark};
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  margin-bottom: 1rem; // Space between this prompt and the card
-  font-size: 1rem;
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  border: 1px solid ${colors.primaryPale};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  text-align: center;
-  width: 100%;
-
-  @media (max-width: ${breakpoints.mobile}) {
-    font-size: 0.9rem;
-    padding: 0.6rem 1rem;
-    line-height: 1.3;
-  }
-
-  svg {
-    width: 1.15rem;
-    height: 1.15rem;
-    color: ${colors.primary};
-    flex-shrink: 0;
-  }
-`;
-
-// Wrapper for the copied event card in the hero section
-const HeroMeetupCardContainer = styled.div`
-  max-width: 550px;
-  width: 100%;
-  margin: 0 auto 0 auto;
-  z-index: 2;
-  position: relative;
-
-  @media (max-width: 768px) {
-    max-width: 90%;
-  }
-`;
+// Common section title style (SectionTitle)
+const sectionTitleClass =
+  "mb-12 text-center font-['Noto_Sans_KR',sans-serif] text-[2.5rem] font-extrabold leading-[1.3] tracking-[-0.02em] text-[#1f2937] max-[768px]:mb-8 max-[768px]:px-[10px] max-[768px]:text-[1.8rem]";
+
+// Gallery image base (GalleryImageBase)
+const galleryImageBaseClass =
+  "h-full w-full rounded-2xl object-cover shadow-[0_8px_24px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-300 ease-[ease] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.15)]";
 
 interface HeroEventCardProps {
   meetup: MeetupEvent;
@@ -1428,64 +217,98 @@ const HeroEventCard = React.memo(
       }
     };
 
+    const isClosest = true;
+    const pastTextClass = isPast ? "text-[#999]" : "text-ink";
+    const pastMediumTextClass = isPast ? "text-[#999]" : "text-ink-medium";
+
     return (
-      <CopiedEventCard
+      <div
         ref={ref}
         onClick={() => onNavigate(meetup.id)}
-        $isPast={isPast}
-        $isClosest={true}
+        className={`relative mb-6 w-full cursor-pointer overflow-hidden rounded-[20px] border bg-white p-4 text-left shadow-[0_14px_36px_rgba(84,103,168,0.22)] transition-all duration-200 ease-[ease] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.15)] [&>*]:relative [&>*]:z-[2] max-[768px]:rounded-2xl max-[768px]:p-4 ${
+          isPast ? "opacity-60 hover:opacity-80" : "opacity-100 hover:opacity-100"
+        } ${
+          isClosest
+            ? "animate-[home-subtle-glow_3s_ease-in-out_infinite] border-[rgba(76,175,80,0.3)]"
+            : "border-[rgba(220,220,220,0.5)]"
+        }`}
       >
-        <CopiedEventContent>
-          <CopiedEventImageContainer $isPast={isPast}>
+        <div className="flex items-start gap-5 max-[768px]:gap-3">
+          <div
+            className={`flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-black max-[768px]:h-20 max-[768px]:w-20 max-[768px]:rounded-xl ${
+              isPast ? "[filter:grayscale(50%)]" : "[filter:none]"
+            }`}
+          >
             {meetup.image_urls && meetup.image_urls.length > 0 ? (
-              <CopiedEventImage src={meetup.image_urls[0]} alt={meetup.title} />
+              <img
+                className="h-full w-full object-contain"
+                src={meetup.image_urls[0]}
+                alt={meetup.title}
+              />
             ) : (
-              <CopiedEventImagePlaceholder>
+              <div className="flex items-center justify-center text-[2.5rem] text-[#d1d5db] max-[768px]:text-[1.5rem] [&_svg]:h-[42px] [&_svg]:w-[42px]">
                 <PhotoIcon />
-              </CopiedEventImagePlaceholder>
+              </div>
             )}
-          </CopiedEventImageContainer>
-          <CopiedEventDetails>
-            <CopiedEventTitle $isPast={isPast}>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <h3
+              className={`m-0 mb-2 text-[18px] font-bold leading-[1.3] [word-wrap:break-word] max-[768px]:mb-1.5 max-[768px]:text-[15px] max-[768px]:leading-[1.2] ${pastTextClass}`}
+            >
               {countdownPrefix && (
-                <CopiedCountdownPrefix $isUrgent={isUrgent}>
+                <span className={isUrgent ? "font-bold text-[#DC143C]" : ""}>
                   {countdownPrefix}
-                </CopiedCountdownPrefix>
+                </span>
               )}
               {eventTitle}
-            </CopiedEventTitle>
-            <CopiedEventInfo>
-              <CopiedEventIcon $isPast={isPast}>
+            </h3>
+            <div className="mb-2 flex items-center gap-2 max-[768px]:mb-1 max-[768px]:gap-1.5">
+              <span
+                className={`flex shrink-0 items-center [&_svg]:fill-current ${pastMediumTextClass}`}
+              >
                 <PinIcon width="16px" height="16px" />
-              </CopiedEventIcon>
-              <CopiedEventText $isPast={isPast}>
+              </span>
+              <span
+                className={`text-[16px] tracking-[0] [word-wrap:break-word] max-[768px]:text-[13px] ${pastMediumTextClass}`}
+              >
                 {meetup.location_name}
-              </CopiedEventText>
-            </CopiedEventInfo>
-            <CopiedEventInfo>
-              <CopiedEventIcon $isPast={isPast}>
+              </span>
+            </div>
+            <div className="mb-2 flex items-center gap-2 max-[768px]:mb-1 max-[768px]:gap-1.5">
+              <span
+                className={`flex shrink-0 items-center [&_svg]:fill-current ${pastMediumTextClass}`}
+              >
                 <CalendarIcon width="16px" height="16px" />
-              </CopiedEventIcon>
-              <CopiedEventText $isPast={isPast}>
+              </span>
+              <span
+                className={`text-[16px] tracking-[0] [word-wrap:break-word] max-[768px]:text-[13px] ${pastMediumTextClass}`}
+              >
                 {formatEventDateTime(meetup)}
-              </CopiedEventText>
-            </CopiedEventInfo>
-            <CopiedEventBottom data-event-bottom>
-              <CopiedAvatarStackSlot>
+              </span>
+            </div>
+            <div
+              data-event-bottom
+              className="mt-2 flex min-h-[30px] w-full min-w-0 flex-nowrap items-center justify-between gap-2 overflow-hidden max-[768px]:mt-1 max-[768px]:gap-1.5"
+            >
+              <div className="flex min-w-0 flex-[1_1_auto] items-center overflow-hidden">
                 <UserAvatarStack
                   uids={[...meetup.leaders, ...meetup.participants]}
                   maxAvatars={maxAvatars}
                   size={30}
                   isPast={isPast}
                 />
-              </CopiedAvatarStackSlot>
-              <CopiedStatusBadge data-status-badge $statusColor={statusColor}>
+              </div>
+              <span
+                data-status-badge
+                className="inline-block max-w-[52%] min-w-20 shrink-0 overflow-hidden rounded-[20px] px-4 py-2 text-center text-[14px] font-bold text-ellipsis whitespace-nowrap text-white transition-all duration-200 ease-[ease] max-[768px]:max-w-[56%] max-[768px]:min-w-20 max-[768px]:px-3 max-[768px]:py-1.5 max-[768px]:text-[12px]"
+                style={{ backgroundColor: statusColor }}
+              >
                 {getStatusText()} ({totalParticipants}/{meetup.max_participants})
-              </CopiedStatusBadge>
-            </CopiedEventBottom>
-          </CopiedEventDetails>
-        </CopiedEventContent>
-      </CopiedEventCard>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   })
 );
@@ -1526,7 +349,7 @@ export default function HomePageClient({
       : null
   );
   const [loadingEvent, setLoadingEvent] = useState(!initialUpcomingEvents);
-  
+
   // Dynamically determine max avatars based on available space
   const [maxAvatars, setMaxAvatars] = useState(8);
   const eventCardRef = useRef<HTMLDivElement>(null);
@@ -1607,23 +430,23 @@ export default function HomePageClient({
 
       const containerWidth = eventBottomEl.offsetWidth;
       const gap = 8; // Gap between avatar stack and badge
-      
+
       // Measure the status badge width
       const badgeEl = eventBottomEl.querySelector('[data-status-badge]') as HTMLElement;
       const badgeWidth = badgeEl ? badgeEl.offsetWidth : 120; // Fallback to estimated width
-      
+
       // Calculate available width for avatars
       const availableWidth = containerWidth - badgeWidth - gap - 20; // 20px buffer
-      
+
       // Avatar calculations: size=30, overlap=60% (so each additional avatar adds 18px)
       const avatarSize = 30;
       const overlapFactor = 0.6;
       const avatarSpacing = avatarSize * overlapFactor;
-      
+
       // Calculate how many avatars can fit
       // First avatar takes full width, each additional takes spacing width
       const totalParticipants = closestEvent.leaders.length + closestEvent.participants.length;
-      
+
       if (totalParticipants === 0) {
         setMaxAvatars(0);
         return;
@@ -1656,12 +479,12 @@ export default function HomePageClient({
 
     // Initial calculation
     const timeoutId = setTimeout(calculateMaxAvatars, 100);
-    
+
     // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       calculateMaxAvatars();
     });
-    
+
     if (eventCardRef.current) {
       resizeObserver.observe(eventCardRef.current);
     }
@@ -1791,141 +614,177 @@ export default function HomePageClient({
   };
 
   return (
-    <PageWrapper>
-      <GlobalStyle />
-      <HeroSection>
+    <div className="flex min-h-screen flex-col pt-0">
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden pt-[clamp(6rem,10vw,7.5rem)] px-[clamp(1.5rem,8vw,10rem)] pb-[clamp(4.5rem,10vw,6.5rem)] text-center text-white max-[768px]:min-h-screen max-[768px]:pt-[clamp(4rem,14vw,5.5rem)] max-[768px]:px-4 max-[768px]:pb-[clamp(6rem,30vw,9rem)] [&_video]:absolute [&_video]:top-1/2 [&_video]:left-1/2 [&_video]:z-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover [&_video]:[transform:translate(-50%,-50%)]">
         <video autoPlay loop muted playsInline ref={videoRef}>
           <source src="/assets/homepage/alphabet.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-        <VideoOverlay />
-        <HeroContent>
+        <div className="absolute top-0 left-0 z-[1] h-full w-full bg-[rgba(4,4,20,0.5)] backdrop-blur-[2px]" />
+        <div className="relative z-[2] flex w-full max-w-page flex-col items-center gap-[clamp(2.4rem,6vw,3.4rem)] px-[clamp(0.75rem,3vw,2rem)] max-[768px]:px-4 [&>div]:mx-auto [&>div]:max-w-[640px]">
           <div>
-            <MarketingText>
+            <h2 className="relative z-[2] mb-4 text-center font-['Noto_Sans_KR',sans-serif] text-[2.8rem] font-bold leading-[1.3] text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.5)] max-[768px]:text-[2rem]">
               국내파 통역사가 직접 개발한
               <br />
               비즈니스 영어 커뮤니티
-            </MarketingText>
-            <MarketingSubText>
+            </h2>
+            <p className="relative z-[2] mx-auto max-w-[600px] text-center font-['Noto_Sans_KR',sans-serif] text-[1.3rem] font-medium leading-[1.6] text-[#e0e0e0] [text-shadow:0_1px_6px_rgba(0,0,0,0.4)] max-[768px]:mb-2 max-[768px]:text-[1rem]">
               저희 모임에서는 영어, 좋은 사람, 트렌드를
               <br />
               한꺼번에 얻어갈 수 있습니다
-            </MarketingSubText>
+            </p>
           </div>
           {!loadingEvent && closestEvent && (
-            <HeroMeetupCardContainer>
-              <EventCardPrompt>
+            <div className="relative z-[2] mx-auto my-0 w-full max-w-[550px] max-[768px]:max-w-[90%]">
+              <div className="mb-4 flex w-full items-center justify-center gap-[0.55rem] rounded-xl border border-primary-pale bg-[linear-gradient(135deg,#F5EBE6_0%,#ffffff_100%)] px-5 py-3 text-center text-[1rem] font-semibold text-primary-dark shadow-[0_2px_10px_rgba(0,0,0,0.08)] max-[768px]:px-4 max-[768px]:py-[0.6rem] max-[768px]:text-[0.9rem] max-[768px]:leading-[1.3] [&_svg]:h-[1.15rem] [&_svg]:w-[1.15rem] [&_svg]:shrink-0 [&_svg]:text-primary">
                 <SparklesIcon />
                 <span>
                   바로 지금! 통역사가 직접 리딩하는
-                  <MobileBreak /> 영어 모임에 참여해보세요!
+                  <br className="hidden max-[768px]:block" /> 영어 모임에 참여해보세요!
                 </span>
-              </EventCardPrompt>
+              </div>
               <HeroEventCard
                 ref={eventCardRef}
                 meetup={closestEvent}
                 maxAvatars={maxAvatars}
                 onNavigate={handleEventNavigation}
               />
-            </HeroMeetupCardContainer>
+            </div>
           )}
-        </HeroContent>
-      </HeroSection>
+        </div>
+      </section>
 
-      <MainContent>
+      <div className="relative isolate flex flex-1 flex-col bg-white">
         {/* Gallery Section */}
-        <GallerySection>
-          <GalleryInner>
-            <GalleryTitle>
+        <section className="mx-auto w-full max-w-page overflow-visible pt-[clamp(3rem,6vw,4.5rem)] pb-[clamp(1.5rem,3vw,2rem)]">
+          <div className="px-gutter max-[768px]:px-4">
+            <h2 className="mb-[clamp(2rem,4vw,3rem)] text-center font-['Noto_Sans_KR',sans-serif] text-[clamp(1.8rem,3.5vw,2.5rem)] font-extrabold leading-[1.3] tracking-[-0.02em] text-[#1f2937] max-[768px]:mb-6 max-[768px]:text-[1.6rem]">
               매주 일요일 오전 11시,
               <br />
               통역사 출신이 리딩하는 영어 모임
-            </GalleryTitle>
-            <GalleryGrid>
-              <GalleryImageLarge
+            </h2>
+            <div className="grid w-full grid-cols-[1fr_0.8fr] gap-4 max-[768px]:grid-cols-1 max-[768px]:gap-3">
+              <img
+                className={`${galleryImageBaseClass} row-span-2 aspect-square max-[768px]:row-span-1`}
                 src="/assets/homepage/gallery1.webp"
                 alt="영어 한잔 밋업 현장 1"
                 loading="lazy"
               />
-              <GalleryImageSmall
+              <img
+                className={`${galleryImageBaseClass} aspect-video`}
                 src="/assets/homepage/gallery2.webp"
                 alt="영어 한잔 밋업 현장 2"
                 loading="lazy"
               />
-              <GalleryImageSmall
+              <img
+                className={`${galleryImageBaseClass} aspect-video`}
                 src="/assets/homepage/gallery3.webp"
                 alt="영어 한잔 밋업 현장 3"
                 loading="lazy"
               />
-            </GalleryGrid>
-          </GalleryInner>
-        </GallerySection>
+            </div>
+          </div>
+        </section>
 
         <StatsSection stats={homeStats} />
 
         <TopicsShowcase topics={initialTopics || []} />
 
-        <MembersSection>
-          <MembersInner>
-            <MembersHeading>모임에는 누가 참석하나요?</MembersHeading>
-            <MembersLayout
+        <section className="relative mb-0 flex h-[900px] min-h-[450px] items-start overflow-hidden bg-[#f8fafc] p-0 max-[1024px]:h-auto max-[1024px]:min-h-[auto] max-[1024px]:items-stretch max-[1024px]:overflow-visible max-[1024px]:px-0 max-[1024px]:pt-[clamp(4.5rem,8vw,6rem)] max-[1024px]:pb-[clamp(4rem,8vw,6rem)]">
+          <div className="mx-auto flex w-full max-w-page flex-col gap-[clamp(2rem,4vw,3rem)] px-gutter max-[768px]:px-4">
+            <h2 className="m-0 text-center font-['Noto_Sans_KR',sans-serif] text-[2.5rem] font-extrabold leading-[1.3] tracking-[-0.02em] text-[#0f172a] max-[768px]:px-[10px] max-[768px]:text-[1.8rem]">
+              모임에는 누가 참석하나요?
+            </h2>
+            <div
+              className="grid grid-cols-[1fr_1.05fr] items-start gap-[clamp(1.5rem,4vw,3rem)] max-[1024px]:grid-cols-1"
               onMouseEnter={handleMemberMouseEnter}
               onMouseLeave={handleMemberMouseLeave}
               onTouchStart={handleMemberMouseEnter}
               onTouchEnd={handleMemberMouseLeave}
               onTouchCancel={handleMemberMouseLeave}
             >
-              <MemberVisualPanel>
-                <MemberVisualCard $background={activeMember.background}>
-                  <MemberVisualMedia>
+              <div className="flex flex-col gap-5">
+                <div
+                  className="relative flex aspect-square w-full items-stretch overflow-hidden rounded-3xl shadow-[0_24px_48px_rgba(15,23,42,0.2)]"
+                  style={{ background: activeMember.background }}
+                >
+                  <div className="relative flex-1">
                     {activeMember.image ? (
-                      <MemberVisualImage
+                      <img
+                        className="h-full w-full object-cover"
                         src={activeMember.image}
                         alt={`${activeMember.label} 비주얼 이미지`}
                         loading="lazy"
                       />
                     ) : (
-                      <MemberVisualFallback>{activeMember.initials}</MemberVisualFallback>
+                      <div className="absolute inset-0 flex items-center justify-center text-[clamp(2rem,5vw,2.6rem)] font-bold text-[rgba(248,250,252,0.9)]">
+                        {activeMember.initials}
+                      </div>
                     )}
-                  </MemberVisualMedia>
-                </MemberVisualCard>
-              </MemberVisualPanel>
+                  </div>
+                </div>
+              </div>
 
-              <MembersAccordion>
+              <div className="flex flex-col gap-4">
                 {memberProfiles.map((member, index) => {
                   const Icon = member.icon;
+                  const isActive = activeMemberIndex === index;
                   return (
-                    <MemberAccordionItem
+                    <div
                       key={member.id}
-                      $isActive={activeMemberIndex === index}
+                      className={`overflow-hidden rounded-[18px] border bg-white transition-all duration-[250ms] ease-[ease] ${
+                        isActive
+                          ? "border-primary shadow-[0_18px_42px_rgba(15,23,42,0.12)]"
+                          : "border-[rgba(229,231,235,1)] shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
+                      }`}
                     >
-                      <MemberAccordionHeader
+                      <button
+                        className={`flex w-full cursor-pointer items-center gap-4 border-none bg-transparent text-left transition-[padding] duration-[250ms] ease-[ease] ${
+                          isActive
+                            ? "p-6 max-[768px]:p-[1.3rem]"
+                            : "px-6 py-4 max-[768px]:px-[1.3rem] max-[768px]:py-[0.9rem]"
+                        }`}
                         onClick={() => handleMemberSelect(index)}
                         onFocus={() => handleMemberFocus(index)}
                         onBlur={handleMemberBlur}
                         onMouseEnter={() => handleMemberHover(index)}
-                        $accent={member.accent}
-                        $accentSoft={member.accentSoft}
-                        $isActive={activeMemberIndex === index}
                       >
-                        <MemberIconCircle
-                          $accent={member.accent}
-                          $accentSoft={member.accentSoft}
+                        <span
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&_svg]:h-5 [&_svg]:w-5"
+                          style={{
+                            background: member.accentSoft,
+                            color: member.accent,
+                          }}
                         >
                           <Icon />
-                        </MemberIconCircle>
-                        <MemberHeaderTitle>{member.label}</MemberHeaderTitle>
-                      </MemberAccordionHeader>
-                      <MemberAccordionContent $isActive={activeMemberIndex === index}>
-                        <MemberAccordionBody>
-                          <MemberBio>{member.bio}</MemberBio>
+                        </span>
+                        <span className="flex-1 text-[1rem] font-bold leading-[1.4] text-[#111827]">
+                          {member.label}
+                        </span>
+                      </button>
+                      <div
+                        className={`overflow-hidden transition-[max-height] duration-[350ms] ease-[ease] ${
+                          isActive ? "max-h-[550px]" : "max-h-0"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-4 px-6 pb-[1.6rem] max-[768px]:px-[1.3rem] max-[768px]:pb-[1.3rem]">
+                          <p className="m-0 text-[0.95rem] leading-[1.65] text-[#4b5563]">
+                            {member.bio}
+                          </p>
                           {member.linkedInUrl && (
-                            <LinkedInButton
+                            <a
                               href={member.linkedInUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              $accent={member.accent}
-                              $accentSoft={member.accentSoft}
+                              className="inline-flex items-center gap-2 rounded-lg border border-[var(--m-accent-33)] bg-[var(--m-accent-soft)] px-4 py-[0.6rem] text-[0.9rem] font-semibold text-[var(--m-accent)] no-underline transition-all duration-200 ease-[ease] hover:-translate-y-px hover:bg-[var(--m-accent)] hover:text-white hover:no-underline hover:shadow-[0_4px_12px_var(--m-accent-40)] [&_svg]:h-[18px] [&_svg]:w-[18px]"
+                              style={
+                                {
+                                  "--m-accent": member.accent,
+                                  "--m-accent-soft": member.accentSoft,
+                                  "--m-accent-33": `${member.accent}33`,
+                                  "--m-accent-40": `${member.accent}40`,
+                                } as React.CSSProperties
+                              }
                             >
                               <svg
                                 viewBox="0 0 24 24"
@@ -1935,119 +794,156 @@ export default function HomePageClient({
                                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                               </svg>
                               LinkedIn 프로필 보기
-                            </LinkedInButton>
+                            </a>
                           )}
-                          <MemberHighlights>
+                          <ul className="m-0 flex list-none flex-col gap-3 p-0">
                             {member.highlights.map((highlight, highlightIndex) => (
-                              <MemberHighlight key={highlightIndex}>
-                                <MemberHighlightIcon $accent={member.accent}>
+                              <li
+                                key={highlightIndex}
+                                className="flex items-start gap-[0.65rem] text-[0.92rem] leading-[1.5] text-[#1f2937]"
+                              >
+                                <span
+                                  className="mt-[0.2rem] inline-flex items-center justify-center [&_svg]:h-[18px] [&_svg]:w-[18px]"
+                                  style={{ color: member.accent }}
+                                >
                                   <CheckCircleIcon />
-                                </MemberHighlightIcon>
+                                </span>
                                 <span>{highlight}</span>
-                              </MemberHighlight>
+                              </li>
                             ))}
-                          </MemberHighlights>
-                        </MemberAccordionBody>
-                      </MemberAccordionContent>
-                    </MemberAccordionItem>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
-              </MembersAccordion>
-            </MembersLayout>
-          </MembersInner>
-        </MembersSection>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <PricingSection>
-          <PricingInner>
-            <PricingSectionTitle>멤버십 이용권 안내</PricingSectionTitle>
-            <PricingCard>
-              <PricingHeader>
-                <PricingBadge>정기 멤버십</PricingBadge>
-                <PricingPrice>
-                  <PricingCurrency>₩</PricingCurrency>
-                  <PricingAmount>9,700</PricingAmount>
-                  <PricingPeriod>/월</PricingPeriod>
-                </PricingPrice>
-                <PricingTagline>
+        <section className="relative mb-0 min-h-[450px] overflow-hidden bg-black px-0 pt-[clamp(4.5rem,9vw,6.5rem)] pb-[clamp(4rem,9vw,6.5rem)] text-[#f8fafc] max-[768px]:px-4 max-[768px]:py-12">
+          <div className="relative z-[1] mx-auto flex max-w-page flex-col items-center gap-[clamp(1.5rem,3vw,2rem)] px-gutter text-center max-[768px]:px-4">
+            <h2 className="relative z-[1] mb-12 text-center font-['Noto_Sans_KR',sans-serif] text-[2.5rem] font-extrabold leading-[1.3] tracking-[-0.02em] text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.3)] max-[768px]:mb-8 max-[768px]:px-[10px] max-[768px]:text-[1.8rem]">
+              멤버십 이용권 안내
+            </h2>
+            <div className="relative flex w-full flex-col gap-[clamp(1.8rem,4vw,2.5rem)] rounded-[20px] border border-[#e5e7eb] bg-white p-[clamp(2.4rem,6vw,3rem)] shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)] transition-[box-shadow,border-color] duration-200 ease-[ease] hover:border-[#d1d5db] hover:shadow-[0_4px_6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.06)]">
+              <div className="relative z-[1] flex flex-col gap-4 text-center">
+                <span className="inline-flex items-center justify-center gap-2 self-center rounded-full border border-[#fdba74] bg-[#fff7ed] px-4 py-2 text-[0.875rem] font-semibold text-[#9a3412]">
+                  정기 멤버십
+                </span>
+                <div className="relative z-[1] flex items-baseline justify-center gap-[0.6rem]">
+                  <span className="text-[clamp(1.5rem,4vw,1.8rem)] font-bold text-[#111827]">₩</span>
+                  <span className="text-[clamp(2.5rem,6vw,3.5rem)] font-extrabold tracking-[-0.02em] text-[#111827]">
+                    9,700
+                  </span>
+                  <span className="text-[1rem] font-medium text-[#6b7280]">/월</span>
+                </div>
+                <p className="m-0 text-[1rem] font-medium leading-[1.6] text-[#374151]">
                   통역사가 직접 리딩하는 2시간 토론 세션, 고급 비즈니스 콘텐츠, 압도적인 가성비를 모두 경험하세요.
-                </PricingTagline>
-              </PricingHeader>
+                </p>
+              </div>
 
-              <PricingHighlights>
+              <ul className="relative z-[1] m-0 flex list-none flex-col gap-[1.1rem] p-0">
                 {pricingBenefits.map((benefit, index) => (
-                  <PricingHighlightItem key={index}>
-                    <PricingHighlightIcon>
+                  <li key={index} className="flex items-start gap-4 text-left">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e5edff] text-[#1d4ed8] [&_svg]:h-5 [&_svg]:w-5">
                       <CheckBadgeIcon />
-                    </PricingHighlightIcon>
-                    <PricingHighlightText>
-                      <PricingHighlightTitle>{benefit.title}</PricingHighlightTitle>
-                      <PricingHighlightDescription>
+                    </span>
+                    <div className="flex flex-col gap-[0.35rem]">
+                      <span className="text-[1rem] font-semibold text-[#111827]">{benefit.title}</span>
+                      <span className="text-[0.9rem] leading-[1.55] text-[#4b5563]">
                         {benefit.description}
-                      </PricingHighlightDescription>
-                    </PricingHighlightText>
-                  </PricingHighlightItem>
+                      </span>
+                    </div>
+                  </li>
                 ))}
-              </PricingHighlights>
+              </ul>
 
-              <PricingButton onClick={() => router.push("/payment")}>
+              <button
+                className="inline-flex cursor-pointer items-center justify-center gap-2 self-stretch rounded-xl border border-[#111827] bg-[#111827] px-6 py-[0.875rem] text-[1rem] font-semibold text-white [font-family:inherit] transition-all duration-150 ease-[ease] hover:-translate-y-px hover:border-black hover:bg-black hover:shadow-[0_4px_6px_rgba(0,0,0,0.1)] active:translate-y-0 max-[768px]:px-5 max-[768px]:py-[0.875rem] max-[768px]:text-[0.9375rem] [&_svg]:h-4 [&_svg]:w-4"
+                onClick={() => router.push("/payment")}
+              >
                 <RocketLaunchIcon />
                 멤버십 신청하기
-              </PricingButton>
-            </PricingCard>
-            <PricingDisclaimer>
+              </button>
+            </div>
+            <p className="m-0 max-w-[760px] text-center text-[0.8125rem] leading-[1.6] text-[#9ca3af] max-[768px]:text-[0.75rem]">
               *1주에 1회 진행하는 밋업에 모두 참여 시 4회입니다. 운영진 귀책 사유로 밋업을 1주 진행하지 못할 경우 구독 기간을 2주 연장해드립니다. 멤버 분 귀책 사유로 밋업을 불참하실 경우 연장이 되지는 않습니다. 밋업 간 비매너 언행 시 강제 환불이 진행될 수 있습니다.
-            </PricingDisclaimer>
-          </PricingInner>
-        </PricingSection>
+            </p>
+          </div>
+        </section>
 
         {/* FAQ Section */}
-        <FAQSection>
-          <FAQInner>
-            <SectionTitle>자주 묻는 질문</SectionTitle>
-            <FAQContainer>
+        <section className="relative mb-0 min-h-[450px] overflow-hidden bg-transparent px-0 pt-20 pb-0 max-[768px]:px-4 max-[768px]:py-12">
+          <div className="mx-auto max-w-page px-gutter max-[768px]:px-4">
+            <h2 className={sectionTitleClass}>자주 묻는 질문</h2>
+            <div className="flex w-full flex-col gap-[1.2rem]">
               {FAQ_ITEMS.map(
                 (faq: { question: string; answer: string }, index: number) => (
-                  <FAQItem key={index}>
-                    <FAQQuestion
+                  <div
+                    key={index}
+                    className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all duration-200 ease-[ease] hover:border-[#d1d5db] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                  >
+                    <button
                       onClick={() => toggleFAQ(index)}
-                      $isOpen={openFAQ === index}
+                      className={`flex w-full cursor-pointer items-center justify-between border-none bg-transparent p-6 text-left font-['Noto_Sans_KR',sans-serif] text-[1.05rem] font-semibold text-[#1f2937] transition-colors duration-200 ease-[ease] hover:text-primary max-[768px]:p-[1.2rem] max-[768px]:text-[0.95rem] [&_span]:ml-4 [&_span]:shrink-0 [&_span]:text-[1.4rem] [&_span]:font-normal [&_span]:text-primary [&_span]:transition-transform [&_span]:duration-[250ms] [&_span]:ease-[ease] ${
+                        openFAQ === index ? "[&_span]:rotate-180" : ""
+                      }`}
                     >
                       {faq.question}
                       <span>{openFAQ === index ? "−" : "+"}</span>
-                    </FAQQuestion>
-                    <FAQAnswer $isOpen={openFAQ === index}>
+                    </button>
+                    <div
+                      className={`overflow-hidden font-['Noto_Sans_KR',sans-serif] text-[0.95rem] leading-[1.7] text-[#6b7280] transition-[max-height,padding] duration-300 ease-[ease] max-[768px]:text-[0.9rem] ${
+                        openFAQ === index
+                          ? "max-h-[500px] px-6 pt-0 pb-6 max-[768px]:px-[1.2rem] max-[768px]:pb-[1.2rem]"
+                          : "max-h-0 px-6 py-0 max-[768px]:px-[1.2rem]"
+                      }`}
+                    >
                       {faq.answer}
-                    </FAQAnswer>
-                  </FAQItem>
+                    </div>
+                  </div>
                 )
               )}
-            </FAQContainer>
-          </FAQInner>
-        </FAQSection>
+            </div>
+          </div>
+        </section>
 
         {/* CTA Section */}
-        <CTAWrapper>
-          <CTAInner>
-            <CTASection>
-              <CTAVideoBackground autoPlay loop muted playsInline>
+        <div className="mx-auto mt-12 mb-0 w-full max-w-page p-0 max-[768px]:mt-8">
+          <div className="px-gutter max-[768px]:px-4">
+            <div className="relative w-full overflow-hidden rounded-[20px] p-12 text-center max-[768px]:p-8">
+              <video
+                className="absolute top-0 left-0 z-0 h-full w-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              >
                 <source src="/assets/blog/manhattan.mp4" type="video/mp4" />
-              </CTAVideoBackground>
-              <CTAOverlay />
-              <CTAContent>
-                <CTATitle>영어 소통 능력을 키우고 싶다면?</CTATitle>
-                <CTADescription>
+              </video>
+              <div className="absolute top-0 left-0 z-[1] h-full w-full bg-[rgba(0,0,0,0.7)]" />
+              <div className="relative z-[2]">
+                <h3 className="mb-4 text-[1.75rem] font-semibold text-white [font-family:inherit] max-[768px]:text-[1.25rem]">
+                  영어 소통 능력을 키우고 싶다면?
+                </h3>
+                <p className="mb-6 text-[1rem] leading-[1.5] text-[rgba(255,255,255,0.85)] [font-family:inherit] max-[768px]:text-[0.9rem]">
                   통역사, 직장인, 대학생, 전문가 등 다양한 백그라운드를 가진 <br />
                   멤버들과 함께하는 영어 밋업에 참여해보세요.
-                </CTADescription>
-                <CTAButton onClick={() => router.push("/meetup")}>
+                </p>
+                <button
+                  className="relative inline-flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.1)] px-7 py-[0.85rem] text-[1rem] font-bold text-white [font-family:inherit] backdrop-blur-[10px] transition-all duration-[250ms] ease-[ease] before:pointer-events-none before:absolute before:inset-0 before:animate-[home-gradient-shine_2.5s_linear_infinite] before:bg-[linear-gradient(120deg,rgba(255,255,255,0)_15%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0)_85%)] before:bg-[length:200%_100%] before:content-[''] hover:border-[rgba(255,255,255,0.5)] hover:bg-[rgba(255,255,255,0.2)] max-[768px]:gap-1.5 max-[768px]:px-6 max-[768px]:py-[0.875rem] max-[768px]:text-[0.9rem] [&_svg]:h-[1.1rem] [&_svg]:w-[1.1rem]"
+                  onClick={() => router.push("/meetup")}
+                >
                   <RocketLaunchIcon />
                   밋업 확인하기
-                </CTAButton>
-              </CTAContent>
-            </CTASection>
-          </CTAInner>
-        </CTAWrapper>
-      </MainContent>
-    </PageWrapper>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

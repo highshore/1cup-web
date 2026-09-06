@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import styled from "styled-components";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useRouter } from "next/navigation";
@@ -45,662 +44,214 @@ const ADMIN_SECTIONS: Array<{
   },
 ];
 
-const Wrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 0 20px 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-  gap: 30px;
-  background: transparent;
-`;
-
-const Header = styled.div`
-  margin-bottom: 20px;
-`;
-
-const Title = styled.h1`
-  font-size: 28px;
-  font-weight: 900;
-  color: #050505;
-  margin: 0;
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-`;
-
-const StatCard = styled.div`
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  border: 3px solid #050505;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const StatNumber = styled.div`
-  font-size: 32px;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 8px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 14px;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const StatSubtext = styled.div`
-  font-size: 12px;
-  color: rgba(5, 5, 5, 0.6);
-  margin-top: 4px;
-`;
-
-const QuickActionsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 10px;
-
-  @media (max-width: 980px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const QuickAction = styled.button`
-  min-height: 132px;
-  padding: 18px;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  text-align: left;
-  box-shadow: 3px 3px 0 #f47a4a;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 #f47a4a;
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 3px;
-  }
-`;
-
-const QuickActionLabel = styled.div`
-  font-size: 16px;
-  font-weight: 900;
-`;
-
-const QuickActionDescription = styled.p`
-  margin: 8px 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const ContentSection = styled.div`
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  border: 3px solid #050505;
-`;
-
-const SectionTitle = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.3rem 0.7rem;
-  font-size: 16px;
-  font-weight: 900;
-  margin-bottom: 20px;
-`;
-
-const MembersHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-
-  ${SectionTitle} {
-    height: 36px;
-    margin: 0;
-    padding: 0 12px;
-    font-size: 14px;
-  }
-
-  @media (max-width: 560px) {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-`;
-
-const MembersTabs = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.22);
-`;
-
-const MembersTab = styled.button<{ $active: boolean }>`
-  border: 0;
-  border-bottom: 3px solid ${({ $active }) => ($active ? "#050505" : "transparent")};
-  margin-bottom: -1.5px;
-  padding: 7px 10px 8px;
-  background: transparent;
-  color: ${({ $active }) => ($active ? "#050505" : "rgba(5, 5, 5, 0.58)")};
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const UsersList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const UserCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 16px;
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
-  }
-`;
-
-const UserInfo = styled.div`
-  flex: 1;
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
-  gap: 16px;
-  align-items: center;
-`;
-
-const CreditInspector = styled.div`
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(5, 5, 5, 0.15);
-  font-size: 12px;
-`;
-
-const CreditControls = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  input {
-    min-width: 0;
-    border: 1px solid #050505;
-    border-radius: 6px;
-    padding: 6px 8px;
-    font: inherit;
-  }
-
-  button {
-    border: 1px solid #050505;
-    border-radius: 6px;
-    background: #fff;
-    padding: 6px 8px;
-    font: inherit;
-    font-weight: 800;
-    cursor: pointer;
-  }
-`;
-
-const UserName = styled.div`
-  font-weight: 800;
-  color: #050505;
-  font-size: 14px;
-`;
-
-const UserEmail = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 13px;
-`;
-
-const UserStatus = styled.div<{ active: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  background-color: ${(props) => (props.active ? "#dcfce7" : "#fee2e2")};
-  color: #050505;
-`;
-
-const LocationStatus = styled.div<{ $location: MembershipLocation }>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  background-color: ${(props) => (props.$location === "yeouido" ? "#dbeafe" : "#ffedd5")};
-  color: #050505;
-`;
-
-const UserDate = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-`;
-
-const ApplicantList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const ApplicantCard = styled.article`
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  padding: 16px;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
-  }
-`;
-
-const ApplicantHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-`;
-
-const ApplicantDetails = styled.dl`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 14px 0 0;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-
-  dt {
-    margin: 0 0 3px;
-    color: rgba(5, 5, 5, 0.58);
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-
-  dd {
-    margin: 0;
-    color: #050505;
-    font-size: 13px;
-    font-weight: 700;
-    overflow-wrap: anywhere;
-  }
-`;
-
-const ApplicantStatus = styled.span<{ $status: NonKoreanApplication["status"] }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${({ $status }) =>
-    $status === "approved" ? "#dcfce7" : $status === "declined" ? "#fee2e2" : "#fef3c7"};
-  color: #050505;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 850;
-  text-transform: capitalize;
-`;
-
-const ExternalProfileLink = styled.a`
-  color: #050505;
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 0.16em;
-`;
-
-const FeedbackList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const FeedbackCard = styled.div`
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  padding: 20px;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.85);
-  }
-`;
-
-const FeedbackHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-`;
-
-const FeedbackCategory = styled.div<{ category: string }>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: ${(props) =>
-    props.category === "cancellation" ? "#fef3c7" : "#f47a4a"};
-  color: #050505;
-`;
-
-const FeedbackDate = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-`;
-
-const FeedbackUser = styled.div`
-  color: #050505;
-  font-weight: 800;
-  font-size: 14px;
-  margin-bottom: 8px;
-`;
-
-const FeedbackReasons = styled.div`
-  margin-bottom: 12px;
-`;
-
-const ReasonsList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 8px 0;
-`;
-
-const ReasonItem = styled.li`
-  padding: 4px 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 14px;
-
-  &:before {
-    content: "•";
-    color: #f47a4a;
-    font-weight: 900;
-    margin-right: 8px;
-  }
-`;
-
-const FeedbackOther = styled.div`
-  background-color: #faf8f4;
-  border: 1.5px solid #050505;
-  border-left: 4px solid #f47a4a;
-  padding: 12px;
-  margin-top: 8px;
-  border-radius: 8px;
-  font-style: italic;
-  color: rgba(5, 5, 5, 0.72);
-`;
-
-const ArticlesList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-const ArticleCard = styled.article`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1.5px solid #050505;
-  background: #ffffff;
-  color: #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-
-  &:hover {
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const ArticleOpenButton = styled.button<{ $ready: boolean }>`
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  cursor: ${({ $ready }) => ($ready ? "pointer" : "default")};
-  text-align: left;
-  transition: transform 0.14s ease;
-
-  &:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 5px;
-  }
-
-  &:disabled {
-    opacity: 0.78;
-  }
-`;
-
-const ArticleStatus = styled.span<{ $tone: "processing" | "published" | "failed" }>`
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: ${({ $tone }) =>
-    $tone === "failed" ? "#fee2e2" : $tone === "published" ? "#dcfce7" : "#fff3cd"};
-  color: ${({ $tone }) => ($tone === "failed" ? "#991b1b" : "#050505")};
-  font-size: 11px;
-  font-weight: 900;
-`;
-
-const ProgressTrack = styled.div`
-  width: 100%;
-  height: 8px;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #fff8f4;
-`;
-
-const ProgressFill = styled.div<{ $progress: number; $failed: boolean }>`
-  width: ${({ $progress }) => $progress}%;
-  height: 100%;
-  background: ${({ $failed }) => ($failed ? "#dc2626" : "#f47a4a")};
-  transition: width 0.3s ease;
-`;
-
-const ProgressHint = styled.span`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-  font-weight: 700;
-`;
-
-const ArticleCardFooter = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-`;
-
-const ArticleActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 8px;
-`;
-
-const ArticleHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-`;
-
-const ArticleTitle = styled.div`
-  font-size: 16px;
-  font-weight: 800;
-  color: #050505;
-  line-height: 1.35;
-`;
-
-const ArticleSubtitle = styled.div`
-  font-size: 14px;
-  color: rgba(5, 5, 5, 0.6);
-`;
-
-const ArticleMeta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(5, 5, 5, 0.6);
-  text-align: right;
-`;
-
-const ArticleActionButton = styled.button<{ $variant?: "danger" }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 2px solid #050505;
-  background: ${(props) => (props.$variant === "danger" ? "#fee2e2" : "#ffffff")};
-  color: ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-  box-shadow: 2px 2px 0 ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 ${(props) => (props.$variant === "danger" ? "#991b1b" : "#050505")};
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
-    box-shadow: none;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const MembersToolbar = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const MembersActionButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  gap: 6px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 2px solid #050505;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-  box-shadow: 3px 3px 0 #050505;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
-    box-shadow: none;
-  }
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
-
-const LoadingSpinner = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
+// Shared Tailwind class fragments
+const hoverLiftTransition =
+  "transition-[translate,box-shadow] duration-[140ms] ease-[ease]";
+const cardHoverLift = `${hoverLiftTransition} hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(5,5,5,0.85)]`;
+
+const wrapperClass =
+  "flex flex-col pt-0 px-5 pb-5 max-w-[1400px] mx-auto gap-[30px] bg-transparent";
+
+const headerClass = "mb-5";
+
+const titleClass = "text-[28px] font-black text-[#050505] m-0";
+
+const statsGridClass =
+  "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 mb-[30px]";
+
+const statCardClass = `bg-white rounded-2xl p-6 shadow-[6px_6px_0_rgba(5,5,5,0.9)] border-[3px] border-[#050505] ${hoverLiftTransition} hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(5,5,5,0.9)]`;
+
+const statNumberClass = "text-[32px] font-black text-[#050505] mb-2";
+
+const statLabelClass =
+  "text-[14px] text-[rgba(5,5,5,0.6)] font-bold uppercase tracking-[0.5px]";
+
+const statSubtextClass = "text-[12px] text-[rgba(5,5,5,0.6)] mt-1";
+
+const quickActionsGridClass =
+  "grid grid-cols-4 gap-3.5 mb-2.5 max-[980px]:grid-cols-2 max-[560px]:grid-cols-1";
+
+const quickActionClass = `min-h-[132px] p-[18px] border-2 border-[#050505] rounded-xl bg-white text-[#050505] cursor-pointer text-left shadow-[3px_3px_0_#f47a4a] ${hoverLiftTransition} hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#f47a4a] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-[3px]`;
+
+const quickActionLabelClass = "text-[16px] font-black";
+
+const quickActionDescriptionClass =
+  "mx-0 mt-2 mb-0 text-[rgba(5,5,5,0.64)] text-[13px] font-semibold leading-[1.5]";
+
+const contentSectionClass =
+  "bg-white rounded-2xl p-6 shadow-[6px_6px_0_rgba(5,5,5,0.9)] border-[3px] border-[#050505]";
+
+// Replaces the styled SectionTitle plus the `${SectionTitle}` override that
+// MembersHeader applied to it (the `compact` variant).
+function SectionTitle({
+  compact = false,
+  children,
+}: {
+  compact?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <h2
+      className={`inline-flex items-center border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] font-black ${
+        compact
+          ? "h-9 m-0 py-0 px-3 text-[14px]"
+          : "mb-5 py-[0.3rem] px-[0.7rem] text-[16px]"
+      }`}
+    >
+      {children}
+    </h2>
+  );
+}
+
+const membersHeaderClass =
+  "flex items-center justify-between gap-3 mb-4 max-[560px]:items-start max-[560px]:flex-col";
+
+const membersTabsClass =
+  "flex gap-2 mb-4 border-b-[1.5px] border-b-[rgba(5,5,5,0.22)]";
+
+const membersTabClass = (active: boolean) =>
+  `border-0 border-b-[3px] mb-[-1.5px] pt-[7px] px-2.5 pb-2 bg-transparent text-[13px] font-extrabold cursor-pointer focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2 ${
+    active
+      ? "border-b-[#050505] text-[#050505]"
+      : "border-b-transparent text-[rgba(5,5,5,0.58)]"
+  }`;
+
+const usersListClass = "flex flex-col gap-3";
+
+const userCardClass = `flex flex-col items-stretch p-4 border-[1.5px] border-[#050505] rounded-[10px] ${cardHoverLift}`;
+
+const userInfoClass =
+  "flex-1 grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center";
+
+const creditInspectorClass =
+  "grid gap-2 w-full mt-3 pt-3 border-t border-t-[rgba(5,5,5,0.15)] text-[12px]";
+
+const creditControlsClass =
+  "flex flex-wrap gap-2 " +
+  "[&_input]:min-w-0 [&_input]:border [&_input]:border-[#050505] [&_input]:rounded-[6px] [&_input]:py-1.5 [&_input]:px-2 [&_input]:[font:inherit] " +
+  "[&_button]:border [&_button]:border-[#050505] [&_button]:rounded-[6px] [&_button]:bg-white [&_button]:py-1.5 [&_button]:px-2 [&_button]:[font:inherit] [&_button]:font-extrabold [&_button]:cursor-pointer";
+
+const userNameClass = "font-extrabold text-[#050505] text-[14px]";
+
+const userEmailClass = "text-[rgba(5,5,5,0.6)] text-[13px]";
+
+const statusPillClass =
+  "inline-flex items-center py-1 px-2.5 border-[1.5px] border-[#050505] rounded-full text-[12px] font-extrabold text-[#050505]";
+
+const userStatusClass = (active: boolean) =>
+  `${statusPillClass} ${active ? "bg-[#dcfce7]" : "bg-[#fee2e2]"}`;
+
+const locationStatusClass = (location: MembershipLocation) =>
+  `${statusPillClass} ${location === "yeouido" ? "bg-[#dbeafe]" : "bg-[#ffedd5]"}`;
+
+const userDateClass = "text-[rgba(5,5,5,0.6)] text-[12px]";
+
+const applicantListClass = "flex flex-col gap-3";
+
+const applicantCardClass = `border-[1.5px] border-[#050505] rounded-[10px] p-4 ${cardHoverLift}`;
+
+const applicantHeaderClass = "flex items-start justify-between gap-3";
+
+const applicantDetailsClass =
+  "grid grid-cols-3 gap-3 mx-0 mt-3.5 mb-0 max-[640px]:grid-cols-1 " +
+  "[&_dt]:mx-0 [&_dt]:mt-0 [&_dt]:mb-[3px] [&_dt]:text-[rgba(5,5,5,0.58)] [&_dt]:text-[11px] [&_dt]:font-extrabold [&_dt]:uppercase " +
+  "[&_dd]:m-0 [&_dd]:text-[#050505] [&_dd]:text-[13px] [&_dd]:font-bold [&_dd]:[overflow-wrap:anywhere]";
+
+const applicantStatusClass = (status: NonKoreanApplication["status"]) =>
+  `inline-flex items-center border-[1.5px] border-[#050505] rounded-full text-[#050505] py-1 px-2.5 text-[11px] [font-weight:850] capitalize ${
+    status === "approved"
+      ? "bg-[#dcfce7]"
+      : status === "declined"
+      ? "bg-[#fee2e2]"
+      : "bg-[#fef3c7]"
+  }`;
+
+const externalProfileLinkClass =
+  "text-[#050505] font-extrabold underline underline-offset-[0.16em]";
+
+const feedbackListClass = "flex flex-col gap-3";
+
+const feedbackCardClass = `border-[1.5px] border-[#050505] rounded-[10px] p-5 ${cardHoverLift}`;
+
+const feedbackHeaderClass = "flex justify-between items-start mb-3";
+
+const feedbackCategoryClass = (category: string) =>
+  `inline-flex items-center py-1 px-3 border-[1.5px] border-[#050505] rounded-full text-[12px] font-extrabold uppercase tracking-[0.5px] text-[#050505] ${
+    category === "cancellation" ? "bg-[#fef3c7]" : "bg-[#f47a4a]"
+  }`;
+
+const feedbackDateClass = "text-[rgba(5,5,5,0.6)] text-[12px]";
+
+const feedbackUserClass = "text-[#050505] font-extrabold text-[14px] mb-2";
+
+const feedbackReasonsClass = "mb-3";
+
+const reasonsListClass = "list-none p-0 my-2 mx-0";
+
+const reasonItemClass =
+  "py-1 px-0 text-[rgba(5,5,5,0.72)] text-[14px] before:content-['•'] before:text-[#f47a4a] before:font-black before:mr-2";
+
+const feedbackOtherClass =
+  "bg-[#faf8f4] border-[1.5px] border-[#050505] border-l-4 border-l-[#f47a4a] p-3 mt-2 rounded-lg italic text-[rgba(5,5,5,0.72)]";
+
+const articlesListClass = "flex flex-col gap-2.5";
+
+const articleCardClass =
+  "w-full flex flex-col py-3 px-3.5 rounded-[10px] border-[1.5px] border-[#050505] bg-white text-[#050505] shadow-[3px_3px_0_rgba(5,5,5,0.9)] hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)]";
+
+const articleOpenButtonClass = (ready: boolean) =>
+  `flex w-full flex-col gap-1.5 border-0 p-0 bg-transparent text-inherit text-left transition-[translate] duration-[140ms] ease-[ease] hover:enabled:-translate-x-0.5 hover:enabled:-translate-y-0.5 focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-[5px] disabled:opacity-[0.78] ${
+    ready ? "cursor-pointer" : "cursor-default"
+  }`;
+
+const articleStatusClass = (tone: "processing" | "published" | "failed") =>
+  `inline-flex items-center w-fit border-[1.5px] border-[#050505] rounded-full py-1 px-2 text-[11px] font-black ${
+    tone === "failed"
+      ? "bg-[#fee2e2] text-[#991b1b]"
+      : tone === "published"
+      ? "bg-[#dcfce7] text-[#050505]"
+      : "bg-[#fff3cd] text-[#050505]"
+  }`;
+
+const progressTrackClass =
+  "w-full h-2 overflow-hidden border-[1.5px] border-[#050505] rounded-full bg-[#fff8f4]";
+
+const progressFillClass = (failed: boolean) =>
+  `h-full transition-[width] duration-300 ease-[ease] ${
+    failed ? "bg-[#dc2626]" : "bg-[#f47a4a]"
+  }`;
+
+const progressHintClass = "text-[rgba(5,5,5,0.6)] text-[12px] font-bold";
+
+const articleCardFooterClass = "flex flex-col gap-1.5 mt-1.5";
+
+const articleActionsClass = "flex justify-end gap-2.5 mt-2";
+
+const articleHeaderClass = "flex justify-between items-start gap-3";
+
+const articleTitleClass =
+  "text-[16px] font-extrabold text-[#050505] leading-[1.35]";
+
+const articleSubtitleClass = "text-[14px] text-[rgba(5,5,5,0.6)]";
+
+const articleMetaClass =
+  "flex flex-wrap justify-end gap-2 text-[12px] text-[rgba(5,5,5,0.6)] text-right";
+
+const articleActionButtonClass = (variant?: "danger") =>
+  `inline-flex items-center gap-1.5 py-2 px-3.5 rounded-full border-2 border-[#050505] text-[13px] font-extrabold cursor-pointer ${hoverLiftTransition} hover:-translate-x-px hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-none disabled:shadow-none [&_svg]:w-4 [&_svg]:h-4 ${
+    variant === "danger"
+      ? "bg-[#fee2e2] text-[#991b1b] shadow-[2px_2px_0_#991b1b] hover:shadow-[3px_3px_0_#991b1b]"
+      : "bg-white text-[#050505] shadow-[2px_2px_0_#050505] hover:shadow-[3px_3px_0_#050505]"
+  }`;
+
+const membersToolbarClass = "flex items-center";
+
+const membersActionButtonClass = `inline-flex items-center h-9 gap-1.5 py-0 px-3 rounded-full border-2 border-[#050505] bg-[#f47a4a] text-[#050505] text-[12px] font-extrabold cursor-pointer ${hoverLiftTransition} shadow-[3px_3px_0_#050505] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-none disabled:shadow-none [&_svg]:w-[15px] [&_svg]:h-[15px]`;
+
+const loadingSpinnerClass =
+  "flex justify-center items-center p-10 text-[rgba(5,5,5,0.6)] font-bold";
+
+const emptyStateClass = "text-center p-10 text-[rgba(5,5,5,0.6)] font-bold";
 
 // Interfaces
 type MembershipLocation = "yeouido" | "anam";
@@ -1260,56 +811,56 @@ export default function AdminClient({
 
   const renderDashboard = () => (
     <>
-      <QuickActionsGrid aria-label={t.admin.dashboard.title}>
+      <div className={quickActionsGridClass} aria-label={t.admin.dashboard.title}>
           {ADMIN_SECTIONS.map(({ id, path }) => (
-            <QuickAction key={id} type="button" onClick={() => router.push(path)}>
-              <QuickActionLabel>{t.admin.dashboard.sections[id].label}</QuickActionLabel>
-              <QuickActionDescription>{t.admin.dashboard.sections[id].description}</QuickActionDescription>
-            </QuickAction>
+            <button key={id} type="button" className={quickActionClass} onClick={() => router.push(path)}>
+              <div className={quickActionLabelClass}>{t.admin.dashboard.sections[id].label}</div>
+              <p className={quickActionDescriptionClass}>{t.admin.dashboard.sections[id].description}</p>
+            </button>
           ))}
-      </QuickActionsGrid>
+      </div>
 
-      <Header>
-        <Title>{t.admin.dashboard.title}</Title>
-      </Header>
+      <div className={headerClass}>
+        <h1 className={titleClass}>{t.admin.dashboard.title}</h1>
+      </div>
 
-      <StatsGrid>
-        <StatCard>
-          <StatNumber>{stats.totalMembers}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.totalMembers.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.totalMembers.description}</StatSubtext>
-        </StatCard>
+      <div className={statsGridClass}>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.totalMembers}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.totalMembers.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.totalMembers.description}</div>
+        </div>
 
-        <StatCard>
-          <StatNumber>{stats.activeSubscriptions}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.activeSubscriptions.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.activeSubscriptions.description}</StatSubtext>
-        </StatCard>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.activeSubscriptions}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.activeSubscriptions.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.activeSubscriptions.description}</div>
+        </div>
 
-        <StatCard>
-          <StatNumber>{stats.cancelledBilling}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.cancelledBilling.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.cancelledBilling.description}</StatSubtext>
-        </StatCard>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.cancelledBilling}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.cancelledBilling.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.cancelledBilling.description}</div>
+        </div>
 
-        <StatCard>
-          <StatNumber>{stats.newMembersThisMonth}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.newMembers.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.newMembers.description}</StatSubtext>
-        </StatCard>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.newMembersThisMonth}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.newMembers.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.newMembers.description}</div>
+        </div>
 
-        <StatCard>
-          <StatNumber>{stats.totalEvents}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.totalEvents.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.totalEvents.description}</StatSubtext>
-        </StatCard>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.totalEvents}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.totalEvents.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.totalEvents.description}</div>
+        </div>
 
-        <StatCard>
-          <StatNumber>{stats.purchasingMembers}</StatNumber>
-          <StatLabel>{t.admin.dashboard.stats.payingMembers.label}</StatLabel>
-          <StatSubtext>{t.admin.dashboard.stats.payingMembers.description}</StatSubtext>
-        </StatCard>
-      </StatsGrid>
+        <div className={statCardClass}>
+          <div className={statNumberClass}>{stats.purchasingMembers}</div>
+          <div className={statLabelClass}>{t.admin.dashboard.stats.payingMembers.label}</div>
+          <div className={statSubtextClass}>{t.admin.dashboard.stats.payingMembers.description}</div>
+        </div>
+      </div>
 
     </>
   );
@@ -1325,76 +876,77 @@ export default function AdminClient({
       : copy.noActiveMembers;
 
     return (
-      <ContentSection>
-        <MembersHeader>
-          <SectionTitle>{withCount(copy.title, users.length)}</SectionTitle>
-          <MembersToolbar>
-            <MembersActionButton
+      <div className={contentSectionClass}>
+        <div className={membersHeaderClass}>
+          <SectionTitle compact>{withCount(copy.title, users.length)}</SectionTitle>
+          <div className={membersToolbarClass}>
+            <button
               type="button"
+              className={membersActionButtonClass}
               onClick={handleExtendActiveMembers}
               disabled={extendingSubscriptions || activeMembersCount === 0}
             >
               <CalendarDaysIcon />
               {extendButtonLabel}
-            </MembersActionButton>
-          </MembersToolbar>
-        </MembersHeader>
+            </button>
+          </div>
+        </div>
 
-        <MembersTabs role="tablist" aria-label={copy.tabListLabel}>
-          <MembersTab
+        <div className={membersTabsClass} role="tablist" aria-label={copy.tabListLabel}>
+          <button
             type="button"
             role="tab"
             id="members-tab"
             aria-controls="members-panel"
             aria-selected={membersTab === "members"}
-            $active={membersTab === "members"}
+            className={membersTabClass(membersTab === "members")}
             onClick={() => setMembersTab("members")}
           >
             {withCount(copy.tabMembers, users.length)}
-          </MembersTab>
-          <MembersTab
+          </button>
+          <button
             type="button"
             role="tab"
             id="feedback-tab"
             aria-controls="feedback-panel"
             aria-selected={membersTab === "feedback"}
-            $active={membersTab === "feedback"}
+            className={membersTabClass(membersTab === "feedback")}
             onClick={() => setMembersTab("feedback")}
           >
             {withCount(copy.tabFeedback, feedback.length)}
-          </MembersTab>
-          <MembersTab
+          </button>
+          <button
             type="button"
             role="tab"
             id="applicants-tab"
             aria-controls="applicants-panel"
             aria-selected={membersTab === "applicants"}
-            $active={membersTab === "applicants"}
+            className={membersTabClass(membersTab === "applicants")}
             onClick={() => setMembersTab("applicants")}
           >
             {withCount(copy.tabApplicants, applications.length)}
-          </MembersTab>
-        </MembersTabs>
+          </button>
+        </div>
 
         {membersTab === "members" ? (
-          <UsersList id="members-panel" role="tabpanel" aria-labelledby="members-tab">
+          <div className={usersListClass} id="members-panel" role="tabpanel" aria-labelledby="members-tab">
             {users.map((user) => (
-              <UserCard key={user.id}>
-                <UserInfo>
+              <div className={userCardClass} key={user.id}>
+                <div className={userInfoClass}>
                   <div>
-                    <UserName>{user.displayName || copy.noName}</UserName>
-                    <UserEmail>{user.email}</UserEmail>
+                    <div className={userNameClass}>{user.displayName || copy.noName}</div>
+                    <div className={userEmailClass}>{user.email}</div>
                   </div>
 
                   <div>
-                    <LocationStatus $location={user.location}>
+                    <div className={locationStatusClass(user.location)}>
                       {user.location === "yeouido" ? copy.locationYeouido : copy.locationAnam}
-                    </LocationStatus>
+                    </div>
                   </div>
 
-                  <UserStatus active={!!user.hasActiveSubscription}>
+                  <div className={userStatusClass(!!user.hasActiveSubscription)}>
                     {user.hasActiveSubscription ? copy.active : copy.inactive}
-                  </UserStatus>
+                  </div>
 
                   <div>
                     {user.billingCancelled && (
@@ -1410,11 +962,11 @@ export default function AdminClient({
                     )}
                   </div>
 
-                  <UserDate>{formatDate(user.createdAt)}</UserDate>
-                </UserInfo>
-                <CreditInspector>
+                  <div className={userDateClass}>{formatDate(user.createdAt)}</div>
+                </div>
+                <div className={creditInspectorClass}>
                   <strong>회차 참여권: {user.participationCreditBalance ?? 0}회</strong>
-                  <CreditControls>
+                  <div className={creditControlsClass}>
                     <button type="button" onClick={() => void toggleCreditHistory(user.id)}>
                       {expandedCreditMemberId === user.id ? "내역 닫기" : "내역 보기"}
                     </button>
@@ -1438,7 +990,7 @@ export default function AdminClient({
                         </button>
                       </>
                     )}
-                  </CreditControls>
+                  </div>
                   {expandedCreditMemberId === user.id && (creditHistory[user.id] || []).map((entry) => {
                     const meetup = Array.isArray(entry.meetups) ? entry.meetups[0] : entry.meetups;
                     const label = entry.type === "purchase"
@@ -1452,33 +1004,33 @@ export default function AdminClient({
                             : "관리자 조정";
                     return <div key={entry.id}>{entry.amount > 0 ? `+${entry.amount}` : entry.amount} · {label} · {formatDateTime(entry.created_at)}</div>;
                   })}
-                </CreditInspector>
-              </UserCard>
+                </div>
+              </div>
             ))}
-          </UsersList>
+          </div>
         ) : membersTab === "feedback" ? (
           <div id="feedback-panel" role="tabpanel" aria-labelledby="feedback-tab">
             {renderFeedback()}
           </div>
         ) : (
-          <ApplicantList id="applicants-panel" role="tabpanel" aria-labelledby="applicants-tab">
+          <div className={applicantListClass} id="applicants-panel" role="tabpanel" aria-labelledby="applicants-tab">
             {applications.length === 0 ? (
-              <EmptyState>{copy.noApplicants}</EmptyState>
+              <div className={emptyStateClass}>{copy.noApplicants}</div>
             ) : (
               applications.map((application) => {
                 const member = usersById.get(application.userId);
                 return (
-                  <ApplicantCard key={application.id}>
-                    <ApplicantHeader>
+                  <article className={applicantCardClass} key={application.id}>
+                    <div className={applicantHeaderClass}>
                       <div>
-                        <UserName>{member?.displayName || copy.noName}</UserName>
-                        <UserEmail>{application.email}</UserEmail>
+                        <div className={userNameClass}>{member?.displayName || copy.noName}</div>
+                        <div className={userEmailClass}>{application.email}</div>
                       </div>
-                      <ApplicantStatus $status={application.status}>
+                      <span className={applicantStatusClass(application.status)}>
                         {copy.applicationStatuses[application.status]}
-                      </ApplicantStatus>
-                    </ApplicantHeader>
-                    <ApplicantDetails>
+                      </span>
+                    </div>
+                    <dl className={applicantDetailsClass}>
                       <div>
                         <dt>{copy.applicantNationality}</dt>
                         <dd>{application.nationality}</dd>
@@ -1486,77 +1038,78 @@ export default function AdminClient({
                       <div>
                         <dt>{copy.applicantLinkedIn}</dt>
                         <dd>
-                          <ExternalProfileLink
+                          <a
+                            className={externalProfileLinkClass}
                             href={application.linkedinUrl}
                             target="_blank"
                             rel="noreferrer"
                           >
                             {application.linkedinUrl}
-                          </ExternalProfileLink>
+                          </a>
                         </dd>
                       </div>
                       <div>
                         <dt>{copy.applicantSubmitted}</dt>
                         <dd>{formatDateTime(application.createdAt)}</dd>
                       </div>
-                    </ApplicantDetails>
-                  </ApplicantCard>
+                    </dl>
+                  </article>
                 );
               })
             )}
-          </ApplicantList>
+          </div>
         )}
-      </ContentSection>
+      </div>
     );
   };
 
   const renderFeedback = () => (
-       <FeedbackList>
+       <div className={feedbackListClass}>
          {feedback.length === 0 ? (
-           <EmptyState>{t.admin.members.noFeedback}</EmptyState>
+           <div className={emptyStateClass}>{t.admin.members.noFeedback}</div>
          ) : (
            feedback.map((item) => {
              const linkedUser = usersById.get(item.userId);
              const linkedDisplayName = linkedUser?.displayName;
- 
+
              return (
-               <FeedbackCard key={item.id}>
-                 <FeedbackHeader>
-                   <FeedbackCategory category={item.category}>
+               <div className={feedbackCardClass} key={item.id}>
+                 <div className={feedbackHeaderClass}>
+                   <div className={feedbackCategoryClass(item.category)}>
                      {item.category === "cancellation"
                        ? t.admin.members.subscriptionStop
                        : t.admin.members.refundRequest}
-                   </FeedbackCategory>
-                   <FeedbackDate>{formatDateTime(item.timestamp)}</FeedbackDate>
-                 </FeedbackHeader>
- 
-                 <FeedbackUser>
+                   </div>
+                   <div className={feedbackDateClass}>{formatDateTime(item.timestamp)}</div>
+                 </div>
+
+                 <div className={feedbackUserClass}>
                    {linkedDisplayName
                      ? `${linkedDisplayName} (${item.userId})`
                      : t.admin.members.userId.replace("{id}", item.userId)}
-                 </FeedbackUser>
- 
-                 <FeedbackReasons>
+                 </div>
+
+                 <div className={feedbackReasonsClass}>
                    <strong>{t.admin.members.selectedReasons}</strong>
-                   <ReasonsList>
+                   <ul className={reasonsListClass}>
                      {item.reasons.map((reason, index) => (
-                       <ReasonItem key={index}>{reason}</ReasonItem>
+                       <li className={reasonItemClass} key={index}>{reason}</li>
                      ))}
-                   </ReasonsList>
-                 </FeedbackReasons>
- 
+                   </ul>
+                 </div>
+
                  {item.otherReason && (
-                   <FeedbackOther>
+                   <div className={feedbackOtherClass}>
                      <strong>{t.admin.members.additionalComments}</strong>
                      <br />
                      {item.otherReason}
-                   </FeedbackOther>
+                   </div>
                  )}
-               </FeedbackCard>
+               </div>
              );
            })
          )}
-       </FeedbackList>
+       </div>
    );
 
   const renderArticles = () => {
@@ -1606,14 +1159,14 @@ export default function AdminClient({
           onArticleQueued={handleArticleQueued}
           onArticleCreated={loadDashboardData}
         />
-        <ContentSection>
+        <div className={contentSectionClass}>
           <SectionTitle>
             {copy.listTitle.replace("{count}", String(articles.length))}
           </SectionTitle>
           {articles.length === 0 ? (
-            <EmptyState>{copy.empty}</EmptyState>
+            <div className={emptyStateClass}>{copy.empty}</div>
           ) : (
-            <ArticlesList>
+            <div className={articlesListClass}>
               {articles.map((article) => {
                 const primaryTitle =
                   article.titleEnglish || article.titleKorean || copy.untitled;
@@ -1633,49 +1186,52 @@ export default function AdminClient({
                   : "processing";
 
                 return (
-                  <ArticleCard key={article.id}>
-                    <ArticleOpenButton
+                  <article className={articleCardClass} key={article.id}>
+                    <button
                       type="button"
-                      $ready={isReady}
+                      className={articleOpenButtonClass(isReady)}
                       disabled={!isReady}
                       onClick={() => handleArticleClick(article.id)}
                       aria-label={isReady ? copy.openReady : copy.availableWhenReady}
                     >
-                      <ArticleHeader>
-                        <ArticleTitle>{primaryTitle}</ArticleTitle>
-                        <ArticleMeta>
+                      <div className={articleHeaderClass}>
+                        <div className={articleTitleClass}>{primaryTitle}</div>
+                        <div className={articleMetaClass}>
                           <span>{formatDateTime(article.publishedAt)}</span>
                           <span>{copy.articleId.replace("{id}", article.id)}</span>
-                        </ArticleMeta>
-                      </ArticleHeader>
+                        </div>
+                      </div>
 
                       {showKoreanSubtitle && (
-                        <ArticleSubtitle>{article.titleKorean}</ArticleSubtitle>
+                        <div className={articleSubtitleClass}>{article.titleKorean}</div>
                       )}
 
-                      <ArticleCardFooter>
-                        <ArticleStatus $tone={statusTone}>
+                      <div className={articleCardFooterClass}>
+                        <span className={articleStatusClass(statusTone)}>
                           {!isReady && !isFailed
                             ? copy.processingProgress
                                 .replace("{status}", processingLabel(article))
                                 .replace("{progress}", String(progress))
                             : processingLabel(article)}
-                        </ArticleStatus>
+                        </span>
                         {!isReady && (
                           <>
-                            <ProgressTrack>
-                              <ProgressFill $progress={progress} $failed={isFailed} />
-                            </ProgressTrack>
-                            <ProgressHint>{copy.availableWhenReady}</ProgressHint>
+                            <div className={progressTrackClass}>
+                              <div
+                                className={progressFillClass(isFailed)}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className={progressHintClass}>{copy.availableWhenReady}</span>
                           </>
                         )}
-                      </ArticleCardFooter>
-                    </ArticleOpenButton>
+                      </div>
+                    </button>
 
-                    <ArticleActions>
-                      <ArticleActionButton
+                    <div className={articleActionsClass}>
+                      <button
                         type="button"
-                        $variant="danger"
+                        className={articleActionButtonClass("danger")}
                         onClick={() => handleDeleteArticle(article.id)}
                         disabled={deletingArticleId === article.id}
                       >
@@ -1683,40 +1239,40 @@ export default function AdminClient({
                         {deletingArticleId === article.id
                           ? copy.deleting
                           : copy.delete}
-                      </ArticleActionButton>
-                    </ArticleActions>
-                  </ArticleCard>
+                      </button>
+                    </div>
+                  </article>
                 );
               })}
-            </ArticlesList>
+            </div>
           )}
-        </ContentSection>
+        </div>
       </>
     );
   };
 
   if (authChecking) {
     return (
-      <Wrapper>
-        <LoadingSpinner>{t.admin.dashboard.checkingAccess}</LoadingSpinner>
-      </Wrapper>
+      <div className={wrapperClass}>
+        <div className={loadingSpinnerClass}>{t.admin.dashboard.checkingAccess}</div>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Wrapper>
-        <LoadingSpinner>{t.admin.dashboard.loading}</LoadingSpinner>
-      </Wrapper>
+      <div className={wrapperClass}>
+        <div className={loadingSpinnerClass}>{t.admin.dashboard.loading}</div>
+      </div>
     );
   }
 
   return (
-    <Wrapper>
+    <div className={wrapperClass}>
       {section === "dashboard" && renderDashboard()}
       {section === "members" && renderMembers()}
       {section === "articles" && renderArticles()}
       {section === "marketing" && <GrowthDashboard />}
-    </Wrapper>
+    </div>
   );
 }

@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import styled from "styled-components";
 
 import { invokeFunction } from "../../../supabase/client";
 import { useI18n } from "../../../i18n/I18nProvider";
@@ -32,238 +31,75 @@ interface AdminArticleIngestFormProps {
   onArticleCreated?: () => void | Promise<void>;
 }
 
-const FormSection = styled.section`
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  border: 3px solid #050505;
-  margin-bottom: 30px;
-`;
+const fieldClasses = (full?: boolean) =>
+  `flex flex-col gap-[7px] ${full ? "col-[1/-1]" : "col-[auto]"} text-[#050505] text-[13px] font-extrabold`;
 
-const FormTitle = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.3rem 0.7rem;
-  font-size: 16px;
-  font-weight: 900;
-  margin: 0 0 10px;
-`;
-
-const Description = styled.p`
-  margin: 0 0 20px;
-  color: rgba(5, 5, 5, 0.66);
-  font-size: 14px;
-  line-height: 1.55;
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-
-  @media (max-width: 700px) {
-    grid-template-columns: 1fr;
+function Field({
+  $full,
+  as,
+  children,
+}: {
+  $full?: boolean;
+  as?: "div";
+  children?: React.ReactNode;
+}) {
+  if (as === "div") {
+    return <div className={fieldClasses($full)}>{children}</div>;
   }
-`;
+  return <label className={fieldClasses($full)}>{children}</label>;
+}
 
-const Field = styled.label<{ $full?: boolean }>`
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  grid-column: ${({ $full }) => ($full ? "1 / -1" : "auto")};
-  color: #050505;
-  font-size: 13px;
-  font-weight: 800;
-`;
+function FieldHint({ children }: { children?: React.ReactNode }) {
+  return (
+    <span className="text-[rgba(5,5,5,0.57)] text-[12px] font-semibold leading-[1.45]">
+      {children}
+    </span>
+  );
+}
 
-const FieldHint = styled.span`
-  color: rgba(5, 5, 5, 0.57);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.45;
-`;
+function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className="w-full box-border border-2 border-[#050505] rounded-[10px] py-[11px] px-3 bg-white text-[#050505] [font-family:inherit] [font-style:inherit] [font-variant:inherit] [font-weight:inherit] [line-height:inherit] text-[14px] focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2"
+      {...props}
+    />
+  );
+}
 
-const TextInput = styled.input`
-  width: 100%;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 11px 12px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 14px;
+function PhotoControl({
+  $danger,
+  children,
+  ...rest
+}: { $danger?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`border-[1.5px] border-[#050505] rounded-md py-[3px] px-[6px] ${
+        $danger ? "bg-[#fee2e2] text-[#991b1b]" : "bg-white text-[#050505]"
+      } cursor-pointer [font-family:inherit] [font-style:inherit] [font-variant:inherit] [line-height:inherit] text-[11px] font-black disabled:cursor-not-allowed disabled:opacity-45`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 250px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 12px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.55;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const HiddenFileInput = styled.input`
-  display: none;
-`;
-
-const PhotoPicker = styled.button`
-  width: fit-content;
-  border: 2px dashed #050505;
-  border-radius: 10px;
-  padding: 11px 14px;
-  background: #fff8f4;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 900;
-
-  &:hover,
-  &:focus-visible {
-    background: #ffe5d7;
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const PhotoList = styled.ol`
-  list-style: none;
-  padding: 0;
-  margin: 4px 0 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 10px;
-`;
-
-const PhotoCard = styled.li`
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 8px;
-`;
-
-const PhotoThumbnail = styled.img`
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border: 1.5px solid #050505;
-  border-radius: 7px;
-  background: #fff8f4;
-`;
-
-const PhotoDetails = styled.div`
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-`;
-
-const PhotoName = styled.span`
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 800;
-`;
-
-const PhotoPosition = styled.span`
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 11px;
-  font-weight: 700;
-`;
-
-const PhotoControls = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-`;
-
-const PhotoControl = styled.button<{ $danger?: boolean }>`
-  border: 1.5px solid #050505;
-  border-radius: 6px;
-  padding: 3px 6px;
-  background: ${({ $danger }) => ($danger ? "#fee2e2" : "#ffffff")};
-  color: ${({ $danger }) => ($danger ? "#991b1b" : "#050505")};
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-`;
-
-const SubmitButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.62;
-    box-shadow: none;
-  }
-`;
-
-const StatusMessage = styled.p<{ $tone: "error" | "success" }>`
-  margin: 0;
-  color: ${({ $tone }) => ($tone === "error" ? "#991b1b" : "#166534")};
-  font-size: 13px;
-  font-weight: 800;
-`;
+function StatusMessage({
+  $tone,
+  children,
+}: {
+  $tone: "error" | "success";
+  children?: React.ReactNode;
+}) {
+  return (
+    <p
+      className={`m-0 ${
+        $tone === "error" ? "text-[#991b1b]" : "text-[#166534]"
+      } text-[13px] font-extrabold`}
+    >
+      {children}
+    </p>
+  );
+}
 
 const photoId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -302,12 +138,23 @@ function PhotoPreview({
   }, [photo.file]);
 
   return (
-    <PhotoCard>
-      <PhotoThumbnail src={previewUrl} alt="" />
-      <PhotoDetails>
-        <PhotoName title={photo.file.name}>{photo.file.name}</PhotoName>
-        <PhotoPosition>{positionLabel}</PhotoPosition>
-        <PhotoControls>
+    <li className="grid grid-cols-[56px_minmax(0,1fr)] gap-[10px] items-center border-[1.5px] border-[#050505] rounded-[10px] bg-white p-2">
+      <img
+        className="w-14 h-14 object-cover border-[1.5px] border-[#050505] rounded-[7px] bg-[#fff8f4]"
+        src={previewUrl}
+        alt=""
+      />
+      <div className="min-w-0 flex flex-col gap-[5px]">
+        <span
+          className="overflow-hidden text-ellipsis whitespace-nowrap text-[#050505] text-[12px] font-extrabold"
+          title={photo.file.name}
+        >
+          {photo.file.name}
+        </span>
+        <span className="text-[rgba(5,5,5,0.58)] text-[11px] font-bold">
+          {positionLabel}
+        </span>
+        <div className="flex flex-wrap gap-[5px]">
           <PhotoControl
             type="button"
             onClick={() => onMove(index, -1)}
@@ -332,9 +179,9 @@ function PhotoPreview({
           >
             {removeLabel}
           </PhotoControl>
-        </PhotoControls>
-      </PhotoDetails>
-    </PhotoCard>
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -459,11 +306,15 @@ export default function AdminArticleIngestForm({
   };
 
   return (
-    <FormSection>
-      <FormTitle>{copy.title}</FormTitle>
-      <Description>{copy.description}</Description>
+    <section className="bg-white rounded-2xl p-6 shadow-[6px_6px_0_rgba(5,5,5,0.9)] border-[3px] border-[#050505] mb-[30px]">
+      <h2 className="inline-flex items-center border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.3rem] px-[0.7rem] text-[16px] font-black m-0 mb-[10px]">
+        {copy.title}
+      </h2>
+      <p className="m-0 mb-5 text-[rgba(5,5,5,0.66)] text-[14px] leading-[1.55]">
+        {copy.description}
+      </p>
       <form onSubmit={handleSubmit} onPaste={handlePhotoPaste}>
-        <FormGrid>
+        <div className="grid grid-cols-2 gap-4 max-[700px]:grid-cols-1">
           <Field>
             {copy.titleLabel}
             <TextInput
@@ -495,7 +346,8 @@ export default function AdminArticleIngestForm({
 
           <Field $full>
             {copy.bodyLabel}
-            <TextArea
+            <textarea
+              className="w-full min-h-[250px] box-border resize-y border-2 border-[#050505] rounded-[10px] p-3 bg-white text-[#050505] [font-family:inherit] [font-style:inherit] [font-variant:inherit] [font-weight:inherit] text-[14px] leading-[1.55] focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2"
               value={body}
               onChange={(event) => {
                 setBody(event.target.value);
@@ -510,24 +362,29 @@ export default function AdminArticleIngestForm({
 
           <Field as="div" $full>
             {copy.photosLabel}
-            <HiddenFileInput
+            <input
+              className="hidden"
               ref={photoInputRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,image/webp"
               multiple
               onChange={handlePhotos}
             />
-            <PhotoPicker
+            <button
+              className="w-fit border-2 border-dashed border-[#050505] rounded-[10px] py-[11px] px-[14px] bg-[#fff8f4] text-[#050505] cursor-pointer [font-family:inherit] [font-style:inherit] [font-variant:inherit] [line-height:inherit] text-[13px] font-black hover:bg-[#ffe5d7] focus-visible:bg-[#ffe5d7] focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2"
               type="button"
               onClick={() => photoInputRef.current?.click()}
               disabled={isProcessing}
             >
               {copy.choosePhotos}
-            </PhotoPicker>
+            </button>
             <FieldHint>{copy.photosHint}</FieldHint>
             <FieldHint>{copy.photosPasteHint}</FieldHint>
             {photos.length > 0 && (
-              <PhotoList aria-label={copy.selectedPhotos.replace("{count}", String(photos.length))}>
+              <ol
+                className="list-none p-0 m-0 mt-1 grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[10px]"
+                aria-label={copy.selectedPhotos.replace("{count}", String(photos.length))}
+              >
                 {photos.map((photo, index) => (
                   <PhotoPreview
                     key={photo.id}
@@ -546,19 +403,23 @@ export default function AdminArticleIngestForm({
                     onRemove={removePhoto}
                   />
                 ))}
-              </PhotoList>
+              </ol>
             )}
           </Field>
-        </FormGrid>
+        </div>
 
-        <ActionRow>
-          <SubmitButton type="submit" disabled={isProcessing}>
+        <div className="flex flex-wrap items-center gap-3 mt-5">
+          <button
+            className="border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-3 px-[18px] text-[14px] font-black cursor-pointer shadow-[3px_3px_0_#050505] [transition:transform_0.14s_ease,box-shadow_0.14s_ease] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[4px_4px_0_#050505] disabled:cursor-wait disabled:opacity-[0.62] disabled:shadow-none"
+            type="submit"
+            disabled={isProcessing}
+          >
             {isProcessing ? copy.queueing : copy.submit}
-          </SubmitButton>
+          </button>
           {error && <StatusMessage $tone="error">{error}</StatusMessage>}
           {isQueued && <StatusMessage $tone="success">{copy.queued}</StatusMessage>}
-        </ActionRow>
+        </div>
       </form>
-    </FormSection>
+    </section>
   );
 }

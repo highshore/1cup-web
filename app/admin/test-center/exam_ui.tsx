@@ -2,117 +2,28 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import styled from "styled-components";
+import type { ElementType, ReactNode } from "react";
 
 import type { ExamInterviewer, ExamMediaStatus, ExamSetStatus } from "../../lib/features/exam/types";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 
-const accent = "#f47a4a";
+type UiProps = {
+  className?: string;
+  children?: ReactNode;
+} & Record<string, unknown>;
 
-export const ExamPage = styled.main`
-  min-height: 100vh;
-  background: #fdfcf9;
-  color: #2c1810;
-  font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-`;
+type PolymorphicTag = (props: Record<string, unknown>) => ReactNode;
 
-export const ExamContent = styled.div`
-  width: min(1390px, calc(100% - 104px));
-  margin: 0 auto;
-  padding: 54px 0 80px;
+const monoFont = "[font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace]";
+const serifFont = "[font-family:Georgia,'Times_New_Roman',serif]";
 
-  @media (max-width: 760px) {
-    width: min(100% - 32px, 1390px);
-    padding: 32px 0 56px;
-  }
-`;
+export function ExamPage({ className = "", children, ...rest }: UiProps) {
+  return <main className={`min-h-screen bg-[#fdfcf9] text-ink [font-family:'Noto_Sans_KR',system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] ${className}`} {...rest}>{children}</main>;
+}
 
-const Topbar = styled.header`
-  display: grid;
-  grid-template-columns: minmax(170px, 1fr) auto minmax(170px, 1fr);
-  align-items: center;
-  min-height: 70px;
-  padding: 0 34px;
-  border-bottom: 1px solid #1d0d08;
-  background: #2c1810;
-  color: #fffaf7;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr auto;
-    min-height: 58px;
-    padding: 0 18px;
-  }
-`;
-
-const Brand = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  width: max-content;
-  color: inherit;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .09em;
-  line-height: 1.14;
-  text-decoration: none;
-
-  &:hover { color: #fffaf7; text-decoration: none; }
-`;
-
-const BrandMark = styled.span`
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  width: 23px;
-  height: 23px;
-
-  span { width: 5px; border-radius: 1px; background: ${accent}; }
-  span:nth-child(1) { height: 11px; }
-  span:nth-child(2) { height: 19px; }
-  span:nth-child(3) { height: 15px; }
-`;
-
-const TopbarContext = styled.div`
-  display: flex;
-  align-items: center;
-  color: #e8d9d0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-
-  @media (max-width: 720px) { display: none; }
-`;
-
-const LiveDot = styled.span`
-  width: 6px;
-  height: 6px;
-  margin: 0 8px 1px 0;
-  border-radius: 999px;
-  background: ${accent};
-`;
-
-const TopbarDivider = styled.span`
-  height: 11px;
-  margin: 0 12px;
-  border-left: 1px solid #7b594c;
-`;
-
-const TopbarAction = styled(Link)`
-  justify-self: end;
-  border: 1px solid #a57e70;
-  padding: 8px 11px;
-  color: #fffaf7;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .07em;
-  text-decoration: none;
-  text-transform: uppercase;
-
-  &:hover { border-color: ${accent}; color: #fffaf7; background: #412218; text-decoration: none; }
-`;
+export function ExamContent({ className = "", children, ...rest }: UiProps) {
+  return <div className={`mx-auto w-[min(1390px,calc(100%_-_104px))] pt-[54px] pb-20 max-[760px]:w-[min(100%_-_32px,1390px)] max-[760px]:pt-8 max-[760px]:pb-[56px] ${className}`} {...rest}>{children}</div>;
+}
 
 export function ExamPipelineTopbar({
   current,
@@ -130,201 +41,106 @@ export function ExamPipelineTopbar({
       ? t.examCenter.testOperations
       : t.examCenter.productionManifest;
 
-  return <Topbar>
-    <Brand href="/admin/test-center" aria-label={t.examCenter.pipelineTitle}>
-      <BrandMark aria-hidden="true"><span /><span /><span /></BrandMark>
+  return <header className="grid min-h-[70px] grid-cols-[minmax(170px,1fr)_auto_minmax(170px,1fr)] items-center border-b border-[#1d0d08] bg-primary px-[34px] text-[#fffaf7] max-[720px]:min-h-[58px] max-[720px]:grid-cols-[1fr_auto] max-[720px]:px-[18px]">
+    <Link href="/admin/test-center" aria-label={t.examCenter.pipelineTitle} className={`inline-flex w-max items-center gap-2.5 text-inherit no-underline ${monoFont} text-[10px] font-bold leading-[1.14] tracking-[.09em] hover:text-[#fffaf7] hover:no-underline`}>
+      <span aria-hidden="true" className="flex h-[23px] w-[23px] items-end gap-[3px] [&_span]:w-[5px] [&_span]:rounded-[1px] [&_span]:bg-[#f47a4a] [&_span:nth-child(1)]:h-[11px] [&_span:nth-child(2)]:h-[19px] [&_span:nth-child(3)]:h-[15px]"><span /><span /><span /></span>
       <span>1 CUP<br />TEST PIPELINE</span>
-    </Brand>
-    <TopbarContext><LiveDot />{t.examCenter.workspace}<TopbarDivider />{context}</TopbarContext>
-    <TopbarAction href={actionHref}>{actionLabel}</TopbarAction>
-  </Topbar>;
+    </Link>
+    <div className={`flex items-center text-[#e8d9d0] ${monoFont} text-[10px] uppercase tracking-[.09em] max-[720px]:hidden`}><span className="mr-2 mb-px h-[6px] w-[6px] rounded-full bg-[#f47a4a]" />{t.examCenter.workspace}<span className="mx-3 h-[11px] border-l border-[#7b594c]" />{context}</div>
+    <Link href={actionHref} className={`justify-self-end border border-[#a57e70] px-[11px] py-2 text-[#fffaf7] ${monoFont} text-[9px] font-bold uppercase tracking-[.07em] no-underline hover:border-[#f47a4a] hover:bg-[#412218] hover:text-[#fffaf7] hover:no-underline`}>{actionLabel}</Link>
+  </header>;
 }
 
-export const PipelineEyebrow = styled.p`
-  margin: 0;
-  color: #74645d;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .1em;
-  line-height: 1.35;
-  text-transform: uppercase;
-`;
+export function PipelineEyebrow({ className = "", children, ...rest }: UiProps) {
+  return <p className={`m-0 text-[#74645d] ${monoFont} text-[10px] font-semibold uppercase leading-[1.35] tracking-[.1em] ${className}`} {...rest}>{children}</p>;
+}
 
-export const PipelineTitle = styled.h1`
-  margin: 10px 0 0;
-  color: #2c1810;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(42px, 5vw, 62px);
-  font-weight: 500;
-  letter-spacing: -.062em;
-  line-height: .98;
-`;
+export function PipelineTitle({ className = "", children, ...rest }: UiProps) {
+  return <h1 className={`m-0 mt-2.5 text-ink ${serifFont} text-[clamp(42px,5vw,62px)] font-medium leading-[.98] tracking-[-.062em] ${className}`} {...rest}>{children}</h1>;
+}
 
-export const PipelinePeriod = styled.span`
-  color: ${accent};
-`;
+export function PipelinePeriod({ className = "", children, ...rest }: UiProps) {
+  return <span className={`text-[#f47a4a] ${className}`} {...rest}>{children}</span>;
+}
 
-export const PipelineLead = styled.p`
-  max-width: 700px;
-  margin: 14px 0 0;
-  color: #6f625c;
-  font-size: 14px;
-  line-height: 1.58;
-`;
+export function PipelineLead({ className = "", children, ...rest }: UiProps) {
+  return <p className={`m-0 mt-3.5 max-w-[700px] text-[#6f625c] text-[14px] leading-[1.58] ${className}`} {...rest}>{children}</p>;
+}
 
-export const Button = styled.button<{ $tone?: "ink" | "cream" | "orange" }>`
-  display: inline-flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid ${({ $tone = "ink" }) => $tone === "cream" ? "#bbaaa2" : $tone === "orange" ? "#d95f32" : "#2c1810"};
-  padding: 9px 13px;
-  background: ${({ $tone = "ink" }) => $tone === "cream" ? "#fffdfb" : $tone === "orange" ? accent : "#2c1810"};
-  box-shadow: ${({ $tone = "ink" }) => $tone === "cream" ? "none" : "3px 3px 0 #2c1810"};
-  color: ${({ $tone = "ink" }) => $tone === "cream" ? "#4b3026" : "#fff"};
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  text-decoration: none;
-  cursor: pointer;
-  transition: transform 130ms ease, background 130ms ease, box-shadow 130ms ease;
+export type ButtonTone = "ink" | "cream" | "orange";
 
-  &:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: ${({ $tone = "ink" }) => $tone === "cream" ? "2px 2px 0 #ead8cf" : "4px 4px 0 #2c1810"}; background: ${({ $tone = "ink" }) => $tone === "cream" ? "#fff5ef" : $tone === "orange" ? "#dd6538" : "#43251b"}; }
-  &:disabled { cursor: wait; opacity: .56; box-shadow: none; }
-  svg { width: 16px; height: 16px; }
-`;
+const buttonToneClass: Record<ButtonTone, string> = {
+  ink: "border-primary bg-primary text-white shadow-[3px_3px_0_#2c1810] [&:hover:not(:disabled)]:bg-[#43251b] [&:hover:not(:disabled)]:shadow-[4px_4px_0_#2c1810]",
+  orange: "border-[#d95f32] bg-[#f47a4a] text-white shadow-[3px_3px_0_#2c1810] [&:hover:not(:disabled)]:bg-[#dd6538] [&:hover:not(:disabled)]:shadow-[4px_4px_0_#2c1810]",
+  cream: "border-[#bbaaa2] bg-[#fffdfb] text-[#4b3026] shadow-none [&:hover:not(:disabled)]:bg-[#fff5ef] [&:hover:not(:disabled)]:shadow-[2px_2px_0_#ead8cf]",
+};
 
-export const Notice = styled.div<{ $error?: boolean }>`
-  display: flex;
-  align-items: center;
-  min-height: 36px;
-  margin: 20px 0 0;
-  border: 1px solid ${({ $error }) => $error ? "#edb8a9" : "#eccfbf"};
-  padding: 8px 12px;
-  background: ${({ $error }) => $error ? "#fff3ee" : "#fff8f3"};
-  color: ${({ $error }) => $error ? "#9f4229" : "#664333"};
-  font-size: 12px;
-  line-height: 1.5;
-`;
+export function Button({
+  as = "button",
+  $tone = "ink",
+  className = "",
+  children,
+  ...rest
+}: { as?: ElementType; $tone?: ButtonTone } & UiProps) {
+  const Tag = as as unknown as PolymorphicTag;
+  return (
+    <Tag
+      className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-[7px] border px-[13px] py-[9px] text-[12px] font-extrabold leading-none no-underline [transition:transform_130ms_ease,background_130ms_ease,box-shadow_130ms_ease] [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] disabled:cursor-wait disabled:opacity-[.56] disabled:shadow-none [&_svg]:h-4 [&_svg]:w-4 ${buttonToneClass[$tone]} ${className}`}
+      {...rest}
+    >
+      {children}
+    </Tag>
+  );
+}
 
-export const Loading = styled.div`
-  display: grid;
-  min-height: 60vh;
-  place-items: center;
-  color: #7c6a62;
-  font-size: 14px;
-  font-weight: 650;
-`;
+export function Notice({ $error = false, className = "", children, ...rest }: { $error?: boolean } & UiProps) {
+  return <div className={`mt-5 flex min-h-9 items-center border px-3 py-2 text-[12px] leading-[1.5] ${$error ? "border-[#edb8a9] bg-[#fff3ee] text-[#9f4229]" : "border-[#eccfbf] bg-[#fff8f3] text-[#664333]"} ${className}`} {...rest}>{children}</div>;
+}
 
-const AvatarWrap = styled.div<{ $seed: string; $large?: boolean }>`
-  position: relative;
-  display: grid;
-  width: ${({ $large }) => $large ? "100%" : "44px"};
-  aspect-ratio: ${({ $large }) => $large ? "16 / 10" : "1"};
-  overflow: hidden;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: ${({ $large }) => $large ? "0" : "50%"};
-  background:
-    radial-gradient(circle at 50% 34%, #f6c9a9 0 15%, transparent 15.6%),
-    radial-gradient(circle at 50% 33%, ${({ $seed }) => $seed.includes("elena") || $seed.includes("sofia") ? "#3c2823" : $seed.includes("robert") || $seed.includes("noah") ? "#2c2420" : "#263142"} 0 23%, transparent 23.6%),
-    radial-gradient(ellipse at 50% 110%, ${({ $seed }) => $seed.includes("elena") ? "#f5e7ca" : $seed.includes("robert") ? "#383a40" : $seed.includes("david") ? "#141414" : "#d6e7d5"} 0 46%, transparent 46.5%),
-    linear-gradient(135deg, #f4e8d2, #d6a18c);
-
-  img { object-fit: cover; }
-`;
-
-const AvatarInitials = styled.span<{ $large?: boolean }>`
-  margin-top: ${({ $large }) => $large ? "30%" : "24%"};
-  border-radius: 999px;
-  padding: ${({ $large }) => $large ? "6px 10px" : "3px 5px"};
-  background: rgba(255, 255, 255, .84);
-  color: #4a2f23;
-  font-size: ${({ $large }) => $large ? "16px" : "9px"};
-  font-weight: 800;
-  letter-spacing: .04em;
-`;
+export function Loading({ className = "", children, ...rest }: UiProps) {
+  return <div className={`grid min-h-[60vh] place-items-center text-[#7c6a62] text-[14px] font-[650] ${className}`} {...rest}>{children}</div>;
+}
 
 export function ExamAvatar({ interviewer, large = false }: { interviewer: Pick<ExamInterviewer, "name" | "avatar_key" | "image_url">; large?: boolean }) {
   const initials = interviewer.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  return <AvatarWrap $seed={interviewer.avatar_key} $large={large} role="img" aria-label={`${interviewer.name} profile preview`}>
-    {interviewer.image_url ? <Image src={interviewer.image_url} alt="" fill sizes={large ? "(max-width: 760px) 100vw, 260px" : "44px"} /> : <AvatarInitials $large={large}>{initials}</AvatarInitials>}
-  </AvatarWrap>;
+  const seed = interviewer.avatar_key;
+  const hair = seed.includes("elena") || seed.includes("sofia") ? "#3c2823" : seed.includes("robert") || seed.includes("noah") ? "#2c2420" : "#263142";
+  const outfit = seed.includes("elena") ? "#f5e7ca" : seed.includes("robert") ? "#383a40" : seed.includes("david") ? "#141414" : "#d6e7d5";
+  const background = [
+    "radial-gradient(circle at 50% 34%, #f6c9a9 0 15%, transparent 15.6%)",
+    `radial-gradient(circle at 50% 33%, ${hair} 0 23%, transparent 23.6%)`,
+    `radial-gradient(ellipse at 50% 110%, ${outfit} 0 46%, transparent 46.5%)`,
+    "linear-gradient(135deg, #f4e8d2, #d6a18c)",
+  ].join(", ");
+  return <div
+    className={`relative grid flex-none place-items-center overflow-hidden [&_img]:object-cover ${large ? "aspect-[16/10] w-full rounded-none" : "aspect-square w-11 rounded-full"}`}
+    style={{ background }}
+    role="img"
+    aria-label={`${interviewer.name} profile preview`}
+  >
+    {interviewer.image_url ? <Image src={interviewer.image_url} alt="" fill sizes={large ? "(max-width: 760px) 100vw, 260px" : "44px"} /> : <span className={`rounded-full bg-[rgba(255,255,255,.84)] text-ink-medium font-extrabold tracking-[.04em] ${large ? "mt-[30%] px-2.5 py-1.5 text-[16px]" : "mt-[24%] px-[5px] py-[3px] text-[9px]"}`}>{initials}</span>}
+  </div>;
 }
 
-const Scene = styled.div<{ $hasImage?: boolean }>`
-  position: relative;
-  min-height: 160px;
-  overflow: hidden;
-  border: 1px solid #e8d7ce;
-  background: linear-gradient(#f4ead3 0 54%, #b6d1ad 54% 100%);
+const sceneBaseClass = "relative min-h-40 overflow-hidden border border-[#e8d7ce] bg-[linear-gradient(#f4ead3_0_54%,#b6d1ad_54%_100%)]";
 
-  &::before {
-    display: ${({ $hasImage }) => $hasImage ? "none" : "block"};
-    position: absolute;
-    top: 32px;
-    left: 9%;
-    width: 54%;
-    height: 49%;
-    border: 3px solid #775e54;
-    border-bottom: 0;
-    background: repeating-linear-gradient(90deg, transparent 0 27px, rgba(119, 94, 84, .75) 28px 31px);
-    content: "";
-  }
-
-  &::after {
-    display: ${({ $hasImage }) => $hasImage ? "none" : "block"};
-    position: absolute;
-    right: 10%;
-    bottom: 22px;
-    width: 54px;
-    height: 54px;
-    border-radius: 50% 50% 42% 42%;
-    background: #d98a63;
-    box-shadow: -104px 18px 0 -11px #dbc86d, -75px -4px 0 -9px #d47d68, -40px 23px 0 -12px #d9a56a;
-    content: "";
-  }
-`;
-
-const SceneTarget = styled.p`
-  position: absolute;
-  right: 10px;
-  bottom: 9px;
-  max-width: 160px;
-  margin: 0;
-  padding: 4px 7px;
-  background: rgba(255, 255, 255, .88);
-  color: #4b3026;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-`;
+const sceneDecorClass = "before:absolute before:top-8 before:left-[9%] before:h-[49%] before:w-[54%] before:border-[3px] before:border-b-0 before:border-[#775e54] before:bg-[repeating-linear-gradient(90deg,transparent_0_27px,rgba(119,94,84,.75)_28px_31px)] before:content-[''] after:absolute after:right-[10%] after:bottom-[22px] after:h-[54px] after:w-[54px] after:rounded-[50%_50%_42%_42%] after:bg-[#d98a63] after:shadow-[-104px_18px_0_-11px_#dbc86d,-75px_-4px_0_-9px_#d47d68,-40px_23px_0_-12px_#d9a56a] after:content-['']";
 
 export function GardenScene({ target, imageUrl }: { target?: string; imageUrl?: string | null }) {
   const { t } = useI18n();
 
-  if (imageUrl) return <Scene $hasImage aria-label="Listen and Repeat visual preview"><Image src={imageUrl} alt="" fill sizes="(max-width: 760px) 100vw, 520px" style={{ objectFit: "cover" }} /></Scene>;
-  return <Scene aria-label="Listen and Repeat visual preview"><SceneTarget>{target || t.examCenter.mediaNeedsMediaLabel}</SceneTarget></Scene>;
+  if (imageUrl) return <div className={sceneBaseClass} aria-label="Listen and Repeat visual preview"><Image src={imageUrl} alt="" fill sizes="(max-width: 760px) 100vw, 520px" style={{ objectFit: "cover" }} /></div>;
+  return <div className={`${sceneBaseClass} ${sceneDecorClass}`} aria-label="Listen and Repeat visual preview"><p className="absolute right-2.5 bottom-[9px] m-0 max-w-40 bg-[rgba(255,255,255,.88)] px-[7px] py-1 text-center text-[#4b3026] text-[10px] font-bold leading-[1.2]">{target || t.examCenter.mediaNeedsMediaLabel}</p></div>;
 }
 
-const Pill = styled.span<{ $tone: "ready" | "pending" | "failed" | "rejected" | "draft" | "published" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid ${({ $tone }) => $tone === "ready" || $tone === "published" ? "#e8b6a2" : $tone === "failed" || $tone === "rejected" ? "#eeb6a9" : "#e6d8d0"};
-  padding: 3px 6px;
-  background: ${({ $tone }) => $tone === "ready" || $tone === "published" ? "#fff0eb" : $tone === "failed" || $tone === "rejected" ? "#fff1ee" : $tone === "draft" ? "#f8eee9" : "#faf7f5"};
-  color: ${({ $tone }) => $tone === "failed" || $tone === "rejected" ? "#a54432" : "#7d4733"};
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .05em;
-  line-height: 1.1;
-  text-transform: uppercase;
-`;
+type PillTone = "ready" | "pending" | "failed" | "rejected" | "draft" | "published";
+
+function Pill({ $tone, children }: { $tone: PillTone; children: ReactNode }) {
+  const border = $tone === "ready" || $tone === "published" ? "border-[#e8b6a2]" : $tone === "failed" || $tone === "rejected" ? "border-[#eeb6a9]" : "border-[#e6d8d0]";
+  const background = $tone === "ready" || $tone === "published" ? "bg-[#fff0eb]" : $tone === "failed" || $tone === "rejected" ? "bg-[#fff1ee]" : $tone === "draft" ? "bg-[#f8eee9]" : "bg-[#faf7f5]";
+  const color = $tone === "failed" || $tone === "rejected" ? "text-[#a54432]" : "text-[#7d4733]";
+  return <span className={`inline-flex items-center border px-1.5 py-[3px] ${monoFont} text-[9px] font-bold uppercase leading-[1.1] tracking-[.05em] ${border} ${background} ${color}`}>{children}</span>;
+}
 
 export function MediaPill({ status, label }: { status: ExamMediaStatus; label?: string }) {
   const { t } = useI18n();

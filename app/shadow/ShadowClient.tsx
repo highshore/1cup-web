@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import styled from "styled-components";
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
+import "./shadow.css";
 import { supabase } from "../lib/supabase/client";
 
 // Import extracted components and utilities
@@ -32,304 +32,212 @@ import AnalysisReport from "../lib/features/shadow/components/analysis_report";
 import { convertToEmbedUrl } from "../lib/features/shadow/utils/shadow_utils";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 
-// Remaining styled components that are specific to this page
-const TranscriptContainer = styled.div`
-  width: 100%;
-  margin-top: 1rem;
-  background: ${colors.surface};
-  border-radius: 20px;
-  line-height: 1.8;
-  text-align: left;
-  padding: 1.5rem;
-  box-shadow: ${colors.shadow.sm};
-`;
+// Remaining components that are specific to this page (Tailwind classes)
+type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
-const TranscriptWord = styled.span.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>`
-  transition: all 0s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${(props) => (props.isActive ? "#fafa00" : "transparent")};
-  color: ${(props) => (props.isActive ? "#000000" : colors.text.secondary)};
-  font-weight: ${(props) => (props.isActive ? "400" : "400")};
-  cursor: pointer;
-  position: relative;
-  padding: 0.1em 0.1em;
-  border-radius: 4px;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: ${colors.primary};
-    opacity: 0;
-    border-radius: 8px;
-    transition: opacity 0.2s ease;
-    z-index: -1;
+const TranscriptContainer = React.forwardRef<HTMLDivElement, DivProps>(
+  function TranscriptContainer({ className = "", ...rest }, ref) {
+    return (
+      <div
+        ref={ref}
+        className={`w-full mt-4 bg-white rounded-[20px] leading-[1.8] text-left p-6 shadow-[0_1px_3px_rgba(44,24,16,0.1),0_1px_2px_rgba(44,24,16,0.06)] ${className}`}
+        {...rest}
+      />
+    );
   }
+);
 
-  &:hover {
-    &::before {
-      opacity: ${(props) => (props.isActive ? "0" : "0.1")};
-    }
-    transform: ${(props) => (props.isActive ? "none" : "translateY(-1px)")};
-  }
-`;
+function TranscriptWord({
+  isActive,
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLSpanElement> & { isActive: boolean }) {
+  const classes = [
+    "[transition:all_0s_cubic-bezier(0.4,0,0.2,1)] font-normal cursor-pointer relative py-[0.1em] px-[0.1em] rounded",
+    "before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-[#3c2e26] before:opacity-0 before:rounded-lg before:[transition:opacity_0.2s_ease] before:z-[-1]",
+    isActive
+      ? "bg-[#fafa00] text-black hover:before:opacity-0"
+      : "bg-transparent text-[#3c2e26] hover:before:opacity-[0.1] hover:[transform:translateY(-1px)]",
+    className,
+  ].join(" ");
+  return <span className={classes} {...rest} />;
+}
 
-const SentenceRow = styled.div`
-  padding: 2rem;
-  border: 1px solid ${colors.border.light};
-  border-radius: 20px;
-  background: ${colors.surface};
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  box-shadow: ${colors.shadow.md};
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+function SentenceRow({ className = "", ...rest }: DivProps) {
+  const classes = [
+    "p-8 border border-solid border-line rounded-[20px] bg-white flex flex-col gap-6",
+    "shadow-[0_4px_6px_rgba(44,24,16,0.07),0_2px_4px_rgba(44,24,16,0.06)]",
+    "[transition:all_0.3s_cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden",
+    "before:content-[''] before:absolute before:top-0 before:left-0 before:w-1 before:h-full",
+    "before:bg-[linear-gradient(180deg,#3c2e26,#d4a574)] before:[transition:width_0.3s_ease]",
+    "hover:[transform:translateY(-4px)]",
+    "hover:shadow-[0_20px_25px_rgba(44,24,16,0.1),0_10px_10px_rgba(44,24,16,0.04)]",
+    "hover:border-[#3c2e2630] hover:before:w-2",
+    className,
+  ].join(" ");
+  return <div className={classes} {...rest} />;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(180deg, ${colors.primary}, ${colors.accent});
-    transition: width 0.3s ease;
-  }
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: ${colors.shadow.xl};
-    border-color: ${colors.primary}30;
-
-    &::before {
-      width: 8px;
-    }
-  }
-`;
-
-const SentenceControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-`;
+function SentenceControls({ className = "", ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center gap-4 flex-wrap ${className}`} {...rest} />
+  );
+}
 
 // Carousel components
-const CarouselContainer = styled.div`
-  width: 100%;
-  position: relative;
-  overflow: hidden;
-`;
+function CarouselContainer({ className = "", ...rest }: DivProps) {
+  return (
+    <div className={`w-full relative overflow-hidden ${className}`} {...rest} />
+  );
+}
 
-const CarouselContent = styled.div`
-  display: flex;
-  width: 100%;
-  min-height: 400px;
-`;
+function CarouselContent({ className = "", ...rest }: DivProps) {
+  return (
+    <div className={`flex w-full min-h-[400px] ${className}`} {...rest} />
+  );
+}
 
-const CarouselSlide = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>`
-  width: 100%;
-  flex-shrink: 0;
-  display: ${(props) => (props.isActive ? "block" : "none")};
-  animation: ${(props) => (props.isActive ? "slideIn 0.3s ease-out" : "none")};
+function CarouselSlide({
+  isActive,
+  className = "",
+  ...rest
+}: DivProps & { isActive: boolean }) {
+  return (
+    <div
+      className={`w-full shrink-0 ${
+        isActive ? "block animate-[shadow-slide-in_0.3s_ease-out]" : "hidden"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-`;
+function CarouselNavigation({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex items-center justify-between mt-4 gap-4 ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const CarouselNavigation = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1rem;
-  gap: 1rem;
-`;
+function NavigationButton({
+  className = "",
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <Button
+      className={`gap-2 min-w-[120px] disabled:opacity-50 ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const NavigationButton = styled(Button)`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 120px;
+function ProgressBarContainer({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex-1 h-2 bg-line rounded overflow-hidden relative ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  &:disabled {
-    opacity: 0.5;
-  }
-`;
+function ProgressBarFill({
+  progress,
+  className = "",
+  style,
+  ...rest
+}: DivProps & { progress: number }) {
+  const classes = [
+    "h-full bg-[linear-gradient(90deg,#3c2e26,#d4a574)] rounded [transition:width_0.3s_ease] relative",
+    "after:content-[''] after:absolute after:top-0 after:right-0 after:bottom-0 after:w-5",
+    "after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.3))]",
+    "after:animate-[shadow-progress-shimmer_2s_infinite]",
+    className,
+  ].join(" ");
+  return (
+    <div
+      className={classes}
+      style={{ width: `${progress}%`, ...style }}
+      {...rest}
+    />
+  );
+}
 
-const ProgressBarContainer = styled.div`
-  flex: 1;
-  height: 8px;
-  background: ${colors.border.light};
-  border-radius: 4px;
-  overflow: hidden;
-  position: relative;
-`;
-
-const ProgressBarFill = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "progress",
-})<{ progress: number }>`
-  height: 100%;
-  width: ${(props) => props.progress}%;
-  background: linear-gradient(90deg, ${colors.primary}, ${colors.accent});
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  position: relative;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 20px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
-    animation: shimmer 2s infinite;
-  }
-
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-20px);
-    }
-    100% {
-      transform: translateX(20px);
-    }
-  }
-`;
-
-const ProgressInfo = styled.div`
-  text-align: center;
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: ${colors.text.muted};
-  font-weight: 500;
-`;
+function ProgressInfo({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`text-center mt-2 text-[0.875rem] text-[#8d6e63] font-medium ${className}`}
+      {...rest}
+    />
+  );
+}
 
 // Step indicator components
-const StepProgressContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
+function StepProgressContainer({ className = "", ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center justify-center ${className}`} {...rest} />
+  );
+}
 
-const StepItem = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive" && prop !== "isCompleted",
-})<{ isActive: boolean; isCompleted: boolean }>`
-  display: flex;
-  align-items: center;
-  position: relative;
+function StepItem({
+  isActive: _isActive,
+  isCompleted,
+  className = "",
+  ...rest
+}: DivProps & { isActive: boolean; isCompleted: boolean }) {
+  const classes = [
+    "group flex items-center relative",
+    "[&:not(:last-child)]:mr-8",
+    "[&:not(:last-child)]:after:content-[''] [&:not(:last-child)]:after:absolute [&:not(:last-child)]:after:-right-8",
+    "[&:not(:last-child)]:after:top-1/2 [&:not(:last-child)]:after:[transform:translateY(-50%)]",
+    "[&:not(:last-child)]:after:w-8 [&:not(:last-child)]:after:h-[2px]",
+    "[&:not(:last-child)]:after:[transition:background_0.3s_ease]",
+    isCompleted
+      ? "[&:not(:last-child)]:after:bg-[#3c2e26]"
+      : "[&:not(:last-child)]:after:bg-[#e8ddd4]",
+    className,
+  ].join(" ");
+  return <div className={classes} {...rest} />;
+}
 
-  &:not(:last-child) {
-    margin-right: 2rem;
+function StepCircle({
+  isActive,
+  isCompleted,
+  className = "",
+  ...rest
+}: DivProps & { isActive: boolean; isCompleted: boolean }) {
+  const variant = isActive
+    ? "bg-[linear-gradient(135deg,#3c2e26,#2c1810)] text-white shadow-[0_4px_6px_rgba(44,24,16,0.07),0_2px_4px_rgba(44,24,16,0.06)] [transform:scale(1.1)]"
+    : isCompleted
+    ? "bg-[#3c2e26] text-white hover:[transform:scale(1.05)] hover:shadow-[0_1px_3px_rgba(44,24,16,0.1),0_1px_2px_rgba(44,24,16,0.06)]"
+    : "bg-[#e8ddd4] text-[#8d6e63] hover:bg-[#d7c7b8]";
+  return (
+    <div
+      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-[1rem] [transition:all_0.3s_ease] cursor-pointer relative z-[1] ${variant} ${className}`}
+      {...rest}
+    />
+  );
+}
 
-    &::after {
-      content: "";
-      position: absolute;
-      right: -2rem;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 2rem;
-      height: 2px;
-      background: ${(props) =>
-        props.isCompleted ? colors.primary : colors.border.light};
-      transition: background 0.3s ease;
-    }
-  }
-`;
+function StepLabel({
+  isActive,
+  className = "",
+  ...rest
+}: DivProps & { isActive: boolean }) {
+  return (
+    <div
+      className={`absolute top-full left-1/2 [transform:translateX(-50%)] mt-3 text-[0.875rem] font-bold whitespace-nowrap [transition:opacity_0.3s_ease] group-hover:opacity-100 ${
+        isActive ? "text-[#3c2e26] opacity-100" : "text-[#8d6e63] opacity-0"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const StepCircle = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive" && prop !== "isCompleted",
-})<{ isActive: boolean; isCompleted: boolean }>`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-  z-index: 1;
-
-  ${(props) => {
-    if (props.isActive) {
-      return `
-        background: linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark});
-        color: ${colors.text.inverse};
-        box-shadow: ${colors.shadow.md};
-        transform: scale(1.1);
-      `;
-    } else if (props.isCompleted) {
-      return `
-        background: ${colors.primary};
-        color: ${colors.text.inverse};
-        &:hover {
-          transform: scale(1.05);
-          box-shadow: ${colors.shadow.sm};
-        }
-      `;
-    } else {
-      return `
-        background: ${colors.border.light};
-        color: ${colors.text.muted};
-        &:hover {
-          background: ${colors.border.medium};
-        }
-      `;
-    }
-  }}
-`;
-
-const StepLabel = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>`
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: ${(props) => (props.isActive ? colors.primary : colors.text.muted)};
-  white-space: nowrap;
-  opacity: ${(props) => (props.isActive ? 1 : 0)};
-  transition: opacity 0.3s ease;
-
-  ${StepItem}:hover & {
-    opacity: 1;
-  }
-`;
-
-const StepContent = styled.div`
-  width: 100%;
-  margin-top: 1rem;
-`;
-
-const AudioModeToggle = styled(Button)`
-  background: ${colors.primaryDark};
-  margin-bottom: 1rem;
-
-  &.active {
-    background: ${colors.accent};
-  }
-`;
+function StepContent({ className = "", ...rest }: DivProps) {
+  return <div className={`w-full mt-4 ${className}`} {...rest} />;
+}
 
 const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [overallError, setOverallError] = useState<string | null>(null);
@@ -2440,14 +2348,17 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           !youtubeError &&
           videoTimestamps.length > 0 && (
             <>
-              <AudioModeToggle
+              <Button
                 onClick={toggleAudioMode}
-                className={isAudioMode ? "active" : ""}
+                className="mb-4"
+                style={{
+                  background: isAudioMode ? colors.accent : colors.primaryDark,
+                }}
               >
                 <span>
                   {isAudioMode ? "✕ 오디오 모드 해제" : "🎧 오디오 모드"}
                 </span>
-              </AudioModeToggle>
+              </Button>
               <TranscriptContainer
                 ref={transcriptContainerRef}
                 className="transcript-text"

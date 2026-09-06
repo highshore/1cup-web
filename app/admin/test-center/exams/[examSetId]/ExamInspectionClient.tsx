@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ComponentProps, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeftIcon, CheckIcon, PlayIcon, RocketLaunchIcon } from "@heroicons/react/24/outline";
-import styled from "styled-components";
 
 import { useAuth } from "../../../../lib/contexts/auth_context";
 import { loadExamSet, postExamAction } from "../../../../lib/features/exam/services/exam_admin_client";
@@ -26,210 +26,99 @@ import {
   SetStatusPill,
 } from "../../exam_ui";
 
-const Heading = styled.header`
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 22px;
-  padding-bottom: 29px;
-  border-bottom: 1px solid #e2d9d4;
-  @media (max-width: 760px) { align-items: flex-start; flex-direction: column; }
-`;
+const serifH2Class = "[&_h2]:mt-[5px] [&_h2]:text-[#382219] [&_h2]:[font-family:Georgia,'Times_New_Roman',serif] [&_h2]:text-[26px] [&_h2]:font-medium [&_h2]:tracking-[-.05em]";
 
-const HeaderActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-`;
+function Heading({ children }: { children: ReactNode }) {
+  return <header className="flex items-end justify-between gap-[22px] border-b border-[#e2d9d4] pb-[29px] max-[760px]:flex-col max-[760px]:items-start">{children}</header>;
+}
 
-const OverviewGrid = styled.section`
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(250px, .7fr);
-  gap: 20px;
-  margin-top: 25px;
-  @media (max-width: 850px) { grid-template-columns: 1fr; }
-`;
+function HeaderActions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap gap-[9px]">{children}</div>;
+}
 
-const Card = styled.section`
-  border: 1px solid #e3d7d1;
-  padding: 19px;
-  background: #fff;
-  h2 { margin: 5px 0 0; color: #392219; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 500; letter-spacing: -.05em; }
-  p { color: #7c6a61; font-size: 11px; line-height: 1.55; }
-`;
+function OverviewGrid({ children }: { children: ReactNode }) {
+  return <section className="mt-[25px] grid grid-cols-[minmax(0,1.3fr)_minmax(250px,.7fr)] gap-5 max-[850px]:grid-cols-1">{children}</section>;
+}
 
-const Facts = styled.dl`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 18px 0 0;
-  border-top: 1px solid #eadfd9;
-  border-left: 1px solid #eadfd9;
-  div { min-width: 0; border-right: 1px solid #eadfd9; border-bottom: 1px solid #eadfd9; padding: 11px 10px; }
-  dt { color: #8b786e; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
-  dd { overflow: hidden; margin: 6px 0 0; color: #513429; font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-`;
+function Card({ children }: { children: ReactNode }) {
+  return <section className="border border-[#e3d7d1] bg-white p-[19px] [&_h2]:mt-[5px] [&_h2]:text-[#392219] [&_h2]:[font-family:Georgia,'Times_New_Roman',serif] [&_h2]:text-[26px] [&_h2]:font-medium [&_h2]:tracking-[-.05em] [&_p]:text-[#7c6a61] [&_p]:text-[11px] [&_p]:leading-[1.55]">{children}</section>;
+}
 
-const Interviewer = styled.div`
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  margin-top: 14px;
-  h3 { margin: 0; color: #442a20; font-size: 14px; }
-  p { margin: 5px 0 0; }
-`;
+function Facts({ children }: { children: ReactNode }) {
+  return <dl className="mt-[18px] grid grid-cols-[repeat(3,minmax(0,1fr))] border-t border-l border-[#eadfd9] [&_div]:min-w-0 [&_div]:border-r [&_div]:border-b [&_div]:border-[#eadfd9] [&_div]:px-2.5 [&_div]:py-[11px] [&_dt]:text-[#8b786e] [&_dt]:[font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace] [&_dt]:text-[8px] [&_dt]:font-[750] [&_dt]:uppercase [&_dt]:tracking-[.06em] [&_dd]:mt-1.5 [&_dd]:overflow-hidden [&_dd]:text-ellipsis [&_dd]:whitespace-nowrap [&_dd]:text-[#513429] [&_dd]:text-[12px] [&_dd]:font-extrabold">{children}</dl>;
+}
 
-const Deployment = styled.section`
-  margin-top: 20px;
-  border: 1px solid #e3d7d1;
-  padding: 19px;
-  background: #fff;
-`;
+function Interviewer({ children }: { children: ReactNode }) {
+  return <div className="mt-3.5 grid grid-cols-[90px_minmax(0,1fr)] items-center gap-3.5 [&_h3]:m-0 [&_h3]:text-[#442a20] [&_h3]:text-[14px] [&_p]:mt-[5px]">{children}</div>;
+}
 
-const DeploymentHeading = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  h2 { margin: 5px 0 0; color: #382219; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 500; letter-spacing: -.05em; }
-  p { max-width: 610px; margin: 7px 0 0; color: #7d6b61; font-size: 11px; line-height: 1.5; }
-`;
+function Deployment({ children }: { children: ReactNode }) {
+  return <section className="mt-5 border border-[#e3d7d1] bg-white p-[19px]">{children}</section>;
+}
 
-const CategoryRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 15px;
-`;
+function DeploymentHeading({ children }: { children: ReactNode }) {
+  return <div className={`flex items-start justify-between gap-3.5 ${serifH2Class} [&_p]:mt-[7px] [&_p]:max-w-[610px] [&_p]:text-[#7d6b61] [&_p]:text-[11px] [&_p]:leading-[1.5]`}>{children}</div>;
+}
 
-const CategoryButton = styled.button<{ $active: boolean }>`
-  min-height: 33px;
-  border: 1px solid ${({ $active }) => $active ? "#e3754c" : "#decfc7"};
-  padding: 0 10px;
-  background: ${({ $active }) => $active ? "#fff0eb" : "#fffdfb"};
-  color: ${({ $active }) => $active ? "#ad4427" : "#6c544a"};
-  font: inherit;
-  font-size: 11px;
-  font-weight: 750;
-  cursor: pointer;
-`;
+function CategoryRow({ children }: { children: ReactNode }) {
+  return <div className="mt-[15px] flex flex-wrap gap-[7px]">{children}</div>;
+}
 
-const QuietButton = styled.button`
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid #d9c9c1;
-  padding: 8px 10px;
-  background: #fffdfb;
-  color: #59382a;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 750;
-  cursor: pointer;
-  &:hover:not(:disabled) { background: #fff4ef; }
-  &:disabled { cursor: wait; opacity: .55; }
-`;
+function CategoryButton({ $active, className = "", ...rest }: { $active: boolean } & ComponentProps<"button">) {
+  return <button className={`min-h-[33px] cursor-pointer border px-2.5 text-[11px] font-[750] ${$active ? "border-[#e3754c] bg-[#fff0eb] text-[#ad4427]" : "border-[#decfc7] bg-[#fffdfb] text-[#6c544a]"} ${className}`} {...rest} />;
+}
 
-const ActionRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 9px;
-  margin-top: 16px;
-`;
+function QuietButton({ className = "", ...rest }: ComponentProps<"button">) {
+  return <button className={`inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 border border-[#d9c9c1] bg-[#fffdfb] px-2.5 py-2 text-[#59382a] text-[11px] font-[750] [&:hover:not(:disabled)]:bg-[#fff4ef] disabled:cursor-wait disabled:opacity-[.55] ${className}`} {...rest} />;
+}
 
-const Manifest = styled.section`
-  margin-top: 20px;
-  border: 1px solid #e3d7d1;
-  background: #fff;
-`;
+function ActionRow({ children }: { children: ReactNode }) {
+  return <div className="mt-4 flex flex-wrap items-center gap-[9px]">{children}</div>;
+}
 
-const ManifestHeader = styled.header`
-  padding: 18px 20px;
-  border-bottom: 1px solid #eadfd9;
-  h2 { margin: 5px 0 0; color: #382219; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 500; letter-spacing: -.05em; }
-  p { margin: 7px 0 0; color: #7d6b61; font-size: 11px; line-height: 1.5; }
-`;
+function Manifest({ children }: { children: ReactNode }) {
+  return <section className="mt-5 border border-[#e3d7d1] bg-white">{children}</section>;
+}
 
-const ItemRow = styled.article`
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(260px, .7fr);
-  gap: 14px;
-  align-items: center;
-  border-bottom: 1px solid #efe7e3;
-  padding: 14px 20px;
-  &:last-child { border-bottom: 0; }
-  @media (max-width: 780px) { grid-template-columns: 32px minmax(0, 1fr); }
-`;
+function ManifestHeader({ children }: { children: ReactNode }) {
+  return <header className={`border-b border-[#eadfd9] px-5 py-[18px] ${serifH2Class} [&_p]:mt-[7px] [&_p]:text-[#7d6b61] [&_p]:text-[11px] [&_p]:leading-[1.5]`}>{children}</header>;
+}
 
-const ItemNumber = styled.span`
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border: 1px solid #dfd0c8;
-  border-radius: 50%;
-  color: #a94a2c;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
-  font-weight: 800;
-`;
+function ItemRow({ children }: { children: ReactNode }) {
+  return <article className="grid grid-cols-[32px_minmax(0,1fr)_minmax(260px,.7fr)] items-center gap-3.5 border-b border-[#efe7e3] px-5 py-3.5 last:border-b-0 max-[780px]:grid-cols-[32px_minmax(0,1fr)]">{children}</article>;
+}
 
-const ItemCopy = styled.div`
-  min-width: 0;
-  strong, small { display: block; }
-  strong { color: #4a2e22; font-size: 12px; }
-  small { display: -webkit-box; overflow: hidden; margin-top: 4px; color: #806e65; font-size: 10px; line-height: 1.42; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-`;
+function ItemNumber({ children }: { children: ReactNode }) {
+  return <span className="grid h-[26px] w-[26px] place-items-center rounded-full border border-[#dfd0c8] text-[#a94a2c] [font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace] text-[9px] font-extrabold">{children}</span>;
+}
 
-const Asset = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  audio, video { width: min(100%, 300px); max-height: 74px; }
-  @media (max-width: 780px) { grid-column: 2; justify-content: flex-start; }
-`;
+function ItemCopy({ children }: { children: ReactNode }) {
+  return <div className="min-w-0 [&_strong]:block [&_strong]:text-[#4a2e22] [&_strong]:text-[12px] [&_small]:mt-1 [&_small]:line-clamp-2 [&_small]:text-[#806e65] [&_small]:text-[10px] [&_small]:leading-[1.42]">{children}</div>;
+}
 
-const AttemptSection = styled.section`
-  margin-top: 20px;
-  border: 1px solid #e3d7d1;
-  padding: 19px;
-  background: #fff;
-  h2 { margin: 5px 0 0; color: #382219; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 500; letter-spacing: -.05em; }
-`;
+function Asset({ children }: { children: ReactNode }) {
+  return <div className="flex justify-end [&_audio]:max-h-[74px] [&_audio]:w-[min(100%,300px)] [&_video]:max-h-[74px] [&_video]:w-[min(100%,300px)] max-[780px]:col-[2] max-[780px]:justify-start">{children}</div>;
+}
 
-const Attempt = styled.article`
-  padding: 16px 0;
-  border-top: 1px solid #eadfd9;
-  h3 { margin: 0; color: #4a2e22; font-size: 13px; font-weight: 850; }
-  > p { margin: 5px 0 0; color: #806e65; font-size: 11px; }
-`;
+function AttemptSection({ children }: { children: ReactNode }) {
+  return <section className={`mt-5 border border-[#e3d7d1] bg-white p-[19px] ${serifH2Class}`}>{children}</section>;
+}
 
-const Response = styled.div`
-  margin-top: 12px;
-  border-top: 1px solid #f0e6e1;
-  padding-top: 12px;
-  strong { color: #543528; font-size: 11px; }
-  p { margin: 6px 0 0; color: #715c52; font-size: 11px; line-height: 1.5; }
-  audio { display: block; width: min(440px, 100%); margin-top: 8px; }
-`;
+function Attempt({ children }: { children: ReactNode }) {
+  return <article className="border-t border-[#eadfd9] py-4 [&_h3]:m-0 [&_h3]:text-[#4a2e22] [&_h3]:text-[13px] [&_h3]:font-[850] [&>p]:mt-[5px] [&>p]:text-[#806e65] [&>p]:text-[11px]">{children}</article>;
+}
 
-const Rubrics = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 9px;
-`;
+function Response({ children }: { children: ReactNode }) {
+  return <div className="mt-3 border-t border-[#f0e6e1] pt-3 [&_strong]:text-[#543528] [&_strong]:text-[11px] [&_p]:mt-1.5 [&_p]:text-[#715c52] [&_p]:text-[11px] [&_p]:leading-[1.5] [&_audio]:mt-2 [&_audio]:block [&_audio]:w-[min(440px,100%)]">{children}</div>;
+}
 
-const Rubric = styled.span`
-  border: 1px solid #e4d4cc;
-  padding: 4px 6px;
-  background: #fffaf7;
-  color: #664438;
-  font-size: 9px;
-  line-height: 1.35;
-`;
+function Rubrics({ children }: { children: ReactNode }) {
+  return <div className="mt-[9px] flex flex-wrap gap-1.5">{children}</div>;
+}
+
+function Rubric({ children }: { children: ReactNode }) {
+  return <span className="border border-[#e4d4cc] bg-[#fffaf7] px-1.5 py-1 text-[#664438] text-[9px] leading-[1.35]">{children}</span>;
+}
 
 function itemReady(item: ExamItem) {
   return item.module === "listen_repeat"

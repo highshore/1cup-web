@@ -64,7 +64,7 @@ Deploy Supabase migrations and the affected Edge Function whenever `supabase/` c
 - `lib/contexts/auth_context.tsx` — `AuthProvider` + `useAuth()`. Exposes `currentUser`, `hasActiveSubscription`, `accountStatus` (`user`/`admin`), and `isGdgMember`, sourced from Supabase Auth plus `public.users`.
 - `lib/i18n/` — `getDictionary(locale)` over `locales/en.ts` and `locales/ko.ts`, surfaced via `I18nProvider`. New user-facing text must go through i18n; **keep `en.ts` and `ko.ts` in sync** rather than hard-coding strings in components.
 - `lib/constants/app_layout.ts` — shared page width/gutters (use these, don't redefine per page). `lib/constants/colors.ts` — color tokens.
-- Styling is **styled-components** (SSR registry in `lib/styled-components/registry.tsx`, transform enabled in `next.config.mjs`). Prefer existing styled components and layout constants.
+- Styling is **Tailwind CSS v4** (`@tailwindcss/postcss` via `postcss.config.mjs`). Design tokens live in `app/globals.css` `@theme` (mirroring `lib/constants/colors.ts` / `app_layout.ts`): color utilities like `bg-primary`, `text-ink-light`, `border-line`, plus `max-w-page`, `px-gutter`, `shadow-app`, and shared `animate-*` keyframes. Use these tokens over raw hex values; use arbitrary values (`text-[0.95rem]`) when no token/scale step matches exactly. Component-specific `@keyframes` live in co-located `.css` files imported by the client component.
 
 ### Backend (`supabase/functions/`)
 Supabase Edge Functions own payment, messaging, CEFR processing, article ingest, Kakao login, discussion voting, marketing, proxies, and speaking reports. Firebase Cloud Functions are decommissioned; `functions/` is retained only as a migration reference and is not deployed by repository scripts.
@@ -74,7 +74,7 @@ Supabase Edge Functions own payment, messaging, CEFR processing, article ingest,
 
 ## Conventions (from nested `AGENTS.md` files — read the closest one before editing a subtree)
 - Treat this as a production Next.js App Router project, not a Vite template.
-- Prefer existing styled-components, shared layout constants, Supabase helpers, and i18n patterns over new globals.
+- Prefer Tailwind theme tokens, shared layout constants, Supabase helpers, and i18n patterns over new globals.
 - Keep `app/lib/` modules narrowly scoped — changes there ripple across pages.
 - Do not commit real secrets, service-account values, exported production data, `.next`, or `node_modules`.
 - `scripts/` holds one-off operational scripts (e.g. `export-articles-to-csv.mjs`), not app code.

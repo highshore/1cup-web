@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import styled, { css } from "styled-components";
-import { colors } from "../lib/constants/colors";
 import Link from "next/link";
 import {
   FaChevronLeft,
@@ -24,453 +22,35 @@ type RowData = {
   videos: VideoItem[];
 };
 
-// Using shared colors
+// Tab arrow buttons on either side of the category tab slider.
+const tabScrollButtonClass =
+  "absolute top-1/2 z-[5] flex h-[30px] w-[30px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-[rgba(0,0,0,0.08)] bg-[rgba(255,255,255,0.8)] opacity-70 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200 ease-[ease] hover:bg-white hover:opacity-100 disabled:pointer-events-none disabled:opacity-0 [&_svg]:text-[0.8rem] [&_svg]:text-[#333]";
 
-// Define your styled components here if needed, or import from a shared file
-// For example:
-const LibraryContainer = styled.div`
-  width: 100%;
-  box-sizing: border-box;
-  padding: 2rem 0 0 0; // Parent ContentContainer handles L/R padding and top padding
-  // overflow-x: hidden; // Remove this to allow buttons to be fully visible
-`;
+// Video row arrow buttons.
+const videoScrollButtonClass =
+  "absolute top-1/2 z-[100] flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-[rgba(0,0,0,0.1)] bg-[rgba(255,255,255,0.9)] opacity-90 shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-[250ms] ease-[ease] hover:scale-105 hover:bg-white hover:opacity-100 disabled:pointer-events-none disabled:opacity-0 [&_svg]:text-[1.2rem] [&_svg]:text-[#333]";
 
-const TabSliderWrapper = styled.div`
-  position: relative;
-  width: 100%;
-  margin-bottom: 2rem; // Keep existing margin
-`;
+// "사용법" / "난이도 필터" pill buttons.
+const controlButtonClass =
+  "flex cursor-pointer items-center gap-2 rounded-lg border-0 border-primary-pale bg-white px-4 py-3 font-semibold text-primary shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-all duration-200 ease-[ease] hover:-translate-y-px hover:border-accent hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] [&_svg]:text-base";
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-  overflow-x: hidden; // We will control scroll with buttons
-  scroll-behavior: smooth;
-  box-sizing: border-box;
+const filterOptionClass =
+  "flex w-full cursor-pointer items-center gap-2 border-none px-4 py-3 text-left text-primary transition-all duration-200 ease-[ease] first:rounded-t-md last:rounded-b-md hover:bg-primary-pale";
 
-  // Hide scrollbar visually if it ever appears due to overflow-x:auto temporarily
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`;
+const usageGuideParagraphClass =
+  "mb-2 text-[0.85rem] leading-[1.5] text-ink-medium last:mb-0";
 
-const TabScrollButton = styled.button.withConfig({
-  shouldForwardProp: (prop) => prop !== "direction" && prop !== "disabled",
-})<{
-  direction: "left" | "right";
-  disabled?: boolean;
-}>`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 30px; // Smaller size
-  height: 30px; // Smaller size
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 5; // Lower z-index than video buttons, but still above tabs
-  opacity: ${(props) => (props.disabled ? 0.0 : 0.7)};
-  pointer-events: ${(props) => (props.disabled ? "none" : "auto")};
-  transition: all 0.2s ease;
+const difficultyTagColors: Record<VideoItem["difficulty"], string> = {
+  novice: "bg-[#e3f2fd] text-[#1976d2]",
+  intermediate: "bg-[#e8f5e9] text-[#388e3c]",
+  advanced: "bg-[#ffebee] text-[#d32f2f]",
+};
 
-  &:hover {
-    opacity: 1;
-    background-color: white;
-  }
-
-  ${
-    (props) =>
-      props.direction === "left"
-        ? `left: -15px;` // Centered on edge
-        : `right: -15px;` // Centered on edge
-  }
-
-  svg {
-    font-size: 0.8rem; // Smaller icon
-    color: #333;
-  }
-`;
-
-const TabButton = styled.button.withConfig({
-  shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 2rem;
-  background-color: ${(props) =>
-    props.isActive ? colors.primary : colors.primaryPale};
-  color: ${(props) => (props.isActive ? "white" : colors.primary)};
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  box-shadow: ${(props) =>
-    props.isActive ? `0 4px 6px rgba(0, 0, 0, 0.1)` : "none"};
-
-  &:hover {
-    background-color: ${(props) =>
-      props.isActive ? colors.primaryDark : "#e8d9d0"};
-    transform: translateY(-1px);
-  }
-`;
-
-const SliderRow = styled.div`
-  margin-bottom: 1rem;
-  width: 100%; // Fill available width
-`;
-
-const RowTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: ${colors.primary};
-  width: 100%; // Fill available width
-  // No max-width, no L/R padding, no margin:auto needed here
-`;
-
-const VideosContainerWrapper = styled.div`
-  position: relative;
-  width: 100%;
-  // Ensure no overflow:hidden here, default 'visible' is correct
-`;
-
-const VideosContainer = styled.div`
-  display: flex;
-  gap: 1rem;
-  overflow-x: hidden; // Necessary for scroll control & clips children outside its padding-box
-  box-sizing: border-box;
-  position: relative;
-  width: 100%;
-  scroll-behavior: smooth;
-  padding: 1rem 0rem;
-`;
-
-const ScrollButton = styled.button.withConfig({
-  shouldForwardProp: (prop) => prop !== "direction" && prop !== "disabled",
-})<{
-  direction: "left" | "right";
-  disabled?: boolean;
-}>`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 100;
-  opacity: ${(props) => (props.disabled ? 0.0 : 0.9)};
-  pointer-events: ${(props) => (props.disabled ? "none" : "auto")};
-  transition: all 0.25s ease;
-
-  &:hover {
-    opacity: 1;
-    background-color: white;
-    transform: translateY(-50%) scale(1.05);
-  }
-
-  // Adjust positioning to account for container padding
-  ${(props) =>
-    props.direction === "left"
-      ? `left: calc(-40px + 1rem);`
-      : `right: calc(-40px + 1rem);`}
-
-  svg {
-    font-size: 1.2rem;
-    color: #333;
-  }
-`;
-
-const VideoInfo = styled.div`
-  padding: 0.75rem;
-  background-color: white;
-
-  h3 {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: ${colors.text.dark};
-    margin-bottom: 0.25rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  p {
-    font-size: 0.8rem;
-    color: ${colors.text.medium};
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-height: calc(0.8rem * 1.4 * 2);
-  }
-
-  .difficulty-tags {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  .difficulty-tag {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 1rem;
-    font-weight: 600;
-  }
-
-  .novice {
-    background-color: #e3f2fd;
-    color: #1976d2;
-  }
-
-  .intermediate {
-    background-color: #e8f5e9;
-    color: #388e3c;
-  }
-
-  .advanced {
-    background-color: #ffebee;
-    color: #d32f2f;
-  }
-`;
-
-const VideoCardWrapperLink = styled(Link)`
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 12px;
-  margin-bottom: 1rem; // Or gap handled by parent flex container
-
-  &:focus,
-  &:hover {
-    outline: none;
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${colors.accent};
-    outline-offset: 2px;
-  }
-`;
-
-const VideoCard = styled.div`
-  width: 280px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  background-color: white;
-
-  ${VideoCardWrapperLink}:hover & {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  }
-  // Ensure the direct child of VideoCardWrapperLink fills it if needed,
-  // or that VideoCard itself handles its layout fully.
-`;
-
-const VideoFrame = styled.iframe`
-  width: 100%;
-  height: 157px;
-  border: none;
-`;
-
-const ControlsRow = styled.div`
-  display: flex;
-  justify-content: space-between; // Pushes items to ends
-  align-items: center; // Vertically align items
-  margin-bottom: 2rem;
-  position: relative; // For potential absolute positioning of children if needed elsewhere
-`;
-
-const UsageGuideWrapper = styled.div`
-  position: relative; // For positioning the info box
-`;
-
-const UsageGuideButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background-color: white;
-  border: 0px solid ${colors.primaryPale};
-  border-radius: 0.5rem;
-  color: ${colors.primary};
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    border-color: ${colors.accent};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  svg {
-    font-size: 1rem;
-  }
-`;
-
-const UsageGuideInfoBox = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isVisible",
-})<{ isVisible: boolean }>`
-  position: absolute;
-  top: 0;
-  left: calc(100% + 1rem); // Position to the right of the button with some gap
-  width: 350px; // Horizontally long
-  padding: 1rem;
-  background-color: white;
-  border: 1px solid ${colors.primaryPale};
-  border-radius: 0.5rem;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  z-index: 1100; // Above filter dropdown
-  opacity: 0;
-  transform: translateX(-10px);
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  white-space: normal; // Allow text to wrap
-
-  ${(props) =>
-    props.isVisible &&
-    css`
-      opacity: 1;
-      transform: translateX(0);
-      pointer-events: auto;
-    `}
-
-  h4 {
-    font-size: 1rem;
-    color: ${colors.primary};
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-  }
-
-  p {
-    font-size: 0.85rem;
-    color: ${colors.text.medium};
-    line-height: 1.5;
-    margin-bottom: 0.5rem;
-  }
-
-  p:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const FilterWrapper = styled.div`
-  position: relative; // Keep for dropdown positioning
-`;
-
-const FilterButton = styled.button.withConfig({
-  shouldForwardProp: (prop) => prop !== "isOpen",
-})<{ isOpen: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background-color: white;
-  border: 0px solid ${colors.primaryPale};
-  border-radius: 0.5rem;
-  color: ${colors.primary};
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    border-color: ${colors.accent};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  svg.chevron {
-    transform: ${(props) => (props.isOpen ? "rotate(180deg)" : "rotate(0deg)")};
-    transition: transform 0.2s ease;
-  }
-`;
-
-const FilterDropdown = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isOpen",
-})<{ isOpen: boolean }>`
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.5rem;
-  background-color: white;
-  border: 2px solid ${colors.primaryPale};
-  border-radius: 0.5rem;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  min-width: 180px;
-  opacity: ${(props) => (props.isOpen ? 1 : 0)};
-  transform: ${(props) =>
-    props.isOpen ? "translateY(0)" : "translateY(-10px)"};
-  pointer-events: ${(props) => (props.isOpen ? "auto" : "none")};
-  transition: all 0.2s ease;
-`;
-
-const FilterOption = styled.button.withConfig({
-  shouldForwardProp: (prop) => prop !== "isSelected",
-})<{ isSelected: boolean }>`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  background-color: ${(props) =>
-    props.isSelected ? colors.primaryPale : "transparent"};
-  color: ${colors.primary};
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:first-child {
-    border-radius: 0.375rem 0.375rem 0 0;
-  }
-
-  &:last-child {
-    border-radius: 0 0 0.375rem 0.375rem;
-  }
-
-  &:hover {
-    background-color: ${colors.primaryPale};
-  }
-
-  .difficulty-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-
-    &.novice {
-      background-color: #1976d2;
-    }
-
-    &.intermediate {
-      background-color: #388e3c;
-    }
-
-    &.advanced {
-      background-color: #d32f2f;
-    }
-  }
-`;
+const difficultyIndicatorColors: Record<VideoItem["difficulty"], string> = {
+  novice: "bg-[#1976d2]",
+  intermediate: "bg-[#388e3c]",
+  advanced: "bg-[#d32f2f]",
+};
 
 const LibraryPage: React.FC = () => {
   const tabs = [
@@ -857,173 +437,204 @@ const LibraryPage: React.FC = () => {
   }, [isFilterOpen]);
 
   return (
-    <LibraryContainer>
-      <TabSliderWrapper>
-        <TabScrollButton
-          direction="left"
+    <div className="box-border w-full pt-8">
+      <div className="relative mb-8 w-full">
+        <button
+          className={`${tabScrollButtonClass} left-[-15px]`}
           onClick={() => scrollTabs("left")}
           disabled={!tabScrollState.canScrollLeft}
           aria-label="Scroll tabs left"
         >
           <FaChevronLeft />
-        </TabScrollButton>
-        <TabContainer ref={tabContainerRef} onScroll={updateTabScrollState}>
+        </button>
+        <div
+          className="box-border flex w-full gap-2 overflow-x-hidden scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          ref={tabContainerRef}
+          onScroll={updateTabScrollState}
+        >
           {tabs.map((tab) => (
-            <TabButton
+            <button
               key={tab}
-              isActive={tab === activeTab}
+              className={`cursor-pointer whitespace-nowrap rounded-[2rem] border-none px-6 py-3 font-semibold transition-all duration-200 ease-[ease] hover:-translate-y-px ${
+                tab === activeTab
+                  ? "bg-primary text-white shadow-[0_4px_6px_rgba(0,0,0,0.1)] hover:bg-primary-dark"
+                  : "bg-primary-pale text-primary hover:bg-[#e8d9d0]"
+              }`}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
-            </TabButton>
+            </button>
           ))}
-        </TabContainer>
-        <TabScrollButton
-          direction="right"
+        </div>
+        <button
+          className={`${tabScrollButtonClass} right-[-15px]`}
           onClick={() => scrollTabs("right")}
           disabled={!tabScrollState.canScrollRight}
           aria-label="Scroll tabs right"
         >
           <FaChevronRight />
-        </TabScrollButton>
-      </TabSliderWrapper>
+        </button>
+      </div>
 
-      <ControlsRow>
-        <UsageGuideWrapper
+      <div className="relative mb-8 flex items-center justify-between">
+        <div
+          className="relative"
           onMouseEnter={() => setIsUsageGuideVisible(true)}
           onMouseLeave={() => setIsUsageGuideVisible(false)}
         >
-          <UsageGuideButton>
+          <button className={controlButtonClass}>
             <FaQuestionCircle /> 사용법
-          </UsageGuideButton>
-          <UsageGuideInfoBox isVisible={isUsageGuideVisible}>
-            <h4>사용 가이드</h4>
-            <p>
+          </button>
+          <div
+            className={`absolute top-0 left-[calc(100%+1rem)] z-[1100] w-[350px] whitespace-normal rounded-lg border border-primary-pale bg-white p-4 shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-[opacity,transform] duration-200 ease-[ease] ${
+              isUsageGuideVisible
+                ? "pointer-events-auto translate-x-0 opacity-100"
+                : "pointer-events-none -translate-x-[10px] opacity-0"
+            }`}
+          >
+            <h4 className="mt-0 mb-3 text-base text-primary">사용 가이드</h4>
+            <p className={usageGuideParagraphClass}>
               <strong>카테고리 탭:</strong> 원하는 영상 주제를 선택하세요. 좌우
               화살표로 더 많은 카테고리를 볼 수 있습니다.
             </p>
-            <p>
+            <p className={usageGuideParagraphClass}>
               <strong>난이도 필터:</strong> 우측 상단 필터를 사용하여 영상의
               난이도(초급, 중급, 고급)별로 영상을 필터링할 수 있습니다.
             </p>
-            <p>
+            <p className={usageGuideParagraphClass}>
               <strong>영상 슬라이더:</strong> 각 줄의 영상들을 좌우 화살표로
               스크롤하여 더 많은 영상을 탐색하세요.
             </p>
-          </UsageGuideInfoBox>
-        </UsageGuideWrapper>
+          </div>
+        </div>
 
-        <FilterWrapper className="filter-wrapper-class">
-          <FilterButton
-            isOpen={isFilterOpen}
+        <div className="filter-wrapper-class relative">
+          <button
+            className={controlButtonClass}
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
             <FaFilter />
             난이도 필터
-            <FaChevronDown className="chevron" />
-          </FilterButton>
-          <FilterDropdown isOpen={isFilterOpen}>
-            <FilterOption
-              isSelected={difficultyFilter === "all"}
+            <FaChevronDown
+              className={`transition-transform duration-200 ease-[ease] ${
+                isFilterOpen ? "rotate-180" : "rotate-0"
+              }`}
+            />
+          </button>
+          <div
+            className={`absolute top-full right-0 z-[1000] mt-2 min-w-[180px] rounded-lg border-2 border-primary-pale bg-white shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-all duration-200 ease-[ease] ${
+              isFilterOpen
+                ? "pointer-events-auto translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-[10px] opacity-0"
+            }`}
+          >
+            <button
+              className={`${filterOptionClass} ${
+                difficultyFilter === "all" ? "bg-primary-pale" : "bg-transparent"
+              }`}
               onClick={() => {
                 setDifficultyFilter("all");
                 setIsFilterOpen(false);
               }}
             >
               All Levels
-            </FilterOption>
-            <FilterOption
-              isSelected={difficultyFilter === "novice"}
-              onClick={() => {
-                setDifficultyFilter("novice");
-                setIsFilterOpen(false);
-              }}
-            >
-              <div className="difficulty-indicator novice"></div>
-              Novice
-            </FilterOption>
-            <FilterOption
-              isSelected={difficultyFilter === "intermediate"}
-              onClick={() => {
-                setDifficultyFilter("intermediate");
-                setIsFilterOpen(false);
-              }}
-            >
-              <div className="difficulty-indicator intermediate"></div>
-              Intermediate
-            </FilterOption>
-            <FilterOption
-              isSelected={difficultyFilter === "advanced"}
-              onClick={() => {
-                setDifficultyFilter("advanced");
-                setIsFilterOpen(false);
-              }}
-            >
-              <div className="difficulty-indicator advanced"></div>
-              Advanced
-            </FilterOption>
-          </FilterDropdown>
-        </FilterWrapper>
-      </ControlsRow>
+            </button>
+            {(["novice", "intermediate", "advanced"] as const).map((level) => (
+              <button
+                key={level}
+                className={`${filterOptionClass} ${
+                  difficultyFilter === level
+                    ? "bg-primary-pale"
+                    : "bg-transparent"
+                }`}
+                onClick={() => {
+                  setDifficultyFilter(level);
+                  setIsFilterOpen(false);
+                }}
+              >
+                <div
+                  className={`h-3 w-3 rounded-full ${difficultyIndicatorColors[level]}`}
+                ></div>
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {filteredVideos.map((rowData, rowIndex) => (
-        <SliderRow
+        <div
+          className="mb-4 w-full"
           key={`${activeTab}-${difficultyFilter}-${rowData.title}-${rowIndex}`}
         >
-          <RowTitle>{rowData.title}</RowTitle>
-          <VideosContainerWrapper>
-            <ScrollButton
-              direction="left"
+          <h2 className="w-full text-[1.5rem] font-semibold text-primary">
+            {rowData.title}
+          </h2>
+          <div className="relative w-full">
+            <button
+              className={`${videoScrollButtonClass} left-[calc(-40px+1rem)]`}
               onClick={() => scrollVideos("left", rowIndex)}
               disabled={!scrollStates[rowIndex]?.canScrollLeft}
               aria-label="Scroll left"
             >
               <FaChevronLeft />
-            </ScrollButton>
-            <VideosContainer
+            </button>
+            <div
+              className="relative box-border flex w-full gap-4 overflow-x-hidden scroll-smooth px-0 py-4"
               ref={(el) => {
                 if (el) videoContainersRef.current[rowIndex] = el;
               }}
               onScroll={() => updateVideoScrollState(rowIndex)}
             >
               {rowData.videos.map((video: VideoItem) => (
-                <VideoCardWrapperLink key={video.id} href="/shadow">
-                  <VideoCard>
-                    <VideoFrame
+                <Link
+                  key={video.id}
+                  href="/shadow"
+                  className="group mb-4 block rounded-xl text-inherit no-underline hover:outline-none focus:outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                >
+                  <div className="w-[280px] shrink-0 overflow-hidden rounded-xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all duration-300 ease-[ease] group-hover:-translate-y-1 group-hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)]">
+                    <iframe
+                      className="h-[157px] w-full border-none"
                       src={`https://www.youtube.com/embed/${video.id}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       title="Embedded youtube"
                     />
-                    <VideoInfo>
-                      <h3>Jensen Huang on Pain and Suffering</h3>
-                      <p>
+                    <div className="bg-white p-3">
+                      <h3 className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap text-[0.9rem] font-semibold text-ink">
+                        Jensen Huang on Pain and Suffering
+                      </h3>
+                      <p className="min-h-[calc(0.8rem*1.4*2)] text-[0.8rem] leading-[1.4] text-ink-medium line-clamp-2">
                         엔비디아 CEO 젠슨 황이 창업자들이 고통을 많이 겪어야
                         되는 이유에 대해서 설명합니다.
                       </p>
-                      <div className="difficulty-tags">
-                        <span className={`difficulty-tag ${video.difficulty}`}>
+                      <div className="mt-2 flex gap-2">
+                        <span
+                          className={`rounded-[1rem] px-2 py-1 text-[0.7rem] font-semibold ${
+                            difficultyTagColors[video.difficulty]
+                          }`}
+                        >
                           {video.difficulty.charAt(0).toUpperCase() +
                             video.difficulty.slice(1)}
                         </span>
                       </div>
-                    </VideoInfo>
-                  </VideoCard>
-                </VideoCardWrapperLink>
+                    </div>
+                  </div>
+                </Link>
               ))}
-            </VideosContainer>
-            <ScrollButton
-              direction="right"
+            </div>
+            <button
+              className={`${videoScrollButtonClass} right-[calc(-40px+1rem)]`}
               onClick={() => scrollVideos("right", rowIndex)}
               disabled={!scrollStates[rowIndex]?.canScrollRight}
               aria-label="Scroll right"
             >
               <FaChevronRight />
-            </ScrollButton>
-          </VideosContainerWrapper>
-        </SliderRow>
+            </button>
+          </div>
+        </div>
       ))}
-    </LibraryContainer>
+    </div>
   );
 };
 

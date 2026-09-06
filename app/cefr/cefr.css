@@ -1,0 +1,8 @@
+/* Keyframes for the CEFR page (styled-components migration).
+   Prefixed with `cefr-` to avoid global collisions. */
+
+@keyframes cefr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

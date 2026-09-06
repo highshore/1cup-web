@@ -8,10 +8,8 @@ import React, {
   useMemo,
 } from "react";
 import { useParams, useRouter } from "next/navigation";
-import styled from "styled-components";
 import { supabase, invokeFunction } from "../../lib/supabase/client";
 import { useSoniox } from "../hooks/useSoniox";
-import { colors } from "../../lib/constants/colors";
 import { UserAvatar } from "../../lib/features/meetup/components/user_avatar";
 import {
   fetchUserProfiles,
@@ -25,1544 +23,1047 @@ import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// Styled components matching the original RecordTranscriptClient
-const ConversationDetailContainer = styled.div`
-  width: 100%;
-`;
+// Local Tailwind components matching the original styled-components
+type DivProps = React.HTMLAttributes<HTMLDivElement>;
+type SectionProps = React.HTMLAttributes<HTMLElement>;
+type SpanProps = React.HTMLAttributes<HTMLSpanElement>;
+type HeadingProps = React.HTMLAttributes<HTMLHeadingElement>;
+type ParagraphProps = React.HTMLAttributes<HTMLParagraphElement>;
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement>;
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+type UlProps = React.HTMLAttributes<HTMLUListElement>;
+type LiProps = React.LiHTMLAttributes<HTMLLIElement>;
 
-const ConversationDetailLeft = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  width: 100%;
-`;
+const scoreColorClass = (score: number) => {
+  if (score >= 8) return "text-[#10b981]";
+  if (score >= 6) return "text-[#f59e0b]";
+  return "text-[#ef4444]";
+};
 
-const AppSpeechDetails = styled.section`
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-bottom: 1.5rem;
-`;
+function ConversationDetailContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`w-full ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SectionHeader = styled.h2`
-  font-size: 1.125rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #050505;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
+function ConversationDetailLeft({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-8 w-full ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const KeywordsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
+function AppSpeechDetails({ className = "", children, ...rest }: SectionProps) {
+  return (
+    <section className={`bg-transparent border-none rounded-none p-0 mb-6 ${className}`} {...rest}>
+      {children}
+    </section>
+  );
+}
 
-const KeywordTag = styled.span`
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
+function SectionHeader({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h2
+      className={`text-[1.125rem] font-black text-[#050505] m-0 mb-4 pb-3 border-b-2 border-[#050505] flex justify-between items-center ${className}`}
+      {...rest}
+    >
+      {children}
+    </h2>
+  );
+}
 
-// Removed ProviderSelector (Soniox-only)
+function TranscriptSnippet({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex gap-3 items-start mb-3 w-full [transition:background-color_0.3s_ease] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const SpeakersContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 0.5rem;
-`;
+function SpeakerAvatar({
+  $bgColor,
+  $textColor,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $bgColor?: string; $textColor?: string } & ButtonProps) {
+  return (
+    <button
+      className={`w-10 h-10 shrink-0 rounded-full border-2 border-[#050505] text-[1rem] font-extrabold flex items-center justify-center cursor-pointer shadow-[2px_2px_0_rgba(5,5,5,0.9)] [transition:transform_0.16s_ease,box-shadow_0.16s_ease] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(5,5,5,0.9)] focus-visible:outline-2 focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2 ${className}`}
+      style={{
+        backgroundColor: $bgColor || "#e5e7eb",
+        color: $textColor || "#4b5563",
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const SpeakerInfo = styled.div`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-`;
+function TranscriptContent({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-0.5 w-full min-w-0 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const TranscriptSnippet = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  width: 100%;
-  transition: background-color 0.3s ease;
-`;
+function TranscriptHeadRow({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SpeakerAvatar = styled.button<{ $bgColor?: string; $textColor?: string }>`
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid #050505;
-  background-color: ${(props) => props.$bgColor || "#e5e7eb"};
-  color: ${(props) => props.$textColor || "#4b5563"};
-  font-size: 1rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+function SpeakerName({
+  $color,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $color?: string } & SpanProps) {
+  return (
+    <span
+      className={`font-extrabold text-[1rem] ${className}`}
+      style={{ color: $color || "#050505", ...style }}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  }
+function Timestamp({ className = "", children, ...rest }: SpanProps) {
+  return (
+    <span className={`text-[0.875rem] text-[rgba(5,5,5,0.6)] ${className}`} {...rest}>
+      {children}
+    </span>
+  );
+}
 
-  &:focus-visible {
-    outline: 2px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
+function TranscriptBody({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`leading-[1.7] text-[#050505] cursor-default bg-transparent border-none rounded-none p-0 mt-1 break-words hyphens-auto w-full select-text whitespace-normal ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const TranscriptContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  width: 100%;
-  min-width: 0;
-`;
-
-const TranscriptHeadRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const SpeakerName = styled.span<{ $color?: string }>`
-  font-weight: 800;
-  font-size: 1rem;
-  color: ${(props) => props.$color || "#050505"};
-`;
-
-const Timestamp = styled.span`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-`;
-
-const TranscriptBody = styled.div`
-  line-height: 1.7;
-  color: #050505;
-  cursor: default;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-top: 0.25rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  width: 100%;
-  user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  white-space: normal;
-`;
-
-const WordSpan = styled.span<{
+function WordSpan({
+  $lowConfidence,
+  $isPartial,
+  $isCurrentlyPlaying,
+  $isPunctuation,
+  className = "",
+  children,
+  ...rest
+}: {
   $lowConfidence?: boolean;
   $isPartial?: boolean;
   $isCurrentlyPlaying?: boolean;
   $isPunctuation?: boolean;
-}>`
-  color: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "#050505";
-    if (props.$lowConfidence) return "#b91c1c";
-    if (props.$isPartial) return "rgba(5, 5, 5, 0.55)";
-    return "inherit";
-  }};
-  background-color: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "#f47a4a";
-    return "transparent";
-  }};
-  font-weight: ${(props) => {
-    if (props.$isCurrentlyPlaying) return "800";
-    if (props.$lowConfidence) return "700";
-    return "normal";
-  }};
-  font-style: ${(props) => (props.$isPartial ? "italic" : "normal")};
-  text-decoration: ${(props) => (props.$lowConfidence ? "underline" : "none")};
-  text-decoration-color: #fecaca;
-  text-underline-offset: 2px;
-  transition: all 0.2s ease;
-  border-radius: 4px;
-  word-break: break-word;
-  opacity: ${(props) => (props.$isPartial ? "0.7" : "1")};
-  padding: ${(props) => (props.$isCurrentlyPlaying ? "0.125rem 0.25rem" : "0")};
-  cursor: pointer;
+} & SpanProps) {
+  const color = $isCurrentlyPlaying
+    ? "text-[#050505]"
+    : $lowConfidence
+      ? "text-[#b91c1c]"
+      : $isPartial
+        ? "text-[rgba(5,5,5,0.55)]"
+        : "";
+  const weight = $isCurrentlyPlaying
+    ? "font-extrabold"
+    : $lowConfidence
+      ? "font-bold"
+      : "font-normal";
+  return (
+    <span
+      className={`${color} ${$isCurrentlyPlaying ? "bg-[#f47a4a]" : "bg-transparent"} ${weight} ${
+        $isPartial ? "italic opacity-70" : "not-italic opacity-100"
+      } ${$lowConfidence ? "underline" : "no-underline"} decoration-[#fecaca] underline-offset-2 [transition:all_0.2s_ease] rounded-[4px] [word-break:break-word] ${
+        $isCurrentlyPlaying ? "py-0.5 px-1" : "p-0"
+      } cursor-pointer ${
+        $isCurrentlyPlaying
+          ? "hover:bg-[#f47a4a]"
+          : "hover:bg-[rgba(244,122,74,0.18)]"
+      } ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-  &:hover {
-    background-color: ${(props) =>
-      props.$isCurrentlyPlaying ? "#f47a4a" : "rgba(244, 122, 74, 0.18)"};
-  }
-`;
+function Container({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`min-h-screen text-[#050505] bg-transparent [font-family:-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif] pb-[80px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const Container = styled.div`
-  min-height: 100vh;
-  color: #050505;
-  background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding-bottom: 80px;
-`;
+function RecordButton({
+  $isRecording,
+  className = "",
+  children,
+  ...rest
+}: { $isRecording: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`flex items-center gap-2 py-[0.7rem] px-[1.4rem] border-2 border-[#050505] rounded-full text-[0.875rem] font-extrabold cursor-pointer shadow-[3px_3px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] ${
+        $isRecording ? "bg-[#d64545] text-white" : "bg-[#f47a4a] text-[#050505]"
+      } hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#050505] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-// Removed sticky header and page title for a cleaner detail view
+function Content({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`pt-0 px-0 pb-8 max-w-[900px] mx-auto bg-transparent ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const Controls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-`;
+function SessionInfo({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`p-6 bg-white rounded-[16px] border-[3px] border-[#050505] shadow-[6px_6px_0_rgba(5,5,5,0.9)] mb-8 h-full ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const BackButton = styled.button`
-  padding: 0.5rem 1rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 800;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+function SessionInfoGrid({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`grid grid-cols-[1fr_minmax(260px,360px)] gap-4 items-stretch mb-8 max-[900px]:grid-cols-1 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-`;
+function ChartPanel({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`p-6 bg-white rounded-[16px] border-[3px] border-[#050505] shadow-[6px_6px_0_rgba(5,5,5,0.9)] h-full ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const RecordButton = styled.button<{ $isRecording: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.4rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+function ChartTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3 className={`m-0 mb-4 text-[1.25rem] font-black text-[#050505] ${className}`} {...rest}>
+      {children}
+    </h3>
+  );
+}
 
-  ${(props) =>
-    props.$isRecording
-      ? `
-    background: #d64545;
-    color: #ffffff;
-  `
-      : `
-    background: #f47a4a;
-    color: #050505;
-  `}
+function SessionTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h2 className={`text-[1.25rem] font-black text-[#050505] m-0 mb-4 ${className}`} {...rest}>
+      {children}
+    </h2>
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
+function SessionDetail({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`mb-3 text-[0.875rem] text-[rgba(5,5,5,0.6)] [&_strong]:text-[#050505] [&_strong]:font-extrabold ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:disabled {
-    opacity: 0.5;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-`;
+function ParticipantsList({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-wrap gap-2 mt-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const Content = styled.div`
-  padding: 0 0 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-  background: transparent;
-`;
+function ParticipantChip({
+  $isLeader,
+  className = "",
+  children,
+  ...rest
+}: { $isLeader?: boolean } & DivProps) {
+  return (
+    <div
+      className={`flex items-center gap-2 py-[0.375rem] px-[0.8rem] rounded-full text-[0.875rem] font-extrabold ${
+        $isLeader ? "bg-[#f47a4a]" : "bg-white"
+      } text-[#050505] border-2 border-[#050505] [transition:all_0.2s_ease] hover:-translate-x-px hover:-translate-y-px ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const SessionInfo = styled.div`
-  padding: 1.5rem;
-  background: #ffffff;
-  border-radius: 16px;
-  border: 3px solid #050505;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  margin-bottom: 2rem;
-  height: 100%;
-`;
+function LoadingMessage({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex items-center justify-center py-16 px-8 text-[rgba(5,5,5,0.6)] font-bold text-[1rem] bg-white rounded-[12px] border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const SessionInfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr minmax(260px, 360px);
-  gap: 1rem;
-  align-items: stretch;
-  margin-bottom: 2rem;
+function ErrorMessage({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`mb-8 py-4 px-6 bg-[#fef2f2] text-[#991b1b] rounded-[12px] border-2 border-[#d64545] shadow-[4px_4px_0_rgba(214,69,69,0.4)] text-[0.875rem] font-bold ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-  }
-`;
+function EmptyState({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`text-center text-[rgba(5,5,5,0.6)] italic font-bold py-16 px-8 text-[1rem] bg-white rounded-[12px] border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const ChartPanel = styled.div`
-  padding: 1.5rem;
-  background: #ffffff;
-  border-radius: 16px;
-  border: 3px solid #050505;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  height: 100%;
-`;
+function LegendContent({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-start flex-col gap-3 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const ChartTitle = styled.h3`
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #050505;
-`;
+function LegendSpeakers({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-4 flex-wrap ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SessionTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-`;
+function LegendItem({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center text-[0.75rem] font-bold text-[rgba(5,5,5,0.6)] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SessionDetail = styled.div`
-  margin-bottom: 0.75rem;
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
+function LegendColor({
+  $color,
+  className = "",
+  style,
+  ...rest
+}: { $color: string } & DivProps) {
+  return (
+    <div
+      className={`w-[10px] h-[10px] border-[1.5px] border-[#050505] rounded-full mr-[0.375rem] ${className}`}
+      style={{ backgroundColor: $color, ...style }}
+      {...rest}
+    />
+  );
+}
 
-  strong {
-    color: #050505;
-    font-weight: 800;
-  }
-`;
-
-const ParticipantsList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-`;
-
-const ParticipantChip = styled.div<{ $isLeader?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 800;
-  background: ${(props) => (props.$isLeader ? "#f47a4a" : "#ffffff")};
-  color: #050505;
-  border: 2px solid #050505;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-  }
-`;
-
-const LoadingMessage = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-  font-size: 1rem;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const ErrorMessage = styled.div`
-  margin-bottom: 2rem;
-  padding: 1rem 1.5rem;
-  background: #fef2f2;
-  color: #991b1b;
-  border-radius: 12px;
-  border: 2px solid #d64545;
-  box-shadow: 4px 4px 0 rgba(214, 69, 69, 0.4);
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-style: italic;
-  font-weight: 700;
-  padding: 4rem 2rem;
-  font-size: 1rem;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CopilotPanel = styled.section`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  padding: 1rem;
-`;
-
-const CopilotHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 0.75rem;
-`;
-
-const CopilotTitle = styled.h3`
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 900;
-  margin: 0;
-`;
-
-const CopilotRefreshButton = styled.button`
-  border: 2px solid #050505;
-  background: #ffffff;
-  color: #050505;
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    box-shadow: none;
-  }
-`;
-
-const CopilotSummary = styled.p`
-  margin: 0 0 0.75rem 0;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.5;
-`;
-
-const CopilotGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CopilotColumnTitle = styled.div`
-  font-size: 0.75rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 800;
-  margin-bottom: 0.35rem;
-  text-transform: uppercase;
-`;
-
-const CopilotList = styled.ul`
-  margin: 0;
-  padding-left: 1rem;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.55;
-  font-size: 0.875rem;
-`;
-
-const SavedDataIndicator = styled.div`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  color: #050505;
-  font-size: 0.875rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  .indicator-icon {
-    color: #f47a4a;
-    font-size: 1rem;
-  }
-
-  .metadata {
-    font-size: 0.75rem;
-    color: rgba(5, 5, 5, 0.6);
-    margin-top: 0.25rem;
-  }
-`;
-
-const LegendContent = styled.div`
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const LegendSpeakers = styled.div`
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-`;
-
-const LegendItem = styled.div`
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(5, 5, 5, 0.6);
-`;
-
-const LegendColor = styled.div<{ $color: string }>`
-  width: 10px;
-  height: 10px;
-  background-color: ${(props) => props.$color};
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  margin-right: 0.375rem;
-`;
-
-const ConfidenceNote = styled.div`
-  font-size: 0.6875rem;
-  color: rgba(5, 5, 5, 0.55);
-`;
+function ConfidenceNote({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[0.6875rem] text-[rgba(5,5,5,0.55)] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
 // Audio Player Components
-const AudioPlayerContainer = styled.div<{ $isVisible: boolean }>`
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%)
-    translateY(${(props) => (props.$isVisible ? "0" : "100%")});
-  width: 100%;
-  max-width: 850px;
-  background: #ffffff;
-  color: #050505;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 3px solid #050505;
-  border-bottom: none;
-  box-shadow: 0 -6px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.3s ease;
-  z-index: 100;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  box-sizing: border-box;
+function AudioPlayerContainer({
+  $isVisible,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $isVisible: boolean } & DivProps) {
+  return (
+    <div
+      className={`fixed bottom-0 left-1/2 w-full max-w-[850px] bg-white text-[#050505] p-4 flex items-center justify-between border-[3px] border-[#050505] border-b-0 shadow-[0_-6px_0_rgba(5,5,5,0.9)] [transition:transform_0.3s_ease] z-[100] rounded-tl-[16px] rounded-tr-[16px] box-border max-[768px]:p-[0.8rem] max-[768px]:flex-wrap ${className}`}
+      style={{
+        transform: `translateX(-50%) translateY(${$isVisible ? "0" : "100%"})`,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.8rem;
-    flex-wrap: wrap;
-  }
-`;
+function AudioControls({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex items-center gap-[0.8rem] my-0 mx-[0.3rem] flex-nowrap max-[768px]:gap-2 max-[768px]:mx-[0.2rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const AudioControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin: 0 0.3rem;
-  flex-wrap: nowrap;
+function AudioButton({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`bg-[#f47a4a] text-[#050505] border-2 border-[#050505] text-[1.5rem] cursor-pointer flex items-center justify-center [transition:transform_0.16s_ease,box-shadow_0.16s_ease] w-10 h-10 rounded-full shadow-[2px_2px_0_#050505] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_#050505] max-[768px]:text-[1.3rem] max-[768px]:w-9 max-[768px]:h-9 ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-    margin: 0 0.2rem;
-  }
-`;
+function AudioProgress({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex-1 h-[10px] bg-[#f3f3f1] border-2 border-[#050505] rounded-full overflow-hidden relative my-0 mx-4 cursor-pointer max-[768px]:mx-[0.8rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const AudioButton = styled.button`
-  background: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  box-shadow: 2px 2px 0 #050505;
+function AudioProgressFill({
+  $progress,
+  className = "",
+  style,
+  ...rest
+}: { $progress: number } & DivProps) {
+  return (
+    <div
+      className={`absolute top-0 left-0 h-full bg-[#f47a4a] rounded-full ${className}`}
+      style={{ width: `${$progress}%`, ...style }}
+      {...rest}
+    />
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+function AudioTime({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`text-[0.9rem] text-[#050505] font-extrabold tabular-nums my-0 mx-2 min-w-[50px] text-center max-[768px]:text-[0.8rem] max-[768px]:min-w-[44px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: 1px 1px 0 #050505;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.3rem;
-    width: 36px;
-    height: 36px;
-  }
-`;
-
-const AudioProgress = styled.div`
-  flex: 1;
-  height: 10px;
-  background: #f3f3f1;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  overflow: hidden;
-  position: relative;
-  margin: 0 1rem;
-  cursor: pointer;
-
-  @media (max-width: 768px) {
-    margin: 0 0.8rem;
-  }
-`;
-
-const AudioProgressFill = styled.div<{ $progress: number }>`
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: ${(props) => props.$progress}%;
-  background: #f47a4a;
-  border-radius: 999px;
-`;
-
-const AudioTime = styled.div`
-  font-size: 0.9rem;
-  color: #050505;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  margin: 0 0.5rem;
-  min-width: 50px;
-  text-align: center;
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    min-width: 44px;
-  }
-`;
-
-const SpeedButton = styled.button<{ $active: boolean }>`
-  background: ${(props) => (props.$active ? "#f47a4a" : "#ffffff")};
-  color: #050505;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: 1px 1px 0 #050505;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-`;
+function SpeedButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`${
+        $active ? "bg-[#f47a4a]" : "bg-white"
+      } text-[#050505] border-2 border-[#050505] rounded-full py-[0.3rem] px-[0.6rem] text-[0.85rem] font-extrabold cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] hover:bg-[#f47a4a] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_#050505] max-[768px]:text-[0.75rem] max-[768px]:py-1 max-[768px]:px-2 ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
 // Keyword Management Components
-const KeywordManagementSection = styled.div`
-  margin-bottom: 1rem;
-`;
+function KeywordManagementSection({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`mb-4 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const KeywordInputContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-`;
+function KeywordInputContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-2 mb-4 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const KeywordInput = styled.input`
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #050505;
+function KeywordInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      className={`flex-1 py-2 px-3 border-2 border-[#050505] rounded-[10px] text-[0.875rem] font-semibold text-[#050505] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
+function AddKeywordButton({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`py-2 px-[1.1rem] bg-[#f47a4a] text-[#050505] border-2 border-[#050505] rounded-full text-[0.875rem] font-extrabold cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const AddKeywordButton = styled.button`
-  padding: 0.5rem 1.1rem;
-  background: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+function KeywordsList({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+function KeywordChip({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex items-center gap-2 py-[0.375rem] px-3 bg-white text-[#050505] border-[1.5px] border-[#050505] rounded-full text-[0.875rem] font-bold ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:disabled {
-    opacity: 0.5;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-`;
+function RemoveKeywordButton({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`bg-transparent border-none text-[#d64545] cursor-pointer p-0 w-4 h-4 flex items-center justify-center rounded-full font-extrabold [transition:background_0.2s_ease] hover:bg-[rgba(214,69,69,0.15)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const KeywordsList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const KeywordChip = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
-
-const RemoveKeywordButton = styled.button`
-  background: none;
-  border: none;
-  color: #d64545;
-  cursor: pointer;
-  padding: 0;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-weight: 800;
-  transition: background 0.2s ease;
-
-  &:hover {
-    background: rgba(214, 69, 69, 0.15);
-  }
-`;
-
-const ArticleLink = styled.a`
-  color: #050505;
-  text-decoration: underline;
-  text-decoration-color: #f47a4a;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 2px;
-  font-weight: 800;
-
-  &:hover {
-    color: #f47a4a;
-  }
-`;
+function ArticleLink({ className = "", children, ...rest }: AnchorProps) {
+  return (
+    <a
+      className={`text-[#050505] underline decoration-[#f47a4a] decoration-2 underline-offset-2 font-extrabold hover:text-[#f47a4a] ${className}`}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}
 
 // Speaker Assignment Modal Components
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-`;
-
-const ModalContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  border: 3px solid #050505;
-  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-  text-align: center;
-`;
-
-const ModalSubtitle = styled.p`
-  color: rgba(5, 5, 5, 0.6);
-  margin: 0 0 2rem 0;
-  text-align: center;
-  font-size: 0.875rem;
-`;
-
-const ParticipantGrid = styled.div`
-  display: grid;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
-`;
-
-const ParticipantOption = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: white;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-  text-align: left;
-  width: 100%;
-
-  &:hover {
-    background: #faf8f4;
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 4px 4px 0 #f47a4a;
-  }
-`;
-
-const ParticipantInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-`;
-
-const ParticipantName = styled.div`
-  font-weight: 800;
-  color: #050505;
-  font-size: 1rem;
-`;
-
-const ParticipantRole = styled.div`
-  font-size: 0.75rem;
-  color: rgba(5, 5, 5, 0.6);
-  text-transform: uppercase;
-  font-weight: 700;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-`;
-
-const ModalButton = styled.button<{ $variant?: "primary" | "secondary" }>`
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.875rem;
-  cursor: pointer;
-  border: 2px solid #050505;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  ${(props) =>
-    props.$variant === "primary"
-      ? `
-    background: #f47a4a;
-    color: #050505;
-  `
-      : `
-    background: #ffffff;
-    color: #050505;
-  `}
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-    background: #f47a4a;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const ToggleButton = styled.button<{ $active: boolean }>`
-  padding: 0.5rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  cursor: pointer;
-  border: 2px solid #050505;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  ${props =>
-    props.$active
-      ? `
-    background: #f47a4a;
-    color: #050505;
-  `
-      : `
-    background: #ffffff;
-    color: #050505;
-  `}
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const RecordingControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const PauseResumeButton = styled.button<{ $isRecording: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.4rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-  color: ${(props) => (props.$isRecording ? "#ffffff" : "#050505")};
-  background: ${(props) => (props.$isRecording ? "#d64545" : "#f47a4a")};
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-`;
-
-const StopRecordingButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.4rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #b91c1c;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 800;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover:not(:disabled) {
-    background: #fff1f1;
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-    box-shadow: none;
-  }
-`;
-
-// Speaking Metrics styled components
-const MetricsContainer = styled.div`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  margin-bottom: 2rem;
-  overflow: hidden;
-`;
-
-const MetricsHeader = styled.div`
-  padding: 1rem 1.5rem;
-  background: #ffffff;
-  border-bottom: 2px solid #050505;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background: #faf8f4;
-  }
-`;
-
-const MetricsTitle = styled.h3`
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: #050505;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const MetricsToggle = styled.span<{ $isOpen: boolean }>`
-  font-size: 1.2rem;
-  color: rgba(5, 5, 5, 0.6);
-  transform: ${(props) => (props.$isOpen ? "rotate(180deg)" : "rotate(0deg)")};
-  transition: transform 0.2s ease;
-`;
-
-const MetricsContent = styled.div<{ $isVisible: boolean }>`
-  max-height: ${(props) => (props.$isVisible ? "600px" : "0")};
-  overflow: ${(props) => (props.$isVisible ? "auto" : "hidden")};
-  transition: max-height 0.3s ease;
-
-  /* Custom scrollbar styling for better UX */
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f3f3f1;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #050505;
-    border-radius: 4px;
-
-    &:hover {
-      background: #f47a4a;
-    }
-  }
-
-  /* Firefox scrollbar styling */
-  scrollbar-width: thin;
-  scrollbar-color: #050505 #f3f3f1;
-`;
-
-const MetricsGrid = styled.div`
-  padding: 1.5rem;
-  display: grid;
-  gap: 1.5rem;
-`;
-
-const SpeakerMetricsCard = styled.div`
-  background: white;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const SpeakerMetricsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #050505;
-`;
-
-const MetricsSpeakerName = styled.div`
-  font-weight: 800;
-  font-size: 1rem;
-  color: #050505;
-`;
-
-const MetricsRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const MetricItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-`;
-
-const MetricLabel = styled.span`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
-
-const MetricValue = styled.span`
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: #050505;
-`;
-
-const MetricUnit = styled.span`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.55);
-  margin-left: 0.25rem;
-`;
-
-// Qualitative Analysis styled components
-const QualitativeSection = styled.div`
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid #050505;
-`;
-
-const QualitativeSectionTitle = styled.h4`
-  font-size: 1rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const QualitativeGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-`;
-
-const QualitativeCard = styled.div`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const QualitativeHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-`;
-
-const QualitativeTitle = styled.h5`
-  font-size: 0.875rem;
-  font-weight: 800;
-  color: #050505;
-  margin: 0;
-`;
-
-const QualitativeLevel = styled.span<{ $level: string }>`
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  background: ${(props) => {
-    if (props.$level.includes("6+")) return "#059669";
-    if (props.$level.includes("5")) return "#0891b2";
-    if (props.$level.includes("4")) return "#7c3aed";
-    if (props.$level.includes("3")) return "#ea580c";
-    return "#dc2626";
-  }};
-  padding: 0.25rem 0.5rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-`;
-
-const QualitativeScore = styled.div`
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 0.5rem;
-`;
-
-const QualitativeDescription = styled.p`
-  font-size: 0.8rem;
-  color: rgba(5, 5, 5, 0.6);
-  line-height: 1.4;
-  margin: 0 0 0.75rem 0;
-`;
-
-const QualitativeDetails = styled.div`
-  font-size: 0.75rem;
-  color: rgba(5, 5, 5, 0.55);
-  line-height: 1.3;
-`;
-
-// Report Dialog styled components
-const ReportDialogOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-`;
-
-const ReportDialogContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  border: 3px solid #050505;
-  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const ReportDialogTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-  text-align: center;
-`;
-
-const ReportDialogContent = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  margin: 0 0 2rem 0;
-  text-align: center;
-  line-height: 1.6;
-`;
-
-const ReportDialogActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-`;
-
-const ReportDialogButton = styled.button<{
-  $variant?: "primary" | "secondary";
-}>`
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.875rem;
-  cursor: pointer;
-  border: 2px solid #050505;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  ${(props) =>
-    props.$variant === "primary"
-      ? `
-    background: #f47a4a;
-    color: #050505;
-    &:hover {
-      transform: translate(-1px, -1px);
-      box-shadow: 3px 3px 0 #050505;
-    }
-    &:disabled {
-      opacity: 0.5;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-  `
-      : `
-    background: #ffffff;
-    color: #050505;
-    &:hover {
-      background: #f47a4a;
-      transform: translate(-1px, -1px);
-      box-shadow: 3px 3px 0 #050505;
-    }
-  `}
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-// Report display styled components
-const ReportsSection = styled.div`
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background: #ffffff;
-  border-radius: 16px;
-  border: 3px solid #050505;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const ReportCard = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-
-  &:hover {
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-    transform: translate(-1px, -1px);
-  }
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const ReportHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-`;
-
-const ReportUserName = styled.h4`
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: #050505;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const ReportScore = styled.div<{ $score: number }>`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${(props) => {
-    if (props.$score >= 8) return "#10b981";
-    if (props.$score >= 6) return "#f59e0b";
-    return "#ef4444";
-  }};
-`;
-
-const ReportMetrics = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const ReportMetric = styled.div`
-  text-align: center;
-`;
-
-const ReportMetricValue = styled.div`
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #050505;
-`;
-
-const ReportMetricLabel = styled.div`
-  font-size: 0.75rem;
-  color: rgba(5, 5, 5, 0.6);
-  text-transform: uppercase;
-  font-weight: 700;
-`;
-
-const ReportPreview = styled.div`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-  line-height: 1.5;
-`;
-
-// Detailed report modal styled components
-const DetailedReportModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 1rem;
-`;
-
-const DetailedReportContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  border: 3px solid #050505;
-  box-shadow: 8px 8px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const DetailedReportTitle = styled.h2`
-  font-size: 1.75rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 2rem 0;
-  text-align: center;
-`;
-
-const ScoreGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-`;
-
-const ScoreCard = styled.div`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  padding: 1rem;
-  text-align: center;
-`;
-
-const ScoreTitle = styled.h4`
-  font-size: 0.875rem;
-  font-weight: 800;
-  color: rgba(5, 5, 5, 0.6);
-  margin: 0 0 0.5rem 0;
-  text-transform: uppercase;
-`;
-
-const ScoreValue = styled.div<{ $score: number }>`
-  font-size: 2rem;
-  font-weight: 700;
-  color: ${(props) => {
-    if (props.$score >= 8) return "#10b981";
-    if (props.$score >= 6) return "#f59e0b";
-    return "#ef4444";
-  }};
-  margin-bottom: 0.5rem;
-`;
-
-const ScoreFeedback = styled.p`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-  margin: 0;
-  line-height: 1.4;
-`;
-
-const FeedbackSection = styled.div`
-  margin-bottom: 2rem;
-`;
-
-const FeedbackTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-`;
-
-const FeedbackList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-`;
-
-const FeedbackItem = styled.li`
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1.5px solid #050505;
-  border-left: 5px solid #f47a4a;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: rgba(5, 5, 5, 0.72);
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const TranscriptSection = styled.div`
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid #050505;
-`;
-
-const TranscriptTitle = styled.h3`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-
-  svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-`;
-
-const TranscriptText = styled.div`
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 1rem;
-  font-family: "Courier New", monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: rgba(5, 5, 5, 0.72);
-  max-height: 200px;
-  overflow-y: auto;
-  border: 2px solid #050505;
-`;
+function ModalOverlay({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-[1000] p-4 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ModalContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white rounded-[16px] p-8 max-w-[500px] w-full max-h-[80vh] overflow-y-auto border-[3px] border-[#050505] shadow-[8px_8px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ModalTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3 className={`text-[1.25rem] font-black text-[#050505] m-0 mb-4 text-center ${className}`} {...rest}>
+      {children}
+    </h3>
+  );
+}
+
+function ModalSubtitle({ className = "", children, ...rest }: ParagraphProps) {
+  return (
+    <p className={`text-[rgba(5,5,5,0.6)] m-0 mb-8 text-center text-[0.875rem] ${className}`} {...rest}>
+      {children}
+    </p>
+  );
+}
+
+function ParticipantGrid({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`grid gap-3 mb-8 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ParticipantOption({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`flex items-center gap-4 p-4 border-2 border-[#050505] rounded-[12px] bg-white cursor-pointer shadow-[3px_3px_0_rgba(5,5,5,0.9)] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] text-left w-full hover:bg-[#faf8f4] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)] focus:outline-none focus:shadow-[4px_4px_0_#f47a4a] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ParticipantInfo({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-1 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ParticipantName({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`font-extrabold text-[#050505] text-[1rem] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ParticipantRole({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[0.75rem] text-[rgba(5,5,5,0.6)] uppercase font-bold ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ModalActions({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-3 justify-end ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ModalButton({
+  $variant,
+  className = "",
+  children,
+  ...rest
+}: { $variant?: "primary" | "secondary" } & ButtonProps) {
+  return (
+    <button
+      className={`py-3 px-6 rounded-full font-extrabold text-[0.875rem] cursor-pointer border-2 border-[#050505] shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] ${
+        $variant === "primary" ? "bg-[#f47a4a]" : "bg-white"
+      } text-[#050505] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] hover:bg-[#f47a4a] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToggleButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`py-2 px-[0.9rem] rounded-full text-[0.8rem] font-extrabold cursor-pointer border-2 border-[#050505] shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] ${
+        $active ? "bg-[#f47a4a]" : "bg-white"
+      } text-[#050505] hover:bg-[#f47a4a] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RecordingControls({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function PauseResumeButton({
+  $isRecording,
+  className = "",
+  children,
+  ...rest
+}: { $isRecording: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`flex items-center gap-2 py-[0.7rem] px-[1.4rem] border-2 border-[#050505] rounded-full text-[0.875rem] font-extrabold cursor-pointer shadow-[3px_3px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] ${
+        $isRecording ? "text-white bg-[#d64545]" : "text-[#050505] bg-[#f47a4a]"
+      } hover:enabled:-translate-x-px hover:enabled:-translate-y-px hover:enabled:shadow-[4px_4px_0_#050505] disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StopRecordingButton({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`flex items-center gap-2 py-[0.7rem] px-[1.4rem] border-2 border-[#050505] rounded-full bg-white text-[#b91c1c] cursor-pointer text-[0.875rem] font-extrabold shadow-[3px_3px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] hover:enabled:bg-[#fff1f1] hover:enabled:-translate-x-px hover:enabled:-translate-y-px hover:enabled:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.55] disabled:shadow-none ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Report Dialog components
+function ReportDialogOverlay({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-[1000] p-4 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReportDialogContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white rounded-[16px] p-8 max-w-[500px] w-full max-h-[80vh] overflow-y-auto border-[3px] border-[#050505] shadow-[8px_8px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReportDialogTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3 className={`text-[1.5rem] font-black text-[#050505] m-0 mb-4 text-center ${className}`} {...rest}>
+      {children}
+    </h3>
+  );
+}
+
+function ReportDialogContent({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[rgba(5,5,5,0.6)] m-0 mb-8 text-center leading-[1.6] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportDialogActions({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-3 justify-end ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportDialogButton({
+  $variant,
+  className = "",
+  children,
+  ...rest
+}: { $variant?: "primary" | "secondary" } & ButtonProps) {
+  const variantClasses =
+    $variant === "primary"
+      ? "bg-[#f47a4a] text-[#050505] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
+      : "bg-white text-[#050505] hover:bg-[#f47a4a] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505]";
+  return (
+    <button
+      className={`py-3 px-6 rounded-full font-extrabold text-[0.875rem] cursor-pointer border-2 border-[#050505] shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] flex items-center gap-2 ${variantClasses} focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Report display components
+function ReportsSection({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`my-8 mx-0 p-6 bg-white rounded-[16px] border-[3px] border-[#050505] shadow-[6px_6px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReportCard({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white rounded-[12px] p-6 mb-4 border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)] cursor-pointer [transition:transform_0.16s_ease,box-shadow_0.16s_ease] hover:shadow-[5px_5px_0_rgba(5,5,5,0.9)] hover:-translate-x-px hover:-translate-y-px last:mb-0 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReportHeader({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex justify-between items-center mb-4 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportUserName({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h4
+      className={`text-[1.125rem] font-extrabold text-[#050505] m-0 flex items-center gap-2 ${className}`}
+      {...rest}
+    >
+      {children}
+    </h4>
+  );
+}
+
+function ReportScore({
+  $score,
+  className = "",
+  children,
+  ...rest
+}: { $score: number } & DivProps) {
+  return (
+    <div className={`text-[1.5rem] font-bold ${scoreColorClass($score)} ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportMetrics({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-4 mb-4 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReportMetric({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-center ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportMetricValue({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[1.25rem] font-extrabold text-[#050505] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportMetricLabel({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[0.75rem] text-[rgba(5,5,5,0.6)] uppercase font-bold ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ReportPreview({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[0.875rem] text-[rgba(5,5,5,0.6)] leading-[1.5] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+// Detailed report modal components
+function DetailedReportModal({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-[1100] p-4 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DetailedReportContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white rounded-[16px] p-8 max-w-[800px] w-full max-h-[90vh] overflow-y-auto border-[3px] border-[#050505] shadow-[8px_8px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DetailedReportTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h2 className={`text-[1.75rem] font-black text-[#050505] m-0 mb-8 text-center ${className}`} {...rest}>
+      {children}
+    </h2>
+  );
+}
+
+function ScoreGrid({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-8 ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ScoreCard({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white border-2 border-[#050505] rounded-[12px] shadow-[3px_3px_0_rgba(5,5,5,0.9)] p-4 text-center ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ScoreTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h4
+      className={`text-[0.875rem] font-extrabold text-[rgba(5,5,5,0.6)] m-0 mb-2 uppercase ${className}`}
+      {...rest}
+    >
+      {children}
+    </h4>
+  );
+}
+
+function ScoreValue({
+  $score,
+  className = "",
+  children,
+  ...rest
+}: { $score: number } & DivProps) {
+  return (
+    <div className={`text-[2rem] font-bold ${scoreColorClass($score)} mb-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function ScoreFeedback({ className = "", children, ...rest }: ParagraphProps) {
+  return (
+    <p className={`text-[0.875rem] text-[rgba(5,5,5,0.6)] m-0 leading-[1.4] ${className}`} {...rest}>
+      {children}
+    </p>
+  );
+}
+
+function FeedbackSection({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`mb-8 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function FeedbackTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3 className={`text-[1.25rem] font-black text-[#050505] m-0 mb-4 ${className}`} {...rest}>
+      {children}
+    </h3>
+  );
+}
+
+function FeedbackList({ className = "", children, ...rest }: UlProps) {
+  return (
+    <ul className={`list-none p-0 m-0 ${className}`} {...rest}>
+      {children}
+    </ul>
+  );
+}
+
+function FeedbackItem({ className = "", children, ...rest }: LiProps) {
+  return (
+    <li
+      className={`p-3 mb-2 bg-white rounded-[10px] border-[1.5px] border-[#050505] border-l-[5px] border-l-[#f47a4a] text-[0.875rem] leading-[1.5] text-[rgba(5,5,5,0.72)] last:mb-0 ${className}`}
+      {...rest}
+    >
+      {children}
+    </li>
+  );
+}
+
+function TranscriptSection({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`mt-8 pt-8 border-t-2 border-[#050505] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function TranscriptTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3
+      className={`inline-flex items-center gap-2 text-[1.25rem] font-black text-[#050505] m-0 mb-4 [&_svg]:w-5 [&_svg]:h-5 ${className}`}
+      {...rest}
+    >
+      {children}
+    </h3>
+  );
+}
+
+function TranscriptText({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`bg-white rounded-[10px] p-4 [font-family:'Courier_New',monospace] text-[0.875rem] leading-[1.6] text-[rgba(5,5,5,0.72)] max-h-[200px] overflow-y-auto border-2 border-[#050505] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
 // Icon components
 const RecordIcon = () => (

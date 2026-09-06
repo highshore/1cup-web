@@ -1,6 +1,6 @@
 "use client";
 
-import { styled, keyframes } from "styled-components";
+import "./profile.css";
 import { supabase, invokeFunction } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useState, useEffect, useCallback } from "react";
@@ -10,7 +10,6 @@ import { ko } from "date-fns/locale/ko";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { saveFeedback } from "../lib/services/feedback_service";
-import { appLayout } from "../lib/constants/app_layout";
 import {
   getParticipationCreditBalance,
   getParticipationCreditHistory,
@@ -37,524 +36,152 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-// Updated Wrapper to use full width and follow layout guidelines
-const Wrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  gap: 0;
-  padding: 0;
-  max-width: none;
-  margin: 0 auto;
-`;
+type DivProps = React.HTMLAttributes<HTMLDivElement>;
+type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 // Transparent bordered card
-const TransparentCard = styled.div`
-  background-color: transparent;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  padding: 20px;
-  width: 100%;
-  margin-bottom: 20px;
-  font-family: inherit; /* Ensure consistent font */
-`;
+const transparentCardClass =
+  "mb-5 w-full rounded-[20px] border border-[#ddd] bg-transparent p-5";
 
-// Responsive wrapper for main sections
-const MainSectionsWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
+// Avatar upload frame (sizes are added per usage)
+const avatarUploadClass =
+  "relative flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-black after:absolute after:bottom-0 after:left-0 after:right-0 after:bg-[rgba(0,0,0,0.5)] after:py-1 after:text-center after:text-[12px] after:text-white after:content-none hover:after:content-['변경'] [&_svg]:w-[50px]";
 
-  @media (min-width: 768px) {
-    flex-direction: row;
-    gap: 20px;
+function SectionTitle({
+  className = "",
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3
+      className={`mb-5 flex w-full items-center justify-between border-b border-[#ddd] pb-[15px] text-[18px] font-semibold text-[#333] ${className}`}
+      {...rest}
+    >
+      {children}
+    </h3>
+  );
+}
 
-    > * {
-      flex: 1;
-    }
-  }
-`;
+function SectionContent({ children, ...rest }: DivProps) {
+  return (
+    <div className="w-full pt-2.5" {...rest}>
+      {children}
+    </div>
+  );
+}
 
-// User Info section with avatar on right
-const UserInfoSection = styled(TransparentCard)`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-`;
+function InfoRow({ children }: { children: React.ReactNode }) {
+  return <div className="mb-3 flex items-center text-[16px]">{children}</div>;
+}
 
-const UserInfoContent = styled.div`
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-`;
+function InfoLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mb-1 inline-block w-20 text-left text-[0.9rem] text-[#666]">
+      {children}
+    </span>
+  );
+}
 
-const UserDetails = styled.div`
-  flex: 1;
-`;
+function InfoValue({ children }: { children: React.ReactNode }) {
+  return <span className="mb-2 text-[0.9rem] font-medium">{children}</span>;
+}
 
-const UserAvatarSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-left: 20px;
-`;
-
-const AvatarActions = styled.div`
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-`;
-
-const AvatarActionButton = styled.div`
-  font-size: 12px;
-  color: #777;
-  cursor: pointer;
-  transition: color 0.2s;
-
-  &:hover {
-    color: #2c1810;
-    text-decoration: underline;
-  }
-`;
-
-const InfoLabel = styled.span`
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.25rem;
-  width: 80px;
-  display: inline-block;
-  text-align: left;
-`;
-
-const InfoValue = styled.span`
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  font-family: inherit; /* Ensure consistent font */
-`;
-
-const InfoValueWithIcon = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #f8f9fa;
-  }
-
-  .username-text {
-    font-size: 0.9rem;
-    font-weight: 500;
-    font-family: inherit;
-  }
-`;
-
-const PencilIcon = styled.svg`
-  width: 14px;
-  height: 14px;
-  color: #666;
-  transition: color 0.2s ease;
-
-  ${InfoValueWithIcon}:hover & {
-    color: #2c1810;
-  }
-`;
-
-const InfoRow = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 16px;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #333;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 15px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const SectionContent = styled.div`
-  padding-top: 10px;
-  width: 100%;
-`;
-
-const AvatarUpload = styled.label`
-  width: 80px;
-  height: 80px;
-  overflow: hidden;
-  border-radius: 50%;
-  background-color: #000;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-
-  &:hover::after {
-    content: "변경";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    font-size: 12px;
-    text-align: center;
-    padding: 4px 0;
-  }
-
-  svg {
-    width: 50px;
-  }
-`;
-
-const AvatarImg = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const AvatarInput = styled.input`
-  display: none;
-`;
-
-const NameInput = styled.input`
-  font-size: 16px;
-  font-weight: 500;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  width: 200px;
-  outline: none;
-
-  &:focus {
-    border-color: #4caf50;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-  }
-`;
-
-const NameEditContainer = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-`;
-
-const CheckmarkIcon = styled.span`
-  position: absolute;
-  right: 10px;
-  color: #4caf50;
-  font-size: 18px;
-  cursor: pointer;
-`;
+function AvatarImg(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+  return <img className="h-full w-full object-cover" {...props} />;
+}
 
 // Subscription styles
-const StatusBadge = styled.span.withConfig({
-  shouldForwardProp: (prop) => prop !== "active",
-})<{ active?: boolean }>`
-  display: inline-block;
-  background-color: ${(props) => (props.active ? "#00a000" : "#808080")};
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-left: 10px;
-`;
+function StatusBadge({
+  active,
+  children,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`ml-2.5 inline-block rounded-[20px] px-4 py-2 text-[1rem] font-semibold text-white ${
+        active ? "bg-[#00a000]" : "bg-[#808080]"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
 
-const Button = styled.button`
-  background-color: #2c1810;
-  color: white;
-  font-weight: 600;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 20px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+const buttonSharedClass =
+  "cursor-pointer rounded-[20px] border-none px-6 py-3.5 text-[1rem] font-semibold text-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-all duration-200 ease-[ease] hover:-translate-y-[2px] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] disabled:cursor-not-allowed disabled:translate-none disabled:shadow-none disabled:bg-[#a0b0e0]";
 
-  &:hover {
-    background-color: #3a66e5;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
+function Button({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${buttonSharedClass} bg-primary hover:bg-[#3a66e5] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  &:disabled {
-    background-color: #a0b0e0;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-`;
+function DangerButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${buttonSharedClass} bg-[#e74c3c] hover:bg-[#c0392b] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const DangerButton = styled(Button)`
-  background-color: #e74c3c;
-  &:hover {
-    background-color: #c0392b;
-  }
-`;
+function CancelButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${buttonSharedClass} bg-[#757575] hover:bg-[#616161] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const ConfirmationOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
+function SubscribeAgainButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${buttonSharedClass} w-full bg-primary hover:bg-[#4a2d1d] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const ConfirmationDialog = styled.div`
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-`;
+function ConfirmationOverlay({ children, ...rest }: DivProps) {
+  return (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.5)]"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  justify-content: flex-end;
-`;
+function ButtonGroup({ children, ...rest }: DivProps) {
+  return (
+    <div className="mt-6 flex justify-end gap-4" {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const CancelButton = styled(Button)`
-  background-color: #757575;
-
-  &:hover {
-    background-color: #616161;
-  }
-`;
-
-const LogoutButton = styled.button`
-  background-color: #d73a49;
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-top: 10px;
-  width: auto;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    background-color: #c92532;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-// Enhanced article list styles
-const ArticlesList = styled.div`
-  margin: -10px 0;
-  max-height: 300px;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(44, 24, 16, 0.5) transparent;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: rgba(44, 24, 16, 0.3);
-    border-radius: 6px;
-  }
-`;
-
-const ArticleItem = styled.div`
-  padding: 12px;
-  border-radius: 6px;
-  background-color: transparent;
-  border: 1px solid #eee;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  }
-`;
-
-const ArticleTitle = styled.div`
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 5px;
-`;
-
-const ArticleDate = styled.div`
-  font-size: 12px;
-  color: #777;
-`;
-
-const WordItem = styled.div`
-  padding: 8px 12px;
-  margin: 6px 0;
-  border-radius: 4px;
-  background-color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  }
-`;
-
-const WordsList = styled.div`
-  max-height: 200px;
-  overflow-y: auto;
-  margin-top: 15px;
-`;
-
-const alertSlideIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
+const alertDismissClass =
+  "shrink-0 cursor-pointer border-0 bg-transparent p-0 text-inherit opacity-55 hover:opacity-100 [&_svg]:h-[18px] [&_svg]:w-[18px]";
 
 /* The subscription controls sit in the 4th of 5 sections, so an alert in normal
    flow at the top of the shell lands off-screen for the person who triggered it.
-   Pin the alerts to the viewport instead, above ConfirmationOverlay (z-index 1000)
+   Pin the alerts to the viewport instead, above the confirmation overlay (z-index 1000)
    so failures raised while a dialog is still open stay readable. */
-const AlertLayer = styled.div`
-  position: fixed;
-  top: 86px;
-  left: 0;
-  right: 0;
-  z-index: 1100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 1.25rem;
-  pointer-events: none;
+const alertLayerClass =
+  "pointer-events-none fixed left-0 right-0 top-[86px] z-[1100] flex flex-col items-center gap-2 px-5 max-[768px]:top-20 max-[768px]:px-4";
 
-  @media (max-width: 768px) {
-    top: 80px;
-    padding: 0 1rem;
-  }
-`;
+const alertCardClass =
+  "pointer-events-auto flex w-full max-w-[560px] items-start gap-3 rounded-[14px] border-2 border-[#050505] px-4 py-[0.85rem] shadow-[3px_3px_0_rgba(5,5,5,0.9)] animate-[profile-alert-slide-in_200ms_ease-out]";
 
-const AlertCard = styled.div<{ $type: "error" | "success" }>`
-  pointer-events: auto;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  width: 100%;
-  max-width: 560px;
-  padding: 0.85rem 1rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  background-color: ${(props) =>
-    props.$type === "success" ? "#e8f5e9" : "#ffebee"};
-  animation: ${alertSlideIn} 200ms ease-out;
-
-  p {
-    flex: 1;
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    line-height: 1.5;
-    text-align: left;
-    color: ${(props) => (props.$type === "success" ? "#1b5e20" : "#b71c1c")};
-  }
-`;
-
-const AlertDismiss = styled.button`
-  flex-shrink: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  opacity: 0.55;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  &:hover {
-    opacity: 1;
-  }
-`;
-
-// Define SubscriptionInfo section
-const SubscriptionInfo = styled(TransparentCard)``;
-
-const SubscribeAgainButton = styled(Button)`
-  background-color: #2c1810;
-  width: 100%;
-  &:hover {
-    background-color: #4a2d1d;
-  }
-`;
-
-// New style for the cancel subscription link
-const CancelLinkButton = styled.button`
-  background-color: transparent;
-  color: #808080; // Muted gray color
-  padding: 0.5rem; // Minimal padding
-  border: none;
-  border-radius: 4px; // Slight rounding
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.2s;
-
-  &:hover {
-    color: #c0392b; // Subtle danger color on hover
-    text-decoration: underline;
-  }
-
-  &:disabled {
-    color: #bdbdbd; // Disabled color
-    cursor: not-allowed;
-    text-decoration: none;
-  }
-`;
+const alertTextClass =
+  "m-0 flex-1 text-left text-[0.9rem] font-semibold leading-[1.5]";
 
 // Define subscription status type
 type SubscriptionStatus = "active" | "canceled" | "pending" | "unknown";
@@ -649,1969 +276,203 @@ const refundReasons = [
   "모임 분위기나 멤버 구성과 잘 맞지 않았어요",
 ];
 
-// Add new styled components for the updated cancellation flow
-const CancellationOptionsDialog = styled.div`
-  background: white;
-  padding: 2.5rem;
-  border-radius: 20px;
-  max-width: 480px;
-  width: 90%;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-`;
-
-const OptionButton = styled.button`
-  width: 100%;
-  padding: 1.25rem 1.5rem;
-  margin: 0.75rem 0;
-  border: 1px solid #e8eaed;
-  border-radius: 12px;
-  background: #fafbfc;
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: left;
-  position: relative;
-
-  &:hover {
-    border-color: #2c1810;
-    background: #f8f9fa;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(44, 24, 16, 0.1);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  .option-title {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.4rem;
-    color: #1f2937;
-    font-size: 1rem;
-  }
-
-  .option-description {
-    display: block;
-    font-size: 0.85rem;
-    color: #6b7280;
-    line-height: 1.5;
-    font-weight: 400;
-  }
-`;
-
-const RefundOptionButton = styled(OptionButton)`
-  border-color: #f3f4f6;
-  background: #f9fafb;
-
-  &:hover {
-    border-color: #d1d5db;
-    background: #f3f4f6;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .option-title {
-    color: #6b7280;
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-
-  .option-description {
-    color: #9ca3af;
-    font-size: 0.8rem;
-  }
-`;
-
 // Survey Dialog Components
-const SurveyDialog = styled.div`
-  background: white;
-  padding: 2.5rem;
-  border-radius: 20px;
-  max-width: 520px;
-  width: 90%;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const SurveyQuestion = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-`;
-
-const SurveyOptions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-`;
-
-const SurveyOption = styled.label`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  font-size: 0.9rem;
-  line-height: 1.4;
-
-  &:hover {
-    background-color: #f8f9fa;
-  }
-
-  input[type="checkbox"] {
-    margin: 0;
-    transform: scale(1.1);
-  }
-`;
-
-const OtherReasonInput = styled.textarea`
-  width: 100%;
-  min-height: 80px;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  resize: vertical;
-  font-family: inherit;
-  margin-top: 0.5rem;
-
-  &:focus {
-    outline: none;
-    border-color: #2c1810;
-    box-shadow: 0 0 0 3px rgba(44, 24, 16, 0.1);
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-`;
-
-const SurveyButtonGroup = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-`;
-
-const SurveySubmitButton = styled.button`
-  background-color: #2c1810;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: #4a2d1d;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    background-color: #9ca3af;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const SurveyCancelButton = styled.button`
-  background-color: #f3f4f6;
-  color: #6b7280;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #e5e7eb;
-    color: #374151;
-  }
-`;
-
-const ProfilePageShell = styled.div`
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem 1.5rem 3rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem 1rem 2rem;
-  }
-`;
-
-const ProfileTopCard = styled.section`
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
-  gap: 1.25rem;
-  align-items: stretch;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: clamp(1.2rem, 4vw, 2rem);
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    border-radius: 20px;
-  }
-`;
-
-const IdentityBlock = styled.div`
-  display: flex;
-  gap: 1.2rem;
-  align-items: center;
-
-  @media (max-width: 560px) {
-    flex-direction: column;
-    text-align: center;
-  }
-`;
-
-const ModernAvatarWrap = styled.div`
-  position: relative;
-  flex: 0 0 auto;
-`;
-
-const ModernAvatarUpload = styled(AvatarUpload)`
-  width: 132px;
-  height: 132px;
-  border: 0;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
-
-  @media (max-width: 560px) {
-    width: 118px;
-    height: 118px;
-  }
-`;
-
-const VerifiedBadge = styled.span`
-  position: absolute;
-  right: -2px;
-  bottom: 8px;
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid #ffffff;
-  border-radius: 999px;
-  background: #0f172a;
-  color: #ffffff;
-
-  svg {
-    width: 21px;
-    height: 21px;
-  }
-`;
-
-const IdentityText = styled.div`
-  min-width: 0;
-`;
-
-const ProfileName = styled.h1`
-  margin: 0;
-  color: #111827;
-  font-size: clamp(2.1rem, 6vw, 3.5rem);
-  font-weight: 760;
-  line-height: 1.05;
-  letter-spacing: 0;
-`;
-
-const ProfileSubline = styled.p`
-  margin: 0.75rem 0 0;
-  color: #6b7280;
-  font-size: 1rem;
-  line-height: 1.5;
-`;
-
-const BadgeRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.9rem;
-
-  @media (max-width: 560px) {
-    justify-content: center;
-  }
-`;
-
-const PillBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  background: #f8fafc;
-  color: #334155;
-  padding: 0.4rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 800;
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
-
-const HeroStatGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-`;
-
-const HeroStat = styled.div`
-  border-top: 1px solid #e5e7eb;
-  padding-top: 0.9rem;
-`;
-
-const HeroStatValue = styled.div`
-  color: #111827;
-  font-size: clamp(1.7rem, 6vw, 2.45rem);
-  font-weight: 820;
-  line-height: 1;
-`;
-
-const HeroStatLabel = styled.div`
-  margin-top: 0.35rem;
-  color: #475569;
-  font-size: 0.9rem;
-  font-weight: 700;
-`;
-
-const TileGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const InsightTile = styled.section`
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 1.1rem;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
-`;
-
-const TileHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
-`;
-
-const TileTitle = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0;
-  color: #111827;
-  font-size: 1rem;
-  font-weight: 800;
-
-  svg {
-    width: 19px;
-    height: 19px;
-  }
-`;
-
-const TextButton = styled.button`
-  border: 0;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #0f172a;
-  padding: 0.42rem 0.7rem;
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
-  cursor: pointer;
-`;
-
-const DetailList = styled.div`
-  display: grid;
-  gap: 0.72rem;
-`;
-
-const DetailItem = styled.div`
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 0.55rem;
-  align-items: start;
-  color: #1f2937;
-  font-size: 0.94rem;
-  line-height: 1.45;
-
-  svg {
-    width: 21px;
-    height: 21px;
-    color: #475569;
-  }
-`;
-
-const EditGrid = styled.div`
-  display: grid;
-  gap: 0.7rem;
-`;
-
-const EditInput = styled.input`
-  width: 100%;
-  border: 1px solid #dddddd;
-  border-radius: 12px;
-  padding: 0.75rem 0.9rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #222222;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-
-  &:focus {
-    border-color: #222222;
-  }
-`;
-
-const EditTextArea = styled.textarea`
-  width: 100%;
-  min-height: 84px;
-  border: 1px solid #dddddd;
-  border-radius: 12px;
-  padding: 0.75rem 0.9rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #222222;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-
-  &:focus {
-    border-color: #222222;
-  }
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-`;
-
-const PrimaryAction = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: #222222;
-  color: #ffffff;
-  padding: 0.7rem 1.25rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #444444;
-  }
-
-  &:disabled {
-    background: #b0b0b0;
-    cursor: not-allowed;
-  }
-`;
-
-const SecondaryAction = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #dddddd;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #222222;
-  padding: 0.7rem 1.25rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #f7f7f5;
-  }
-`;
-
-const MetricLine = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 0.72rem;
-  color: #475569;
-  font-size: 0.9rem;
-
-  strong {
-    color: #111827;
-    font-size: 1.15rem;
-  }
-`;
-
-const ProfileRouteShell = styled.main`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 1.5rem ${appLayout.pageGutterDesktop} 3rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem ${appLayout.pageGutterMobile} 2.25rem;
-  }
-`;
-
-const ProfileHeader = styled.header`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: clamp(1rem, 4vw, 1.5rem);
-`;
-
-const ProfileHeading = styled.h1`
-  margin: 0;
-  color: #111111;
-  font-size: clamp(2.45rem, 8vw, 4.1rem);
-  font-weight: 760;
-  line-height: 0.98;
-  letter-spacing: 0;
-`;
-
-const IconCircleButton = styled.button`
-  width: 48px;
-  height: 48px;
-  border: 0;
-  border-radius: 999px;
-  background: #f1f1f1;
-  color: #1f1f1f;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-
-  svg {
-    width: 25px;
-    height: 25px;
-  }
-`;
-
-const ProfileStack = styled.div`
-  display: grid;
-  gap: 1rem;
-`;
-
-const ProfileHeroPanel = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 24px;
-  background: #ffffff;
-  padding: 2rem;
-
-  @media (max-width: 640px) {
-    padding: 1.25rem;
-    border-radius: 20px;
-  }
-`;
-
-const ProfileIdentity = styled.div`
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
-
-  @media (max-width: 560px) {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-`;
-
-const ProfileAvatarFrame = styled.div`
-  position: relative;
-  width: fit-content;
-`;
-
-const LargeAvatarUpload = styled(AvatarUpload)`
-  width: 112px;
-  height: 112px;
-  border: 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
-  flex: 0 0 auto;
-`;
-
-const ProfileVerifiedBadge = styled.span`
-  position: absolute;
-  right: -2px;
-  bottom: 10px;
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid #ffffff;
-  border-radius: 999px;
-  background: #111111;
-  color: #ffffff;
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-`;
-
-const AvatarEditButton = styled.button`
-  position: absolute;
-  right: 0;
-  bottom: 6px;
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid #ffffff;
-  border-radius: 999px;
-  background: #222222;
-  color: #ffffff;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #444444;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const AvatarDeleteButton = styled.button`
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: rgba(34, 34, 34, 0.75);
-  color: #ffffff;
-  cursor: pointer;
-
-  svg {
-    width: 13px;
-    height: 13px;
-  }
-`;
-
-const ProfileNameBlock = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const ProfileDisplayName = styled.h2`
-  margin: 0;
-  color: #222222;
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-`;
-
-const ProfileNameRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  @media (max-width: 560px) {
-    justify-content: center;
-  }
-`;
-
-const NameIconButton = styled.button`
-  display: inline-flex;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #dddddd;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #717171;
-  cursor: pointer;
-  transition: border-color 0.15s;
-
-  &:hover {
-    border-color: #222222;
-    color: #222222;
-  }
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
-
-const ProfileMetaLine = styled.p`
-  margin: 0.35rem 0 0;
-  color: #717171;
-  font-size: 0.875rem;
-  line-height: 1.4;
-`;
-
-const ProfileBadgeStrip = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-
-  @media (max-width: 560px) {
-    justify-content: center;
-  }
-`;
-
-const ProfileChip = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #dddddd;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #222222;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-
-  svg {
-    width: 15px;
-    height: 15px;
-    color: #717171;
-    flex: 0 0 auto;
-  }
-`;
-
-const GdgChip = styled(ProfileChip)`
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: inset 0 -2px 0 #fbbc04;
-
-  &::before {
-    content: "";
-    width: 15px;
-    height: 15px;
-    border-radius: 999px;
-    flex: 0 0 auto;
-    background: conic-gradient(
-      #4285f4 0 25%,
-      #34a853 0 50%,
-      #fbbc04 0 75%,
-      #ea4335 0 100%
-    );
-    box-shadow: inset 0 0 0 4px #ffffff;
-  }
-`;
-
-const SummaryActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
-
-  @media (max-width: 560px) {
-    justify-content: center;
-  }
-`;
-
-const SummaryActionButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border: 1px solid #222222;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #222222;
-  padding: 0.6rem 1.1rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #f7f7f5;
-  }
-
-  &:disabled {
-    border-color: #dddddd;
-    color: #717171;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
-
-const StatsStrip = styled.div`
-  display: flex;
-  border-top: 1px solid #eeeeec;
-  border-bottom: 1px solid #eeeeec;
-  margin: 1rem 0;
-
-  @media (max-width: 560px) {
-    justify-content: center;
-  }
-`;
-
-const StatCell = styled.div`
-  padding: 0.75rem 1.25rem;
-  min-width: 80px;
-
-  & + & {
-    border-left: 1px solid #dddddd;
-  }
-
-  &:first-child {
-    padding-left: 0;
-  }
-
-  @media (max-width: 560px) {
-    padding: 0.65rem 1rem;
-    text-align: center;
-
-    &:first-child {
-      padding-left: 1rem;
-    }
-  }
-`;
-
-const StatValue = styled.div`
-  color: #222222;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.2;
-`;
-
-const StatLabel = styled.div`
-  color: #717171;
-  font-size: 0.72rem;
-  margin-top: 0.2rem;
-  white-space: nowrap;
-`;
-
-const BadgeList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  margin-bottom: 0.25rem;
-
-  @media (max-width: 560px) {
-    align-items: center;
-  }
-`;
-
-const BadgeItem = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-
-  svg {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-    color: #717171;
-    margin-top: 1px;
-  }
-`;
-
-const BadgeItemText = styled.div``;
-
-const BadgeItemTitle = styled.div`
-  color: #222222;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.3;
-`;
-
-const BadgeItemSub = styled.div`
-  color: #717171;
-  font-size: 0.78rem;
-  margin-top: 0.1rem;
-`;
-
-const SubscriptionRail = styled.aside`
-  display: none;
-`;
-
-const HeroStatsRail = styled.div`
-  display: grid;
-  gap: 0;
-  border-left: 1px solid #e1e1df;
-  padding-left: clamp(1rem, 3vw, 1.5rem);
-
-  @media (max-width: 700px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-left: 0;
-    border-top: 1px solid #e1e1df;
-    padding-left: 0;
-    padding-top: 0.85rem;
-  }
-`;
-
-const HeroStatRow = styled.div`
-  padding: 0.78rem 0;
-  border-bottom: 1px solid #e1e1df;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  @media (max-width: 700px) {
-    padding: 0.4rem 0.25rem;
-    border-bottom: 0;
-    text-align: center;
-  }
-`;
-
-const HeroStatNumber = styled.div`
-  color: #202020;
-  font-size: clamp(1.55rem, 6vw, 2.25rem);
-  font-weight: 780;
-  line-height: 1;
-`;
-
-const HeroStatCaption = styled.div`
-  margin-top: 0.3rem;
-  color: #535353;
-  font-size: 0.88rem;
-  font-weight: 650;
-`;
-
-const ProfilePanel = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 24px;
-  background: #ffffff;
-  padding: 1.75rem 2rem;
-
-  @media (max-width: 640px) {
-    padding: 1.25rem;
-    border-radius: 20px;
-  }
-`;
-
-const ProfileSectionLabel = styled.h3`
-  margin: 0 0 0.6rem;
-  color: #717171;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-`;
-
-const ProfileBioText = styled.p`
-  margin: 0;
-  color: #222222;
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.65;
-`;
-
-const ProfileSubsection = styled.div`
-  margin-top: 1.5rem;
-`;
-
-const SubscriptionManagementPanel = styled(ProfilePanel)`
-  display: grid;
-  gap: 1rem;
-`;
-
-const SubscriptionDetailGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const SubscriptionDetailItem = styled.div`
-  border: 1px solid #eeeeec;
-  border-radius: 16px;
-  background: #f7f7f5;
-  padding: 0.9rem;
-
-  span {
-    display: block;
-    color: #717171;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  strong {
-    display: block;
-    margin-top: 0.35rem;
-    color: #222222;
-    font-size: 0.95rem;
-    font-weight: 700;
-  }
-`;
-
-const SubscriptionActionNote = styled.p`
-  margin: 0;
-  color: #717171;
-  font-size: 0.84rem;
-  line-height: 1.5;
-`;
-
-const ChipCloud = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const SoftChipBox = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  border-radius: 16px;
-  background: #f7f7f5;
-  padding: 0.85rem;
-`;
-
-const EditRowsPanel = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 24px;
-  background: #ffffff;
-  padding: 1.75rem 2rem;
-
-  @media (max-width: 640px) {
-    padding: 1.25rem;
-    border-radius: 20px;
-  }
-`;
-
-const EditSectionHeading = styled.h2`
-  margin: 0 0 0.25rem;
-  color: #222222;
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1.2;
-`;
-
-const EditSectionDescription = styled.p`
-  margin: 0 0 0.25rem;
-  color: #717171;
-  font-size: 0.875rem;
-  line-height: 1.5;
-`;
-
-const ProfileEditRow = styled.button`
-  width: 100%;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto 18px;
-  gap: 0.75rem;
-  align-items: center;
-  border: 0;
-  border-top: 1px solid #f0f0f0;
-  background: transparent;
-  padding: 0.9rem 0;
-  color: #222222;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: opacity 0.15s;
-
-  &:hover {
-    opacity: 0.7;
-  }
-
-  svg {
-    width: 20px;
-    height: 20px;
-    color: #717171;
-  }
-
-  span {
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  strong {
-    min-width: 0;
-    color: #717171;
-    font-size: 0.875rem;
-    font-weight: 400;
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 520px) {
-    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 0.8fr) 16px;
-  }
-`;
-
-const FloatingEditButton = styled.button`
-  width: 100%;
-  border: 1px solid #222222;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #222222;
-  padding: 0.9rem 1.25rem;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #f7f7f5;
-  }
-`;
-
-const ProfileFormPanel = styled.section`
-  border: 1px solid #dddddd;
-  border-radius: 24px;
-  background: #ffffff;
-  padding: 1.75rem 2rem;
-  display: grid;
-  gap: 0.75rem;
-
-  @media (max-width: 640px) {
-    padding: 1.25rem;
-    border-radius: 20px;
-  }
-`;
-
-const PublicPreviewDialog = styled(ConfirmationDialog)`
-  width: min(92vw, 500px);
-  max-height: min(86vh, 760px);
-  overflow: auto;
-  border-radius: 24px;
-  padding: 1.25rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
-`;
-
-const PreviewHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const PreviewTitle = styled.h2`
-  margin: 0;
-  color: #222222;
-  font-size: 1rem;
-  font-weight: 700;
-`;
-
-const PreviewCloseButton = styled.button`
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: #f7f7f5;
-  color: #222222;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #eeeeec;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const PublicPreviewCard = styled.div`
-  border: 1px solid #dddddd;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: 1.25rem;
-`;
-
-const PreviewIdentity = styled.div`
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-`;
-
-const PreviewAvatar = styled.img`
-  width: 80px;
-  height: 80px;
-  border-radius: 999px;
-  object-fit: cover;
-  background: #f7f7f5;
-  flex: 0 0 auto;
-`;
-
-const PreviewName = styled.h3`
-  margin: 0;
-  color: #222222;
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1.15;
-`;
-
-const PreviewMeta = styled.p`
-  margin: 0.35rem 0 0;
-  color: #717171;
-  font-size: 0.85rem;
-`;
-
-const PreviewBio = styled.p`
-  margin: 1rem 0 0;
-  color: #222222;
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.6;
-`;
+function SurveyDialog({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-h-[80vh] w-[90%] max-w-[520px] overflow-y-auto rounded-[20px] border border-[rgba(0,0,0,0.05)] bg-white p-10 shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
+      {children}
+    </div>
+  );
+}
+
+function SurveyQuestion({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-6 text-[1.1rem] font-semibold leading-[1.5] text-[#1f2937]">
+      {children}
+    </h3>
+  );
+}
+
+function SurveyOptions({ children }: { children: React.ReactNode }) {
+  return <div className="mb-6 flex flex-col gap-3">{children}</div>;
+}
+
+function SurveyOption({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg p-3 text-[0.9rem] leading-[1.4] transition-[background-color] duration-200 ease-[ease] hover:bg-gray-light [&_input]:m-0 [&_input]:scale-[1.1]">
+      {children}
+    </label>
+  );
+}
+
+function OtherReasonInput(
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+) {
+  return (
+    <textarea
+      className="mt-2 min-h-20 w-full resize-y rounded-lg border border-[#d1d5db] p-3 text-[0.9rem] placeholder:text-[#9ca3af] focus:border-primary focus:shadow-[0_0_0_3px_rgba(44,24,16,0.1)] focus:outline-none"
+      {...props}
+    />
+  );
+}
+
+function SurveyButtonGroup({ children }: { children: React.ReactNode }) {
+  return <div className="mt-8 flex justify-end gap-3">{children}</div>;
+}
+
+function SurveySubmitButton(props: BtnProps) {
+  return (
+    <button
+      className="cursor-pointer rounded-lg border-none bg-primary px-6 py-3 text-[0.9rem] font-medium text-white transition-all duration-200 ease-[ease] hover:enabled:-translate-y-px hover:enabled:bg-[#4a2d1d] disabled:cursor-not-allowed disabled:translate-none disabled:bg-[#9ca3af]"
+      {...props}
+    />
+  );
+}
+
+function SurveyCancelButton(props: BtnProps) {
+  return (
+    <button
+      className="cursor-pointer rounded-lg border-none bg-[#f3f4f6] px-6 py-3 text-[0.9rem] font-medium text-[#6b7280] transition-all duration-200 ease-[ease] hover:bg-[#e5e7eb] hover:text-[#374151]"
+      {...props}
+    />
+  );
+}
+
+function ProfileChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-[0.35rem] whitespace-nowrap rounded-full border border-[#ddd] bg-white px-3 py-[0.4rem] text-[0.85rem] font-medium leading-none text-[#222222] [&_svg]:h-[15px] [&_svg]:w-[15px] [&_svg]:flex-none [&_svg]:text-[#717171]">
+      {children}
+    </span>
+  );
+}
+
+function ProfileSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mx-0 mb-[0.6rem] mt-0 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#717171]">
+      {children}
+    </h3>
+  );
+}
+
+function ProfileSubsection({ children }: { children: React.ReactNode }) {
+  return <div className="mt-6">{children}</div>;
+}
+
+function ChipCloud({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap gap-2">{children}</div>;
+}
+
+function AvatarActionButton({ children, ...rest }: DivProps) {
+  return (
+    <div
+      className="cursor-pointer text-[12px] text-[#777] transition-[color] duration-200 ease-[ease] hover:text-primary hover:underline"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Neo-brutalist private profile layout                                */
 /* ------------------------------------------------------------------ */
 
-const NbPageBackground = styled.div`
-  width: 100%;
-  background: transparent;
-`;
+const nbCardClass =
+  "rounded-[14px] border-2 border-[#050505] bg-white px-[1.35rem] py-5 shadow-[3px_3px_0_rgba(5,5,5,0.9)] max-[600px]:p-[1.1rem]";
 
-const NbShell = styled.main`
-  width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 1.25rem 1.25rem 3.5rem;
-  display: grid;
-  gap: 0.85rem;
-  color: #050505;
+function NbManageTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mx-0 mb-[0.6rem] mt-0 text-[1rem] font-[900] tracking-[-0.01em] text-[#050505]">
+      {children}
+    </h2>
+  );
+}
 
-  @media (max-width: 600px) {
-    padding: 1rem 1rem 2.5rem;
-    gap: 0.75rem;
+function NbManageSub({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mx-0 mb-[1.1rem] mt-0 text-[0.88rem] leading-[1.5] text-[rgba(5,5,5,0.6)]">
+      {children}
+    </p>
+  );
+}
+
+const nbManageRowClass =
+  "grid w-full cursor-pointer grid-cols-[22px_minmax(0,1fr)_auto_18px] items-center gap-[0.7rem] border-0 border-t-[1.5px] border-t-[rgba(5,5,5,0.12)] bg-transparent px-0 py-[0.7rem] text-left text-[#050505] transition-opacity duration-[120ms] ease-[ease] first-of-type:border-t-0 hover:opacity-65 [&>svg:first-child]:h-[18px] [&>svg:first-child]:w-[18px] [&>svg:first-child]:text-[#050505] [&>svg:last-child]:h-[18px] [&>svg:last-child]:w-[18px] [&>svg:last-child]:text-[rgba(5,5,5,0.45)] [&_.nb-row-label]:text-[0.92rem] [&_.nb-row-label]:font-bold [&_.nb-row-value]:min-w-0 [&_.nb-row-value]:overflow-hidden [&_.nb-row-value]:text-ellipsis [&_.nb-row-value]:whitespace-nowrap [&_.nb-row-value]:text-right [&_.nb-row-value]:text-[0.85rem] [&_.nb-row-value]:font-semibold [&_.nb-row-value]:text-[rgba(5,5,5,0.55)]";
+
+function NbManageRow({
+  as,
+  children,
+  ...rest
+}: BtnProps & { as?: "div" }) {
+  if (as === "div") {
+    return <div className={nbManageRowClass}>{children}</div>;
   }
-`;
-
-const NbCard = styled.section`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  padding: 1.25rem 1.35rem;
-
-  @media (max-width: 600px) {
-    padding: 1.1rem;
-  }
-`;
-
-const NbProfileCard = styled(NbCard)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.6rem;
-`;
-
-const NbAvatarFrame = styled.div`
-  position: relative;
-  width: fit-content;
-`;
-
-const NbAvatarUpload = styled(AvatarUpload)`
-  width: 96px;
-  height: 96px;
-  border: 2px solid #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-
-  @media (max-width: 600px) {
-    width: 84px;
-    height: 84px;
-  }
-`;
-
-const NbAvatarEditButton = styled.button`
-  position: absolute;
-  right: -4px;
-  bottom: 0;
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.12s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const NbAvatarDeleteButton = styled.button`
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NbNameRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-`;
-
-const NbName = styled.h1`
-  margin: 0;
-  font-size: clamp(1.4rem, 4.5vw, 1.75rem);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: #050505;
-`;
-
-const NbPencilButton = styled.button`
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  transition: transform 0.12s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const NbMetaLine = styled.p`
-  margin: -0.15rem 0 0.1rem;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.8rem;
-  font-weight: 600;
-`;
-
-const NbStatsRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  width: 100%;
-  margin-top: 0.4rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  overflow: hidden;
-`;
-
-const NbStatCell = styled.div`
-  padding: 0.85rem 0.5rem;
-  text-align: center;
-
-  & + & {
-    border-left: 2px solid #050505;
-  }
-`;
-
-const NbStatValue = styled.div`
-  font-size: clamp(1.1rem, 4vw, 1.5rem);
-  font-weight: 900;
-  line-height: 1.05;
-  color: #050505;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const NbStatLabel = styled.div`
-  margin-top: 0.3rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(5, 5, 5, 0.55);
-`;
-
-const NbBadgeRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.45rem;
-`;
-
-const NbActiveBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.26rem 0.6rem;
-  font-size: 0.64rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NbRoleBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #050505;
-  color: #ffffff;
-  padding: 0.26rem 0.6rem;
-  font-size: 0.64rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NbPillRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
-  margin-top: 0.3rem;
-`;
-
-const NbPillButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.46rem 0.9rem;
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.12s ease;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NbGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-`;
-
-const NbSectionLabel = styled.h2`
-  margin: 0 0 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(5, 5, 5, 0.55);
-`;
-
-const NbBioText = styled.p`
-  margin: 0;
-  font-size: 0.95rem;
-  font-style: italic;
-  line-height: 1.6;
-  color: #050505;
-`;
-
-const NbChipWrap = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const NbChip = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1;
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NbLookingCard = styled(NbCard)`
-  background: #fff0e8;
-`;
-
-const NbAboutRow = styled.button`
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.6rem 0.9rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.12s ease;
-
-  & + & {
-    margin-top: 0.5rem;
-  }
-
-  &:hover {
-    transform: translate(-1px, -1px);
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 auto;
-  }
-`;
-
-const NbManageTitle = styled.h2`
-  margin: 0 0 0.6rem;
-  font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: #050505;
-`;
-
-const NbManageSub = styled.p`
-  margin: 0 0 1.1rem;
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: rgba(5, 5, 5, 0.6);
-`;
-
-const NbManageRow = styled.button`
-  width: 100%;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto 18px;
-  gap: 0.7rem;
-  align-items: center;
-  border: 0;
-  border-top: 1.5px solid rgba(5, 5, 5, 0.12);
-  background: transparent;
-  padding: 0.7rem 0;
-  color: #050505;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: opacity 0.12s ease;
-
-  &:first-of-type {
-    border-top: 0;
-  }
-
-  &:hover {
-    opacity: 0.65;
-  }
-
-  & > svg:first-child {
-    width: 18px;
-    height: 18px;
-    color: #050505;
-  }
-
-  & > svg:last-child {
-    width: 18px;
-    height: 18px;
-    color: rgba(5, 5, 5, 0.45);
-  }
-
-  .nb-row-label {
-    font-size: 0.92rem;
-    font-weight: 700;
-  }
-
-  .nb-row-value {
-    min-width: 0;
-    color: rgba(5, 5, 5, 0.55);
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-`;
-
-const NbStatusPill = styled.span.withConfig({
-  shouldForwardProp: (prop) => prop !== "active",
-})<{ active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${(props) => (props.active ? "#f47a4a" : "#ffffff")};
-  color: #050505;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-`;
-
-/* Says out loud, in the card the user just acted on, what state the subscription is
-   now in. Highlighted once billing is stopped or the membership has ended, so the
-   change is visible at the point of the action rather than only in a banner. */
-const NbSubscriptionNote = styled.p<{ $highlight?: boolean }>`
-  margin: 0.9rem 0 0;
-  padding: ${(props) => (props.$highlight ? "0.7rem 0.85rem" : "0")};
-  border: ${(props) => (props.$highlight ? "2px solid #050505" : "0")};
-  border-radius: 10px;
-  background: ${(props) => (props.$highlight ? "#fff3d1" : "transparent")};
-  font-size: 0.82rem;
-  font-weight: ${(props) => (props.$highlight ? 700 : 500)};
-  line-height: 1.55;
-  text-align: left;
-  color: ${(props) => (props.$highlight ? "#050505" : "rgba(5, 5, 5, 0.6)")};
-`;
-
-const NbIdentityRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0;
-  font-size: 0.9rem;
-  color: #050505;
-
-  & + & {
-    border-top: 1px dashed rgba(5, 5, 5, 0.12);
-  }
-`;
-
-const NbIdentityBadge = styled.span`
-  padding: 0.2rem 0.55rem;
-  border: 2px solid #050505;
-  border-radius: 8px;
-  background: #fff3d1;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-`;
-
-const NbLinkButton = styled.button`
-  width: 100%;
-  min-height: 46px;
-  margin-top: 0.9rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #fee500;
-  color: #3c1e1e;
-  font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-
-  &:disabled {
-    background: #f3f4f6;
-    color: rgba(5, 5, 5, 0.4);
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-`;
-
-const NbCancelFooter = styled.button`
-  width: 100%;
-  margin-top: 1rem;
-  border: 0;
-  background: transparent;
-  color: rgba(5, 5, 5, 0.45);
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  transition: color 0.15s ease;
-
-  &:hover:not(:disabled) {
-    color: #c0392b;
-    text-decoration: underline;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const NbPrimaryButton = styled.button`
-  width: 100%;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #050505;
-  color: #ffffff;
-  padding: 0.8rem 1.25rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.12s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-  }
-`;
-
-const NbDeleteAccountButton = styled.button`
-  width: 100%;
-  border: 1px solid #d73a49;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #b42331;
-  padding: 0.8rem 1rem;
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease;
-
-  &:hover {
-    background: #fff1f2;
-  }
-`;
-
-const AccountDeletionDialog = styled(ConfirmationDialog)`
-  display: grid;
-  gap: 0.9rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-
-  h2,
-  p {
-    margin: 0;
-  }
-
-  h2 {
-    color: #b42331;
-    font-size: 1.2rem;
-  }
-
-  p {
-    color: #4b5563;
-    font-size: 0.92rem;
-    line-height: 1.55;
-  }
-`;
-
-const AccountDeletionPhrase = styled.code`
-  width: fit-content;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #f9fafb;
-  padding: 0.28rem 0.45rem;
-  color: #111827;
-  font-size: 0.9rem;
-  font-weight: 800;
-`;
-
-const AccountDeletionInput = styled.input`
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #9ca3af;
-  border-radius: 8px;
-  padding: 0.75rem 0.85rem;
-  font: inherit;
-
-  &:focus {
-    outline: 2px solid #d73a49;
-    outline-offset: 1px;
-    border-color: #d73a49;
-  }
-`;
-
-const NbInlineEditCard = styled(NbCard)`
-  display: grid;
-  gap: 0.7rem;
-`;
-
-const NbInput = styled.input`
-  width: 100%;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 0.7rem 0.85rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #050505;
-  outline: none;
-  box-sizing: border-box;
-
-  &:focus {
-    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const NbTextArea = styled.textarea`
-  width: 100%;
-  min-height: 84px;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 0.7rem 0.85rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #050505;
-  resize: vertical;
-  outline: none;
-  box-sizing: border-box;
-
-  &:focus {
-    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const NbEditActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const NbSaveButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #050505;
-  color: #ffffff;
-  padding: 0.6rem 1.2rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-`;
-
-const NbCancelButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.6rem 1.2rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-`;
+  return (
+    <button className={nbManageRowClass} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+function NbStatusPill({
+  active,
+  children,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border-[1.5px] border-[#050505] px-[0.6rem] py-1 text-[0.72rem] font-extrabold text-[#050505] ${
+        active ? "bg-[#f47a4a]" : "bg-white"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function NbIdentityRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-[0.6rem] py-[0.55rem] text-[0.9rem] text-[#050505] [&+&]:border-t [&+&]:border-dashed [&+&]:border-t-[rgba(5,5,5,0.12)]">
+      {children}
+    </div>
+  );
+}
+
+function NbPillButton(props: BtnProps) {
+  return (
+    <button
+      className="inline-flex cursor-pointer items-center gap-[0.4rem] rounded-full border-2 border-[#050505] bg-white px-[0.9rem] py-[0.46rem] text-[0.8rem] font-extrabold text-[#050505] shadow-[2px_2px_0_rgba(5,5,5,0.9)] transition-transform duration-[120ms] ease-[ease] hover:enabled:[transform:translate(-1px,-1px)] disabled:cursor-not-allowed disabled:opacity-55 [&_svg]:h-[14px] [&_svg]:w-[14px]"
+      {...props}
+    />
+  );
+}
+
+const nbInputClass =
+  "box-border w-full rounded-[10px] border-2 border-[#050505] px-[0.85rem] py-[0.7rem] text-[0.9rem] text-[#050505] outline-none focus:shadow-[2px_2px_0_rgba(5,5,5,0.9)]";
+
+function NbInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={nbInputClass} {...props} />;
+}
+
+function NbSaveButton(props: BtnProps) {
+  return (
+    <button
+      className="cursor-pointer rounded-full border-2 border-[#050505] bg-[#050505] px-[1.2rem] py-[0.6rem] text-[0.85rem] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-55"
+      {...props}
+    />
+  );
+}
+
+function NbCancelButton(props: BtnProps) {
+  return (
+    <button
+      className="cursor-pointer rounded-full border-2 border-[#050505] bg-white px-[1.2rem] py-[0.6rem] text-[0.85rem] font-extrabold text-[#050505]"
+      {...props}
+    />
+  );
+}
 
 export default function ProfileClient() {
   const { locale, t } = useI18n();
@@ -3542,41 +1403,47 @@ export default function ProfileClient() {
       {isLoading && <GlobalLoadingScreen />}
 
       {(error || successMessage) && (
-        <AlertLayer>
+        <div className={alertLayerClass}>
           {error && (
-            <AlertCard $type="error" role="alert">
-              <p>{error}</p>
-              <AlertDismiss
+            <div className={`${alertCardClass} bg-[#ffebee]`} role="alert">
+              <p className={`${alertTextClass} text-[#b71c1c]`}>{error}</p>
+              <button
                 type="button"
                 aria-label="알림 닫기"
                 onClick={dismissError}
+                className={alertDismissClass}
               >
                 <XMarkIcon />
-              </AlertDismiss>
-            </AlertCard>
+              </button>
+            </div>
           )}
           {successMessage && (
-            <AlertCard $type="success" role="status">
-              <p>{successMessage}</p>
-              <AlertDismiss
+            <div className={`${alertCardClass} bg-[#e8f5e9]`} role="status">
+              <p className={`${alertTextClass} text-[#1b5e20]`}>{successMessage}</p>
+              <button
                 type="button"
                 aria-label="알림 닫기"
                 onClick={dismissSuccess}
+                className={alertDismissClass}
               >
                 <XMarkIcon />
-              </AlertDismiss>
-            </AlertCard>
+              </button>
+            </div>
           )}
-        </AlertLayer>
+        </div>
       )}
 
-      <Wrapper>
-        <NbPageBackground>
-          <NbShell>
+      <div className="mx-auto flex w-full max-w-none flex-col items-center gap-0 p-0">
+        <div className="w-full bg-transparent">
+          <main className="mx-auto grid w-full max-w-[560px] gap-[0.85rem] px-5 pb-14 pt-5 text-[#050505] max-[600px]:gap-3 max-[600px]:px-4 max-[600px]:pb-10 max-[600px]:pt-4">
             {/* 1. PROFILE CARD */}
-            <NbProfileCard>
-              <NbAvatarFrame>
-                <NbAvatarUpload as="div">
+            <section
+              className={`${nbCardClass} flex flex-col items-center gap-[0.6rem] text-center`}
+            >
+              <div className="relative w-fit">
+                <div
+                  className={`${avatarUploadClass} h-24 w-24 border-2 border-[#050505] shadow-[3px_3px_0_rgba(5,5,5,0.9)] max-[600px]:h-[84px] max-[600px]:w-[84px]`}
+                >
                   <AvatarImg
                     src={avatar || defaultUserImage}
                     alt="Profile"
@@ -3586,33 +1453,39 @@ export default function ProfileClient() {
                       target.src = defaultUserImage;
                     }}
                   />
-                </NbAvatarUpload>
-                <NbAvatarEditButton
+                </div>
+                <button
                   type="button"
                   aria-label="프로필 사진 변경"
                   onClick={() => document.getElementById("avatar")?.click()}
+                  className="absolute -right-1 bottom-0 inline-flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] bg-[#f47a4a] text-[#050505] shadow-[2px_2px_0_rgba(5,5,5,0.9)] transition-transform duration-[120ms] ease-[ease] hover:[transform:translate(-1px,-1px)] [&_svg]:h-[18px] [&_svg]:w-[18px]"
                 >
                   <CameraIcon />
-                </NbAvatarEditButton>
+                </button>
                 {avatar && (
-                  <NbAvatarDeleteButton
+                  <button
                     type="button"
                     aria-label="프로필 사진 삭제"
                     onClick={deleteAvatar}
+                    className="absolute right-0 top-0 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] bg-white text-[#050505] [&_svg]:h-[14px] [&_svg]:w-[14px]"
                   >
                     <TrashIcon />
-                  </NbAvatarDeleteButton>
+                  </button>
                 )}
-                <AvatarInput
+                <input
+                  className="hidden"
                   onChange={onAvatarChange}
                   id="avatar"
                   type="file"
                   accept="image/*"
                 />
-              </NbAvatarFrame>
+              </div>
 
               {isEditingName ? (
-                <EditGrid style={{ width: "100%", maxWidth: "320px" }}>
+                <div
+                  className="grid gap-[0.7rem]"
+                  style={{ width: "100%", maxWidth: "320px" }}
+                >
                   <NbInput
                     type="text"
                     value={displayName}
@@ -3621,7 +1494,10 @@ export default function ProfileClient() {
                     autoFocus
                     onKeyDown={handleKeyPress}
                   />
-                  <NbEditActions style={{ justifyContent: "center" }}>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    style={{ justifyContent: "center" }}
+                  >
                     <NbSaveButton type="button" onClick={saveDisplayName}>
                       저장
                     </NbSaveButton>
@@ -3634,48 +1510,51 @@ export default function ProfileClient() {
                     >
                       취소
                     </NbCancelButton>
-                  </NbEditActions>
-                </EditGrid>
+                  </div>
+                </div>
               ) : (
-                <NbNameRow>
-                  <NbName>{user?.displayName || "이름 없는 멤버"}</NbName>
-                  <NbPencilButton
+                <div className="flex items-center justify-center gap-2">
+                  <h1 className="m-0 text-[clamp(1.4rem,4.5vw,1.75rem)] font-[900] leading-[1.1] tracking-[-0.02em] text-[#050505]">
+                    {user?.displayName || "이름 없는 멤버"}
+                  </h1>
+                  <button
                     type="button"
                     aria-label="이름 수정"
                     onClick={() => setIsEditingName(true)}
+                    className="inline-flex h-[34px] w-[34px] flex-none cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] bg-white text-[#050505] transition-transform duration-[120ms] ease-[ease] hover:[transform:translate(-1px,-1px)] [&_svg]:h-4 [&_svg]:w-4"
                   >
                     <PencilSquareIcon />
-                  </NbPencilButton>
-                </NbNameRow>
+                  </button>
+                </div>
               )}
 
               {membershipYear && (
-                <NbMetaLine>
+                <p className="mx-0 mb-[0.1rem] mt-[-0.15rem] text-[0.8rem] font-semibold text-[rgba(5,5,5,0.55)]">
                   {t.profile.membershipSince.replace(
                     "{year}",
                     String(membershipYear)
                   )}
-                </NbMetaLine>
+                </p>
               )}
 
-              <NbBadgeRow>
-                <NbActiveBadge>
+              <div className="flex flex-wrap justify-center gap-[0.45rem]">
+                <span className="inline-flex items-center gap-[0.3rem] rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[0.6rem] py-[0.26rem] text-[0.64rem] font-[900] uppercase tracking-[0.05em] text-[#050505] [&_svg]:h-[14px] [&_svg]:w-[14px]">
                   <CheckBadgeIcon />
                   {userData?.hasActiveSubscription
                     ? t.profile.subscribed
                     : t.profile.notSubscribed}
-                </NbActiveBadge>
-                <NbRoleBadge>
+                </span>
+                <span className="inline-flex items-center gap-[0.3rem] rounded-full border-2 border-[#050505] bg-[#050505] px-[0.6rem] py-[0.26rem] text-[0.64rem] font-[900] uppercase tracking-[0.05em] text-white [&_svg]:h-[14px] [&_svg]:w-[14px]">
                   <UserCircleIcon />
                   {userData?.account_status === "admin"
                     ? t.profile.roleAdmin
                     : userData?.account_status === "leader"
                       ? t.profile.roleLeader
                       : t.profile.roleMember}
-                </NbRoleBadge>
-              </NbBadgeRow>
+                </span>
+              </div>
 
-              <NbPillRow>
+              <div className="mt-[0.3rem] flex flex-wrap justify-center gap-[0.6rem]">
                 <NbPillButton
                   type="button"
                   onClick={() => user && router.push(`/profile/${user.uid}`)}
@@ -3706,14 +1585,18 @@ export default function ProfileClient() {
                       ? t.profile.generating
                       : t.profile.generateReferral}
                 </NbPillButton>
-              </NbPillRow>
-            </NbProfileCard>
+              </div>
+            </section>
 
             {/* 2. MY INFO */}
-            <NbCard>
+            <section className={nbCardClass}>
               <NbManageTitle>{t.profile.myInfo}</NbManageTitle>
-              <NbSectionLabel>{t.profile.bio}</NbSectionLabel>
-              <NbBioText>{userData?.bio || t.profile.notSet}</NbBioText>
+              <h2 className="mx-0 mb-3 mt-0 text-[0.72rem] font-extrabold uppercase tracking-[0.1em] text-[rgba(5,5,5,0.55)]">
+                {t.profile.bio}
+              </h2>
+              <p className="m-0 text-[0.95rem] italic leading-[1.6] text-[#050505]">
+                {userData?.bio || t.profile.notSet}
+              </p>
               <NbManageRow
                 type="button"
                 onClick={() => setIsEditingDetails(true)}
@@ -3758,14 +1641,15 @@ export default function ProfileClient() {
                 </span>
                 <ChevronRightIcon />
               </NbManageRow>
-            </NbCard>
+            </section>
 
             {/* Inline profile edit form */}
             {isEditingDetails && (
-              <NbInlineEditCard>
+              <section className={`${nbCardClass} grid gap-[0.7rem]`}>
                 <NbManageTitle>{t.profile.editTitle}</NbManageTitle>
                 <NbManageSub>{t.profile.editSub}</NbManageSub>
-                <NbTextArea
+                <textarea
+                  className={`${nbInputClass} min-h-[84px] resize-y`}
                   value={profileForm.bio}
                   onChange={(e) =>
                     setProfileForm((prev) => ({ ...prev, bio: e.target.value }))
@@ -3831,7 +1715,7 @@ export default function ProfileClient() {
                   />
                   <span>{t.profile.makePublic}</span>
                 </label>
-                <NbEditActions>
+                <div className="flex flex-wrap gap-2">
                   <NbSaveButton type="button" onClick={saveProfileDetails}>
                     {t.profile.save}
                   </NbSaveButton>
@@ -3851,12 +1735,12 @@ export default function ProfileClient() {
                   >
                     {t.profile.cancel}
                   </NbCancelButton>
-                </NbEditActions>
-              </NbInlineEditCard>
+                </div>
+              </section>
             )}
 
             {/* 3.5 LOGIN METHODS */}
-            <NbCard>
+            <section className={nbCardClass}>
               <NbManageTitle>로그인 수단</NbManageTitle>
               <NbManageSub>
                 여러 방법으로 로그인해도 멤버십과 학습 기록은 하나로 유지됩니다.
@@ -3866,7 +1750,7 @@ export default function ProfileClient() {
               ) : (
                 identities.map((identity) => (
                   <NbIdentityRow key={identity.id}>
-                    <NbIdentityBadge>
+                    <span className="rounded-lg border-2 border-[#050505] bg-[#fff3d1] px-[0.55rem] py-[0.2rem] text-[0.72rem] font-extrabold tracking-[0.02em]">
                       {identity.provider === "kakao"
                         ? "카카오"
                         : identity.provider === "phone"
@@ -3874,24 +1758,25 @@ export default function ProfileClient() {
                           : identity.provider === "email"
                             ? "이메일"
                             : identity.provider}
-                    </NbIdentityBadge>
+                    </span>
                     <span>연결됨</span>
                   </NbIdentityRow>
                 ))
               )}
               {!identities.some((i) => i.provider === "kakao") && (
-                <NbLinkButton
+                <button
                   type="button"
                   onClick={handleLinkKakao}
                   disabled={linkingIdentity}
+                  className="mt-[0.9rem] min-h-[46px] w-full cursor-pointer rounded-xl border-2 border-[#050505] bg-[#fee500] text-[0.92rem] font-extrabold text-[#3c1e1e] shadow-[2px_2px_0_rgba(5,5,5,0.9)] disabled:cursor-not-allowed disabled:bg-[#f3f4f6] disabled:text-[rgba(5,5,5,0.4)] disabled:shadow-none"
                 >
                   {linkingIdentity ? "카카오로 이동 중..." : "카카오 계정 연결하기"}
-                </NbLinkButton>
+                </button>
               )}
-            </NbCard>
+            </section>
 
             {/* 4. SUBSCRIPTION INFO */}
-            <NbCard>
+            <section className={nbCardClass}>
               <NbManageTitle>{t.profile.subscriptionInfo}</NbManageTitle>
               <NbManageRow as="div">
                 <CheckBadgeIcon />
@@ -3920,18 +1805,29 @@ export default function ProfileClient() {
                 </span>
               </NbManageRow>
 
-              <NbSubscriptionNote $highlight={subscriptionNoteHighlight}>
+              {/* Says out loud, in the card the user just acted on, what state the
+                  subscription is now in. Highlighted once billing is stopped or the
+                  membership has ended, so the change is visible at the point of the
+                  action rather than only in a banner. */}
+              <p
+                className={`mx-0 mb-0 mt-[0.9rem] rounded-[10px] text-left text-[0.82rem] leading-[1.55] ${
+                  subscriptionNoteHighlight
+                    ? "border-2 border-[#050505] bg-[#fff3d1] px-[0.85rem] py-[0.7rem] font-bold text-[#050505]"
+                    : "border-0 bg-transparent p-0 font-medium text-[rgba(5,5,5,0.6)]"
+                }`}
+              >
                 {subscriptionActionNote}
-              </NbSubscriptionNote>
+              </p>
 
               {isManagedMembership ? null : subscriptionData.status ===
                   "active" && !subscriptionData.billingCancelled ? (
-                <NbCancelFooter
+                <button
                   type="button"
                   onClick={() => setShowCancellationOptions(true)}
+                  className="mt-4 w-full cursor-pointer border-0 bg-transparent text-[0.78rem] font-semibold tracking-[0.03em] text-[rgba(5,5,5,0.45)] transition-[color] duration-150 ease-[ease] hover:enabled:text-[#c0392b] hover:enabled:underline disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t.profile.subscriptionCancellation}
-                </NbCancelFooter>
+                </button>
               ) : (
                 <NbManageRow type="button" onClick={handleSubscriptionAction}>
                   <CreditCardIcon />
@@ -3942,9 +1838,9 @@ export default function ProfileClient() {
                   <ChevronRightIcon />
                 </NbManageRow>
               )}
-            </NbCard>
+            </section>
 
-            <NbCard>
+            <section className={nbCardClass}>
               <NbManageTitle>이용권</NbManageTitle>
               <NbManageSub>멤버십과 회차 참여권은 서로 독립적으로 관리됩니다.</NbManageSub>
               <NbManageRow as="div">
@@ -3981,27 +1877,32 @@ export default function ProfileClient() {
                 <span className="nb-row-value">5회 참여권 보기</span>
                 <ChevronRightIcon />
               </NbManageRow>
-            </NbCard>
+            </section>
 
             {/* 5. PRIMARY EDIT PROFILE BUTTON */}
-            <NbPrimaryButton
+            <button
               type="button"
               onClick={() => setIsEditingDetails((value) => !value)}
+              className="w-full cursor-pointer rounded-xl border-2 border-[#050505] bg-[#050505] px-5 py-[0.8rem] text-[0.9rem] font-extrabold text-white shadow-[3px_3px_0_rgba(5,5,5,0.9)] transition-transform duration-[120ms] ease-[ease] hover:[transform:translate(-1px,-1px)]"
             >
               {isEditingDetails ? t.profile.cancel : t.profile.editProfile}
-            </NbPrimaryButton>
-            <NbDeleteAccountButton
+            </button>
+            <button
               type="button"
               onClick={() => setShowAccountDeletionDialog(true)}
+              className="w-full cursor-pointer rounded-xl border border-[#d73a49] bg-white px-4 py-[0.8rem] text-[0.88rem] font-extrabold text-[#b42331] transition-[background-color,color] duration-[160ms] ease-[ease] hover:bg-[#fff1f2]"
             >
               {t.profile.deleteAccount}
-            </NbDeleteAccountButton>
-          </NbShell>
-        </NbPageBackground>
+            </button>
+          </main>
+        </div>
 
         {showAccountDeletionDialog && (
           <ConfirmationOverlay onClick={closeAccountDeletionDialog}>
-            <AccountDeletionDialog onClick={(event) => event.stopPropagation()}>
+            <div
+              className="grid w-[90%] max-w-[500px] gap-[0.9rem] rounded-[14px] border-2 border-[#050505] bg-white p-8 shadow-[4px_4px_0_rgba(5,5,5,0.9)] [&_h2]:m-0 [&_h2]:text-[1.2rem] [&_h2]:text-[#b42331] [&_p]:m-0 [&_p]:text-[0.92rem] [&_p]:leading-[1.55] [&_p]:text-[#4b5563]"
+              onClick={(event) => event.stopPropagation()}
+            >
               <h2>{t.profile.deleteAccountTitle}</h2>
               <p>{t.profile.deleteAccountDescription}</p>
               <p>{t.profile.deleteAccountHistory}</p>
@@ -4015,8 +1916,11 @@ export default function ProfileClient() {
                       accountDeletionPhrase,
                     )}
                   </p>
-                  <AccountDeletionPhrase>{accountDeletionPhrase}</AccountDeletionPhrase>
-                  <AccountDeletionInput
+                  <code className="w-fit rounded-md border border-[#d1d5db] bg-[#f9fafb] px-[0.45rem] py-[0.28rem] text-[0.9rem] font-extrabold text-[#111827]">
+                    {accountDeletionPhrase}
+                  </code>
+                  <input
+                    className="box-border w-full rounded-lg border border-[#9ca3af] px-[0.85rem] py-3 focus:border-[#d73a49] focus:outline-2 focus:outline-offset-1 focus:outline-[#d73a49]"
                     value={accountDeletionConfirmation}
                     onChange={(event) => setAccountDeletionConfirmation(event.target.value)}
                     autoCapitalize="none"
@@ -4050,26 +1954,33 @@ export default function ProfileClient() {
                   </DangerButton>
                 )}
               </ButtonGroup>
-            </AccountDeletionDialog>
+            </div>
           </ConfirmationOverlay>
         )}
 
         {showPublicPreview && (
           <ConfirmationOverlay onClick={() => setShowPublicPreview(false)}>
-            <PublicPreviewDialog onClick={(event) => event.stopPropagation()}>
-              <PreviewHeader>
-                <PreviewTitle>공개 프로필 미리보기</PreviewTitle>
-                <PreviewCloseButton
+            <div
+              className="max-h-[min(86vh,760px)] w-[min(92vw,500px)] max-w-[500px] overflow-auto rounded-[24px] bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <h2 className="m-0 text-[1rem] font-bold text-[#222222]">
+                  공개 프로필 미리보기
+                </h2>
+                <button
                   type="button"
                   aria-label="미리보기 닫기"
                   onClick={() => setShowPublicPreview(false)}
+                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-0 bg-[#f7f7f5] text-[#222222] transition-[background] duration-150 ease-[ease] hover:bg-[#eeeeec] [&_svg]:h-[18px] [&_svg]:w-[18px]"
                 >
                   <XMarkIcon />
-                </PreviewCloseButton>
-              </PreviewHeader>
-              <PublicPreviewCard>
-                <PreviewIdentity>
-                  <PreviewAvatar
+                </button>
+              </div>
+              <div className="rounded-[20px] border border-[#ddd] bg-white p-5">
+                <div className="flex items-center gap-4">
+                  <img
+                    className="h-20 w-20 flex-none rounded-full bg-[#f7f7f5] object-cover"
                     src={avatar || defaultUserImage}
                     alt="Public profile preview"
                     onError={(e) => {
@@ -4079,20 +1990,24 @@ export default function ProfileClient() {
                     }}
                   />
                   <div>
-                    <PreviewName>{user?.displayName || "이름 없는 멤버"}</PreviewName>
-                    <PreviewMeta>
+                    <h3 className="m-0 text-[1.35rem] font-bold leading-[1.15] text-[#222222]">
+                      {user?.displayName || "이름 없는 멤버"}
+                    </h3>
+                    <p className="mx-0 mb-0 mt-[0.35rem] text-[0.85rem] text-[#717171]">
                       {userData?.location || "서울"}에서 활동 중
-                    </PreviewMeta>
-                    <ProfileBadgeStrip>
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-[0.4rem] max-[560px]:justify-center">
                       {userData?.account_status && (
                         <ProfileChip>
                           <UserCircleIcon /> {userData.account_status}
                         </ProfileChip>
                       )}
-                    </ProfileBadgeStrip>
+                    </div>
                   </div>
-                </PreviewIdentity>
-                <PreviewBio>{profileBio}</PreviewBio>
+                </div>
+                <p className="mx-0 mb-0 mt-4 text-[0.95rem] font-normal leading-[1.6] text-[#222222]">
+                  {profileBio}
+                </p>
                 <ProfileSubsection>
                   <ProfileSectionLabel>About me</ProfileSectionLabel>
                   <ChipCloud>
@@ -4126,24 +2041,25 @@ export default function ProfileClient() {
                     ))}
                   </ChipCloud>
                 </ProfileSubsection>
-              </PublicPreviewCard>
-            </PublicPreviewDialog>
+              </div>
+            </div>
           </ConfirmationOverlay>
         )}
 
         {false && <div style={{ display: "none" }}>
-        <MainSectionsWrapper>
+        <div className="flex w-full flex-col gap-5 min-[768px]:flex-row min-[768px]:gap-5 min-[768px]:[&>*]:flex-1">
           {/* User Information Section */}
-          <UserInfoSection>
+          <div className={`${transparentCardClass} flex w-full flex-col`}>
             <SectionTitle>기본 정보</SectionTitle>
             <SectionContent>
-              <UserInfoContent>
-                <UserDetails>
+              <div className="flex w-full justify-between">
+                <div className="flex-1">
                   <InfoRow>
                     <InfoLabel>유저명</InfoLabel>
                     {isEditingName ? (
-                      <NameEditContainer>
-                        <NameInput
+                      <div className="relative flex items-center">
+                        <input
+                          className="w-[200px] rounded border border-[#ccc] bg-white px-2.5 py-1.5 text-[16px] font-medium outline-none focus:border-[#4caf50] focus:shadow-[0_0_0_2px_rgba(76,175,80,0.2)]"
                           type="text"
                           value={displayName}
                           onChange={handleNameChange}
@@ -4151,18 +2067,25 @@ export default function ProfileClient() {
                           autoFocus
                           onKeyPress={handleKeyPress}
                         />
-                        <CheckmarkIcon onClick={saveDisplayName}>
+                        <span
+                          className="absolute right-2.5 cursor-pointer text-[18px] text-[#4caf50]"
+                          onClick={saveDisplayName}
+                        >
                           ✓
-                        </CheckmarkIcon>
-                      </NameEditContainer>
+                        </span>
+                      </div>
                     ) : (
-                      <InfoValueWithIcon onClick={() => setIsEditingName(true)}>
-                        <span className="username-text">
+                      <div
+                        className="group flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-[background-color] duration-200 ease-[ease] hover:bg-gray-light"
+                        onClick={() => setIsEditingName(true)}
+                      >
+                        <span className="username-text text-[0.9rem] font-medium">
                           {user?.displayName
                             ? user.displayName
                             : "유저명을 정해주세요"}
                         </span>
-                        <PencilIcon
+                        <svg
+                          className="h-3.5 w-3.5 text-[#666] transition-[color] duration-200 ease-[ease] group-hover:text-primary"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -4172,8 +2095,8 @@ export default function ProfileClient() {
                         >
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </PencilIcon>
-                      </InfoValueWithIcon>
+                        </svg>
+                      </div>
                     )}
                   </InfoRow>
 
@@ -4190,10 +2113,10 @@ export default function ProfileClient() {
                         : "-"}
                     </InfoValue>
                   </InfoRow>
-                </UserDetails>
+                </div>
 
-                <UserAvatarSection>
-                  <AvatarUpload htmlFor="avatar">
+                <div className="flex flex-col items-center justify-center pl-5">
+                  <label htmlFor="avatar" className={`${avatarUploadClass} h-20 w-20`}>
                     {avatar ? (
                       <AvatarImg
                         src={avatar}
@@ -4220,8 +2143,8 @@ export default function ProfileClient() {
                         }}
                       />
                     )}
-                  </AvatarUpload>
-                  <AvatarActions>
+                  </label>
+                  <div className="mt-2 flex gap-2.5">
                     <AvatarActionButton
                       onClick={() => document.getElementById("avatar")?.click()}
                     >
@@ -4232,20 +2155,21 @@ export default function ProfileClient() {
                         삭제
                       </AvatarActionButton>
                     )}
-                  </AvatarActions>
-                  <AvatarInput
+                  </div>
+                  <input
+                    className="hidden"
                     onChange={onAvatarChange}
                     id="avatar"
                     type="file"
                     accept="image/*"
                   />
-                </UserAvatarSection>
-              </UserInfoContent>
+                </div>
+              </div>
             </SectionContent>
-          </UserInfoSection>
+          </div>
 
           {/* Subscription Information Section */}
-          <SubscriptionInfo>
+          <div className={transparentCardClass}>
             <SectionTitle>
               구독 정보
               {userData?.account_status !== "admin" &&
@@ -4311,11 +2235,12 @@ export default function ProfileClient() {
                 ) &&
                   subscriptionData.status === "active" &&
                   !subscriptionData.billingCancelled && (
-                    <CancelLinkButton
+                    <button
+                      className="cursor-pointer rounded border-none bg-transparent p-2 text-[0.8rem] font-medium text-[#808080] no-underline transition-all duration-200 ease-[ease] hover:text-[#c0392b] hover:underline disabled:cursor-not-allowed disabled:text-[#bdbdbd] disabled:no-underline"
                       onClick={() => setShowCancellationOptions(true)}
                     >
                       멤버십 중지하기
-                    </CancelLinkButton>
+                    </button>
                   )}
 
                 {subscriptionData.status === "active" &&
@@ -4353,11 +2278,11 @@ export default function ProfileClient() {
                 )}
               </div>
             </SectionContent>
-          </SubscriptionInfo>
-        </MainSectionsWrapper>
+          </div>
+        </div>
 
         {/* Referral Code Section */}
-        <TransparentCard>
+        <div className={transparentCardClass}>
           <SectionTitle>추천 코드</SectionTitle>
           <SectionContent>
             {userData?.referralCode ? (
@@ -4393,22 +2318,25 @@ export default function ProfileClient() {
               </div>
             )}
           </SectionContent>
-        </TransparentCard>
+        </div>
 
         {/* Vocabulary Section */}
         {userData?.saved_words && userData.saved_words.length > 0 && (
-          <TransparentCard>
+          <div className={transparentCardClass}>
             <SectionTitle>저장한 단어</SectionTitle>
             <SectionContent>
-              <WordsList>
+              <div className="mt-[15px] max-h-[200px] overflow-y-auto">
                 {userData.saved_words.map((word, index) => (
-                  <WordItem key={index}>
+                  <div
+                    className="my-1.5 flex items-center justify-between rounded bg-white px-3 py-2 transition-all duration-200 ease-[ease] hover:-translate-y-[2px] hover:shadow-[0_2px_5px_rgba(0,0,0,0.05)]"
+                    key={index}
+                  >
                     <span>{word}</span>
-                  </WordItem>
+                  </div>
                 ))}
-              </WordsList>
+              </div>
             </SectionContent>
-          </TransparentCard>
+          </div>
         )}
 
         <div
@@ -4418,14 +2346,19 @@ export default function ProfileClient() {
             width: "100%",
           }}
         >
-          <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
+          <button
+            className="mt-2.5 w-auto cursor-pointer rounded-[20px] border-none bg-[#d73a49] px-4 py-2 text-[14px] text-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-all duration-200 ease-[ease] hover:-translate-y-[2px] hover:bg-[#c92532] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)]"
+            onClick={handleLogout}
+          >
+            로그아웃
+          </button>
         </div>
         </div>}
 
         {/* Cancellation Options Dialog */}
         {showCancellationOptions && (
           <ConfirmationOverlay>
-            <CancellationOptionsDialog>
+            <div className="w-[90%] max-w-[480px] rounded-[20px] border border-[rgba(0,0,0,0.05)] bg-white p-10 shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
               <SectionTitle
                 style={{
                   fontSize: "1.3rem",
@@ -4447,17 +2380,20 @@ export default function ProfileClient() {
                 어떤 방식으로 멤버십을 중지하시겠습니까?
               </p>
 
-              <OptionButton
+              <button
+                className="relative my-3 w-full cursor-pointer rounded-xl border border-[#e8eaed] bg-[#fafbfc] px-6 py-5 text-left text-[0.95rem] font-medium text-[#333] transition-all duration-200 hover:-translate-y-px hover:border-primary hover:bg-gray-light hover:shadow-[0_2px_8px_rgba(44,24,16,0.1)] active:translate-y-0"
                 onClick={handleStopNextBilling}
                 disabled={stopBillingInProgress}
               >
-                <span className="option-title">다음 결제 중단하기 (권장)</span>
-                <span className="option-description">
+                <span className="option-title mb-[0.4rem] block text-[1rem] font-semibold text-[#1f2937]">
+                  다음 결제 중단하기 (권장)
+                </span>
+                <span className="option-description block text-[0.85rem] font-normal leading-[1.5] text-[#6b7280]">
                   현재 구독 기간까지는 서비스를 계속 이용하고, 다음 결제부터
                   중단됩니다. 환불은 없지만 남은 기간 동안 서비스를 모두 사용할
                   수 있습니다.
                 </span>
-              </OptionButton>
+              </button>
 
               <div
                 style={{
@@ -4528,14 +2464,14 @@ export default function ProfileClient() {
                   취소
                 </CancelButton>
               </ButtonGroup>
-            </CancellationOptionsDialog>
+            </div>
           </ConfirmationOverlay>
         )}
 
         {/* Refund Confirmation Dialog */}
         {showRefundDialog && (
           <ConfirmationOverlay>
-            <ConfirmationDialog>
+            <div className="w-[90%] max-w-[500px] rounded-lg bg-white p-8">
               <SectionTitle>환불 처리</SectionTitle>
               <p style={{ marginBottom: "1rem" }}>
                 정말로 구독을 해지하고 환불받으시겠습니까?
@@ -4561,7 +2497,7 @@ export default function ProfileClient() {
                   {cancelInProgress ? "처리 중..." : "환불 처리하기"}
                 </DangerButton>
               </ButtonGroup>
-            </ConfirmationDialog>
+            </div>
           </ConfirmationOverlay>
         )}
 
@@ -4708,7 +2644,7 @@ export default function ProfileClient() {
             </SurveyDialog>
           </ConfirmationOverlay>
         )}
-      </Wrapper>
+      </div>
     </>
   );
 }

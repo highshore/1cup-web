@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import styled from "styled-components";
 import { MeetupEvent, Article } from "../types/meetup_types";
 import {
   createMeetupEvent,
@@ -46,580 +45,475 @@ interface LocationSearchProps {
   onClose: () => void;
 }
 
-// Styled components
-const DialogOverlay = styled.div<{ $isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: ${(props) => (props.$isOpen ? "flex" : "none")};
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    align-items: flex-start;
-    padding-top: 2rem;
-  }
-`;
-
-const DialogContent = styled.div`
-  background-color: white;
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 16px;
-    max-height: 95vh;
-  }
-`;
-
-const DialogHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-
-  @media (max-width: 768px) {
-    margin-bottom: 1rem;
-  }
-`;
-
-const DialogTitle = styled.h2`
-  color: #333;
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-
-  @media (max-width: 768px) {
-    font-size: 18px;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #f0f0f0;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-    padding: 0.375rem;
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    gap: 0.875rem;
-  }
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const Label = styled.label`
-  color: #333;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-    margin-bottom: 0.375rem;
-  }
-`;
-
-const Input = styled.input`
-  padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 14px;
-
-  &:focus {
-    outline: none;
-    border-color: #2196f3;
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    font-size: 16px; // Prevents zoom on iOS
-    border-radius: 8px;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 14px;
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: #2196f3;
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    font-size: 16px; // Prevents zoom on iOS
-    border-radius: 8px;
-    min-height: 80px;
-  }
-`;
-
-const LocationRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const NumberRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.75rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ImageUploadContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const FileInput = styled.input`
-  padding: 0.75rem;
-  border: 2px dashed #e0e0e0;
-  border-radius: 10px;
-  font-size: 14px;
-  cursor: pointer;
-  background-color: #fafafa;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #2196f3;
-    background-color: #f5f5f5;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #2196f3;
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-  }
-`;
-
-const ImagePreviewContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-  }
-`;
-
-const ImagePreview = styled.div`
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  background-color: #f5f5f5;
-  aspect-ratio: 1;
-
-  @media (max-width: 768px) {
-    border-radius: 8px;
-  }
-`;
-
-const PreviewImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const RemoveImageButton = styled.button`
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background-color: rgba(244, 67, 54, 0.8);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-
-  &:hover {
-    background-color: rgba(244, 67, 54, 1);
-  }
-
-  @media (max-width: 768px) {
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
-    top: 3px;
-    right: 3px;
-  }
-`;
-
-const ErrorMessage = styled.div`
-  color: #d32f2f;
-  font-size: 12px;
-  margin-top: 0.25rem;
-`;
-
-const ArticleSelection = styled.div`
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 0.75rem;
-  background-color: #fafafa;
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    border-radius: 8px;
-  }
-`;
-
-const ArticleList = styled.div<{ $loadingMoreArticles?: boolean }>`
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: white;
-
-  @media (max-width: 768px) {
-    max-height: 250px;
-    border-radius: 6px;
-  }
-
-  ${({ $loadingMoreArticles }) =>
-    $loadingMoreArticles &&
-    `
-    &::after {
-      content: "";
-      display: block;
-      padding-bottom: 1rem;
-    }
-  `}
-`;
-
-const ArticleItem = styled.div<{ $selected: boolean }>`
-  padding: 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  background-color: ${(props) => (props.$selected ? "#e3f2fd" : "white")};
-
-  &:hover {
-    background-color: ${(props) => (props.$selected ? "#bbdefb" : "#f5f5f5")};
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-  }
-`;
-
-const ArticleTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.25rem;
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-  }
-`;
-
-const ArticleId = styled.div`
-  font-size: 12px;
-  color: #666;
-  font-family: monospace;
-
-  @media (max-width: 768px) {
-    font-size: 11px;
-  }
-`;
-
-const SelectedArticlesDisplay = styled.div`
-  margin-top: 0.5rem;
-
-  @media (max-width: 768px) {
-    margin-top: 0.375rem;
-  }
-`;
-
-const SelectedArticleTag = styled.span`
-  display: inline-block;
-  background-color: #2196f3;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 12px;
-  margin-right: 0.5rem;
-  margin-bottom: 0.25rem;
-  cursor: pointer;
-
-  &:hover {
-    background-color: #1976d2;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 11px;
-    padding: 0.2rem 0.4rem;
-    margin-right: 0.375rem;
-  }
-`;
-
-const LoadingText = styled.div`
-  text-align: center;
-  color: #666;
-  font-size: 14px;
-  padding: 1rem;
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-    padding: 0.75rem;
-  }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-
-  @media (max-width: 768px) {
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-`;
-
-const ActionButton = styled.button<{ $variant: "primary" | "secondary" }>`
-  flex: 1;
-  padding: 1rem;
-  border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  background-color: ${(props) =>
-    props.$variant === "primary" ? "#181818" : "#f5f5f5"};
-  color: ${(props) => (props.$variant === "primary" ? "white" : "#666")};
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem;
-    font-size: 16px; // Prevents zoom on iOS
-    border-radius: 16px;
-
-    &:hover {
-      transform: translateY(-1px);
-    }
-  }
-`;
-
-const LocationSearchModal = styled.div<{ $isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: ${(props) => (props.$isOpen ? "flex" : "none")};
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 1rem;
-
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    align-items: flex-start;
-    padding-top: 2rem;
-  }
-`;
-
-const LocationSearchContent = styled.div`
-  background-color: white;
-  border-radius: 20px;
-  padding: 1.5rem;
-  max-width: 500px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-
-  @media (max-width: 768px) {
-    padding: 1.25rem;
-    border-radius: 16px;
-    max-height: 90vh;
-  }
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 14px;
-  margin-bottom: 1rem;
-
-  &:focus {
-    outline: none;
-    border-color: #2196f3;
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    font-size: 16px; // Prevents zoom on iOS
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-  }
-`;
-
-const SearchResults = styled.div`
-  max-height: 300px;
-  overflow-y: auto;
-
-  @media (max-width: 768px) {
-    max-height: 250px;
-  }
-`;
-
-const SearchResultItem = styled.div`
-  padding: 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: #f5f5f5;
-    border-color: #2196f3;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem;
-    border-radius: 8px;
-    margin-bottom: 0.375rem;
-  }
-`;
-
-const ResultTitle = styled.div`
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.25rem;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-  }
-`;
-
-const ResultAddress = styled.div`
-  color: #666;
-  font-size: 12px;
-
-  @media (max-width: 768px) {
-    font-size: 11px;
-  }
-`;
-
-const SearchButton = styled.button`
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-left: 0.5rem;
-
-  &:hover {
-    background-color: #1976d2;
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem 0.875rem;
-    font-size: 16px; // Prevents zoom on iOS
-    border-radius: 8px;
-    margin-left: 0.375rem;
-  }
-`;
-
-const LocationInputRow = styled.div`
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-
-  @media (max-width: 768px) {
-    gap: 0.375rem;
-    margin-bottom: 0.375rem;
-  }
-`;
+// Presentational components (Tailwind)
+type DivProps = React.ComponentPropsWithRef<"div">;
+type ButtonProps = React.ComponentPropsWithRef<"button">;
+type InputProps = React.ComponentPropsWithRef<"input">;
+
+const DialogOverlay: React.FC<DivProps & { $isOpen: boolean }> = ({
+  $isOpen,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`fixed inset-0 z-[1000] items-center justify-center bg-[rgba(0,0,0,0.5)] p-4 max-[768px]:items-start max-[768px]:p-3 max-[768px]:pt-8 ${
+      $isOpen ? "flex" : "hidden"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const DialogContent: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`w-full max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[20px] bg-white p-8 shadow-[0_20px_40px_rgba(0,0,0,0.2)] max-[768px]:max-h-[95vh] max-[768px]:rounded-[16px] max-[768px]:p-6 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const DialogHeader: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-6 flex items-center justify-between max-[768px]:mb-4 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const DialogTitle: React.FC<React.ComponentPropsWithRef<"h2">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <h2
+    className={`m-0 text-[20px] font-bold text-[#333] max-[768px]:text-[18px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </h2>
+);
+
+const CloseButton: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`cursor-pointer rounded-full border-0 bg-transparent p-2 text-[24px] text-[#666] [transition:background-color_0.2s] hover:bg-[#f0f0f0] max-[768px]:p-1.5 max-[768px]:text-[20px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const FormGroup: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div className={`flex flex-col ${className}`} {...rest}>
+    {children}
+  </div>
+);
+
+const Label: React.FC<React.ComponentPropsWithRef<"label">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <label
+    className={`mb-2 text-[14px] font-semibold text-[#333] max-[768px]:mb-1.5 max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </label>
+);
+
+const inputClass =
+  "p-3 border border-solid border-[#e0e0e0] rounded-[10px] text-[14px] focus:outline-none focus:border-[#2196f3] focus:shadow-[0_0_0_2px_rgba(33,150,243,0.1)] max-[768px]:p-2.5 max-[768px]:text-[16px] max-[768px]:rounded-[8px]";
+
+const Input: React.FC<InputProps> = ({ className = "", ...rest }) => (
+  <input className={`${inputClass} ${className}`} {...rest} />
+);
+
+const TextArea: React.FC<React.ComponentPropsWithRef<"textarea">> = ({
+  className = "",
+  ...rest
+}) => (
+  <textarea
+    className={`${inputClass} min-h-[100px] resize-y max-[768px]:min-h-[80px] ${className}`}
+    {...rest}
+  />
+);
+
+const LocationRow: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`grid grid-cols-[1fr_1fr] gap-3 max-[768px]:grid-cols-[1fr] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const NumberRow: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`grid grid-cols-[1fr_1fr_1fr] gap-3 max-[768px]:grid-cols-[1fr] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ImageUploadContainer: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div className={`flex flex-col gap-4 ${className}`} {...rest}>
+    {children}
+  </div>
+);
+
+const FileInput: React.FC<InputProps> = ({ className = "", ...rest }) => (
+  <input
+    className={`cursor-pointer rounded-[10px] border-2 border-dashed border-[#e0e0e0] bg-[#fafafa] p-3 text-[14px] [transition:all_0.2s] hover:border-[#2196f3] hover:bg-[#f5f5f5] focus:border-[#2196f3] focus:shadow-[0_0_0_2px_rgba(33,150,243,0.1)] focus:outline-none ${className}`}
+    {...rest}
+  />
+);
+
+const ImagePreviewContainer: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mt-4 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-4 max-[768px]:mt-3 max-[768px]:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] max-[768px]:gap-3 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ImagePreview: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`relative aspect-square overflow-hidden rounded-[10px] bg-[#f5f5f5] max-[768px]:rounded-[8px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const PreviewImage: React.FC<React.ComponentPropsWithRef<"img">> = ({
+  className = "",
+  ...rest
+  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+}) => <img className={`h-full w-full object-cover ${className}`} {...rest} />;
+
+const RemoveImageButton: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`absolute top-[5px] right-[5px] flex h-[24px] w-[24px] cursor-pointer items-center justify-center rounded-full border-0 bg-[rgba(244,67,54,0.8)] text-[14px] text-white hover:bg-[rgba(244,67,54,1)] max-[768px]:top-[3px] max-[768px]:right-[3px] max-[768px]:h-[28px] max-[768px]:w-[28px] max-[768px]:text-[16px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const ErrorMessage: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div className={`mt-1 text-[12px] text-[#d32f2f] ${className}`} {...rest}>
+    {children}
+  </div>
+);
+
+const ArticleSelection: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`rounded-[10px] border border-solid border-[#e0e0e0] bg-[#fafafa] p-3 max-[768px]:rounded-[8px] max-[768px]:p-2.5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ArticleList: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`max-h-[300px] overflow-y-auto rounded-[8px] border border-solid border-[#e0e0e0] bg-white max-[768px]:max-h-[250px] max-[768px]:rounded-[6px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ArticleItem: React.FC<DivProps & { $selected: boolean }> = ({
+  $selected,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`cursor-pointer border-b border-solid border-[#f0f0f0] p-3 [transition:background-color_0.2s] last:border-b-0 max-[768px]:p-2.5 ${
+      $selected
+        ? "bg-[#e3f2fd] hover:bg-[#bbdefb]"
+        : "bg-white hover:bg-[#f5f5f5]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ArticleTitle: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-1 text-[14px] font-semibold text-[#333] max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ArticleId: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`text-[12px] text-[#666] [font-family:monospace] max-[768px]:text-[11px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const SelectedArticlesDisplay: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div className={`mt-2 max-[768px]:mt-1.5 ${className}`} {...rest}>
+    {children}
+  </div>
+);
+
+const SelectedArticleTag: React.FC<React.ComponentPropsWithRef<"span">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`mr-2 mb-1 inline-block cursor-pointer rounded-[12px] bg-[#2196f3] px-2 py-1 text-[12px] text-white hover:bg-[#1976d2] max-[768px]:mr-1.5 max-[768px]:px-[0.4rem] max-[768px]:py-[0.2rem] max-[768px]:text-[11px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
+
+const LoadingText: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`p-4 text-center text-[14px] text-[#666] max-[768px]:p-3 max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ButtonRow: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mt-6 flex gap-4 max-[768px]:mt-4 max-[768px]:gap-3 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ActionButton: React.FC<
+  ButtonProps & { $variant: "primary" | "secondary" }
+> = ({ $variant, className = "", children, ...rest }) => (
+  <button
+    className={`flex-1 cursor-pointer rounded-[20px] border-0 p-4 text-[14px] font-semibold [transition:all_0.2s] hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)] enabled:hover:[transform:translateY(-2px)] disabled:cursor-not-allowed disabled:opacity-50 max-[768px]:rounded-[16px] max-[768px]:p-3.5 max-[768px]:text-[16px] max-[768px]:enabled:hover:[transform:translateY(-1px)] ${
+      $variant === "primary" ? "bg-[#181818] text-white" : "bg-[#f5f5f5] text-[#666]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const LocationSearchModal: React.FC<DivProps & { $isOpen: boolean }> = ({
+  $isOpen,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`fixed inset-0 z-[1100] items-center justify-center bg-[rgba(0,0,0,0.5)] p-4 max-[768px]:items-start max-[768px]:p-3 max-[768px]:pt-8 ${
+      $isOpen ? "flex" : "hidden"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const LocationSearchContent: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`w-full max-w-[500px] max-h-[80vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-[0_20px_40px_rgba(0,0,0,0.2)] max-[768px]:max-h-[90vh] max-[768px]:rounded-[16px] max-[768px]:p-5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const SearchInput: React.FC<InputProps> = ({ className = "", ...rest }) => (
+  <input
+    className={`mb-4 w-full rounded-[10px] border border-solid border-[#e0e0e0] p-3 text-[14px] focus:border-[#2196f3] focus:shadow-[0_0_0_2px_rgba(33,150,243,0.1)] focus:outline-none max-[768px]:mb-3 max-[768px]:rounded-[8px] max-[768px]:p-2.5 max-[768px]:text-[16px] ${className}`}
+    {...rest}
+  />
+);
+
+const SearchResults: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`max-h-[300px] overflow-y-auto max-[768px]:max-h-[250px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const SearchResultItem: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-2 cursor-pointer rounded-[10px] border border-solid border-[#e0e0e0] p-4 [transition:all_0.2s] hover:border-[#2196f3] hover:bg-[#f5f5f5] max-[768px]:mb-1.5 max-[768px]:rounded-[8px] max-[768px]:p-3.5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ResultTitle: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-1 font-semibold text-[#333] max-[768px]:text-[14px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const ResultAddress: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`text-[12px] text-[#666] max-[768px]:text-[11px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const SearchButton: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`ml-2 cursor-pointer rounded-[10px] border-0 bg-[#2196f3] px-4 py-3 text-[14px] font-semibold text-white [transition:all_0.2s] hover:bg-[#1976d2] hover:[transform:translateY(-1px)] active:[transform:translateY(0)] max-[768px]:ml-1.5 max-[768px]:rounded-[8px] max-[768px]:px-3.5 max-[768px]:py-2.5 max-[768px]:text-[16px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const LocationInputRow: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-2 flex items-end gap-2 max-[768px]:mb-1.5 max-[768px]:gap-1.5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const Form: React.FC<React.ComponentPropsWithRef<"form">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <form
+    className={`flex flex-col gap-4 max-[768px]:gap-3.5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </form>
+);
 
 const LocationSearch: React.FC<LocationSearchProps> = ({
   isOpen,

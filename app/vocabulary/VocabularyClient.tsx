@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   BookOpenIcon,
   EyeIcon,
@@ -18,7 +25,6 @@ import {
 import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { supabase } from "../lib/supabase/client";
-import { appLayout } from "../lib/constants/app_layout";
 
 type DeckVisibility = "private" | "public";
 type DeckTheme = "orange" | "blue" | "green" | "purple" | "pink";
@@ -123,353 +129,99 @@ const themeAccent: Record<DeckTheme, string> = {
   pink: "#f3a4c0",
 };
 
-const Page = styled.main`
-  width: 100%;
-  min-height: 100vh;
-  background: transparent;
-  padding: 1rem ${appLayout.pageGutterDesktop} 4rem;
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <main className="w-full min-h-screen bg-transparent pt-4 px-gutter pb-16 max-[768px]:pt-3 max-[768px]:px-gutter-mobile max-[768px]:pb-12">
+      {children}
+    </main>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.75rem ${appLayout.pageGutterMobile} 3rem;
-  }
-`;
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="w-full max-w-page mx-auto">{children}</div>;
+}
 
-const Shell = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-`;
+function PrimaryButton({ className = "", children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center justify-center gap-[0.38rem] min-h-[2.55rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.55rem] px-[0.9rem] text-[0.84rem] font-black cursor-pointer shadow-[3px_3px_0_#050505] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:w-[17px] [&_svg]:h-[17px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const PrimaryButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.38rem;
-  min-height: 2.55rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.55rem 0.9rem;
-  font-size: 0.84rem;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  white-space: nowrap;
+function SecondaryButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center justify-center gap-[0.3rem] border-[1.5px] border-[#050505] rounded-full ${$active ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.42rem] px-[0.65rem] text-[0.72rem] font-black cursor-pointer whitespace-nowrap disabled:opacity-[0.48] disabled:cursor-not-allowed [&_svg]:w-[14px] [&_svg]:h-[14px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  svg { width: 17px; height: 17px; }
-`;
+function Section({ children }: { children: ReactNode }) {
+  return <section className="mt-[1.4rem] first-of-type:mt-[0.35rem]">{children}</section>;
+}
 
-const SecondaryButton = styled.button<{ $active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${(p) => (p.$active ? "#050505" : "#ffffff")};
-  color: ${(p) => (p.$active ? "#ffffff" : "#050505")};
-  padding: 0.42rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-  cursor: pointer;
-  white-space: nowrap;
+function SectionTop({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-[0.8rem] mb-3 max-[640px]:items-start max-[640px]:flex-wrap">
+      {children}
+    </div>
+  );
+}
 
-  &:disabled { opacity: 0.48; cursor: not-allowed; }
-  svg { width: 14px; height: 14px; }
-`;
+function SectionText({ children }: { children: ReactNode }) {
+  return <div className="min-w-0 flex-1">{children}</div>;
+}
 
-const Section = styled.section`
-  margin-top: 1.4rem;
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h1 className="m-0 text-[#050505] text-[1.35rem] font-[950]">{children}</h1>;
+}
 
-  &:first-of-type { margin-top: 0.35rem; }
-`;
+function SectionHint({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.15rem] mb-0 text-[rgba(5,5,5,0.58)] text-[0.8rem] leading-[1.45]">{children}</p>;
+}
 
-const SectionTop = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-bottom: 0.75rem;
+function DeckGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 gap-[0.8rem] max-[760px]:grid-cols-2 max-[520px]:grid-cols-1">
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 640px) {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-`;
+function Badge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center min-h-[1.45rem] border-[1.5px] border-[#050505] rounded-full bg-white py-0 px-[0.45rem] text-[#050505] text-[0.64rem] font-black">
+      {children}
+    </span>
+  );
+}
 
-const SectionText = styled.div`
-  min-width: 0;
-  flex: 1;
-`;
+function StateBox({ className = "", children, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`py-8 px-4 border-2 border-dashed border-[#050505] rounded-2xl bg-white text-center text-[rgba(5,5,5,0.62)] [&_svg]:w-[34px] [&_svg]:h-[34px] [&_svg]:text-[#050505] [&_strong]:block [&_strong]:mt-[0.55rem] [&_strong]:text-[#050505] [&_p]:mt-[0.3rem] [&_p]:mb-0 [&_p]:leading-[1.5] [&_p]:text-[0.78rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const SectionTitle = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 1.35rem;
-  font-weight: 950;
-`;
-
-const SectionHint = styled.p`
-  margin: 0.15rem 0 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.8rem;
-  line-height: 1.45;
-`;
-
-const DeckGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
-
-  @media (max-width: 760px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (max-width: 520px) { grid-template-columns: 1fr; }
-`;
-
-const DeckCard = styled.article`
-  min-height: 176px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 1rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const Accent = styled.div<{ $theme: DeckTheme }>`
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 7px;
-  background: ${(p) => themeAccent[p.$theme]};
-`;
-
-const DeckLink = styled(Link)`
-  color: inherit;
-  text-decoration: none;
-  display: block;
-  &:hover { color: inherit; text-decoration: none; }
-`;
-
-const CardTop = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.7rem;
-`;
-
-const DeckIcon = styled.div`
-  font-size: 1.55rem;
-  line-height: 1;
-`;
-
-const Badges = styled.div`
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-`;
-
-const Badge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.45rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0 0.45rem;
-  color: #050505;
-  font-size: 0.64rem;
-  font-weight: 900;
-`;
-
-const DeckName = styled.h2`
-  margin: 0.65rem 0 0.25rem;
-  color: #050505;
-  font-size: 1.03rem;
-  font-weight: 950;
-  line-height: 1.25;
-`;
-
-const DeckDescription = styled.p`
-  margin: 0;
-  min-height: 2.2em;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.77rem;
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const DeckFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.55rem;
-  margin-top: 0.85rem;
-`;
-
-const DeckMeta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.68rem;
-  font-weight: 800;
-`;
-
-const SearchWrap = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: min(340px, 100%);
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0 0.75rem;
-  svg { width: 18px; height: 18px; flex: 0 0 auto; }
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  padding: 0.65rem 0;
-  color: #050505;
-  font-size: 0.82rem;
-`;
-
-const StateBox = styled.div`
-  padding: 2rem 1rem;
-  border: 2px dashed #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.62);
-  svg { width: 34px; height: 34px; color: #050505; }
-  strong { display: block; margin-top: 0.55rem; color: #050505; }
-  p { margin: 0.3rem 0 0; line-height: 1.5; font-size: 0.78rem; }
-`;
-
-const ModalBackdrop = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 1rem;
-`;
-
-const Modal = styled.div`
-  width: min(620px, 100%);
-  max-height: 86vh;
-  overflow-y: auto;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: 1.1rem;
-  box-shadow: 7px 7px 0 #050505;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-bottom: 0.8rem;
-`;
-
-const ModalTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1.25rem;
-  font-weight: 950;
-`;
-
-const IconButton = styled.button`
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: #ffffff;
-  cursor: pointer;
-  svg { width: 17px; height: 17px; }
-`;
-
-const Field = styled.label`
-  display: block;
-  margin-top: 0.8rem;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 900;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  margin-top: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.75rem;
-  color: #050505;
-  font-size: 0.9rem;
-  outline: none;
-`;
-
-const Textarea = styled.textarea`
-  width: 100%;
-  min-height: 90px;
-  margin-top: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.75rem;
-  color: #050505;
-  font-size: 0.9rem;
-  resize: vertical;
-  outline: none;
-`;
-
-const ChoiceGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
-  margin-top: 0.4rem;
-  @media (max-width: 520px) { grid-template-columns: 1fr; }
-`;
-
-const VisibilityChoice = styled.button<{ $active: boolean }>`
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${(p) => (p.$active ? "#f5f5f5" : "#ffffff")};
-  padding: 0.75rem;
-  text-align: left;
-  cursor: pointer;
-  svg { width: 18px; height: 18px; flex: 0 0 auto; }
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  margin-top: 1rem;
-`;
+function Field({ children }: { children: ReactNode }) {
+  return <label className="block mt-[0.8rem] text-[#050505] text-[0.78rem] font-black">{children}</label>;
+}
 
 const mapDeck = (row: any): Deck => ({
   id: String(row.id),
@@ -657,26 +409,35 @@ export default function VocabularyClient() {
     const isAdded = followedDeckIds.has(deck.id);
     const isPersonal = deck.systemKey?.startsWith("personal:");
     return (
-      <DeckCard key={deck.id}>
-        <Accent $theme={deck.theme} />
-        <DeckLink href={`/vocabulary/decks/${deck.id}`}>
-          <CardTop>
-            <DeckIcon>{deck.icon}</DeckIcon>
-            <Badges>
+      <article
+        key={deck.id}
+        className="min-h-[176px] relative flex flex-col justify-between overflow-hidden border-2 border-[#050505] rounded-2xl bg-white p-4 shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+      >
+        <div
+          className="absolute top-0 bottom-0 left-0 w-[7px]"
+          style={{ background: themeAccent[deck.theme] }}
+        />
+        <Link
+          href={`/vocabulary/decks/${deck.id}`}
+          className="block text-inherit no-underline hover:text-inherit hover:no-underline"
+        >
+          <div className="flex items-start justify-between gap-[0.7rem]">
+            <div className="text-[1.55rem] leading-none">{deck.icon}</div>
+            <div className="flex gap-[0.3rem] flex-wrap justify-end">
               {deck.isOfficial && <Badge>{copy.official}</Badge>}
               {isMine && <Badge>{isPersonal ? copy.personalName : copy.own}</Badge>}
               {!isMine && isAdded && <Badge>{copy.added}</Badge>}
               {deck.visibility === "private" && <Badge>{copy.private}</Badge>}
-            </Badges>
-          </CardTop>
-          <DeckName>{displayName(deck)}</DeckName>
-          <DeckDescription>{displayDescription(deck)}</DeckDescription>
-        </DeckLink>
-        <DeckFooter>
-          <DeckMeta>
+            </div>
+          </div>
+          <h2 className="mt-[0.65rem] mb-[0.25rem] text-[#050505] text-[1.03rem] font-[950] leading-[1.25]">{displayName(deck)}</h2>
+          <p className="m-0 min-h-[2.2em] text-[rgba(5,5,5,0.62)] text-[0.77rem] leading-[1.45] line-clamp-2">{displayDescription(deck)}</p>
+        </Link>
+        <div className="flex items-center justify-between gap-[0.55rem] mt-[0.85rem]">
+          <div className="flex flex-wrap gap-y-[0.35rem] gap-x-[0.65rem] text-[rgba(5,5,5,0.58)] text-[0.68rem] font-extrabold">
             <span>{deck.itemCount} {copy.items}</span>
             {deck.visibility === "public" && <span>{deck.followerCount} {copy.addedUsers}</span>}
-          </DeckMeta>
+          </div>
           {!isMine && deck.visibility === "public" && (
             <SecondaryButton
               type="button"
@@ -688,8 +449,8 @@ export default function VocabularyClient() {
               {isAdded ? copy.remove : copy.add}
             </SecondaryButton>
           )}
-        </DeckFooter>
-      </DeckCard>
+        </div>
+      </article>
     );
   };
 
@@ -733,10 +494,15 @@ export default function VocabularyClient() {
               <SectionTitle>{copy.publicCollections}</SectionTitle>
               <SectionHint>{copy.publicCollectionsHint}</SectionHint>
             </SectionText>
-            <SearchWrap>
+            <label className="flex items-center gap-2 w-[min(340px,100%)] border-2 border-[#050505] rounded-full bg-white py-0 px-3 [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:flex-none">
               <MagnifyingGlassIcon />
-              <SearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.searchPublic} />
-            </SearchWrap>
+              <input
+                className="w-full border-0 outline-0 bg-transparent py-[0.65rem] px-0 text-[#050505] text-[0.82rem]"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={copy.searchPublic}
+              />
+            </label>
           </SectionTop>
           {filteredPublicDecks.length > 0 ? (
             <DeckGrid>{filteredPublicDecks.map(renderDeck)}</DeckGrid>
@@ -747,37 +513,68 @@ export default function VocabularyClient() {
       </Shell>
 
       {createOpen && (
-        <ModalBackdrop onClick={() => !creatingDeck && setCreateOpen(false)}>
-          <Modal onClick={(event) => event.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>{copy.createTitle}</ModalTitle>
-              <IconButton type="button" onClick={() => setCreateOpen(false)} aria-label={copy.cancel}><XMarkIcon /></IconButton>
-            </ModalHeader>
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.55)] p-4"
+          onClick={() => !creatingDeck && setCreateOpen(false)}
+        >
+          <div
+            className="w-[min(620px,100%)] max-h-[86vh] overflow-y-auto border-2 border-[#050505] rounded-[18px] bg-white p-[1.1rem] shadow-[7px_7px_0_#050505]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-[0.8rem] mb-[0.8rem]">
+              <h2 className="m-0 text-[#050505] text-[1.25rem] font-[950]">{copy.createTitle}</h2>
+              <button
+                type="button"
+                className="w-[34px] h-[34px] inline-flex items-center justify-center border-2 border-[#050505] rounded-full bg-white cursor-pointer [&_svg]:w-[17px] [&_svg]:h-[17px]"
+                onClick={() => setCreateOpen(false)}
+                aria-label={copy.cancel}
+              ><XMarkIcon /></button>
+            </div>
 
             <Field>{copy.name}
-              <Input value={newDeckName} maxLength={80} onChange={(event) => setNewDeckName(event.target.value)} placeholder={copy.namePlaceholder} />
+              <input
+                className="w-full mt-[0.35rem] border-2 border-[#050505] rounded-xl bg-white p-3 text-[#050505] text-[0.9rem] outline-none"
+                value={newDeckName}
+                maxLength={80}
+                onChange={(event) => setNewDeckName(event.target.value)}
+                placeholder={copy.namePlaceholder}
+              />
             </Field>
             <Field>{copy.description}
-              <Textarea value={newDeckDescription} maxLength={500} onChange={(event) => setNewDeckDescription(event.target.value)} placeholder={copy.descriptionPlaceholder} />
+              <textarea
+                className="w-full min-h-[90px] mt-[0.35rem] border-2 border-[#050505] rounded-xl bg-white p-3 text-[#050505] text-[0.9rem] resize-y outline-none"
+                value={newDeckDescription}
+                maxLength={500}
+                onChange={(event) => setNewDeckDescription(event.target.value)}
+                placeholder={copy.descriptionPlaceholder}
+              />
             </Field>
             <Field>{copy.visibility}</Field>
-            <ChoiceGrid>
-              <VisibilityChoice type="button" $active={newDeckVisibility === "private"} onClick={() => setNewDeckVisibility("private")}>
+            <div className="grid grid-cols-2 gap-[0.6rem] mt-[0.4rem] max-[520px]:grid-cols-1">
+              <button
+                type="button"
+                className={`w-full flex items-start gap-[0.6rem] border-2 border-[#050505] rounded-xl ${newDeckVisibility === "private" ? "bg-[#f5f5f5]" : "bg-white"} p-3 text-left cursor-pointer [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:flex-none`}
+                onClick={() => setNewDeckVisibility("private")}
+              >
                 <EyeSlashIcon /><div><strong>{copy.private}</strong><div>{copy.privateDescription}</div></div>
-              </VisibilityChoice>
-              <VisibilityChoice type="button" $active={newDeckVisibility === "public"} onClick={() => setNewDeckVisibility("public")}>
+              </button>
+              <button
+                type="button"
+                className={`w-full flex items-start gap-[0.6rem] border-2 border-[#050505] rounded-xl ${newDeckVisibility === "public" ? "bg-[#f5f5f5]" : "bg-white"} p-3 text-left cursor-pointer [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:flex-none`}
+                onClick={() => setNewDeckVisibility("public")}
+              >
                 <EyeIcon /><div><strong>{copy.public}</strong><div>{copy.publicDescription}</div></div>
-              </VisibilityChoice>
-            </ChoiceGrid>
+              </button>
+            </div>
 
-            <ModalActions>
+            <div className="flex justify-end gap-[0.55rem] mt-4">
               <SecondaryButton type="button" onClick={() => setCreateOpen(false)}>{copy.cancel}</SecondaryButton>
               <PrimaryButton type="button" disabled={creatingDeck || !newDeckName.trim()} onClick={() => void createDeck()}>
                 <PlusIcon />{copy.create}
               </PrimaryButton>
-            </ModalActions>
-          </Modal>
-        </ModalBackdrop>
+            </div>
+          </div>
+        </div>
       )}
     </Page>
   );

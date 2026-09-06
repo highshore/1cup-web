@@ -1,246 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import styled from "styled-components";
-import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { colors } from "../lib/constants/colors";
 
-// Using shared colors; extend locally for star rating
+// Star rating colors (local to this page)
 const star = {
   active: "#FFD700",
   inactive: "#E0E0E0",
   hover: "#FFC107",
 } as const;
 
-const Container = styled.div`
-  min-height: 100vh;
-  padding: 4rem 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+const questionClass = "flex flex-col items-center text-center";
 
-  @media (max-width: 768px) {
-    padding: 2rem 1rem;
-  }
-`;
+const questionTextClass =
+  "mb-8 max-w-[700px] text-[1.4rem] font-semibold leading-[1.5] text-ink max-[768px]:mb-6 max-[768px]:text-[1.2rem]";
 
-const Title = styled.h1`
-  font-size: 3rem;
-  font-weight: 800;
-  color: ${colors.primary};
-  text-align: center;
-  margin-bottom: 1rem;
-  letter-spacing: -0.03em;
+const textQuestionClass = "flex w-full flex-col items-center";
 
-  @media (max-width: 768px) {
-    font-size: 2.5rem;
-  }
-`;
+const textQuestionTitleClass =
+  "mb-6 text-center text-[1.3rem] font-semibold leading-[1.5] text-ink max-[768px]:mb-4 max-[768px]:text-[1.1rem]";
 
-const Subtitle = styled.p`
-  font-size: 1.2rem;
-  color: ${colors.text.light};
-  text-align: center;
-  margin-bottom: 4rem;
-  line-height: 1.6;
-  max-width: 600px;
+const textAreaClass =
+  "min-h-[140px] w-full max-w-[600px] resize-y rounded-2xl border-2 border-gray-medium bg-white p-6 text-[1.1rem] leading-[1.6] transition-all duration-300 ease-[ease] placeholder:text-ink-light focus:-translate-y-0.5 focus:border-accent focus:shadow-[0_0_0_4px_rgba(200,162,122,0.1)] focus:outline-none max-[768px]:min-h-[120px] max-[768px]:p-[1.2rem] max-[768px]:text-base";
 
-  @media (max-width: 768px) {
-    font-size: 1.1rem;
-    margin-bottom: 3rem;
-  }
-`;
-
-const FormContainer = styled.div`
-  width: 100%;
-  max-width: 800px;
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
-
-  @media (max-width: 768px) {
-    gap: 2.5rem;
-  }
-`;
-
-const Question = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-`;
-
-const QuestionText = styled.h2`
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
-  margin-bottom: 2rem;
-  line-height: 1.5;
-  max-width: 700px;
-
-  @media (max-width: 768px) {
-    font-size: 1.2rem;
-    margin-bottom: 1.5rem;
-  }
-`;
-
-const Required = styled.span`
-  color: #dc3545;
-  font-weight: 600;
-  margin-left: 0.5rem;
-`;
-
-const StarContainer = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 1rem;
-
-  @media (max-width: 768px) {
-    gap: 0.8rem;
-  }
-`;
-
-const Star = styled.span.withConfig({
-  shouldForwardProp: (prop) => !["$hover"].includes(prop),
-})<{ selected: boolean; $hover: boolean }>`
-  font-size: 3.5rem;
-  cursor: pointer;
-  color: ${({ selected, $hover }) =>
-    selected ? star.active : $hover ? star.hover : star.inactive};
-  transition: all 0.3s ease;
-  user-select: none;
-
-  &:hover {
-    transform: scale(1.2);
-    filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.3));
-  }
-
-  @media (max-width: 768px) {
-    font-size: 3rem;
-  }
-`;
-
-const RatingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-`;
-
-const RatingLabel = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
-  color: ${colors.text.light};
-  font-weight: 500;
-  width: 100%;
-  max-width: 400px;
-  margin-top: 0.5rem;
-
-  @media (max-width: 768px) {
-    font-size: 0.85rem;
-    max-width: 300px;
-  }
-`;
-
-const TextQuestion = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-`;
-
-const TextQuestionTitle = styled.h3`
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
-  margin-bottom: 1.5rem;
-  text-align: center;
-  line-height: 1.5;
-
-  @media (max-width: 768px) {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-  }
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  max-width: 600px;
-  min-height: 140px;
-  padding: 1.5rem;
-  border-radius: 16px;
-  border: 2px solid ${colors.gray.medium};
-  font-size: 1.1rem;
-  font-family: inherit;
-  line-height: 1.6;
-  resize: vertical;
-  transition: all 0.3s ease;
-  background-color: white;
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 4px rgba(200, 162, 122, 0.1);
-    transform: translateY(-2px);
-  }
-
-  &::placeholder {
-    color: ${colors.text.light};
-  }
-
-  @media (max-width: 768px) {
-    min-height: 120px;
-    padding: 1.2rem;
-    font-size: 1rem;
-  }
-`;
-
-const SubmitButton = styled.button`
-  width: 100%;
-  max-width: 400px;
-  padding: 1.2rem 2rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  background: linear-gradient(
-    135deg,
-    ${colors.primary} 0%,
-    ${colors.primaryLight} 100%
-  );
-  color: white;
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  letter-spacing: 0.02em;
-  margin: 2rem auto 0;
-  box-shadow: 0 4px 15px rgba(44, 24, 16, 0.2);
-
-  &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(44, 24, 16, 0.3);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    background: ${colors.gray.dark};
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.1rem;
-    padding: 1rem 1.5rem;
-  }
-`;
+const requiredClass = "ml-2 font-semibold text-[#dc3545]";
 
 const StarRating = ({
   rating,
@@ -252,26 +35,35 @@ const StarRating = ({
   const [hoverRating, setHoverRating] = useState(0);
 
   return (
-    <RatingContainer>
-      <StarContainer>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            selected={star <= (hoverRating || rating)}
-            $hover={hoverRating > 0 && star <= hoverRating}
-            onClick={() => onRating(star)}
-            onMouseEnter={() => setHoverRating(star)}
-            onMouseLeave={() => setHoverRating(0)}
-          >
-            ★
-          </Star>
-        ))}
-      </StarContainer>
-      <RatingLabel>
+    <div className="flex w-full flex-col items-center">
+      <div className="mb-4 flex items-center justify-center gap-4 max-[768px]:gap-[0.8rem]">
+        {[1, 2, 3, 4, 5].map((value) => {
+          const selected = value <= (hoverRating || rating);
+          const hovered = hoverRating > 0 && value <= hoverRating;
+          const color = selected
+            ? star.active
+            : hovered
+              ? star.hover
+              : star.inactive;
+          return (
+            <span
+              key={value}
+              className="cursor-pointer text-[3.5rem] transition-all duration-300 ease-[ease] select-none hover:scale-[1.2] hover:[filter:drop-shadow(0_4px_8px_rgba(255,215,0,0.3))] max-[768px]:text-[3rem]"
+              style={{ color }}
+              onClick={() => onRating(value)}
+              onMouseEnter={() => setHoverRating(value)}
+              onMouseLeave={() => setHoverRating(0)}
+            >
+              ★
+            </span>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex w-full max-w-[400px] justify-between text-[0.9rem] font-medium text-ink-light max-[768px]:max-w-[300px] max-[768px]:text-[0.85rem]">
         <span>전혀 그렇지 않다</span>
         <span>매우 그렇다</span>
-      </RatingLabel>
-    </RatingContainer>
+      </div>
+    </div>
   );
 };
 
@@ -317,67 +109,72 @@ export default function FeedbackClient({ uid }: { uid: string }) {
   };
 
   return (
-    <Container>
-      <Title>피드백</Title>
-      <Subtitle>
+    <div className="flex min-h-screen flex-col items-center justify-center px-8 py-16 max-[768px]:px-4 max-[768px]:py-8">
+      <h1 className="mb-4 text-center text-[3rem] font-extrabold tracking-[-0.03em] text-primary max-[768px]:text-[2.5rem]">
+        피드백
+      </h1>
+      <p className="mb-16 max-w-[600px] text-center text-[1.2rem] leading-[1.6] text-ink-light max-[768px]:mb-12 max-[768px]:text-[1.1rem]">
         여러분의 소중한 의견을 들려주세요.
         <br />더 나은 서비스를 위해 활용하겠습니다.
-      </Subtitle>
+      </p>
 
-      <FormContainer>
-        <Question>
-          <QuestionText>
+      <div className="flex w-full max-w-[800px] flex-col gap-12 max-[768px]:gap-10">
+        <div className={questionClass}>
+          <h2 className={questionTextClass}>
             다음에도 저희 밋업에 참가할 의사가 있으신가요?
-            <Required>*</Required>
-          </QuestionText>
+            <span className={requiredClass}>*</span>
+          </h2>
           <StarRating rating={q1} onRating={setQ1} />
-        </Question>
+        </div>
 
-        <Question>
-          <QuestionText>
+        <div className={questionClass}>
+          <h2 className={questionTextClass}>
             저희 밋업을 지인에게 추천할 의향이 있으신가요?
-            <Required>*</Required>
-          </QuestionText>
+            <span className={requiredClass}>*</span>
+          </h2>
           <StarRating rating={q2} onRating={setQ2} />
-        </Question>
+        </div>
 
-        <Question>
-          <QuestionText>
+        <div className={questionClass}>
+          <h2 className={questionTextClass}>
             저희 밋업이 어느날 운영을 못하게 되면 아쉬울 것 같나요?
-            <Required>*</Required>
-          </QuestionText>
+            <span className={requiredClass}>*</span>
+          </h2>
           <StarRating rating={q3} onRating={setQ3} />
-        </Question>
+        </div>
 
-        <TextQuestion>
-          <TextQuestionTitle>
+        <div className={textQuestionClass}>
+          <h3 className={textQuestionTitleClass}>
             스피킹에 있어서 본인이 가장 어려워하는 점이 무엇인가요?
-          </TextQuestionTitle>
-          <TextArea
+          </h3>
+          <textarea
+            className={textAreaClass}
             value={q4}
             onChange={(e) => setQ4(e.target.value)}
             placeholder="예: 발음, 문법, 어휘력, 자신감 등 자유롭게 작성해주세요..."
           />
-        </TextQuestion>
+        </div>
 
-        <TextQuestion>
-          <TextQuestionTitle>
+        <div className={textQuestionClass}>
+          <h3 className={textQuestionTitleClass}>
             개선을 원하거나 요청하고 싶은 점이 있나요?
-          </TextQuestionTitle>
-          <TextArea
+          </h3>
+          <textarea
+            className={textAreaClass}
             value={q5}
             onChange={(e) => setQ5(e.target.value)}
             placeholder="서비스 개선 사항이나 추가 기능 요청 등을 자유롭게 작성해주세요..."
           />
-        </TextQuestion>
+        </div>
 
-        <SubmitButton
+        <button
+          className="mx-auto mt-8 w-full max-w-[400px] cursor-pointer rounded-[50px] border-none bg-[linear-gradient(135deg,#2C1810_0%,#4A2F23_100%)] px-8 py-[1.2rem] text-[1.2rem] font-bold tracking-[0.02em] text-white shadow-[0_4px_15px_rgba(44,24,16,0.2)] transition-all duration-300 ease-[ease] hover:enabled:-translate-y-[3px] hover:enabled:shadow-[0_8px_30px_rgba(44,24,16,0.3)] active:enabled:-translate-y-px disabled:transform-none disabled:cursor-not-allowed disabled:bg-gray-dark disabled:bg-none disabled:shadow-[0_2px_10px_rgba(0,0,0,0.1)] max-[768px]:px-6 max-[768px]:py-4 max-[768px]:text-[1.1rem]"
           onClick={handleSubmit}
           disabled={!isFormValid || isSubmitting}
         >
           {isSubmitting ? "제출 중..." : "피드백 제출하기"}
-        </SubmitButton>
-      </FormContainer>
-    </Container>
+        </button>
+      </div>
+    </div>
   );
 }

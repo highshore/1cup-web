@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
-import styled, { keyframes, css } from "styled-components";
 import dynamic from "next/dynamic";
+import "./event-detail.css";
 import {
   MeetupEvent,
   Article,
@@ -39,7 +39,6 @@ import {
   JoinIcon,
   CancelIcon,
 } from "../../lib/features/meetup/components/meetup_icons";
-import { appLayout } from "../../lib/constants/app_layout";
 import { naverMapsScriptSrc } from "../../lib/constants/naver_maps";
 import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import {
@@ -138,407 +137,206 @@ const parseSeatingDndId = (id: string): SeatingDndTarget | null => {
   };
 };
 
-// Gradient shining sweep animation for join button
-const gradientShine = keyframes`
-  0% {
-    background-position: -100% center;
+// Presentational components (Tailwind) - Day Mode Theme
+type DivProps = React.ComponentPropsWithRef<"div">;
+type SpanProps = React.ComponentPropsWithRef<"span">;
+type ButtonProps = React.ComponentPropsWithRef<"button">;
+
+const Container: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`min-h-screen w-full bg-transparent pt-3 pb-[clamp(2.5rem,5vw,3rem)] text-[#333] max-[768px]:overflow-x-hidden max-[768px]:pt-2 max-[768px]:pb-[clamp(2rem,6vw,2.5rem)] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const SliderImage: React.FC<
+  React.ComponentPropsWithRef<"img"> & { $active: boolean }
+> = ({ $active, className = "", ...rest }) => (
+  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+  <img
+    className={`absolute top-0 left-0 h-full w-full object-contain [transition:opacity_0.3s_ease-in-out] ${
+      $active ? "opacity-100" : "opacity-0"
+    } ${className}`}
+    {...rest}
+  />
+);
+
+const categoryTagStyle = (category: string): React.CSSProperties => {
+  switch (category.toLowerCase()) {
+    case "discussion":
+      return { backgroundColor: "#e3f2fd", color: "#1976d2" };
+    case "movie night":
+      return { backgroundColor: "#ffebee", color: "#d32f2f" };
+    case "picnic":
+      return { backgroundColor: "#e8f5e8", color: "#388e3c" };
+    case "socializing":
+      return { backgroundColor: "#fff3e0", color: "#f57c00" };
+    default:
+      return { backgroundColor: "#f5f5f5", color: "#666" };
   }
-  100% {
-    background-position: 100% center;
-  }
-`;
+};
 
-const NAVBAR_CONTENT_GAP_DESKTOP = "0.75rem";
-const NAVBAR_CONTENT_GAP_MOBILE = "0.5rem";
+const CategoryTag: React.FC<DivProps & { $category: string }> = ({
+  $category,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-4 inline-flex items-center gap-2 rounded-[20px] px-4 py-2 text-[14px] font-semibold max-[768px]:mb-3 max-[768px]:rounded-[12px] max-[768px]:px-3 max-[768px]:py-1.5 max-[768px]:text-[12px] ${className}`}
+    style={categoryTagStyle($category)}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-// Styled components - Day Mode Theme
-const Container = styled.div`
-  width: 100%;
-  min-height: 100vh;
-  background-color: transparent;
-  color: #333;
-  padding: ${NAVBAR_CONTENT_GAP_DESKTOP} 0 clamp(2.5rem, 5vw, 3rem);
+const CountdownPrefix: React.FC<SpanProps & { $isUrgent?: boolean }> = ({
+  $isUrgent,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`${$isUrgent ? "font-bold text-[#DC143C]" : ""} ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-  @media (max-width: 768px) {
-    overflow-x: hidden;
-    padding: ${NAVBAR_CONTENT_GAP_MOBILE} 0 clamp(2rem, 6vw, 2.5rem);
-  }
-`;
+const SectionTitle: React.FC<React.ComponentPropsWithRef<"h2">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <h2
+    className={`mx-0 mt-6 mb-4 text-[24px] font-bold text-[#333] max-[768px]:mt-5 max-[768px]:mb-3 max-[768px]:text-[20px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </h2>
+);
 
-const LoadingContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  padding: 2rem;
+const DetailRow: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-[8px] flex items-start gap-[8px] max-[768px]:mb-[6px] max-[768px]:gap-[6px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
+const DetailIcon: React.FC<SpanProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`mt-[3px] flex shrink-0 items-center text-[#666] max-[768px]:mt-[2px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-const LoadingAnimation = styled.div`
-  width: 200px;
-  height: 200px;
+const DetailText: React.FC<SpanProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`break-words text-[16px] leading-[1.4] text-[#333] max-[768px]:text-[14px] max-[768px]:leading-[1.3] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-  @media (max-width: 768px) {
-    width: 150px;
-    height: 150px;
-  }
-`;
+const MapLoadingPlaceholder: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`my-4 flex h-[300px] items-center justify-center rounded-[12px] border border-solid border-[#e0e0e0] bg-[#f5f5f5] text-[1rem] text-[#999] max-[768px]:my-3 max-[768px]:h-[250px] max-[768px]:rounded-[8px] max-[768px]:text-[0.875rem] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-const SliderWrapper = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop};
+const ParticipantsGrid: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`my-2 flex flex-wrap gap-[8px] max-[768px]:my-1.5 max-[768px]:gap-[6px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
+const ArticleTopicCard: React.FC<DivProps & { $gdg?: boolean }> = ({
+  $gdg,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`my-2 flex cursor-pointer items-center gap-2 rounded-[12px] p-4 [transition:all_0.2s] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:[transform:translateY(-1px)] max-[768px]:my-1.5 max-[768px]:rounded-[8px] max-[768px]:p-3 ${
+      $gdg
+        ? "border-2 border-solid border-transparent [background:linear-gradient(#ffffff,#ffffff)_padding-box,linear-gradient(45deg,#4285f4,#db4437)_border-box]"
+        : "border border-solid border-[#e0e0e0] bg-white"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-const PhotoSlider = styled.div`
-  height: 40vh;
-  position: relative;
-  overflow: hidden;
-  background-color: #000000;
-  border-radius: 20px;
-  margin-top: 0;
+const ArticleTopicNumber: React.FC<SpanProps & { $isGdg?: boolean }> = ({
+  $isGdg,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`mr-2 aspect-square h-[24px] w-[24px] shrink-0 rounded-full bg-[#333] text-center text-[12px] font-semibold text-white max-[768px]:h-[20px] max-[768px]:w-[20px] max-[768px]:text-[11px] ${
+      $isGdg
+        ? "inline-flex items-center justify-center leading-[normal]"
+        : "inline-block leading-[24px] max-[768px]:leading-[20px]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-  @media (max-width: 768px) {
-    height: 35vh;
-    border-radius: 12px;
-  }
-`;
-
-const SliderImage = styled.img<{ $active: boolean }>`
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: ${(props) => (props.$active ? 1 : 0)};
-  transition: opacity 0.3s ease-in-out;
-`;
-
-const SliderPlaceholder = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #000000;
-  color: #ccc;
-  font-size: 3rem;
-
-  svg {
-    width: 3rem;
-    height: 3rem;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
-
-    svg {
-      width: 2rem;
-      height: 2rem;
-    }
-  }
-`;
-
-const Content = styled.div`
-  width: 100%;
-  padding: 1.5rem ${appLayout.pageGutterDesktop} 0;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-
-  @media (max-width: 768px) {
-    padding: 1rem ${appLayout.pageGutterMobile} 0;
-    max-width: 100%;
-  }
-`;
-
-const CategoryTag = styled.div<{ $category: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  background-color: ${(props) => {
-    switch (props.$category.toLowerCase()) {
-      case "discussion":
-        return "#e3f2fd";
-      case "movie night":
-        return "#ffebee";
-      case "picnic":
-        return "#e8f5e8";
-      case "socializing":
-        return "#fff3e0";
-      default:
-        return "#f5f5f5";
-    }
-  }};
-  color: ${(props) => {
-    switch (props.$category.toLowerCase()) {
-      case "discussion":
-        return "#1976d2";
-      case "movie night":
-        return "#d32f2f";
-      case "picnic":
-        return "#388e3c";
-      case "socializing":
-        return "#f57c00";
-      default:
-        return "#666";
-    }
-  }};
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 1rem;
-
-  @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 0.375rem 0.75rem;
-    margin-bottom: 0.75rem;
-    border-radius: 12px;
-  }
-`;
-
-const Title = styled.h1`
-  color: #333;
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 1rem 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-
-  @media (max-width: 768px) {
-    font-size: 22px;
-    margin: 0 0 0.75rem 0;
-    line-height: 1.2;
-  }
-`;
-
-const CountdownPrefix = styled.span<{ $isUrgent?: boolean }>`
-  color: ${(props) => (props.$isUrgent ? "#DC143C" : "inherit")};
-  font-weight: ${(props) => (props.$isUrgent ? "bold" : "inherit")};
-`;
-
-const Description = styled.p`
-  color: #333;
-  font-size: 16px;
-  line-height: 1.6;
-  margin: 0 0 1.5rem 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 0 0 1rem 0;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  color: #333;
-  font-size: 24px;
-  font-weight: 700;
-  margin: 1.5rem 0 1rem 0;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-    margin: 1.25rem 0 0.75rem 0;
-  }
-`;
-
-const DetailRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 8px;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-`;
-
-const DetailIcon = styled.span`
-  color: #666;
-  margin-top: 3px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    margin-top: 2px;
-  }
-`;
-
-const DetailText = styled.span`
-  color: #333;
-  font-size: 16px;
-  line-height: 1.4;
-  word-wrap: break-word;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-    line-height: 1.3;
-  }
-`;
-
-const MapContainer = styled.div`
-  height: 300px;
-  border-radius: 12px;
-  margin: 1rem 0;
-  border: 1px solid #e0e0e0;
-  overflow: hidden;
-  cursor: pointer;
-  position: relative;
-
-  &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    height: 250px;
-    margin: 0.75rem 0;
-    border-radius: 8px;
-  }
-`;
-
-const MapLoadingPlaceholder = styled.div`
-  height: 300px;
-  background-color: #f5f5f5;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #999;
-  font-size: 1rem;
-  margin: 1rem 0;
-  border: 1px solid #e0e0e0;
-
-  @media (max-width: 768px) {
-    height: 250px;
-    margin: 0.75rem 0;
-    border-radius: 8px;
-    font-size: 0.875rem;
-  }
-`;
-
-const ParticipantsGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0.5rem 0;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin: 0.375rem 0;
-  }
-`;
-
-const TopicsSection = styled.div`
-  margin: 1rem 0;
-
-  @media (max-width: 768px) {
-    margin: 0.75rem 0;
-  }
-`;
-
-const ArticleTopicsSection = styled.div`
-  margin: 1.5rem 0;
-
-  @media (max-width: 768px) {
-    margin: 1.25rem 0;
-  }
-`;
-
-const ArticleTopicCard = styled.div<{ $gdg?: boolean }>`
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1rem;
-  margin: 0.5rem 0;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    margin: 0.375rem 0;
-    border-radius: 8px;
-  }
-
-  ${(props) =>
-    props.$gdg &&
-    css`
-      background:
-        linear-gradient(#ffffff, #ffffff) padding-box,
-        linear-gradient(45deg, #4285f4, #db4437) border-box;
-      border: 2px solid transparent;
-    `}
-`;
-
-const ArticleTopicNumber = styled.span<{ $isGdg?: boolean }>`
-  display: inline-block;
-  background-color: #333;
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  aspect-ratio: 1 / 1;
-  flex-shrink: 0;
-  text-align: center;
-  line-height: 24px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-right: 0.5rem;
-
-  ${(props) =>
-    props.$isGdg &&
-    css`
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: normal;
-    `}
-
-  @media (max-width: 768px) {
-    width: 20px;
-    height: 20px;
-    aspect-ratio: 1 / 1;
-    line-height: 20px;
-    ${(props) =>
-      props.$isGdg &&
-      css`
-        line-height: normal;
-      `}
-    font-size: 11px;
-  }
-`;
-
-const ArticleTopicTitle = styled.span`
-  color: #333;
-  font-size: 16px;
-  font-weight: 600;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-  }
-`;
+const ArticleTopicTitle: React.FC<SpanProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`text-[16px] font-semibold text-[#333] max-[768px]:text-[14px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
 // Google "G" icon for GDG topic
 const GoogleGIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
@@ -571,638 +369,298 @@ const GoogleGIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
   </svg>
 );
 
-const TopicCard = styled.div`
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1rem;
-  margin: 0.5rem 0;
-  cursor: pointer;
-  transition: all 0.2s;
+const TopicCard: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`my-2 cursor-pointer rounded-[12px] border border-solid border-[#e0e0e0] bg-white p-4 [transition:all_0.2s] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] max-[768px]:my-1.5 max-[768px]:rounded-[8px] max-[768px]:p-3 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
+const TopicTitle: React.FC<React.ComponentPropsWithRef<"h3">> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <h3
+    className={`mx-0 mt-0 mb-2 flex items-center justify-between text-[16px] font-semibold text-[#333] max-[768px]:mb-1.5 max-[768px]:text-[14px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </h3>
+);
 
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    margin: 0.375rem 0;
-    border-radius: 8px;
-  }
-`;
+const TopicContent: React.FC<DivProps & { $expanded: boolean }> = ({
+  $expanded,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`overflow-hidden [transition:max-height_0.3s_ease-in-out] ${
+      $expanded ? "max-h-[1000px]" : "max-h-0"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-const TopicTitle = styled.h3`
-  color: #333;
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+const DiscussionPoint: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`my-2 flex items-start gap-[8px] text-[14px] text-[#666] max-[768px]:my-1.5 max-[768px]:gap-[6px] max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  @media (max-width: 768px) {
-    font-size: 14px;
-    margin: 0 0 0.375rem 0;
-  }
-`;
-
-const TopicContent = styled.div<{ $expanded: boolean }>`
-  max-height: ${(props) => (props.$expanded ? "1000px" : "0")};
-  overflow: hidden;
-  transition: max-height 0.3s ease-in-out;
-`;
-
-const DiscussionPoint = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0.5rem 0;
-  color: #666;
-  font-size: 14px;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin: 0.375rem 0;
-    font-size: 13px;
-  }
-`;
-
-const ActionButtonSlot = styled.div`
-  width: 100%;
-  min-height: 58px;
-
-  @media (max-width: 768px) {
-    min-height: 54px;
-  }
-`;
-
-const fixedActionButtonInset = css`
-  left: max(
-    ${appLayout.pageGutterDesktop},
-    calc((100vw - ${appLayout.pageMaxWidth}) / 2 + ${appLayout.pageGutterDesktop})
-  );
-  right: max(
-    ${appLayout.pageGutterDesktop},
-    calc((100vw - ${appLayout.pageMaxWidth}) / 2 + ${appLayout.pageGutterDesktop})
-  );
-
-  @media (max-width: 768px) {
-    left: ${appLayout.pageGutterMobile};
-    right: ${appLayout.pageGutterMobile};
-  }
-`;
-
-const ActionButtons = styled.div<{ $isFloating: boolean }>`
-  display: flex;
-  gap: 16px;
-  width: 100%;
-  max-width: calc(${appLayout.pageMaxWidth} - (${appLayout.pageGutterDesktop} * 2));
-  transition: opacity 0.3s ease-in-out;
-  z-index: 1000;
-
-  ${({ $isFloating }) =>
-    $isFloating
-      ? css`
-          position: fixed;
-          bottom: 30px;
-          ${fixedActionButtonInset}
-          width: auto;
-          margin: 0;
-          padding-bottom: 0;
-          z-index: 1050;
-        `
-      : css`
-          position: static;
-          margin: 2rem auto 0 auto;
-          padding-bottom: 0;
-          z-index: 1000;
-        `}
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 12px;
-    max-width: none;
-
-    ${({ $isFloating }) =>
+const ActionButtons: React.FC<DivProps & { $isFloating: boolean }> = ({
+  $isFloating,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`flex gap-4 max-w-[calc(960px-(1.5rem*2))] [transition:opacity_0.3s_ease-in-out] max-[768px]:max-w-none max-[768px]:flex-col max-[768px]:gap-3 ${
       $isFloating
-        ? css`
-            position: fixed !important;
-            bottom: calc(20px + env(safe-area-inset-bottom)) !important;
-            left: ${appLayout.pageGutterMobile} !important;
-            right: ${appLayout.pageGutterMobile} !important;
-            width: auto !important;
-            margin: 0 !important;
-            padding-bottom: 0;
-            z-index: 1050 !important;
-          `
-        : css`
-            position: static !important;
-            margin: 1.5rem auto 0 auto !important;
-            z-index: 1000;
-          `}
-  }
-`;
+        ? "fixed bottom-[30px] left-[max(1.5rem,calc((100vw-960px)/2+1.5rem))] right-[max(1.5rem,calc((100vw-960px)/2+1.5rem))] z-[1050] m-0 w-auto pb-0 max-[768px]:bottom-[calc(20px+env(safe-area-inset-bottom))] max-[768px]:left-2 max-[768px]:right-2"
+        : "static z-[1000] mx-auto mt-8 mb-0 w-full pb-0 max-[768px]:mt-6"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-const AdminButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+const AdminButtons: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-4 flex flex-wrap gap-[8px] max-[768px]:mb-3 max-[768px]:gap-[6px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin-bottom: 0.75rem;
-  }
-`;
+const AdminButton: React.FC<
+  ButtonProps & { $variant?: "default" | "danger" }
+> = ({ $variant, className = "", children, ...rest }) => (
+  <button
+    className={`inline-flex cursor-pointer items-center gap-[0.35rem] rounded-[15px] border-0 px-4 py-2 text-[12px] font-semibold text-white [transition:all_0.2s] enabled:hover:shadow-[0_2px_8px_rgba(255,255,255,0.3)] enabled:hover:[transform:translateY(-1px)] disabled:cursor-not-allowed disabled:opacity-60 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:rounded-[12px] max-[768px]:px-3 max-[768px]:py-1.5 max-[768px]:text-[11px] [&_svg]:h-[16px] [&_svg]:w-[16px] ${
+      $variant === "danger"
+        ? "bg-[#7f1d1d] hover:bg-[#991b1b]"
+        : "bg-[#181818] hover:bg-[#181818]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
-const AdminButton = styled.button<{ $variant?: "default" | "danger" }>`
-  padding: 0.5rem 1rem;
-  background-color: ${({ $variant }) =>
-    $variant === "danger" ? "#7f1d1d" : "#181818"};
-  color: white;
-  border: none;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+const ActionButton: React.FC<
+  ButtonProps & { $variant: "join" | "cancel" | "locked"; $saved?: boolean }
+> = ({ $variant, $saved, className = "", children, ...rest }) => {
+  const variantClasses =
+    $variant === "locked"
+      ? "cursor-not-allowed bg-[#e0e0e0] text-[#999]"
+      : $variant === "cancel"
+      ? "cursor-pointer bg-[#990033] text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:[transform:translateY(-2px)] max-[768px]:hover:[transform:translateY(-1px)]"
+      : "cursor-pointer text-white bg-[linear-gradient(90deg,#000000_0%,#000000_25%,#1a0808_35%,#2a0808_45%,#3a1010_50%,#2a0808_55%,#1a0808_65%,#000000_75%,#000000_100%)] bg-[length:200%_100%] animate-[meetup-gradient-shine_3s_ease-in-out_infinite] shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.4)] hover:[transform:translateY(-2px)] max-[768px]:hover:[transform:translateY(-1px)]";
+  return (
+    <button
+      className={`relative flex flex-1 items-center justify-center gap-[8px] overflow-hidden rounded-[20px] border-0 p-4 text-[16px] font-bold [transition:all_0.2s] max-[768px]:gap-[6px] max-[768px]:rounded-[16px] max-[768px]:p-3.5 max-[768px]:text-[14px] ${variantClasses} ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+};
 
-  &:hover {
-    background-color: ${({ $variant }) =>
-      $variant === "danger" ? "#991b1b" : "#181818"};
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
-  }
+// Dialog components
+const DialogOverlay: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`fixed inset-0 z-[1050] flex items-center justify-center bg-[rgba(0,0,0,0.6)] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
+const DialogBox: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`flex w-[90%] max-w-[400px] flex-col gap-4 rounded-[12px] bg-white p-8 text-center shadow-[0_5px_15px_rgba(0,0,0,0.3)] [&_h3]:mt-0 [&_h3]:text-[1.5rem] [&_h3]:text-[#333] [&_p]:mb-4 [&_p]:text-[1rem] [&_p]:text-[#555] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  svg {
-    width: 16px;
-    height: 16px;
-  }
+const DialogButton: React.FC<ButtonProps & { $primary?: boolean }> = ({
+  $primary,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`cursor-pointer rounded-[8px] border border-solid px-4 py-3 text-[1rem] font-semibold [transition:all_0.2s_ease] hover:opacity-80 ${
+      $primary
+        ? "border-[#000] bg-[#000] text-white"
+        : "border-[#ccc] bg-white text-[#333]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
-  @media (max-width: 768px) {
-    padding: 0.375rem 0.75rem;
-    font-size: 11px;
-    border-radius: 12px;
-    flex: 1;
-    justify-content: center;
-  }
-`;
+// Seating arrangement components
+const SeatingButton: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[#333] px-6 py-3 text-[14px] font-semibold text-white [transition:all_0.2s] enabled:hover:bg-[#555] enabled:hover:[transform:translateY(-1px)] disabled:cursor-not-allowed disabled:bg-[#ccc] max-[768px]:rounded-[6px] max-[768px]:px-5 max-[768px]:py-2.5 max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
-const ActionButton = styled.button<{
-  $variant: "join" | "cancel" | "locked";
-  $saved?: boolean;
-}>`
-  flex: 1;
-  padding: 1rem;
-  border: none;
-  border-radius: 20px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: ${(props) =>
-    props.$variant === "locked" ? "not-allowed" : "pointer"};
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
+const GroupCard: React.FC<DivProps & { $hasTranscript?: boolean }> = ({
+  $hasTranscript,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`relative mb-4 cursor-pointer overflow-hidden rounded-[25px] border-2 border-solid p-6 [transition:all_0.3s_ease] hover:[transform:translateY(-2px)] active:[transform:translateY(0)] max-[768px]:mb-3 max-[768px]:rounded-[20px] max-[768px]:p-4 ${
+      $hasTranscript
+        ? "border-[#10b981] [background:linear-gradient(135deg,#ffffff_0%,#f0fdf4_100%)] shadow-[0_2px_8px_rgba(16,185,129,0.15)] hover:border-[#059669] hover:shadow-[0_8px_24px_rgba(16,185,129,0.25)]"
+        : "border-[#e0e0e0] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-[#333] hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  background-color: ${(props) => {
-    if (props.$variant === "locked") return "#e0e0e0";
-    if (props.$variant === "cancel") return "#990033";
-    return "#000000";
-  }};
+const LeaderInfo: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`mb-3 flex items-center gap-3 border-b border-solid border-[#eee] pb-3 max-[768px]:mb-2 max-[768px]:gap-2 max-[768px]:pb-2 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-  ${(props) =>
-    props.$variant === "join" &&
-    css`
-      background: linear-gradient(
-        90deg,
-        #000000 0%,
-        #000000 25%,
-        #1a0808 35%,
-        #2a0808 45%,
-        #3a1010 50%,
-        #2a0808 55%,
-        #1a0808 65%,
-        #000000 75%,
-        #000000 100%
-      );
-      background-size: 200% 100%;
-      animation: ${gradientShine} 3s ease-in-out infinite;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    `}
+const LeaderBadge: React.FC<SpanProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`rounded-[12px] bg-[#333] px-2 py-1 text-[11px] font-semibold text-white max-[768px]:px-[0.4rem] max-[768px]:py-[0.2rem] max-[768px]:text-[10px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-  color: ${(props) => {
-    if (props.$variant === "locked") return "#999";
-    return "white";
-  }};
+const UserName: React.FC<SpanProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <span
+    className={`flex-1 text-[14px] font-semibold text-[#333] max-[768px]:text-[13px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </span>
+);
 
-  &:hover {
-    transform: ${(props) =>
-      props.$variant !== "locked" ? "translateY(-2px)" : "none"};
-    box-shadow: ${(props) => {
-      if (props.$variant === "locked") return "none";
-      if (props.$variant === "join") return "0 8px 25px rgba(0, 0, 0, 0.4)";
-      return "0 4px 12px rgba(0, 0, 0, 0.15)";
-    }};
-  }
+const ParticipantsList: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div className={`flex flex-col gap-1.5 ${className}`} {...rest}>
+    {children}
+  </div>
+);
 
-  @media (max-width: 768px) {
-    padding: 0.875rem;
-    font-size: 14px;
-    border-radius: 16px;
-    gap: 6px;
+const ParticipantItem: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`flex items-center gap-2 py-1.5 max-[768px]:gap-1.5 ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-    &:hover {
-      transform: ${(props) =>
-        props.$variant !== "locked" ? "translateY(-1px)" : "none"};
-    }
-  }
-`;
-
-// Dialog styled components
-const DialogOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1050;
-`;
-
-const DialogBox = styled.div`
-  background-color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-
-  h3 {
-    margin-top: 0;
-    font-size: 1.5rem;
-    color: #333;
-  }
-
-  p {
-    font-size: 1rem;
-    color: #555;
-    margin-bottom: 1rem;
-  }
-`;
-
-const DialogButton = styled.button<{ $primary?: boolean }>`
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid ${({ $primary }) => ($primary ? "#000" : "#ccc")};
-  background-color: ${({ $primary }) => ($primary ? "#000" : "white")};
-  color: ${({ $primary }) => ($primary ? "white" : "#333")};
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
-// Participation Success Dialog styled components
-const SuccessDialogBox = styled.div`
-  background-color: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 90%;
-  max-width: 450px;
-  text-align: center;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    gap: 1.25rem;
-    max-width: 95%;
-    border-radius: 12px;
-  }
-`;
-
-const SuccessTitle = styled.h3`
-  margin: 0;
-  font-size: 1.5rem;
-  color: #2e7d32;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-
-  svg {
-    width: 1.6rem;
-    height: 1.6rem;
-    flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-
-    svg {
-      width: 1.35rem;
-      height: 1.35rem;
-    }
-  }
-`;
-
-const SuccessContent = styled.div`
-  color: #555;
-  font-size: 1rem;
-  line-height: 1.6;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    line-height: 1.5;
-  }
-`;
-
-const KakaoLink = styled.a`
-  color: #1976d2;
-  text-decoration: none;
-  font-weight: 600;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const SuccessDialogButton = styled.button`
-  padding: 0.875rem 1.5rem;
-  background-color: #2e7d32;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #1b5e20;
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.75rem 1.25rem;
-    font-size: 0.9rem;
-  }
-`;
-
-// Seating arrangement styled components
-const SeatingSection = styled.div`
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background-color: #f8f9fa;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-
-  @media (max-width: 768px) {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    border-radius: 8px;
-  }
-`;
-
-const SeatingControls = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-`;
-
-const SeatingButton = styled.button`
-  padding: 0.75rem 1.5rem;
-  background-color: #333;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:hover {
-    background-color: #555;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem 1.25rem;
-    font-size: 13px;
-    border-radius: 6px;
-  }
-`;
-
-const SeatingTable = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-`;
-
-const SessionTitle = styled.h3`
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-size: 18px;
-  font-weight: 700;
-  text-align: center;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #333;
-
-  @media (max-width: 768px) {
-    font-size: 16px;
-    margin: 0 0 0.75rem 0;
-  }
-`;
-
-const GroupCard = styled.div<{ $hasTranscript?: boolean }>`
-  background-color: white;
-  border: 2px solid ${(props) => (props.$hasTranscript ? "#10b981" : "#e0e0e0")};
-  border-radius: 25px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  position: relative;
-  overflow: hidden;
-
-  ${(props) =>
-    props.$hasTranscript &&
-    `
-    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
-  `}
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${(props) =>
-      props.$hasTranscript
-        ? "0 8px 24px rgba(16, 185, 129, 0.25)"
-        : "0 8px 24px rgba(0, 0, 0, 0.15)"};
-    border-color: ${(props) => (props.$hasTranscript ? "#059669" : "#333")};
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-radius: 20px;
-  }
-`;
-
-const LeaderInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #eee;
-
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-  }
-`;
-
-const LeaderBadge = styled.span`
-  background-color: #333;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-
-  @media (max-width: 768px) {
-    font-size: 10px;
-    padding: 0.2rem 0.4rem;
-  }
-`;
-
-const UserName = styled.span`
-  font-weight: 600;
-  color: #333;
-  font-size: 14px;
-  flex: 1;
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-  }
-`;
-
-const ParticipantsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-`;
-
-const ParticipantItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0;
-
-  @media (max-width: 768px) {
-    gap: 0.375rem;
-  }
-`;
-
-const ParticipantItemWrapper = styled.div`
+const ParticipantItemWrapper: React.FC<DivProps> = ({
+  children,
+  ...rest
+}) => (
   /* Wrapper for dnd-kit sortable */
-`;
+  <div {...rest}>{children}</div>
+);
 
-const ParticipantDragHandle = styled.button`
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 8px;
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
+const ParticipantDragHandle: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`inline-flex h-[32px] w-[32px] shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-[8px] border-0 bg-[#f3f4f6] text-[18px] font-bold leading-none text-[#6b7280] active:cursor-grabbing active:bg-[#e5e7eb] max-[768px]:h-[36px] max-[768px]:w-[36px] max-[768px]:text-[20px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
-  &:active {
-    cursor: grabbing;
-    background: #e5e7eb;
-  }
-
-  @media (max-width: 768px) {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-  }
-`;
-
-const DragOverlayCard = styled.div`
-  min-width: 220px;
-  padding: 0.75rem 1rem;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-  pointer-events: none;
-`;
+const DragOverlayCard: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`pointer-events-none min-w-[220px] rounded-[12px] border border-solid border-[#d1d5db] bg-white px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.18)] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
 const DroppableGroupCard: React.FC<{
   assignment: SeatingAssignment;
@@ -1470,12 +928,12 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
         icon: {
           content: `
             <div style="
-              width: 30px; 
-              height: 30px; 
-              background-color: #181818; 
-              border-radius: 50%; 
-              display: flex; 
-              align-items: center; 
+              width: 30px;
+              height: 30px;
+              background-color: #181818;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
               justify-content: center;
               box-shadow: 0 2px 8px rgba(0,0,0,0.3);
               cursor: pointer;
@@ -1532,7 +990,10 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
   }
 
   return (
-    <MapContainer ref={mapRef}>
+    <div
+      ref={mapRef}
+      className="relative my-4 h-[300px] cursor-pointer overflow-hidden rounded-[12px] border border-solid border-[#e0e0e0] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] max-[768px]:my-3 max-[768px]:h-[250px] max-[768px]:rounded-[8px]"
+    >
       {!mapLoaded && (
         <div
           style={{
@@ -1554,7 +1015,7 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
           Initializing map...
         </div>
       )}
-    </MapContainer>
+    </div>
   );
 };
 
@@ -3168,8 +2629,8 @@ export function EventDetailClient() {
 
   return (
     <Container>
-      <SliderWrapper>
-        <PhotoSlider>
+      <div className="mx-auto w-full max-w-page px-gutter max-[768px]:px-0">
+        <div className="relative mt-0 h-[40vh] overflow-hidden rounded-[20px] bg-[#000000] max-[768px]:h-[35vh] max-[768px]:rounded-[12px]">
           {event.image_urls.length > 0 ? (
             event.image_urls.map((url, index) => (
               <SliderImage
@@ -3180,29 +2641,29 @@ export function EventDetailClient() {
               />
             ))
           ) : (
-            <SliderPlaceholder>
+            <div className="flex h-full w-full items-center justify-center bg-[#000000] text-[3rem] text-[#ccc] [&_svg]:h-12 [&_svg]:w-12 max-[768px]:text-[2rem] max-[768px]:[&_svg]:h-8 max-[768px]:[&_svg]:w-8">
               <PhotoIcon />
-            </SliderPlaceholder>
+            </div>
           )}
-        </PhotoSlider>
-      </SliderWrapper>
+        </div>
+      </div>
 
-      <Content>
+      <div className="mx-auto w-full max-w-page px-gutter pt-6 pb-0 max-[768px]:max-w-full max-[768px]:px-gutter-mobile max-[768px]:pt-4">
         <CategoryTag $category={eventCategory}>
           {eventCategory}
         </CategoryTag>
 
-        <Title>
+        <h1 className="mx-0 mt-0 mb-4 break-words text-[28px] font-extrabold leading-[1.3] text-[#333] max-[768px]:mb-3 max-[768px]:text-[22px] max-[768px]:leading-[1.2]">
           {!isEventPast && countdownPrefix && (
             <CountdownPrefix $isUrgent={isUrgent}>
               {countdownPrefix}
             </CountdownPrefix>
           )}
           {eventTitle}
-        </Title>
+        </h1>
 
         {articleTopics.length > 0 && isCurrentUserParticipant && (
-          <ArticleTopicsSection>
+          <div className="my-6 max-[768px]:my-5">
             <SectionTitle>밋업 토픽</SectionTitle>
             {articleTopics.length >= 3 && (
               <ArticleTopicCard
@@ -3226,10 +2687,12 @@ export function EventDetailClient() {
                 <ArticleTopicTitle>{topic.title.english}</ArticleTopicTitle>
               </ArticleTopicCard>
             ))}
-          </ArticleTopicsSection>
+          </div>
         )}
 
-        <Description>{event.description}</Description>
+        <p className="mx-0 mt-0 mb-6 whitespace-pre-wrap break-words text-[16px] leading-[1.6] text-[#333] max-[768px]:mb-4 max-[768px]:text-[14px] max-[768px]:leading-[1.5]">
+          {event.description}
+        </p>
 
         <SectionTitle>세부 사항</SectionTitle>
         <DetailRow>
@@ -3334,7 +2797,7 @@ export function EventDetailClient() {
         </ParticipantsGrid>
 
         {eventTopics.length > 0 && (
-          <TopicsSection>
+          <div className="my-4 max-[768px]:my-3">
             <SectionTitle>Discussion Topics</SectionTitle>
             {eventTopics.map((topic, index) => (
               <TopicCard key={topic.id} onClick={() => toggleTopic(topic.id)}>
@@ -3378,7 +2841,7 @@ export function EventDetailClient() {
                 </TopicContent>
               </TopicCard>
             ))}
-          </TopicsSection>
+          </div>
         )}
 
         {currentUser && !isCurrentUserParticipant && (
@@ -3393,7 +2856,10 @@ export function EventDetailClient() {
           </div>
         )}
 
-        <ActionButtonSlot ref={actionButtonRef}>
+        <div
+          ref={actionButtonRef}
+          className="min-h-[58px] w-full max-[768px]:min-h-[54px]"
+        >
           <ActionButtons $isFloating={isButtonFloating}>
             <ActionButton
               $variant={
@@ -3423,7 +2889,7 @@ export function EventDetailClient() {
               {getButtonText()}
             </ActionButton>
           </ActionButtons>
-        </ActionButtonSlot>
+        </div>
 
         {(isAdmin ||
           accountStatus === "leader" ||
@@ -3497,7 +2963,7 @@ export function EventDetailClient() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <SeatingSection>
+              <div className="mx-0 my-8 rounded-[12px] border border-solid border-[#e0e0e0] bg-[#f8f9fa] p-6 max-[768px]:my-6 max-[768px]:rounded-[8px] max-[768px]:p-4">
                 <SectionTitle>좌석 배치</SectionTitle>
                 {typeof window !== "undefined" &&
                   window.location.hostname === "localhost" &&
@@ -3519,7 +2985,7 @@ export function EventDetailClient() {
                       development
                     </div>
                   )}
-                <SeatingControls>
+                <div className="mb-6 flex flex-wrap gap-4 max-[768px]:mb-4 max-[768px]:gap-3">
                   <SeatingButton
                     onClick={refreshSeatingArrangement}
                     disabled={seatingLoading}
@@ -3529,13 +2995,15 @@ export function EventDetailClient() {
                   <SeatingButton onClick={() => setShowSeatingTable(false)}>
                     닫기
                   </SeatingButton>
-                </SeatingControls>
+                </div>
 
                 {seatingAssignments.length > 0 ? (
-                  <SeatingTable>
+                  <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6 max-[768px]:grid-cols-[1fr] max-[768px]:gap-4">
                     {[1, 2].map((sessionNumber) => (
                       <div key={sessionNumber}>
-                        <SessionTitle>세션 {sessionNumber}</SessionTitle>
+                        <h3 className="mx-0 mt-0 mb-4 border-b-2 border-solid border-[#333] pb-2 text-center text-[18px] font-bold text-[#333] max-[768px]:mb-3 max-[768px]:text-[16px]">
+                          세션 {sessionNumber}
+                        </h3>
                         {seatingAssignments
                           .filter(
                             (assignment) =>
@@ -3591,7 +3059,7 @@ export function EventDetailClient() {
                           ))}
                       </div>
                     ))}
-                  </SeatingTable>
+                  </div>
                 ) : (
                   <div
                     style={{
@@ -3608,7 +3076,7 @@ export function EventDetailClient() {
                     "🪑 Generate Seating" 버튼을 클릭하여 좌석을 배치하세요.
                   </div>
                 )}
-              </SeatingSection>
+              </div>
               <DragOverlay>
                 {activeId && activeParticipantData ? (
                   <DragOverlayCard>
@@ -3624,7 +3092,7 @@ export function EventDetailClient() {
               </DragOverlay>
             </DndContext>
           )}
-      </Content>
+      </div>
 
       <AdminEventDialog
         isOpen={showAdminDialog}
@@ -3683,11 +3151,14 @@ export function EventDetailClient() {
 
       {showParticipationSuccessDialog && (
         <DialogOverlay onClick={() => setShowParticipationSuccessDialog(false)}>
-            <SuccessDialogBox onClick={(e) => e.stopPropagation()}>
-              <SuccessTitle>
+            <div
+              className="flex w-[90%] max-w-[450px] flex-col gap-6 rounded-[16px] bg-white p-8 text-center shadow-[0_10px_30px_rgba(0,0,0,0.15)] max-[768px]:max-w-[95%] max-[768px]:gap-5 max-[768px]:rounded-[12px] max-[768px]:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="m-0 flex items-center justify-center gap-2 text-[1.5rem] font-bold text-[#2e7d32] max-[768px]:text-[1.25rem] [&_svg]:h-[1.6rem] [&_svg]:w-[1.6rem] [&_svg]:shrink-0 max-[768px]:[&_svg]:h-[1.35rem] max-[768px]:[&_svg]:w-[1.35rem]">
               <CheckCircleIcon /> 모임 신청이 완료되었습니다!
-            </SuccessTitle>
-            <SuccessContent>
+            </h3>
+            <div className="text-[1rem] leading-[1.6] text-[#555] max-[768px]:text-[0.9rem] max-[768px]:leading-[1.5]">
               <p>밋업 참가 신청이 성공적으로 완료되었습니다.</p>
               {latestCreditBalance !== null && meetupEntitlement?.source === "credit" && (
                 <p style={{ color: "#2e7d32", fontWeight: 700 }}>
@@ -3696,13 +3167,14 @@ export function EventDetailClient() {
               )}
               <p>
                 궁금한 점이 있으시면 언제든지{" "}
-                <KakaoLink
+                <a
+                  className="font-semibold text-[#1976d2] no-underline hover:underline"
                   href="https://open.kakao.com/o/gtuiIuvh"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   오픈챗
-                </KakaoLink>
+                </a>
                 으로 문의해 주세요!
               </p>
               <p
@@ -3714,13 +3186,14 @@ export function EventDetailClient() {
               >
                 그럼 모임에서 뵙겠습니다.
               </p>
-            </SuccessContent>
-            <SuccessDialogButton
+            </div>
+            <button
+              className="cursor-pointer rounded-[8px] border-0 bg-[#2e7d32] px-6 py-3.5 text-[1rem] font-semibold text-white [transition:all_0.2s_ease] hover:bg-[#1b5e20] hover:[transform:translateY(-1px)] max-[768px]:px-5 max-[768px]:py-3 max-[768px]:text-[0.9rem]"
               onClick={() => setShowParticipationSuccessDialog(false)}
             >
               확인
-            </SuccessDialogButton>
-          </SuccessDialogBox>
+            </button>
+          </div>
         </DialogOverlay>
       )}
 

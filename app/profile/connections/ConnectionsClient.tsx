@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeftIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import styled from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -13,124 +12,19 @@ import {
   type MutualProfileFriend,
 } from "../../lib/features/profile/services/profile_connections";
 
-const Page = styled.main`
-  width: min(100%, 860px);
-  margin: 0 auto;
-  padding: 0 1.25rem 4rem;
-
-  @media (max-width: 640px) {
-    padding: 0 1rem 3rem;
-  }
-`;
-
-const Header = styled.header`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const BackButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 0;
-  background: transparent;
-  padding: 0.2rem 0;
-  color: #050505;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 850;
-  cursor: pointer;
-
-  svg {
-    width: 17px;
-    height: 17px;
-  }
-`;
-
-const Heading = styled.h1`
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0.8rem 0 0.35rem;
-  color: #050505;
-  font-size: clamp(1.65rem, 5vw, 2rem);
-  font-weight: 900;
-
-  svg {
-    width: 28px;
-    height: 28px;
-    color: #f47a4a;
-  }
-`;
-
-const Subtitle = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.94rem;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const List = styled.div`
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 1.35rem;
-`;
-
-const FriendCard = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 0.85rem;
-  color: #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  text-decoration: none;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-
-  &:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const Avatar = styled.img`
-  width: 52px;
-  height: 52px;
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  object-fit: cover;
-`;
-
-const FriendName = styled.div`
-  font-size: 1rem;
-  font-weight: 900;
-`;
-
-const FriendMeta = styled.div`
-  margin-top: 0.18rem;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.78rem;
-  font-weight: 700;
-`;
-
-const State = styled.div`
-  margin-top: 1.35rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #fff8dc;
-  padding: 1.3rem;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.92rem;
-  font-weight: 700;
-  line-height: 1.55;
-`;
+function State({
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className="mt-[1.35rem] rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-[1.3rem] text-[0.92rem] font-bold leading-[1.55] text-[rgba(5,5,5,0.72)]"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function ConnectionsClient() {
   const router = useRouter();
@@ -170,20 +64,26 @@ export default function ConnectionsClient() {
     : t.profile.connectionsSubtitle;
 
   return (
-    <Page>
-      <Header>
+    <main className="mx-auto w-[min(100%,860px)] px-5 pb-16 max-[640px]:px-4 max-[640px]:pb-12">
+      <header className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <BackButton type="button" onClick={() => router.push("/profile")}>
+          <button
+            type="button"
+            onClick={() => router.push("/profile")}
+            className="inline-flex cursor-pointer items-center gap-[0.4rem] border-0 bg-transparent px-0 py-[0.2rem] text-[0.85rem] font-[850] text-[#050505] [&_svg]:h-[17px] [&_svg]:w-[17px]"
+          >
             <ArrowLeftIcon />
             {t.profile.aboutYou}
-          </BackButton>
-          <Heading>
+          </button>
+          <h1 className="mx-0 mb-[0.35rem] mt-[0.8rem] flex items-center gap-[0.55rem] text-[clamp(1.65rem,5vw,2rem)] font-[900] text-[#050505] [&_svg]:h-7 [&_svg]:w-7 [&_svg]:text-[#f47a4a]">
             <UserGroupIcon />
             {networkTitle}
-          </Heading>
-          <Subtitle>{networkSubtitle}</Subtitle>
+          </h1>
+          <p className="m-0 text-[0.94rem] font-semibold leading-[1.5] text-[rgba(5,5,5,0.62)]">
+            {networkSubtitle}
+          </p>
         </div>
-      </Header>
+      </header>
 
       {loading ? (
         <State>{t.profile.loading}</State>
@@ -192,28 +92,33 @@ export default function ConnectionsClient() {
       ) : friends.length === 0 ? (
         <State>{t.profile.connectionsEmpty}</State>
       ) : (
-        <List>
+        <div className="mt-[1.35rem] grid gap-3">
           {friends.map((friend) => (
-            <FriendCard key={friend.uid} href={`/profile/${encodeURIComponent(friend.uid)}`}>
-              <Avatar
+            <Link
+              key={friend.uid}
+              href={`/profile/${encodeURIComponent(friend.uid)}`}
+              className="flex items-center gap-[0.9rem] rounded-[14px] border-2 border-[#050505] bg-white p-[0.85rem] text-[#050505] no-underline shadow-[3px_3px_0_rgba(5,5,5,0.9)] transition-[transform,box-shadow] duration-150 ease-[ease] hover:[transform:translate(1px,1px)] hover:shadow-[2px_2px_0_rgba(5,5,5,0.9)]"
+            >
+              <img
+                className="h-[52px] w-[52px] flex-none rounded-full border-[1.5px] border-[#050505] object-cover"
                 src={friend.photoURL || "/images/default_user.jpg"}
                 alt=""
               />
               <div>
-                <FriendName>{friend.displayName}</FriendName>
-                <FriendMeta>
+                <div className="text-[1rem] font-[900]">{friend.displayName}</div>
+                <div className="mt-[0.18rem] text-[0.78rem] font-bold text-[rgba(5,5,5,0.58)]">
                   {friend.connectedAt
                     ? new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
                         month: "short",
                         year: "numeric",
                       }).format(new Date(friend.connectedAt))
                     : ""}
-                </FriendMeta>
+                </div>
               </div>
-            </FriendCard>
+            </Link>
           ))}
-        </List>
+        </div>
       )}
-    </Page>
+    </main>
   );
 }

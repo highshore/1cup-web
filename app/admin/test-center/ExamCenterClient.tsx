@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ComponentProps, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowPathIcon, ArrowRightIcon, ChartBarIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
-import styled from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { loadExamCenter } from "../../lib/features/exam/services/exam_admin_client";
@@ -24,138 +24,57 @@ import {
   SetStatusPill,
 } from "./exam_ui";
 
-const Heading = styled.header`
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid #e2d9d4;
+function Heading({ children }: { children: ReactNode }) {
+  return <header className="flex items-end justify-between gap-6 border-b border-[#e2d9d4] pb-7 max-[700px]:flex-col max-[700px]:items-start">{children}</header>;
+}
 
-  @media (max-width: 700px) { align-items: flex-start; flex-direction: column; }
-`;
+function RefreshButton({ className = "", ...rest }: ComponentProps<"button">) {
+  return <button className={`inline-flex min-h-[38px] cursor-pointer items-center gap-[7px] border border-[#d9c9c1] bg-[#fffdfb] px-[11px] py-2 text-[#59382a] text-[11px] font-extrabold [&_svg]:h-[15px] [&_svg]:w-[15px] ${className}`} {...rest} />;
+}
 
-const RefreshButton = styled.button`
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid #d9c9c1;
-  padding: 8px 11px;
-  background: #fffdfb;
-  color: #59382a;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-  svg { width: 15px; height: 15px; }
-`;
+function Handoff({ children }: { children: ReactNode }) {
+  return <section className="mt-[26px] grid grid-cols-[42px_minmax(0,1fr)] gap-4 border border-[#d9b3a3] bg-[#fff5ef] p-[19px] [&_h2]:mt-1 [&_h2]:text-[#3f251b] [&_h2]:[font-family:Georgia,'Times_New_Roman',serif] [&_h2]:text-[25px] [&_h2]:font-medium [&_h2]:tracking-[-.045em] [&_p]:mt-2 [&_p]:max-w-[780px] [&_p]:text-[#765f55] [&_p]:text-[12px] [&_p]:leading-[1.55]">{children}</section>;
+}
 
-const Handoff = styled.section`
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 16px;
-  margin-top: 26px;
-  border: 1px solid #d9b3a3;
-  padding: 19px;
-  background: #fff5ef;
+function HandoffIcon({ children }: { children: ReactNode }) {
+  return <span className="grid h-10 w-10 place-items-center bg-[#f47a4a] text-white [&_svg]:h-5 [&_svg]:w-5">{children}</span>;
+}
 
-  h2 { margin: 4px 0 0; color: #3f251b; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 500; letter-spacing: -.045em; }
-  p { max-width: 780px; margin: 8px 0 0; color: #765f55; font-size: 12px; line-height: 1.55; }
-`;
+function MetricGrid({ children }: { children: ReactNode }) {
+  return <section className="mt-[26px] grid grid-cols-[repeat(4,minmax(0,1fr))] gap-3 max-[820px]:grid-cols-[repeat(2,minmax(0,1fr))]">{children}</section>;
+}
 
-const HandoffIcon = styled.span`
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  background: #f47a4a;
-  color: white;
-  svg { width: 20px; height: 20px; }
-`;
+function Metric({ children }: { children: ReactNode }) {
+  return <article className="min-w-0 border border-[#e2d8d2] bg-white p-[17px] [&_span]:block [&_span]:text-[#88756b] [&_span]:[font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace] [&_span]:text-[8px] [&_span]:font-extrabold [&_span]:uppercase [&_span]:tracking-[.07em] [&_strong]:mt-2 [&_strong]:block [&_strong]:overflow-hidden [&_strong]:text-ellipsis [&_strong]:text-[#342018] [&_strong]:[font-family:Georgia,'Times_New_Roman',serif] [&_strong]:text-[31px] [&_strong]:font-medium [&_strong]:tracking-[-.06em]">{children}</article>;
+}
 
-const MetricGrid = styled.section`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 26px;
+function ListSection({ children }: { children: ReactNode }) {
+  return <section className="mt-7 border border-[#e2d8d2] bg-white">{children}</section>;
+}
 
-  @media (max-width: 820px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-`;
+function ListHeading({ children }: { children: ReactNode }) {
+  return <header className="flex items-center justify-between gap-4 border-b border-[#e9dfda] px-5 py-[18px] [&_h2]:mt-1 [&_h2]:text-[#3b241a] [&_h2]:[font-family:Georgia,'Times_New_Roman',serif] [&_h2]:text-[26px] [&_h2]:font-medium [&_h2]:tracking-[-.05em]">{children}</header>;
+}
 
-const Metric = styled.article`
-  min-width: 0;
-  border: 1px solid #e2d8d2;
-  padding: 17px;
-  background: #fff;
-  span { display: block; color: #88756b; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
-  strong { display: block; overflow: hidden; margin-top: 8px; color: #342018; font-family: Georgia, "Times New Roman", serif; font-size: 31px; font-weight: 500; letter-spacing: -.06em; text-overflow: ellipsis; }
-`;
+function SetRow({ className = "", ...rest }: ComponentProps<typeof Link>) {
+  return <Link className={`grid grid-cols-[minmax(240px,1.35fr)_minmax(180px,.7fr)_minmax(120px,.5fr)_auto] items-center gap-[18px] border-b border-[#eee6e2] px-5 py-[17px] text-inherit no-underline last:border-b-0 hover:bg-[#fff8f4] hover:text-inherit hover:no-underline max-[800px]:grid-cols-[1fr_auto] max-[800px]:gap-[11px] ${className}`} {...rest} />;
+}
 
-const ListSection = styled.section`
-  margin-top: 28px;
-  border: 1px solid #e2d8d2;
-  background: #fff;
-`;
+function SetName({ children }: { children: ReactNode }) {
+  return <div className="flex min-w-0 items-center gap-2.5 [&_strong]:block [&_strong]:overflow-hidden [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_strong]:text-[#43291f] [&_strong]:text-[13px] [&_strong]:font-[850] [&_small]:mt-1 [&_small]:block [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-[#806e65] [&_small]:text-[10px]">{children}</div>;
+}
 
-const ListHeading = styled.header`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
-  border-bottom: 1px solid #e9dfda;
-  h2 { margin: 4px 0 0; color: #3b241a; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 500; letter-spacing: -.05em; }
-`;
+function Readiness({ children }: { children: ReactNode }) {
+  return <div className="max-[800px]:hidden [&_strong]:block [&_strong]:text-[#503429] [&_strong]:text-[12px] [&_small]:mt-1 [&_small]:block [&_small]:text-[#87746b] [&_small]:text-[10px]">{children}</div>;
+}
 
-const SetRow = styled(Link)`
-  display: grid;
-  grid-template-columns: minmax(240px, 1.35fr) minmax(180px, .7fr) minmax(120px, .5fr) auto;
-  gap: 18px;
-  align-items: center;
-  border-bottom: 1px solid #eee6e2;
-  padding: 17px 20px;
-  color: inherit;
-  text-decoration: none;
+function Score({ children }: { children: ReactNode }) {
+  return <div className="max-[800px]:hidden [&_strong]:block [&_strong]:text-[#503429] [&_strong]:text-[13px] [&_small]:mt-1 [&_small]:block [&_small]:text-[#87746b] [&_small]:text-[10px]">{children}</div>;
+}
 
-  &:last-child { border-bottom: 0; }
-  &:hover { background: #fff8f4; color: inherit; text-decoration: none; }
-  @media (max-width: 800px) { grid-template-columns: 1fr auto; gap: 11px; }
-`;
-
-const SetName = styled.div`
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-  strong, small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  strong { color: #43291f; font-size: 13px; font-weight: 850; }
-  small { margin-top: 4px; color: #806e65; font-size: 10px; }
-`;
-
-const Readiness = styled.div`
-  strong, small { display: block; }
-  strong { color: #503429; font-size: 12px; }
-  small { margin-top: 4px; color: #87746b; font-size: 10px; }
-  @media (max-width: 800px) { display: none; }
-`;
-
-const Score = styled.div`
-  strong, small { display: block; }
-  strong { color: #503429; font-size: 13px; }
-  small { margin-top: 4px; color: #87746b; font-size: 10px; }
-  @media (max-width: 800px) { display: none; }
-`;
-
-const Chevron = styled.span`
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid #e3d3cb;
-  color: #b34a29;
-  svg { width: 15px; height: 15px; }
-`;
+function Chevron({ children }: { children: ReactNode }) {
+  return <span className="grid h-[30px] w-[30px] place-items-center border border-[#e3d3cb] text-[#b34a29] [&_svg]:h-[15px] [&_svg]:w-[15px]">{children}</span>;
+}
 
 function mediaReady(set: ExamSetSummary) {
   return set.item_count === 11 && set.ready_item_count === 11;
