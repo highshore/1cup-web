@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import ProfileClient from "./ProfileClient";
 
 export const metadata: Metadata = {
@@ -9,14 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ProfilePage() {
-  return (
-    <>
-      <div style={{ maxWidth: 1120, margin: "18px auto 0", padding: "0 20px", width: "100%" }}>
-        <Link href="/payment/refunds" style={{ fontSize: 14, fontWeight: 800, textDecoration: "underline" }}>
-          5회 이용권 환불
-        </Link>
-      </div>
-      <ProfileClient />
-    </>
-  );
+  return <ProfileClient />;
 }
