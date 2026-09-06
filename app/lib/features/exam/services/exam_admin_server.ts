@@ -1,7 +1,7 @@
 import { admin, createServerClientRSC } from "../../../supabase/server";
 import { getAdminExamAttemptReviews } from "../../speaking-test/services/speaking_test_server";
 import type { SpeakingTestCategory } from "../../speaking-test/types";
-import { type ExamCenterOverview, type ExamInterviewerStatus, type ExamSetDetail, type ExamSetStatus } from "../types";
+import { type ExamCenterOverview, type ExamSetDetail, type ExamSetStatus } from "../types";
 
 type Database = ReturnType<typeof admin>;
 
@@ -15,28 +15,6 @@ function isUuid(value: string) {
 
 export function noStore(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-async function invokeExamPipeline(action: string, input: Record<string, unknown>) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) throw new Error("The durable exam pipeline is not configured.");
-
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/exam-pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
-      apikey: serviceRoleKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ action, ...input }),
-    cache: "no-store",
-  });
-  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (!response.ok || payload.ok === false || typeof payload.error === "string") {
-    throw new Error(typeof payload.error === "string" ? payload.error : "The durable exam pipeline could not accept this request.");
-  }
-  return payload;
 }
 
 export async function requireExamAdmin() {
@@ -81,7 +59,7 @@ function setSummaryRows(
   return sets.map((set) => {
     const setItems = itemsBySet.get(String(set.id)) ?? [];
     const ready = setItems.filter((item) => item.module === "listen_repeat"
-      ? item.audio_status === "ready" && item.visual_status === "ready" && item.audio_url && item.image_url
+      ? item.audio_status === "ready" && item.audio_url
       : item.video_status === "ready" && item.video_url).length;
     const interviewer = interviewerById.get(set.interviewer_id);
     const setAttempts = attemptsBySet.get(String(set.id)) ?? [];
@@ -159,20 +137,20 @@ export async function getExamSet(examSetId: string): Promise<ExamSetDetail | nul
 }
 
 async function hasCompleteExamMedia(database: Database, examSetId: string) {
-  const [narrationResult, itemsResult] = await Promise.all([
-    database.from("exam_set_narration").select("media_status, audio_url").eq("exam_set_id", examSetId),
-    database.from("exam_set_items").select("module, audio_status, visual_status, video_status, audio_url, image_url, video_url").eq("exam_set_id", examSetId),
-  ]);
+  const { data: items, error } = await database
+    .from("exam_set_items")
+    .select("module, audio_status, video_status, audio_url, video_url")
+    .eq("exam_set_id", examSetId);
 
-  if (narrationResult.error || itemsResult.error) {
+  if (error) {
     throw new Error("The exam media could not be checked.");
   }
 
-  return narrationResult.data?.length === 5
-    && narrationResult.data.every((cue) => cue.media_status === "ready" && cue.audio_url)
-    && itemsResult.data?.length === 11
-    && itemsResult.data.every((item) => item.module === "listen_repeat"
-      ? item.audio_status === "ready" && item.visual_status === "ready" && item.audio_url && item.image_url
+  // Learners use the eleven task assets directly. The older narration rows
+  // are retained for existing sets, but are not a deployment prerequisite.
+  return items?.length === 11
+    && items.every((item) => item.module === "listen_repeat"
+      ? item.audio_status === "ready" && item.audio_url
       : item.video_status === "ready" && item.video_url);
 }
 
@@ -182,87 +160,8 @@ function deploymentCategories(input: Record<string, unknown>) {
     : [];
 }
 
-export async function updateExamWorkspace(action: string, input: Record<string, unknown>, adminUserId: string) {
+export async function updateExamWorkspace(action: string, input: Record<string, unknown>, _adminUserId: string) {
   const database = admin();
-
-  if (action === "create-candidates") {
-    return invokeExamPipeline("create-candidates", { requestedBy: adminUserId });
-  }
-
-  if (action === "set-interviewer-status") {
-    const interviewerId = compact(input.interviewerId, 80);
-    const status = compact(input.status, 20) as ExamInterviewerStatus;
-    if (!isUuid(interviewerId) || !["pending", "approved", "rejected"].includes(status)) throw new Error("Choose a valid interviewer status.");
-    const { data, error } = await database.from("exam_interviewers")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", interviewerId)
-      .select("*")
-      .single();
-    if (error) throw new Error("Could not update this interviewer.");
-    return { interviewer: data };
-  }
-
-  if (action === "refresh-interviewer-media") {
-    const interviewerId = compact(input.interviewerId, 80);
-    return invokeExamPipeline("enqueue", { jobType: "interviewer", interviewerId, requestedBy: adminUserId });
-  }
-
-  if (action === "poll-interviewer-video") {
-    const interviewerId = compact(input.interviewerId, 80);
-    return invokeExamPipeline("poll", { interviewerId });
-  }
-
-  if (action === "suggest-set-briefs") {
-    const title = compact(input.title, 140) || "Speaking practice set";
-    const interviewerId = compact(input.interviewerId, 80);
-    return invokeExamPipeline("suggest-briefs", { title, interviewerId });
-  }
-
-  if (action === "create-set") {
-    const title = compact(input.title, 140);
-    if (title.length < 2) {
-      throw new Error("Add a title and two clear scenario briefs before creating the exam draft.");
-    }
-    return invokeExamPipeline("create-draft", {
-      title,
-      interviewerId: compact(input.interviewerId, 80),
-      listenRepeatTheme: input.listenRepeatTheme,
-      interviewTheme: input.interviewTheme,
-      requestedBy: adminUserId,
-    });
-  }
-
-  if (action === "prepare-media") {
-    const examSetId = compact(input.examSetId, 80);
-    if (!isUuid(examSetId)) throw new Error("Choose an exam set first.");
-    const complete = await hasCompleteExamMedia(database, examSetId);
-    if (!complete) return invokeExamPipeline("enqueue", { jobType: "exam", examSetId, requestedBy: adminUserId });
-    const { data: set, error } = await database.from("exam_sets")
-      .update({ status: "media_ready", updated_at: new Date().toISOString() })
-      .eq("id", examSetId).select("*").single();
-    if (error) throw new Error("Could not mark this imported media set as ready.");
-    return { set };
-  }
-
-  if (action === "retry-item") {
-    const itemId = compact(input.itemId, 80);
-    return invokeExamPipeline("enqueue", { jobType: "item", itemId, requestedBy: adminUserId });
-  }
-
-  if (action === "poll-item-video") {
-    const itemId = compact(input.itemId, 80);
-    return invokeExamPipeline("poll", { itemId });
-  }
-
-  if (action === "retry-narration") {
-    const narrationId = compact(input.narrationId, 80);
-    return invokeExamPipeline("enqueue", { jobType: "narration", narrationId, requestedBy: adminUserId });
-  }
-
-  if (action === "retry-listen-repeat-visuals") {
-    const examSetId = compact(input.examSetId, 80);
-    return invokeExamPipeline("enqueue", { jobType: "visuals", examSetId, requestedBy: adminUserId });
-  }
 
   if (action === "set-published") {
     const examSetId = compact(input.examSetId, 80);

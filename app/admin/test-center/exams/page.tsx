@@ -1,12 +1,7 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import ExamSetupClient from "./ExamSetupClient";
+export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Set up an exam - Admin - OneCup English",
-};
-
-export default async function ExamSetupPage({ searchParams }: { searchParams: Promise<{ interviewer?: string }> }) {
-  const { interviewer } = await searchParams;
-  return <ExamSetupClient initialInterviewerId={interviewer || ""} />;
+export default function RetiredExamBuilderPage() {
+  redirect("/admin/test-center");
 }

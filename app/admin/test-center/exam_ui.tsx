@@ -127,8 +127,8 @@ export function ExamPipelineTopbar({
   const context = current === "assets"
     ? t.examCenter.interviewerAssets
     : current === "sets"
-      ? t.examCenter.testSections
-      : t.examCenter.itemInspection;
+      ? t.examCenter.testOperations
+      : t.examCenter.productionManifest;
 
   return <Topbar>
     <Brand href="/admin/test-center" aria-label={t.examCenter.pipelineTitle}>
