@@ -5,6 +5,7 @@ import { useI18n } from "../../lib/i18n/I18nProvider";
 import { SectionTitle } from "../components/SectionHeading";
 
 const MOBILE_NAV_GUTTER = "1rem";
+const SUPPORT_EMAIL = "hello@1cupenglish.com";
 
 const FAQSectionWrapper = styled.section`
   padding: 5rem 0 0;
@@ -88,16 +89,38 @@ const FAQAnswer = styled.div<{ $isOpen: boolean }>`
   line-height: 1.7;
   font-family: "Noto Sans KR", sans-serif;
 
+  a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   @media (max-width: 768px) {
     font-size: 0.9rem;
     padding: ${(props) => (props.$isOpen ? "0 1.2rem 1.2rem" : "0 1.2rem")};
   }
 `;
 
+function renderFaqAnswer(answer: string) {
+  const emailIndex = answer.indexOf(SUPPORT_EMAIL);
+  if (emailIndex === -1) return answer;
+
+  const before = answer.slice(0, emailIndex);
+  const after = answer.slice(emailIndex + SUPPORT_EMAIL.length);
+  return (
+    <>
+      {before}
+      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+      {after}
+    </>
+  );
+}
+
 export default function FaqSection() {
   const { t } = useI18n();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const FAQ_ITEMS = t.home.faq.items.map(item => ({ question: item.q, answer: item.a }));
+  const FAQ_ITEMS = t.home.faq.items.map((item) => ({ question: item.q, answer: item.a }));
 
   const toggleFAQ = (index: number) => {
     setOpenFAQ(openFAQ === index ? null : index);
@@ -118,7 +141,7 @@ export default function FaqSection() {
                 <span>{openFAQ === index ? "−" : "+"}</span>
               </FAQQuestion>
               <FAQAnswer $isOpen={openFAQ === index}>
-                {faq.answer}
+                {renderFaqAnswer(faq.answer)}
               </FAQAnswer>
             </FAQItem>
           ))}
