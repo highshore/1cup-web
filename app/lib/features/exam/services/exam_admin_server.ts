@@ -2,27 +2,8 @@ import { admin, createServerClientRSC } from "../../../supabase/server";
 import { getAdminExamAttemptReviews } from "../../speaking-test/services/speaking_test_server";
 import type { SpeakingTestCategory } from "../../speaking-test/types";
 import { type ExamCenterOverview, type ExamInterviewerStatus, type ExamSetDetail, type ExamSetStatus } from "../types";
-import { generateExamDraftContent, suggestExamBriefs, validateExamBriefs } from "./exam_draft_generation_server";
-import {
-  generateExamMedia,
-  pollInterviewerVideo,
-  pollItemVideo,
-  regenerateInterviewerMedia,
-  regenerateItemMedia,
-  regenerateListenRepeatVisuals,
-  regenerateNarrationMedia,
-} from "./exam_media_generation_server";
 
 type Database = ReturnType<typeof admin>;
-
-const CANDIDATE_PROFILES = [
-  { name: "Maya Thompson", gender: "Female", occupation: "Museum educator", attire: "navy cardigan", personality: "curious", voiceTone: "measured", avatarKey: "maya-thompson" },
-  { name: "Ethan Brooks", gender: "Male", occupation: "Urban planner", attire: "olive overshirt", personality: "thoughtful", voiceTone: "calm", avatarKey: "ethan-brooks" },
-  { name: "Aisha Patel", gender: "Female", occupation: "Environmental scientist", attire: "soft blue blouse", personality: "encouraging", voiceTone: "friendly", avatarKey: "aisha-patel" },
-  { name: "Noah Williams", gender: "Male", occupation: "Community journalist", attire: "sand jacket", personality: "observant", voiceTone: "crisp", avatarKey: "noah-williams" },
-  { name: "Sofia Martin", gender: "Female", occupation: "Architect", attire: "forest-green knit", personality: "reflective", voiceTone: "warm", avatarKey: "sofia-martin" },
-  { name: "Jordan Lee", gender: "Nonbinary", occupation: "Product researcher", attire: "rust shirt", personality: "direct", voiceTone: "confident", avatarKey: "jordan-lee" },
-] as const;
 
 function compact(value: unknown, maximum = 200) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, maximum) : "";
@@ -34,6 +15,28 @@ function isUuid(value: string) {
 
 export function noStore(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+async function invokeExamPipeline(action: string, input: Record<string, unknown>) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) throw new Error("The durable exam pipeline is not configured.");
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/exam-pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action, ...input }),
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok || payload.ok === false || typeof payload.error === "string") {
+    throw new Error(typeof payload.error === "string" ? payload.error : "The durable exam pipeline could not accept this request.");
+  }
+  return payload;
 }
 
 export async function requireExamAdmin() {
@@ -155,13 +158,6 @@ export async function getExamSet(examSetId: string): Promise<ExamSetDetail | nul
   } as ExamSetDetail;
 }
 
-async function getApprovedInterviewer(database: Database, interviewerId: string) {
-  if (!isUuid(interviewerId)) return null;
-  const { data, error } = await database.from("exam_interviewers").select("id, status, name, gender, occupation, attire, personality, voice_tone").eq("id", interviewerId).maybeSingle();
-  if (error || data?.status !== "approved") return null;
-  return data;
-}
-
 async function hasCompleteExamMedia(database: Database, examSetId: string) {
   const [narrationResult, itemsResult] = await Promise.all([
     database.from("exam_set_narration").select("media_status, audio_url").eq("exam_set_id", examSetId),
@@ -190,25 +186,7 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
   const database = admin();
 
   if (action === "create-candidates") {
-    const { data, error } = await database.from("exam_interviewers").insert(
-      CANDIDATE_PROFILES.map((candidate) => ({
-        name: candidate.name,
-        gender: candidate.gender,
-        occupation: candidate.occupation,
-        attire: candidate.attire,
-        personality: candidate.personality,
-        voice_tone: candidate.voiceTone,
-        avatar_key: candidate.avatarKey,
-        status: "pending",
-        image_status: "idle",
-        video_status: "idle",
-        media_mode: "uploaded",
-        source_metadata: { source: "web-candidate-batch" },
-        created_by: adminUserId,
-      })),
-    ).select("*");
-    if (error) throw new Error("Could not create the interviewer candidate batch.");
-    return { interviewers: data ?? [] };
+    return invokeExamPipeline("create-candidates", { requestedBy: adminUserId });
   }
 
   if (action === "set-interviewer-status") {
@@ -226,71 +204,39 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
 
   if (action === "refresh-interviewer-media") {
     const interviewerId = compact(input.interviewerId, 80);
-    return regenerateInterviewerMedia(database, interviewerId);
+    return invokeExamPipeline("enqueue", { jobType: "interviewer", interviewerId, requestedBy: adminUserId });
   }
 
   if (action === "poll-interviewer-video") {
     const interviewerId = compact(input.interviewerId, 80);
-    return pollInterviewerVideo(database, interviewerId);
+    return invokeExamPipeline("poll", { interviewerId });
   }
 
   if (action === "suggest-set-briefs") {
     const title = compact(input.title, 140) || "Speaking practice set";
     const interviewerId = compact(input.interviewerId, 80);
-    const interviewer = await getApprovedInterviewer(database, interviewerId);
-    if (!interviewer) throw new Error("Approve the selected interviewer before requesting AI brief suggestions.");
-    return suggestExamBriefs(title, interviewer);
+    return invokeExamPipeline("suggest-briefs", { title, interviewerId });
   }
 
   if (action === "create-set") {
     const title = compact(input.title, 140);
-    const interviewerId = compact(input.interviewerId, 80);
     if (title.length < 2) {
       throw new Error("Add a title and two clear scenario briefs before creating the exam draft.");
     }
-    const { listenRepeatTheme, interviewTheme } = validateExamBriefs(input.listenRepeatTheme, input.interviewTheme);
-    const interviewer = await getApprovedInterviewer(database, interviewerId);
-    if (!interviewer) throw new Error("Approve the selected interviewer before creating an exam set.");
-
-    const [existingItemsResult, existingNarrationResult] = await Promise.all([
-      database.from("exam_set_items").select("prompt"),
-      database.from("exam_set_narration").select("script"),
-    ]);
-    if (existingItemsResult.error || existingNarrationResult.error) throw new Error("Existing exam scripts could not be checked for duplicates.");
-    const existingScripts = [
-      ...(existingItemsResult.data ?? []).map((item) => compact(item.prompt, 280)),
-      ...(existingNarrationResult.data ?? []).map((cue) => compact(cue.script, 280)),
-    ].filter(Boolean).slice(0, 160);
-    const content = await generateExamDraftContent({ listenRepeatTheme, interviewTheme, interviewer, existingScripts });
-
-    const { data: set, error: setError } = await database.from("exam_sets").insert({
+    return invokeExamPipeline("create-draft", {
       title,
-      interviewer_id: interviewerId,
-      listen_repeat_theme: listenRepeatTheme,
-      interview_theme: interviewTheme,
-      scene_description: content.sceneDescription,
-      status: "draft",
-      media_mode: "generated",
-      created_by: adminUserId,
-    }).select("*").single();
-    if (setError || !set) throw new Error("Could not create the exam set.");
-
-    const [narrationResult, itemsResult] = await Promise.all([
-      database.from("exam_set_narration").insert(content.narration.map((cue) => ({ ...cue, exam_set_id: set.id, media_status: "idle" }))),
-      database.from("exam_set_items").insert(content.items.map((item) => ({ ...item, exam_set_id: set.id }))),
-    ]);
-    if (narrationResult.error || itemsResult.error) {
-      await database.from("exam_sets").delete().eq("id", set.id);
-      throw new Error("Could not build the exam items. Nothing was saved.");
-    }
-    return { set };
+      interviewerId: compact(input.interviewerId, 80),
+      listenRepeatTheme: input.listenRepeatTheme,
+      interviewTheme: input.interviewTheme,
+      requestedBy: adminUserId,
+    });
   }
 
   if (action === "prepare-media") {
     const examSetId = compact(input.examSetId, 80);
     if (!isUuid(examSetId)) throw new Error("Choose an exam set first.");
     const complete = await hasCompleteExamMedia(database, examSetId);
-    if (!complete) return generateExamMedia(database, examSetId);
+    if (!complete) return invokeExamPipeline("enqueue", { jobType: "exam", examSetId, requestedBy: adminUserId });
     const { data: set, error } = await database.from("exam_sets")
       .update({ status: "media_ready", updated_at: new Date().toISOString() })
       .eq("id", examSetId).select("*").single();
@@ -300,22 +246,22 @@ export async function updateExamWorkspace(action: string, input: Record<string, 
 
   if (action === "retry-item") {
     const itemId = compact(input.itemId, 80);
-    return regenerateItemMedia(database, itemId);
+    return invokeExamPipeline("enqueue", { jobType: "item", itemId, requestedBy: adminUserId });
   }
 
   if (action === "poll-item-video") {
     const itemId = compact(input.itemId, 80);
-    return pollItemVideo(database, itemId);
+    return invokeExamPipeline("poll", { itemId });
   }
 
   if (action === "retry-narration") {
     const narrationId = compact(input.narrationId, 80);
-    return regenerateNarrationMedia(database, narrationId);
+    return invokeExamPipeline("enqueue", { jobType: "narration", narrationId, requestedBy: adminUserId });
   }
 
   if (action === "retry-listen-repeat-visuals") {
     const examSetId = compact(input.examSetId, 80);
-    return regenerateListenRepeatVisuals(database, examSetId);
+    return invokeExamPipeline("enqueue", { jobType: "visuals", examSetId, requestedBy: adminUserId });
   }
 
   if (action === "set-published") {
