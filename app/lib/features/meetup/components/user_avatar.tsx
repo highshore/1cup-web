@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
 import { fetchUserProfile, UserProfile } from "../services/user_service";
 // Use the public directory image path
 const DEFAULT_AVATAR_URL = "/images/default_user.jpg";
@@ -16,85 +15,79 @@ interface UserAvatarProps {
   profile?: UserProfile | null; // Allow passing pre-fetched profile
 }
 
-const AvatarContainer = styled.div<{
+interface AvatarContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   $size: number;
   $bgColor?: string;
   $index?: number;
   $isPast?: boolean;
   $isClickable: boolean;
   $isGdgMember?: boolean;
-}>`
-  width: ${(props) => props.$size}px;
-  height: ${(props) => props.$size}px;
-  border-radius: 50%;
-  /* GDG ring disabled: always render a plain avatar regardless of membership. */
-  background-color: ${(props) => props.$bgColor || "#e0e0e0"};
-  position: ${(props) =>
-    props.$index !== undefined ? "absolute" : "relative"};
-  left: ${(props) =>
-    props.$index !== undefined ? props.$index * (props.$size * 0.6) : 0}px;
-  border: 2px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: ${(props) => (props.$isClickable ? "pointer" : "default")};
-  transition: transform 0.2s;
-  filter: ${(props) => (props.$isPast ? "grayscale(50%)" : "none")};
-  overflow: hidden;
-  touch-action: manipulation;
+}
 
-  &:hover {
-    transform: ${(props) => (props.$isClickable ? "scale(1.1)" : "none")};
-  }
-`;
+const AvatarContainer: React.FC<AvatarContainerProps> = ({
+  $size,
+  $bgColor,
+  $index,
+  $isPast,
+  $isClickable,
+  // GDG ring disabled: always render a plain avatar regardless of membership.
+  $isGdgMember: _isGdgMember,
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`flex items-center justify-center overflow-hidden rounded-full border-2 border-solid border-white [touch-action:manipulation] [transition:transform_0.2s] ${
+      $index !== undefined ? "absolute" : "relative"
+    } ${
+      $isClickable
+        ? "cursor-pointer hover:[transform:scale(1.1)]"
+        : "cursor-default"
+    } ${$isPast ? "[filter:grayscale(50%)]" : ""} ${className}`}
+    style={{
+      width: `${$size}px`,
+      height: `${$size}px`,
+      backgroundColor: $bgColor || "#e0e0e0",
+      left: `${$index !== undefined ? $index * ($size * 0.6) : 0}px`,
+    }}
+    {...rest}
+  >
+    {children}
+  </div>
+);
 
-const AvatarImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
+const AvatarImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (
+  props
+) => (
+  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+  <img
+    className="h-full w-full select-none rounded-full object-cover [-webkit-touch-callout:none] [-webkit-user-drag:none]"
+    {...props}
+  />
+);
 
-  /* Prevent long-press context menu on mobile */
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+const AvatarPlaceholder: React.FC<{
+  $size: number;
+  children: React.ReactNode;
+}> = ({ $size, children }) => (
+  <div
+    className={`flex items-center justify-center font-semibold text-white ${
+      $size > 30 ? "text-[16px]" : "text-[10px]"
+    }`}
+  >
+    {children}
+  </div>
+);
 
-  /* Prevent drag and drop */
-  -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
-`;
-
-const AvatarPlaceholder = styled.div<{ $size: number }>`
-  color: white;
-  font-size: ${(props) => (props.$size > 30 ? "16px" : "10px")};
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LoadingSpinner = styled.div<{ $size: number }>`
-  width: ${(props) => Math.min(props.$size * 0.5, 16)}px;
-  height: ${(props) => Math.min(props.$size * 0.5, 16)}px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #666;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-`;
+const LoadingSpinner: React.FC<{ $size: number }> = ({ $size }) => (
+  <div
+    className="animate-spin rounded-full border-2 border-solid border-[#f3f3f3] border-t-[#666]"
+    style={{
+      width: `${Math.min($size * 0.5, 16)}px`,
+      height: `${Math.min($size * 0.5, 16)}px`,
+    }}
+  />
+);
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   uid,
@@ -264,16 +257,6 @@ interface UserAvatarStackProps {
   userProfilesMap?: Record<string, UserProfile>;
 }
 
-const AvatarStackContainer = styled.div<{ $size: number; $width: number }>`
-  position: relative;
-  height: ${(props) => props.$size}px;
-  width: ${(props) => props.$width}px;
-  max-width: 100%;
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-`;
-
 export const UserAvatarStack: React.FC<UserAvatarStackProps> = ({
   uids,
   maxAvatars = 5,
@@ -297,7 +280,10 @@ export const UserAvatarStack: React.FC<UserAvatarStackProps> = ({
     : size;
 
   return (
-    <AvatarStackContainer $size={size} $width={stackWidth}>
+    <div
+      className="relative min-w-0 max-w-full shrink overflow-hidden"
+      style={{ height: `${size}px`, width: `${stackWidth}px` }}
+    >
       {displayedUids.map((uid, index) => (
         <UserAvatar
           key={`${uid}-${index}`} // Use compound key to ensure uniqueness
@@ -322,7 +308,7 @@ export const UserAvatarStack: React.FC<UserAvatarStackProps> = ({
           <AvatarPlaceholder $size={size}>+{moreCount}</AvatarPlaceholder>
         </AvatarContainer>
       )}
-    </AvatarStackContainer>
+    </div>
   );
 };
 

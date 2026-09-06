@@ -1,166 +1,42 @@
-import styled from "styled-components";
 import { useRouter } from "next/navigation";
 import { RocketLaunchIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
-
-const MOBILE_NAV_GUTTER = "1rem";
-
-const CTAWrapper = styled.div`
-  width: 100%;
-  background: #f5f5f5;
-  margin: 0;
-  padding: 4rem 0;
-
-  @media (max-width: 768px) {
-    padding: 3rem 0;
-  }
-`;
-
-const CTAInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const CTASectionCard = styled.div`
-  position: relative;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  padding: 3rem;
-  text-align: center;
-  width: 100%;
-  overflow: hidden;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.92);
-
-  @media (max-width: 768px) {
-    padding: 2rem;
-  }
-`;
-
-const CTAVideoBackground = styled.video`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-`;
-
-const CTAOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1;
-`;
-
-const CTAContent = styled.div`
-  position: relative;
-  z-index: 2;
-  max-width: 760px;
-  margin: 0 auto;
-`;
-
-const CTATitle = styled.h3`
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 1rem;
-  font-family: inherit;
-  white-space: pre-wrap;
-
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const CTADescription = styled.p`
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-  font-family: inherit;
-  white-space: pre-wrap;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-  }
-`;
-
-const CTAButton = styled.button`
-  min-height: 48px;
-  padding: 0.78rem 1.55rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 850;
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease,
-    box-shadow 160ms ease, transform 160ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-  color: #0f172a;
-  font-family: inherit;
-  background: #ffffff;
-  box-shadow: 5px 5px 0 #f47a4a;
-
-  &:hover {
-    background: #fff8dc;
-    border-color: #050505;
-    box-shadow: 7px 7px 0 #f47a4a;
-    transform: translate(-1px, -1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  svg {
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
-  @media (max-width: 768px) {
-    width: min(100%, 260px);
-    padding: 0.875rem 1.35rem;
-    font-size: 0.9rem;
-    gap: 0.375rem;
-  }
-`;
 
 export default function CtaSection() {
   const { t } = useI18n();
   const router = useRouter();
 
   return (
-    <CTAWrapper>
-      <CTAInner>
-        <CTASectionCard>
-          <CTAVideoBackground autoPlay loop muted playsInline>
+    <div className="w-full bg-[#f5f5f5] m-0 py-16 max-[768px]:py-12">
+      <div className="max-w-page mx-auto px-6 max-[768px]:px-4">
+        <div className="relative border-2 border-[#050505] rounded-[18px] p-12 text-center w-full overflow-hidden shadow-[6px_6px_0_rgba(5,5,5,0.92)] max-[768px]:p-8">
+          <video
+            className="absolute top-0 left-0 w-full h-full object-cover z-0"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
             <source src="/assets/blog/manhattan.mp4" type="video/mp4" />
-          </CTAVideoBackground>
-          <CTAOverlay />
-          <CTAContent>
-            <CTATitle>{t.home.cta.title}</CTATitle>
-            <CTADescription>{t.home.cta.description}</CTADescription>
-            <CTAButton onClick={() => router.push("/meetup")}>
+          </video>
+          <div className="absolute top-0 left-0 w-full h-full bg-[rgba(0,0,0,0.7)] z-[1]" />
+          <div className="relative z-[2] max-w-[760px] mx-auto">
+            <h3 className="text-[1.75rem] font-semibold text-white mb-4 [font-family:inherit] whitespace-pre-wrap max-[768px]:text-[1.25rem]">
+              {t.home.cta.title}
+            </h3>
+            <p className="text-[1rem] text-[rgba(255,255,255,0.85)] mb-6 leading-[1.5] [font-family:inherit] whitespace-pre-wrap max-[768px]:text-[0.9rem]">
+              {t.home.cta.description}
+            </p>
+            <button
+              className="min-h-12 px-[1.55rem] py-[0.78rem] border-2 border-[#050505] rounded-full text-[1rem] font-[850] cursor-pointer [transition:background-color_160ms_ease,border-color_160ms_ease,box-shadow_160ms_ease,transform_160ms_ease] inline-flex items-center justify-center gap-2 relative overflow-hidden text-[#0f172a] [font-family:inherit] bg-white shadow-[5px_5px_0_#f47a4a] hover:bg-[#fff8dc] hover:border-[#050505] hover:shadow-[7px_7px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] active:[transform:translateY(0)] [&_svg]:w-[1.1rem] [&_svg]:h-[1.1rem] max-[768px]:w-[min(100%,260px)] max-[768px]:px-[1.35rem] max-[768px]:py-3.5 max-[768px]:text-[0.9rem] max-[768px]:gap-1.5"
+              onClick={() => router.push("/meetup")}
+            >
               <RocketLaunchIcon />
               {t.home.cta.button}
-            </CTAButton>
-          </CTAContent>
-        </CTASectionCard>
-      </CTAInner>
-    </CTAWrapper>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

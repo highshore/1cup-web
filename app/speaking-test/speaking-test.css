@@ -1,0 +1,7 @@
+/* Keyframes for app/speaking-test (styled-components -> Tailwind migration). */
+
+@keyframes speaking-test-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

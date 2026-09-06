@@ -1,9 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type CSSProperties,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -19,10 +29,11 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-import { appLayout } from "../../../lib/constants/app_layout";
 import { useAuth } from "../../../lib/contexts/auth_context";
 import { useI18n } from "../../../lib/i18n/I18nProvider";
 import { supabase } from "../../../lib/supabase/client";
+
+import "./deck.css";
 
 type ViewMode = "tiles" | "list";
 type DeckVisibility = "private" | "public";
@@ -172,71 +183,192 @@ const copyByLocale = {
   },
 } as const;
 
-const Page = styled.main`
-  width: 100%; min-height: 100vh; background: transparent;
-  padding: 1rem ${appLayout.pageGutterDesktop} 4rem;
-  @media (max-width: 768px) { padding: 0.75rem ${appLayout.pageGutterMobile} 3rem; }
-`;
-const Shell = styled.div`width: 100%; max-width: ${appLayout.pageMaxWidth}; margin: 0 auto;`;
-const BackLink = styled(Link)`display:inline-flex;align-items:center;gap:.35rem;color:#050505;font-size:.8rem;font-weight:850;text-decoration:none;svg{width:17px;height:17px}`;
-const Header = styled.section`margin-top:.85rem;border:2px solid #050505;border-radius:18px;background:#fff;padding:1rem;box-shadow:3px 3px 0 #050505;`;
-const HeaderTop = styled.div`display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;@media(max-width:680px){flex-direction:column}`;
-const Identity = styled.div`display:flex;align-items:flex-start;gap:.75rem;min-width:0;`;
-const Cover = styled.div<{ $image?: string | null }>`width:74px;height:74px;flex:0 0 74px;border:2px solid #050505;border-radius:14px;display:flex;align-items:center;justify-content:center;background:${p=>p.$image?`url(${JSON.stringify(p.$image)}) center/cover no-repeat`:"#f1efeb"};font-size:2rem;overflow:hidden;`;
-const TitleRow = styled.div`display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;`;
-const Title = styled.h1`margin:0;color:#050505;font-size:clamp(1.6rem,4vw,2.25rem);line-height:1.08;font-weight:950;`;
-const Description = styled.p`max-width:680px;margin:.4rem 0 0;color:rgba(5,5,5,.6);font-size:.86rem;line-height:1.5;`;
-const Badges = styled.div`display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.55rem;`;
-const Badge = styled.span`display:inline-flex;align-items:center;border:1.5px solid #050505;border-radius:999px;background:#fff;padding:.23rem .45rem;font-size:.62rem;font-weight:900;`;
-const HeaderActions = styled.div`display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end;`;
-const Button = styled.button<{ $primary?: boolean; $active?: boolean }>`display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:2.35rem;border:${p=>p.$primary?"2px":"1.5px"} solid #050505;border-radius:999px;background:${p=>p.$active?"#050505":p.$primary?"#f47a4a":"#fff"};color:${p=>p.$active?"#fff":"#050505"};padding:.45rem .65rem;font-size:.7rem;font-weight:900;cursor:pointer;box-shadow:${p=>p.$primary?"2px 2px 0 #050505":"none"};white-space:nowrap;&:disabled{opacity:.45;cursor:not-allowed}svg{width:15px;height:15px}`;
-const ResultAddButton = styled(Button)`min-height:1.8rem;padding:.28rem .42rem;font-size:.62rem;svg{width:13px;height:13px}`;
-const StudyLink = styled(Link)`display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:2.4rem;border:2px solid #050505;border-radius:999px;background:#f47a4a;color:#050505;padding:.48rem .7rem;font-size:.72rem;font-weight:950;text-decoration:none;box-shadow:2px 2px 0 #050505;svg{width:16px;height:16px}`;
-const Stats = styled.div`display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.9rem;max-width:380px;`;
-const Stat = styled.div`border:1.5px solid #050505;border-radius:12px;background:#fff;padding:.65rem .75rem;strong{display:block;font-size:1.2rem;font-weight:950}span{display:block;margin-top:.1rem;color:rgba(5,5,5,.54);font-size:.66rem;font-weight:800}`;
-const Section = styled.section`margin-top:1.55rem;`;
-const SectionTop = styled.div`display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap;margin-bottom:.75rem;`;
-const SectionText = styled.div`min-width:0;flex:1;`;
-const SectionTitle = styled.h2`margin:0;color:#050505;font-size:1.16rem;font-weight:950;`;
-const Hint = styled.p`margin:.12rem 0 0;color:rgba(5,5,5,.55);font-size:.76rem;line-height:1.4;`;
-const Toolbar = styled.div`display:flex;align-items:center;gap:.42rem;flex-wrap:wrap;`;
-const Segmented = styled.div`display:inline-flex;border:1.5px solid #050505;border-radius:999px;background:#fff;overflow:hidden;`;
-const Segment = styled.button<{ $active:boolean }>`display:inline-flex;align-items:center;gap:.23rem;border:0;border-right:1px solid rgba(5,5,5,.15);background:${p=>p.$active?"#050505":"#fff"};color:${p=>p.$active?"#fff":"#050505"};padding:.45rem .56rem;font-size:.66rem;font-weight:900;cursor:pointer;&:last-child{border-right:0}svg{width:14px;height:14px}`;
-const WordGrid = styled.div<{ $mode:ViewMode }>`display:${p=>p.$mode==="tiles"?"grid":"flex"};grid-template-columns:${p=>p.$mode==="tiles"?"repeat(3,minmax(0,1fr))":"none"};flex-direction:column;gap:.75rem;@media(max-width:900px){grid-template-columns:${p=>p.$mode==="tiles"?"repeat(2,minmax(0,1fr))":"none"}}@media(max-width:560px){grid-template-columns:1fr}`;
-const WordCard = styled.article<{ $mode:ViewMode }>`min-width:0;display:${p=>p.$mode==="list"?"grid":"flex"};grid-template-columns:${p=>p.$mode==="list"?"96px minmax(0,1fr)":"none"};flex-direction:column;overflow:hidden;border:2px solid #050505;border-radius:15px;background:#fff;box-shadow:2px 2px 0 #050505;@media(max-width:560px){grid-template-columns:1fr}`;
-const Media = styled.div<{ $image?:string|null }>`min-height:128px;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #050505;background:${p=>p.$image?`url(${JSON.stringify(p.$image)}) center/cover no-repeat`:"#f1efeb"};font-size:2rem;@media(min-width:561px){${WordCard}[data-mode="list"] &{min-height:100%;border-bottom:0;border-right:2px solid #050505}}`;
-const WordBody = styled.div`display:flex;flex-direction:column;min-width:0;padding:.85rem .9rem;`;
-const WordHeading = styled.div`display:flex;align-items:flex-start;justify-content:space-between;gap:.55rem;`;
-const Term = styled.h3`margin:0;color:#050505;font-size:1.08rem;font-weight:950;overflow-wrap:anywhere;`;
-const Pron = styled.div`margin-top:.18rem;color:rgba(5,5,5,.56);font-size:.68rem;font-weight:750;`;
-const AudioButton = styled.button`width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #050505;border-radius:50%;background:#fff;cursor:pointer;svg{width:15px;height:15px}`;
-const Definition = styled.p`margin:.6rem 0 0;color:#050505;font-size:.84rem;line-height:1.48;`;
-const Korean = styled.p`margin:.22rem 0 0;color:rgba(5,5,5,.65);font-size:.78rem;line-height:1.45;font-weight:650;`;
-const Example = styled.div`margin-top:.65rem;padding:.6rem .7rem;border-radius:10px;background:#f4f3f0;color:rgba(5,5,5,.72);font-size:.72rem;line-height:1.45;`;
-const WordFooter = styled.div`margin-top:auto;padding-top:.65rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;`;
-const Source = styled.span`color:rgba(5,5,5,.45);font-size:.61rem;font-weight:800;`;
-const Empty = styled.div`padding:2rem 1rem;border:2px dashed #050505;border-radius:16px;background:#fff;color:rgba(5,5,5,.58);text-align:center;font-size:.8rem;`;
-const Skeleton = styled.div`height:200px;border:2px solid rgba(5,5,5,.12);border-radius:16px;background:linear-gradient(90deg,#eceae6 25%,#f7f6f3 50%,#eceae6 75%);background-size:200% 100%;animation:pulse 1.3s infinite linear;@keyframes pulse{from{background-position:200% 0}to{background-position:-200% 0}}`;
-const ModalBackdrop = styled.div`position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.58);padding:1rem;`;
-const Modal = styled.div`width:min(760px,100%);max-height:88vh;overflow-y:auto;border:2px solid #050505;border-radius:18px;background:#fff;padding:1rem;box-shadow:7px 7px 0 #050505;`;
-const ModalHeader = styled.div`display:flex;align-items:flex-start;justify-content:space-between;gap:.7rem;margin-bottom:.75rem;`;
-const ModalTitle = styled.h2`margin:0;color:#050505;font-size:1.15rem;font-weight:950;`;
-const Close = styled.button`width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:2px solid #050505;border-radius:50%;background:#fff;cursor:pointer;svg{width:16px;height:16px}`;
-const Search = styled.input`width:100%;border:2px solid #050505;border-radius:999px;background:#fff;padding:.7rem .9rem;color:#050505;font-size:.82rem;outline:none;`;
-const Results = styled.div`display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin-top:.75rem;@media(max-width:680px){grid-template-columns:1fr}`;
-const SearchSentinel = styled.div`min-height:1px;grid-column:1/-1;`;
-const Result = styled.div`border:1.5px solid #050505;border-radius:13px;background:#fff;padding:.75rem;`;
-const ResultHeading = styled.div`display:flex;align-items:center;justify-content:space-between;gap:.55rem;`;
-const Forms = styled.p`margin:.38rem 0 0;color:rgba(5,5,5,.58);font-size:.66rem;line-height:1.4;strong{color:#050505;font-weight:900}`;
-const Sense = styled.div`margin-top:.6rem;padding-top:.6rem;border-top:1px solid rgba(5,5,5,.13);`;
-const SenseTop = styled.div`display:flex;align-items:flex-start;justify-content:space-between;gap:.55rem;`;
-const Grammar = styled.span`display:inline-flex;border:1px solid rgba(5,5,5,.5);border-radius:999px;padding:.15rem .34rem;color:rgba(5,5,5,.65);font-size:.58rem;font-weight:850;`;
-const Field = styled.label`display:block;margin-top:.8rem;color:#050505;font-size:.75rem;font-weight:900;`;
-const Input = styled.input`width:100%;margin-top:.32rem;border:2px solid #050505;border-radius:11px;background:#fff;padding:.7rem;color:#050505;font-size:.84rem;outline:none;`;
-const Textarea = styled.textarea`width:100%;min-height:88px;margin-top:.32rem;border:2px solid #050505;border-radius:11px;background:#fff;padding:.7rem;color:#050505;font-size:.84rem;resize:vertical;outline:none;`;
-const ChoiceRow = styled.div`display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-top:.4rem;`;
-const Choice = styled.button<{ $active:boolean }>`border:2px solid #050505;border-radius:11px;background:${p=>p.$active?"#f2f1ee":"#fff"};padding:.65rem;text-align:left;cursor:pointer;strong{display:block;font-size:.72rem}span{display:block;margin-top:.12rem;color:rgba(5,5,5,.55);font-size:.64rem;line-height:1.35}`;
-const Actions = styled.div`display:flex;justify-content:flex-end;gap:.45rem;margin-top:.9rem;`;
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <main className="w-full min-h-screen bg-transparent pt-4 px-gutter pb-16 max-[768px]:pt-3 max-[768px]:px-gutter-mobile max-[768px]:pb-12">
+      {children}
+    </main>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="w-full max-w-page mx-auto">{children}</div>;
+}
+
+function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-[0.35rem] text-[#050505] text-[0.8rem] font-[850] no-underline [&_svg]:w-[17px] [&_svg]:h-[17px]"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function Badge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center border-[1.5px] border-[#050505] rounded-full bg-white py-[0.23rem] px-[0.45rem] text-[0.62rem] font-black">
+      {children}
+    </span>
+  );
+}
+
+function Button({
+  $primary,
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $primary?: boolean; $active?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center justify-center gap-[0.3rem] min-h-[2.35rem] ${$primary ? "border-2" : "border-[1.5px]"} border-[#050505] rounded-full ${$active ? "bg-[#050505] text-white" : $primary ? "bg-[#f47a4a] text-[#050505]" : "bg-white text-[#050505]"} py-[0.45rem] px-[0.65rem] text-[0.7rem] font-black cursor-pointer ${$primary ? "shadow-[2px_2px_0_#050505]" : "shadow-none"} whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed [&_svg]:w-[15px] [&_svg]:h-[15px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ResultAddButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center justify-center gap-[0.3rem] min-h-[1.8rem] border-[1.5px] border-[#050505] rounded-full ${$active ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.28rem] px-[0.42rem] text-[0.62rem] font-black cursor-pointer shadow-none whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed [&_svg]:w-[13px] [&_svg]:h-[13px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Stat({ children }: { children: ReactNode }) {
+  return (
+    <div className="border-[1.5px] border-[#050505] rounded-xl bg-white py-[0.65rem] px-3 [&_strong]:block [&_strong]:text-[1.2rem] [&_strong]:font-[950] [&_span]:block [&_span]:mt-[0.1rem] [&_span]:text-[rgba(5,5,5,0.54)] [&_span]:text-[0.66rem] [&_span]:font-extrabold">
+      {children}
+    </div>
+  );
+}
+
+function Segment({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center gap-[0.23rem] border-r border-r-[rgba(5,5,5,0.15)] last:border-r-0 ${$active ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.45rem] px-[0.56rem] text-[0.66rem] font-black cursor-pointer [&_svg]:w-[14px] [&_svg]:h-[14px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Term({ children }: { children: ReactNode }) {
+  return <h3 className="m-0 text-[#050505] text-[1.08rem] font-[950] [overflow-wrap:anywhere]">{children}</h3>;
+}
+
+function Definition({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.6rem] mb-0 text-[#050505] text-[0.84rem] leading-[1.48]">{children}</p>;
+}
+
+function Korean({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.22rem] mb-0 text-[rgba(5,5,5,0.65)] text-[0.78rem] leading-[1.45] font-[650]">{children}</p>;
+}
+
+function Empty({
+  className = "",
+  children,
+  ...rest
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`py-8 px-4 border-2 border-dashed border-[#050505] rounded-2xl bg-white text-[rgba(5,5,5,0.58)] text-center text-[0.8rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Skeleton({ style }: { style?: CSSProperties }) {
+  return (
+    <div
+      className="h-[200px] border-2 border-[rgba(5,5,5,0.12)] rounded-2xl bg-[linear-gradient(90deg,#eceae6_25%,#f7f6f3_50%,#eceae6_75%)] bg-[length:200%_100%] animate-[vocab-deck-skeleton-pulse_1.3s_infinite_linear]"
+      style={style}
+    />
+  );
+}
+
+function ModalBackdrop({ children, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.58)] p-4" {...rest}>
+      {children}
+    </div>
+  );
+}
+
+function Modal({ children, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className="w-[min(760px,100%)] max-h-[88vh] overflow-y-auto border-2 border-[#050505] rounded-[18px] bg-white p-4 shadow-[7px_7px_0_#050505]"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ModalHeader({ children }: { children: ReactNode }) {
+  return <div className="flex items-start justify-between gap-[0.7rem] mb-3">{children}</div>;
+}
+
+function ModalTitle({ children }: { children: ReactNode }) {
+  return <h2 className="m-0 text-[#050505] text-[1.15rem] font-[950]">{children}</h2>;
+}
+
+function Close({ children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className="w-[34px] h-[34px] inline-flex items-center justify-center border-2 border-[#050505] rounded-full bg-white cursor-pointer [&_svg]:w-4 [&_svg]:h-4"
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Field({ children }: { children: ReactNode }) {
+  return <label className="block mt-[0.8rem] text-[#050505] text-[0.75rem] font-black">{children}</label>;
+}
+
+function Choice({
+  $active,
+  children,
+  ...rest
+}: { $active: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`border-2 border-[#050505] rounded-[11px] ${$active ? "bg-[#f2f1ee]" : "bg-white"} p-[0.65rem] text-left cursor-pointer [&_strong]:block [&_strong]:text-[0.72rem] [&_span]:block [&_span]:mt-[0.12rem] [&_span]:text-[rgba(5,5,5,0.55)] [&_span]:text-[0.64rem] [&_span]:leading-[1.35]`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+const SearchSentinel = forwardRef<HTMLDivElement, { children?: ReactNode }>(
+  function SearchSentinel({ children }, ref) {
+    return <div ref={ref} className="min-h-px col-span-full">{children}</div>;
+  },
+);
 
 const single = <T,>(value:T|T[]|null|undefined):T|null => Array.isArray(value)?value[0]??null:value??null;
 function mapMeaning(row:any):Meaning|null { const value=single<any>(row); if(!value?.id)return null; return { id:String(value.id),entryId:String(value.entry_id),grammarType:String(value.grammar_type||""),definitionEn:String(value.definition_en||""),definitionKo:typeof value.definition_ko==="string"?value.definition_ko:null,pronunciationIpa:typeof value.pronunciation_ipa==="string"?value.pronunciation_ipa:null,exampleEn:typeof value.example_en==="string"?value.example_en:null,exampleKo:typeof value.example_ko==="string"?value.example_ko:null,audioUrl:typeof value.audio_url==="string"?value.audio_url:null,imageUrl:typeof value.image_url==="string"?value.image_url:null,source:typeof value.source==="string"?value.source:null,meaningOrder:Number(value.meaning_order||0) }; }
@@ -259,7 +391,7 @@ export default function VocabularyDeckV2Client({ deckId }:{ deckId:string }) {
 
   useEffect(()=>{if(authLoading)return;if(!currentUser){router.replace(`/auth?redirect=${encodeURIComponent(`/vocabulary/decks/${deckId}`)}`);return}void load()},[authLoading,currentUser,deckId,load,router]);
 
-  const fetchSearchPage=useCallback(async(normalized:string,offset:number):Promise<DictionaryEntry[]>=>{const [{ data:directRows,error:directError },{ data:formMatchRows,error:formMatchError }]=await Promise.all([supabase.from("dictionary_entries").select("id,term,normalized_term").eq("language_code","en").gte("normalized_term",normalized).lt("normalized_term",`${normalized}\uffff`).order("normalized_term",{ascending:true}).range(offset,offset+SEARCH_PAGE_SIZE-1),supabase.from("dictionary_entry_forms").select("entry_id,entry:dictionary_entries!inner(id,term,normalized_term)").eq("language_code","en").gte("normalized_form",normalized).lt("normalized_form",`${normalized}\uffff`).order("normalized_form",{ascending:true}).range(offset,offset+SEARCH_PAGE_SIZE-1)]);if(directError)throw directError;if(formMatchError)throw formMatchError;const entriesById=new Map<string,{id:string;term:string;normalized_term:string}>();for(const row of directRows||[]){entriesById.set(String(row.id),{id:String(row.id),term:String(row.term),normalized_term:String(row.normalized_term)})}for(const row of formMatchRows||[]){const entry=single<any>((row as any).entry);if(entry?.id&&!entriesById.has(String(entry.id)))entriesById.set(String(entry.id),{id:String(entry.id),term:String(entry.term),normalized_term:String(entry.normalized_term)})}const entries=[...entriesById.values()].slice(0,SEARCH_PAGE_SIZE);const ids=entries.map(row=>row.id);if(!ids.length)return[];const [{ data:meaningRows,error:meaningError },{ data:formRows,error:formError }]=await Promise.all([supabase.from("dictionary_meanings").select("id,entry_id,grammar_type,definition_en,definition_ko,pronunciation_ipa,example_en,example_ko,audio_url,image_url,source,meaning_order").in("entry_id",ids).order("meaning_order",{ascending:true}),supabase.from("dictionary_entry_forms").select("entry_id,form,form_tags").in("entry_id",ids).order("normalized_form",{ascending:true})]);if(meaningError)throw meaningError;if(formError)throw formError;const byEntry:Record<string,Meaning[]>={};const formsByEntry:Record<string,EntryForm[]>={};(meaningRows||[]).forEach((row:any)=>{const meaning=mapMeaning(row);if(!meaning)return;(byEntry[meaning.entryId]??=[]).push(meaning)});(formRows||[]).forEach((row:any)=>{const form=typeof row.form==="string"?row.form.trim():"";if(!form)return;(formsByEntry[String(row.entry_id)]??=[]).push({form,tags:Array.isArray(row.form_tags)?row.form_tags.filter((tag:any)=>typeof tag==="string"):[]})});Object.values(byEntry).forEach(list=>list.sort((a,b)=>Number(Boolean(b.definitionKo?.trim()))-Number(Boolean(a.definitionKo?.trim()))||(a.source==="wiktionary"?0:1)-(b.source==="wiktionary"?0:1)||a.meaningOrder-b.meaningOrder));return entries.map(row=>{const all=byEntry[row.id]||[];const wiki=all.filter(m=>m.source==="wiktionary");return{id:row.id,term:row.term,meanings:wiki.length?wiki:all,forms:formsByEntry[row.id]||[]}})},[]);
+  const fetchSearchPage=useCallback(async(normalized:string,offset:number):Promise<DictionaryEntry[]>=>{const [{ data:directRows,error:directError },{ data:formMatchRows,error:formMatchError }]=await Promise.all([supabase.from("dictionary_entries").select("id,term,normalized_term").eq("language_code","en").gte("normalized_term",normalized).lt("normalized_term",`${normalized}￿`).order("normalized_term",{ascending:true}).range(offset,offset+SEARCH_PAGE_SIZE-1),supabase.from("dictionary_entry_forms").select("entry_id,entry:dictionary_entries!inner(id,term,normalized_term)").eq("language_code","en").gte("normalized_form",normalized).lt("normalized_form",`${normalized}￿`).order("normalized_form",{ascending:true}).range(offset,offset+SEARCH_PAGE_SIZE-1)]);if(directError)throw directError;if(formMatchError)throw formMatchError;const entriesById=new Map<string,{id:string;term:string;normalized_term:string}>();for(const row of directRows||[]){entriesById.set(String(row.id),{id:String(row.id),term:String(row.term),normalized_term:String(row.normalized_term)})}for(const row of formMatchRows||[]){const entry=single<any>((row as any).entry);if(entry?.id&&!entriesById.has(String(entry.id)))entriesById.set(String(entry.id),{id:String(entry.id),term:String(entry.term),normalized_term:String(entry.normalized_term)})}const entries=[...entriesById.values()].slice(0,SEARCH_PAGE_SIZE);const ids=entries.map(row=>row.id);if(!ids.length)return[];const [{ data:meaningRows,error:meaningError },{ data:formRows,error:formError }]=await Promise.all([supabase.from("dictionary_meanings").select("id,entry_id,grammar_type,definition_en,definition_ko,pronunciation_ipa,example_en,example_ko,audio_url,image_url,source,meaning_order").in("entry_id",ids).order("meaning_order",{ascending:true}),supabase.from("dictionary_entry_forms").select("entry_id,form,form_tags").in("entry_id",ids).order("normalized_form",{ascending:true})]);if(meaningError)throw meaningError;if(formError)throw formError;const byEntry:Record<string,Meaning[]>={};const formsByEntry:Record<string,EntryForm[]>={};(meaningRows||[]).forEach((row:any)=>{const meaning=mapMeaning(row);if(!meaning)return;(byEntry[meaning.entryId]??=[]).push(meaning)});(formRows||[]).forEach((row:any)=>{const form=typeof row.form==="string"?row.form.trim():"";if(!form)return;(formsByEntry[String(row.entry_id)]??=[]).push({form,tags:Array.isArray(row.form_tags)?row.form_tags.filter((tag:any)=>typeof tag==="string"):[]})});Object.values(byEntry).forEach(list=>list.sort((a,b)=>Number(Boolean(b.definitionKo?.trim()))-Number(Boolean(a.definitionKo?.trim()))||(a.source==="wiktionary"?0:1)-(b.source==="wiktionary"?0:1)||a.meaningOrder-b.meaningOrder));return entries.map(row=>{const all=byEntry[row.id]||[];const wiki=all.filter(m=>m.source==="wiktionary");return{id:row.id,term:row.term,meanings:wiki.length?wiki:all,forms:formsByEntry[row.id]||[]}})},[]);
 
   useEffect(()=>{const requestId=++searchRequestId.current;if(!addOpen||!isOwner){setResults([]);setHasMoreResults(false);return}const normalized=query.trim().toLowerCase();if(normalized.length<2){setResults([]);setHasMoreResults(false);return}const timer=window.setTimeout(async()=>{setSearching(true);try{const entries=await fetchSearchPage(normalized,0);if(requestId!==searchRequestId.current)return;setResults(entries);setHasMoreResults(entries.length===SEARCH_PAGE_SIZE)}catch(failure){console.error("Dictionary search failed",failure);if(requestId===searchRequestId.current){setResults([]);setHasMoreResults(false)}}finally{if(requestId===searchRequestId.current)setSearching(false)}},220);return()=>window.clearTimeout(timer)},[addOpen,fetchSearchPage,isOwner,query]);
 
@@ -282,14 +414,14 @@ export default function VocabularyDeckV2Client({ deckId }:{ deckId:string }) {
 
   return <Page><Shell>
     <BackLink href="/vocabulary"><ArrowLeftIcon />{copy.back}</BackLink>
-    <Header><HeaderTop><Identity><Cover $image={deck.coverImageUrl}>{deck.coverImageUrl?null:deck.icon}</Cover><div><TitleRow><Title>{displayName}</Title>{isOwner&&!isPersonal&&<Button type="button" onClick={()=>setEditOpen(true)}><PencilSquareIcon />{copy.edit}</Button>}</TitleRow><Description>{displayDescription}</Description><Badges>{deck.isOfficial&&<Badge>{copy.official}</Badge>}{isPersonal&&<Badge>{copy.personal}</Badge>}<Badge>{deck.visibility==="public"?copy.shared:copy.private}</Badge></Badges></div></Identity><HeaderActions>{!isOwner&&deck.visibility==="public"&&<Button type="button" $active={added} disabled={busyKey==="follow"} onClick={()=>void toggleAdded()}>{added?<MinusIcon />:<PlusIcon />}{added?copy.removeDeck:copy.addDeck}</Button>}<StudyLink href={`/vocabulary/study/${deck.id}`}><PlayIcon />{copy.study}</StudyLink></HeaderActions></HeaderTop><Stats><Stat><strong>{items.length}</strong><span>{copy.total}</span></Stat><Stat><strong>{deck.followerCount}</strong><span>{copy.addedUsers}</span></Stat></Stats></Header>
+    <section className="mt-[0.85rem] border-2 border-[#050505] rounded-[18px] bg-white p-4 shadow-[3px_3px_0_#050505]"><div className="flex items-start justify-between gap-4 max-[680px]:flex-col"><div className="flex items-start gap-3 min-w-0"><div className="w-[74px] h-[74px] flex-[0_0_74px] border-2 border-[#050505] rounded-[14px] flex items-center justify-center text-[2rem] overflow-hidden" style={{background:deck.coverImageUrl?`url(${JSON.stringify(deck.coverImageUrl)}) center/cover no-repeat`:"#f1efeb"}}>{deck.coverImageUrl?null:deck.icon}</div><div><div className="flex items-center gap-[0.45rem] flex-wrap"><h1 className="m-0 text-[#050505] text-[clamp(1.6rem,4vw,2.25rem)] leading-[1.08] font-[950]">{displayName}</h1>{isOwner&&!isPersonal&&<Button type="button" onClick={()=>setEditOpen(true)}><PencilSquareIcon />{copy.edit}</Button>}</div><p className="max-w-[680px] mt-[0.4rem] mb-0 text-[rgba(5,5,5,0.6)] text-[0.86rem] leading-[1.5]">{displayDescription}</p><div className="flex gap-[0.3rem] flex-wrap mt-[0.55rem]">{deck.isOfficial&&<Badge>{copy.official}</Badge>}{isPersonal&&<Badge>{copy.personal}</Badge>}<Badge>{deck.visibility==="public"?copy.shared:copy.private}</Badge></div></div></div><div className="flex gap-[0.45rem] flex-wrap justify-end">{!isOwner&&deck.visibility==="public"&&<Button type="button" $active={added} disabled={busyKey==="follow"} onClick={()=>void toggleAdded()}>{added?<MinusIcon />:<PlusIcon />}{added?copy.removeDeck:copy.addDeck}</Button>}<Link href={`/vocabulary/study/${deck.id}`} className="inline-flex items-center justify-center gap-[0.3rem] min-h-[2.4rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.48rem] px-[0.7rem] text-[0.72rem] font-[950] no-underline shadow-[2px_2px_0_#050505] [&_svg]:w-4 [&_svg]:h-4"><PlayIcon />{copy.study}</Link></div></div><div className="grid grid-cols-2 gap-[0.6rem] mt-[0.9rem] max-w-[380px]"><Stat><strong>{items.length}</strong><span>{copy.total}</span></Stat><Stat><strong>{deck.followerCount}</strong><span>{copy.addedUsers}</span></Stat></div></section>
 
-    <Section><SectionTop><SectionText><SectionTitle>{copy.words}</SectionTitle><Hint>{copy.wordsHint}</Hint></SectionText><Toolbar><Segmented><Segment type="button" $active={viewMode==="tiles"} onClick={()=>setViewMode("tiles")}><Squares2X2Icon />{copy.tiles}</Segment><Segment type="button" $active={viewMode==="list"} onClick={()=>setViewMode("list")}><Bars3Icon />{copy.list}</Segment></Segmented>{isOwner&&<Button type="button" $primary onClick={()=>setAddOpen(true)}><PlusIcon />{copy.addWord}</Button>}</Toolbar></SectionTop>
-    {items.length?<WordGrid $mode={viewMode}>{items.map(item=><WordCard key={item.id} $mode={viewMode} data-mode={viewMode}><Media $image={item.meaning?.imageUrl}>{item.meaning?.imageUrl?null:"Aa"}</Media><WordBody><WordHeading><div><Term>{item.term}</Term>{item.meaning?.pronunciationIpa&&<Pron>{item.meaning.pronunciationIpa}</Pron>}</div>{item.meaning?.audioUrl&&<AudioButton type="button" onClick={()=>playAudio(item.meaning!.audioUrl!)} aria-label="Play pronunciation"><SpeakerWaveIcon /></AudioButton>}</WordHeading><Definition>{item.meaning?.definitionEn||copy.noDefinition}</Definition>{item.meaning?.definitionKo&&<Korean>{item.meaning.definitionKo}</Korean>}{item.meaning?.exampleEn&&<Example><strong>{copy.example}</strong><br/>{item.meaning.exampleEn}{item.meaning.exampleKo&&<><br/>{item.meaning.exampleKo}</>}</Example>}<WordFooter><Source>{item.meaning?.source==="wiktionary"?copy.source:""}</Source>{isOwner&&<Button type="button" disabled={busyKey===item.id} onClick={()=>void removeItem(item)}><TrashIcon />{copy.remove}</Button>}</WordFooter></WordBody></WordCard>)}</WordGrid>:<Empty>{copy.noItems}</Empty>}
-    </Section>
+    <section className="mt-[1.55rem]"><div className="flex items-center justify-between gap-[0.7rem] flex-wrap mb-3"><div className="min-w-0 flex-1"><h2 className="m-0 text-[#050505] text-[1.16rem] font-[950]">{copy.words}</h2><p className="mt-[0.12rem] mb-0 text-[rgba(5,5,5,0.55)] text-[0.76rem] leading-[1.4]">{copy.wordsHint}</p></div><div className="flex items-center gap-[0.42rem] flex-wrap"><div className="inline-flex border-[1.5px] border-[#050505] rounded-full bg-white overflow-hidden"><Segment type="button" $active={viewMode==="tiles"} onClick={()=>setViewMode("tiles")}><Squares2X2Icon />{copy.tiles}</Segment><Segment type="button" $active={viewMode==="list"} onClick={()=>setViewMode("list")}><Bars3Icon />{copy.list}</Segment></div>{isOwner&&<Button type="button" $primary onClick={()=>setAddOpen(true)}><PlusIcon />{copy.addWord}</Button>}</div></div>
+    {items.length?<div className={viewMode==="tiles"?"grid grid-cols-3 gap-3 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1":"flex flex-col gap-3"}>{items.map(item=><article key={item.id} data-mode={viewMode} className={`min-w-0 overflow-hidden border-2 border-[#050505] rounded-[15px] bg-white shadow-[2px_2px_0_#050505] ${viewMode==="list"?"grid grid-cols-[96px_minmax(0,1fr)] max-[560px]:grid-cols-1":"flex flex-col"}`}><div className={`min-h-[128px] flex items-center justify-center border-b-2 border-b-[#050505] text-[2rem] ${viewMode==="list"?"min-[561px]:min-h-full min-[561px]:border-b-0 min-[561px]:border-r-2 min-[561px]:border-r-[#050505]":""}`} style={{background:item.meaning?.imageUrl?`url(${JSON.stringify(item.meaning.imageUrl)}) center/cover no-repeat`:"#f1efeb"}}>{item.meaning?.imageUrl?null:"Aa"}</div><div className="flex flex-col min-w-0 py-[0.85rem] px-[0.9rem]"><div className="flex items-start justify-between gap-[0.55rem]"><div><Term>{item.term}</Term>{item.meaning?.pronunciationIpa&&<div className="mt-[0.18rem] text-[rgba(5,5,5,0.56)] text-[0.68rem] font-[750]">{item.meaning.pronunciationIpa}</div>}</div>{item.meaning?.audioUrl&&<button type="button" className="w-[30px] h-[30px] inline-flex items-center justify-center border-[1.5px] border-[#050505] rounded-full bg-white cursor-pointer [&_svg]:w-[15px] [&_svg]:h-[15px]" onClick={()=>playAudio(item.meaning!.audioUrl!)} aria-label="Play pronunciation"><SpeakerWaveIcon /></button>}</div><Definition>{item.meaning?.definitionEn||copy.noDefinition}</Definition>{item.meaning?.definitionKo&&<Korean>{item.meaning.definitionKo}</Korean>}{item.meaning?.exampleEn&&<div className="mt-[0.65rem] py-[0.6rem] px-[0.7rem] rounded-[10px] bg-[#f4f3f0] text-[rgba(5,5,5,0.72)] text-[0.72rem] leading-[1.45]"><strong>{copy.example}</strong><br/>{item.meaning.exampleEn}{item.meaning.exampleKo&&<><br/>{item.meaning.exampleKo}</>}</div>}<div className="mt-auto pt-[0.65rem] flex items-center justify-between gap-2"><span className="text-[rgba(5,5,5,0.45)] text-[0.61rem] font-extrabold">{item.meaning?.source==="wiktionary"?copy.source:""}</span>{isOwner&&<Button type="button" disabled={busyKey===item.id} onClick={()=>void removeItem(item)}><TrashIcon />{copy.remove}</Button>}</div></div></article>)}</div>:<Empty>{copy.noItems}</Empty>}
+    </section>
 
-    {addOpen&&<ModalBackdrop onClick={()=>setAddOpen(false)}><Modal onClick={event=>event.stopPropagation()}><ModalHeader><ModalTitle>{copy.addTitle}</ModalTitle><Close type="button" onClick={()=>setAddOpen(false)}><XMarkIcon /></Close></ModalHeader><Search autoFocus value={query} onChange={event=>{setQuery(event.target.value);setResults([]);setHasMoreResults(false)}} placeholder={copy.search}/>{query.trim().length<2?<Empty style={{marginTop:12}}>{copy.searchStart}</Empty>:searching?<Empty style={{marginTop:12}}>{copy.loading}</Empty>:results.length?<Results>{results.map(entry=>{const allKey=`${entry.id}:all`;const allAdded=entry.meanings.length>0&&entry.meanings.every(meaning=>itemKeys.has(`${entry.id}:${meaning.id}`));return <Result key={entry.id}><ResultHeading><Term>{entry.term}</Term>{entry.meanings.length>0&&<ResultAddButton type="button" $active={allAdded} disabled={allAdded||busyKey===allKey} onClick={()=>void addAllMeanings(entry)}>{allAdded?<CheckIcon />:<PlusIcon />}{allAdded?copy.added:copy.addAll}</ResultAddButton>}</ResultHeading>{entry.forms.length>0&&<Forms><strong>{copy.forms}</strong> {entry.forms.map(form=>form.form).join(", ")}</Forms>}{entry.meanings.length?entry.meanings.map(meaning=>{const key=`${entry.id}:${meaning.id}`;const exists=itemKeys.has(key);return <Sense key={meaning.id}><SenseTop><div><Grammar>{meaning.grammarType}</Grammar><Definition>{meaning.definitionEn||copy.noDefinition}</Definition>{meaning.definitionKo&&<Korean>{meaning.definitionKo}</Korean>}</div><ResultAddButton type="button" $active={exists} disabled={exists||busyKey===key} onClick={()=>void addMeaning(entry,meaning)}>{exists?<CheckIcon />:<PlusIcon />}{exists?copy.added:copy.add}</ResultAddButton></SenseTop></Sense> }):<Sense><SenseTop><Definition>{copy.noDefinition}</Definition><ResultAddButton type="button" onClick={()=>void addMeaning(entry,null)}><PlusIcon />{copy.add}</ResultAddButton></SenseTop></Sense>}</Result>})}{(hasMoreResults||loadingMoreResults)&&<SearchSentinel ref={searchSentinelRef}>{loadingMoreResults&&<Empty style={{padding:".75rem",borderWidth:1}}>{copy.loading}</Empty>}</SearchSentinel>}</Results>:<Empty style={{marginTop:12}}>{copy.noSearch}</Empty>}</Modal></ModalBackdrop>}
+    {addOpen&&<ModalBackdrop onClick={()=>setAddOpen(false)}><Modal onClick={event=>event.stopPropagation()}><ModalHeader><ModalTitle>{copy.addTitle}</ModalTitle><Close type="button" onClick={()=>setAddOpen(false)}><XMarkIcon /></Close></ModalHeader><input className="w-full border-2 border-[#050505] rounded-full bg-white py-[0.7rem] px-[0.9rem] text-[#050505] text-[0.82rem] outline-none" autoFocus value={query} onChange={event=>{setQuery(event.target.value);setResults([]);setHasMoreResults(false)}} placeholder={copy.search}/>{query.trim().length<2?<Empty style={{marginTop:12}}>{copy.searchStart}</Empty>:searching?<Empty style={{marginTop:12}}>{copy.loading}</Empty>:results.length?<div className="grid grid-cols-2 gap-[0.65rem] mt-3 max-[680px]:grid-cols-1">{results.map(entry=>{const allKey=`${entry.id}:all`;const allAdded=entry.meanings.length>0&&entry.meanings.every(meaning=>itemKeys.has(`${entry.id}:${meaning.id}`));return <div key={entry.id} className="border-[1.5px] border-[#050505] rounded-[13px] bg-white p-3"><div className="flex items-center justify-between gap-[0.55rem]"><Term>{entry.term}</Term>{entry.meanings.length>0&&<ResultAddButton type="button" $active={allAdded} disabled={allAdded||busyKey===allKey} onClick={()=>void addAllMeanings(entry)}>{allAdded?<CheckIcon />:<PlusIcon />}{allAdded?copy.added:copy.addAll}</ResultAddButton>}</div>{entry.forms.length>0&&<p className="mt-[0.38rem] mb-0 text-[rgba(5,5,5,0.58)] text-[0.66rem] leading-[1.4] [&_strong]:text-[#050505] [&_strong]:font-black"><strong>{copy.forms}</strong> {entry.forms.map(form=>form.form).join(", ")}</p>}{entry.meanings.length?entry.meanings.map(meaning=>{const key=`${entry.id}:${meaning.id}`;const exists=itemKeys.has(key);return <div key={meaning.id} className="mt-[0.6rem] pt-[0.6rem] border-t border-t-[rgba(5,5,5,0.13)]"><div className="flex items-start justify-between gap-[0.55rem]"><div><span className="inline-flex border border-[rgba(5,5,5,0.5)] rounded-full py-[0.15rem] px-[0.34rem] text-[rgba(5,5,5,0.65)] text-[0.58rem] font-[850]">{meaning.grammarType}</span><Definition>{meaning.definitionEn||copy.noDefinition}</Definition>{meaning.definitionKo&&<Korean>{meaning.definitionKo}</Korean>}</div><ResultAddButton type="button" $active={exists} disabled={exists||busyKey===key} onClick={()=>void addMeaning(entry,meaning)}>{exists?<CheckIcon />:<PlusIcon />}{exists?copy.added:copy.add}</ResultAddButton></div></div> }):<div className="mt-[0.6rem] pt-[0.6rem] border-t border-t-[rgba(5,5,5,0.13)]"><div className="flex items-start justify-between gap-[0.55rem]"><Definition>{copy.noDefinition}</Definition><ResultAddButton type="button" onClick={()=>void addMeaning(entry,null)}><PlusIcon />{copy.add}</ResultAddButton></div></div>}</div>})}{(hasMoreResults||loadingMoreResults)&&<SearchSentinel ref={searchSentinelRef}>{loadingMoreResults&&<Empty style={{padding:".75rem",borderWidth:1}}>{copy.loading}</Empty>}</SearchSentinel>}</div>:<Empty style={{marginTop:12}}>{copy.noSearch}</Empty>}</Modal></ModalBackdrop>}
 
-    {editOpen&&<ModalBackdrop onClick={()=>setEditOpen(false)}><Modal onClick={event=>event.stopPropagation()}><ModalHeader><ModalTitle>{copy.editTitle}</ModalTitle><Close type="button" onClick={()=>setEditOpen(false)}><XMarkIcon /></Close></ModalHeader><Field>{copy.name}<Input value={editName} maxLength={80} onChange={event=>setEditName(event.target.value)}/></Field><Field>{copy.description}<Textarea value={editDescription} maxLength={500} onChange={event=>setEditDescription(event.target.value)}/></Field><Field>{copy.visibility}</Field><ChoiceRow><Choice type="button" $active={editVisibility==="private"} onClick={()=>setEditVisibility("private")}><strong>{copy.privateOption}</strong><span>{copy.privateOptionHint}</span></Choice><Choice type="button" $active={editVisibility==="public"} onClick={()=>setEditVisibility("public")}><strong>{copy.sharedOption}</strong><span>{copy.sharedOptionHint}</span></Choice></ChoiceRow><Actions><Button type="button" onClick={()=>setEditOpen(false)}>{copy.cancel}</Button><Button type="button" $primary disabled={busyKey==="edit"||!editName.trim()} onClick={()=>void saveEdit()}><PencilSquareIcon />{copy.save}</Button></Actions></Modal></ModalBackdrop>}
+    {editOpen&&<ModalBackdrop onClick={()=>setEditOpen(false)}><Modal onClick={event=>event.stopPropagation()}><ModalHeader><ModalTitle>{copy.editTitle}</ModalTitle><Close type="button" onClick={()=>setEditOpen(false)}><XMarkIcon /></Close></ModalHeader><Field>{copy.name}<input className="w-full mt-[0.32rem] border-2 border-[#050505] rounded-[11px] bg-white p-[0.7rem] text-[#050505] text-[0.84rem] outline-none" value={editName} maxLength={80} onChange={event=>setEditName(event.target.value)}/></Field><Field>{copy.description}<textarea className="w-full min-h-[88px] mt-[0.32rem] border-2 border-[#050505] rounded-[11px] bg-white p-[0.7rem] text-[#050505] text-[0.84rem] resize-y outline-none" value={editDescription} maxLength={500} onChange={event=>setEditDescription(event.target.value)}/></Field><Field>{copy.visibility}</Field><div className="grid grid-cols-2 gap-2 mt-[0.4rem]"><Choice type="button" $active={editVisibility==="private"} onClick={()=>setEditVisibility("private")}><strong>{copy.privateOption}</strong><span>{copy.privateOptionHint}</span></Choice><Choice type="button" $active={editVisibility==="public"} onClick={()=>setEditVisibility("public")}><strong>{copy.sharedOption}</strong><span>{copy.sharedOptionHint}</span></Choice></div><div className="flex justify-end gap-[0.45rem] mt-[0.9rem]"><Button type="button" onClick={()=>setEditOpen(false)}>{copy.cancel}</Button><Button type="button" $primary disabled={busyKey==="edit"||!editName.trim()} onClick={()=>void saveEdit()}><PencilSquareIcon />{copy.save}</Button></div></Modal></ModalBackdrop>}
   </Shell></Page>;
 }

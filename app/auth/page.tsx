@@ -12,9 +12,10 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../lib/supabase/client";
-import styled, { keyframes } from "styled-components";
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
+
+import "./auth.css";
 
 const SIGN_IN_PHRASES = [
   "Welcome",
@@ -25,34 +26,6 @@ const SIGN_IN_PHRASES = [
 const TYPING_SPEED_MS = 82;
 const ERASING_SPEED_MS = 40;
 const HOLD_MS = 1300;
-
-const caretBlink = keyframes`
-  0%, 49% {
-    opacity: 1;
-  }
-
-  50%, 100% {
-    opacity: 0;
-  }
-`;
-
-const revealStep = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-const spin = keyframes`
-  to {
-    transform: rotate(360deg);
-  }
-`;
 
 // Mirrors CODE_TTL_MS / RESEND_MIN_INTERVAL_MS in app/lib/otp/service.ts. The server
 // stays the authority; these only decide what the UI offers.
@@ -130,158 +103,41 @@ const sanitizeRedirectUrl = (value: string | null) => {
   return value;
 };
 
-// Layout Components
-const PageWrapper = styled.div`
-  min-height: 100dvh;
-  width: 100%;
-  background: #ffffff;
-  color: #141414;
-`;
+// Shared class strings (styled-components migration).
 
-const SplitLayout = styled.div`
-  display: grid;
-  min-height: 100dvh;
-  grid-template-columns: 3fr 2fr;
+// Base for the phone/code inputs; font-size, alignment and right padding are set per
+// variant to avoid conflicting utilities.
+const inputBaseClass =
+  "w-full min-h-[54px] py-[0.95rem] pl-[1.1rem] border-2 border-[#050505] rounded-[12px] text-[#050505] bg-white [transition:border-color_140ms_ease,box-shadow_140ms_ease,background-color_140ms_ease] focus:outline-none focus:border-[#050505] focus:shadow-[3px_3px_0_#f47a4a] read-only:bg-[#f3f1ed] read-only:text-[rgba(5,5,5,0.7)]";
 
-  @media (max-width: 1023px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 42dvh) minmax(0, 58dvh);
-    height: 100dvh;
-    overflow: hidden;
-  }
-`;
+// Base for underlined link-style buttons; color and weight are set per variant.
+const linkButtonBaseClass =
+  "p-0 border-none bg-transparent text-[0.9rem] underline underline-offset-[3px] cursor-pointer disabled:text-[#9ca3af] disabled:no-underline disabled:cursor-not-allowed";
 
-const MediaPane = styled.section`
-  position: relative;
-  min-height: 44vh;
-  overflow: hidden;
-  background: #000000;
+const messageBaseClass =
+  "mt-4 py-3 px-4 rounded-[12px] text-center text-[0.95rem]";
 
-  @media (max-width: 1023px) {
-    min-height: 0;
-    height: 42dvh;
-  }
-`;
+// Base for the sign-in choice buttons; background/text/border colors per variant.
+const choiceButtonBaseClass =
+  "flex items-center justify-center w-full min-h-[56px] py-[0.9rem] px-5 border rounded-[20px] cursor-pointer font-[760] text-[1rem] gap-3 [transition:filter_140ms_ease,border-color_140ms_ease,box-shadow_140ms_ease,transform_140ms_ease] hover:[transform:translateY(-1px)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] disabled:cursor-not-allowed disabled:opacity-[0.66] disabled:[transform:none]";
 
-const BackgroundVideo = styled.video`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 40% center;
-`;
+interface SpinnerProps {
+  dark?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
+}
 
-const VideoOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-`;
-
-const BrandBar = styled.div`
-  position: relative;
-  z-index: 1;
-  padding: 24px;
-
-  @media (min-width: 640px) {
-    padding: 32px;
-  }
-
-  @media (min-width: 768px) {
-    padding: 40px;
-  }
-`;
-
-const BrandLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-`;
-
-const Logo = styled.img`
-  display: block;
-  height: 36px;
-  width: auto;
-
-  @media (max-width: 480px) {
-    height: 30px;
-  }
-`;
-
-const FormPane = styled.section`
-  display: flex;
-  min-height: 56vh;
-  /* flex-start + margin:auto on the child, rather than align-items:center, so the
-     top of a tall form stays reachable once this pane has to scroll. */
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  background: #ffffff;
-  padding: 48px 24px;
-  text-align: center;
-
-  @media (max-width: 1023px) {
-    min-height: 0;
-    height: 58dvh;
-    padding: 28px 24px max(28px, env(safe-area-inset-bottom));
-  }
-
-  @media (min-width: 640px) {
-    padding: 48px 40px;
-  }
-
-  @media (min-width: 768px) {
-    padding: 48px 56px;
-  }
-
-  @media (min-width: 1024px) {
-    padding: 48px 64px;
-  }
-
-  @media (min-width: 1280px) {
-    padding: 48px 80px;
-  }
-`;
-
-const FormContent = styled.div`
-  display: flex;
-  width: 100%;
-  max-width: 420px;
-  margin: auto; /* centres in the pane without trapping overflow — see FormPane */
-  flex-direction: column;
-  align-items: center;
-`;
-
-const GreetingWrap = styled.div`
-  display: flex;
-  min-height: 88px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
-  @media (max-width: 480px) {
-    min-height: 78px;
-  }
-`;
-
-const GreetingText = styled.h1`
-  color: #111111;
-  font-size: clamp(1.8rem, 5.8vw, 2.4rem);
-  font-weight: 500;
-  line-height: 1.12;
-  letter-spacing: 0;
-  margin: 0;
-`;
-
-const Caret = styled.span`
-  display: inline-block;
-  width: 1px;
-  height: 0.95em;
-  margin-left: 0.25rem;
-  transform: translateY(0.08em);
-  background: #111111;
-  animation: ${caretBlink} 1s step-end infinite;
-`;
+function Spinner({ dark, ...rest }: SpinnerProps) {
+  return (
+    <span
+      className={`inline-block w-4 h-4 mr-2 align-[-3px] border-2 rounded-full animate-[auth-spin_700ms_linear_infinite] ${
+        dark
+          ? "border-[rgba(60,30,30,0.28)] border-t-[#3c1e1e]"
+          : "border-[rgba(255,255,255,0.35)] border-t-white"
+      }`}
+      {...rest}
+    />
+  );
+}
 
 function SignInGreeting() {
   const [phraseIndex, setPhraseIndex] = useState(0);
@@ -322,12 +178,12 @@ function SignInGreeting() {
   }, [characterCount, currentPhrase, isDeleting]);
 
   return (
-    <GreetingWrap>
-      <GreetingText>
+    <div className="flex min-h-[88px] w-full items-center justify-center text-center max-[480px]:min-h-[78px]">
+      <h1 className="m-0 text-[#111111] text-[clamp(1.8rem,5.8vw,2.4rem)] font-medium leading-[1.12] tracking-normal">
         {currentPhrase.slice(0, characterCount)}
-        <Caret />
-      </GreetingText>
-    </GreetingWrap>
+        <span className="inline-block w-px h-[0.95em] ml-1 translate-y-[0.08em] bg-[#111111] animate-[auth-caret-blink_1s_step-end_infinite]" />
+      </h1>
+    </div>
   );
 }
 
@@ -338,328 +194,43 @@ interface AuthLayoutProps {
 
 function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <PageWrapper>
-      <SplitLayout>
-        <MediaPane>
-          <BackgroundVideo autoPlay loop muted playsInline preload="auto">
+    <div className="min-h-dvh w-full bg-white text-[#141414]">
+      <div className="grid min-h-dvh grid-cols-[3fr_2fr] max-[1023px]:grid-cols-1 max-[1023px]:grid-rows-[minmax(0,42dvh)_minmax(0,58dvh)] max-[1023px]:h-dvh max-[1023px]:overflow-hidden">
+        <section className="relative min-h-[44vh] overflow-hidden bg-black max-[1023px]:min-h-0 max-[1023px]:h-[42dvh]">
+          <video
+            className="absolute inset-0 w-full h-full object-cover object-[40%_center]"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+          >
             <source src="/signin/bg_video.mp4" type="video/mp4" />
-          </BackgroundVideo>
-          <VideoOverlay />
-          <BrandBar>
-            <BrandLink href="/">
-              <Logo
+          </video>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative z-[1] p-6 min-[640px]:p-8 min-[768px]:p-10">
+            <Link href="/" className="inline-flex items-center">
+              <img
+                className="block h-9 w-auto max-[480px]:h-[30px]"
                 src="/images/logos/1cup_logo_new_white.svg"
                 alt="1 Cup English"
               />
-            </BrandLink>
-          </BrandBar>
-        </MediaPane>
+            </Link>
+          </div>
+        </section>
 
-        <FormPane>
-          <FormContent>{children}</FormContent>
-        </FormPane>
-      </SplitLayout>
-    </PageWrapper>
+        {/* flex-start + margin:auto on the child, rather than align-items:center, so the
+            top of a tall form stays reachable once this pane has to scroll. */}
+        <section className="flex min-h-[56vh] items-start justify-center overflow-y-auto bg-white text-center pt-7 px-6 pb-[max(28px,env(safe-area-inset-bottom))] max-[1023px]:min-h-0 max-[1023px]:h-[58dvh] min-[640px]:py-12 min-[640px]:px-10 min-[768px]:px-14 min-[1024px]:px-16 min-[1280px]:px-20">
+          {/* m-auto centres in the pane without trapping overflow — see the pane above */}
+          <div className="flex w-full max-w-[420px] m-auto flex-col items-center">
+            {children}
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
-
-// ... END: Components migrated from auth_components.tsx ...
-
-// ... START: Original styled components from auth.tsx that are still in use ...
-const AuthPageHeading = styled.h1`
-  /* Renamed from Header in original auth.tsx */
-  font-size: clamp(1.9rem, 4vw, 2.6rem);
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-  width: 100%;
-  text-align: center;
-  color: #111827;
-  letter-spacing: 0;
-  line-height: 1.16;
-`;
-
-const Description = styled.p`
-  margin: 0 0 2rem;
-  text-align: center;
-  color: #6b7280;
-  width: 100%;
-  font-size: 1rem;
-  line-height: 1.6;
-`;
-
-const PhoneForm = styled.form`
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  margin-top: 0.35rem;
-  padding: 1rem;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 4px 4px 0 #050505;
-`;
-
-const Input = styled.input<{ $hasInlineAction?: boolean }>`
-  /* Specific to phone auth part */
-  width: 100%;
-  min-height: 54px;
-  padding: 0.95rem 1.1rem;
-  padding-right: ${(props) => (props.$hasInlineAction ? "5rem" : "1.1rem")};
-  border: 2px solid #050505;
-  border-radius: 12px;
-  font-size: 1rem;
-  color: #050505;
-  background: #ffffff;
-  transition: border-color 140ms ease, box-shadow 140ms ease,
-    background-color 140ms ease;
-
-  &:focus {
-    outline: none;
-    border-color: #050505;
-    box-shadow: 3px 3px 0 #f47a4a;
-  }
-
-  &:read-only {
-    background: #f3f1ed;
-    color: rgba(5, 5, 5, 0.7);
-  }
-`;
-
-/* Wraps one input so an inline action can sit on top of it. */
-const Field = styled.div`
-  position: relative;
-  width: 100%;
-`;
-
-const InlineAction = styled.button`
-  position: absolute;
-  top: 50%;
-  right: 0.6rem;
-  transform: translateY(-50%);
-  padding: 0.4rem 0.7rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-
-  &:hover {
-    background: #f47a4a;
-  }
-
-  &:disabled {
-    color: #9ca3af;
-    cursor: not-allowed;
-    background: transparent;
-  }
-`;
-
-/* The code step lives on the same screen — it slides in under the number. */
-const CodeStep = styled.div`
-  width: 100%;
-  animation: ${revealStep} 220ms ease-out;
-`;
-
-const CodeInput = styled(Input)`
-  text-align: center;
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: 0.4em;
-  text-indent: 0.4em; /* keeps the digits optically centred despite the tracking */
-`;
-
-const StepRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  margin-top: 0.6rem;
-  font-size: 0.9rem;
-  color: rgba(5, 5, 5, 0.62);
-  text-align: left;
-`;
-
-const LinkButton = styled.button`
-  padding: 0;
-  border: none;
-  background: none;
-  color: #050505;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-
-  &:disabled {
-    color: #9ca3af;
-    text-decoration: none;
-    cursor: not-allowed;
-  }
-`;
-
-const CodeLabel = styled.p`
-  margin: 0.9rem 0 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #050505;
-  text-align: left;
-`;
-
-const BackLink = styled(LinkButton)`
-  align-self: center;
-  margin-top: 1.25rem;
-  color: rgba(5, 5, 5, 0.68);
-  font-weight: 600;
-`;
-
-const Spinner = styled.span<{ $dark?: boolean }>`
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 0.5rem;
-  vertical-align: -3px;
-  border: 2px solid ${(props) => (props.$dark ? "rgba(60, 30, 30, 0.28)" : "rgba(255, 255, 255, 0.35)")};
-  border-top-color: ${(props) => (props.$dark ? "#3c1e1e" : "#ffffff")};
-  border-radius: 50%;
-  animation: ${spin} 700ms linear infinite;
-`;
-
-const Button = styled.button`
-  width: 100%;
-  min-height: 54px;
-  margin-top: 1.25rem;
-  padding: 0.9rem 1rem;
-  background-color: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  box-shadow: 3px 3px 0 #050505;
-  cursor: pointer;
-  font-weight: 760;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #ff8f65;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    background-color: #e4e1dc;
-    color: rgba(5, 5, 5, 0.45);
-    box-shadow: none;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const Message = styled.div`
-  /* Base for Success/Error messages in phone auth */
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  text-align: center;
-  font-size: 0.95rem;
-`;
-
-const ErrorMessage = styled(Message)`
-  border: 1.5px solid #a72121;
-  background-color: #fff1ef;
-  color: #8c1717;
-`;
-
-const SuccessMessage = styled(Message)`
-  border: 1.5px solid #1f6b41;
-  background-color: #eff9f1;
-  color: #155833;
-`;
-
-const HelpText = styled.p`
-  font-size: 0.92rem;
-  color: rgba(5, 5, 5, 0.62);
-  margin: 0.6rem 0 0;
-  text-align: left;
-`;
-
-const ValidationMessage = styled.p`
-  font-size: 0.92rem;
-  color: #d93025;
-  margin: 0.6rem 0 0;
-  text-align: left;
-`;
-
-// Styled Components for Choice Buttons (from original auth.tsx)
-const ChoiceButtonContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 1rem;
-`;
-
-const SignInChoices = styled(ChoiceButtonContainer)`
-  margin-top: clamp(1.1rem, 4.8vw, 1.75rem);
-`;
-
-const ChoiceButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 56px;
-  padding: 0.9rem 1.25rem;
-  border: 1px solid #d1d5db;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 760;
-  font-size: 1rem;
-  transition: filter 140ms ease, border-color 140ms ease,
-    box-shadow 140ms ease, transform 140ms ease;
-  gap: 0.75rem;
-  font-family: inherit;
-
-  img,
-  svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.66;
-    transform: none;
-  }
-`;
-
-const PhoneButton = styled(ChoiceButton)`
-  background-color: white;
-  color: #111827;
-
-  &:hover {
-    border-color: #111827;
-  }
-`;
-
-const KakaoButton = styled(ChoiceButton)`
-  background-color: #fee500; // Kakao yellow
-  color: #3c1e1e; // Kakao text color (approximate)
-  border-color: #fee500;
-
-  &:hover {
-    background-color: #fdd800; // Slightly darker yellow on hover
-    border-color: #fdd800;
-  }
-`;
 
 // Create a separate component that uses useSearchParams
 function AuthContent() {
@@ -923,30 +494,50 @@ function AuthContent() {
     <AuthLayout>
       {showPhoneAuth ? (
         <>
-          <AuthPageHeading>휴대폰으로 로그인</AuthPageHeading>
-          <Description>
+          <h1 className="mx-0 mt-0 mb-3 w-full text-center text-[#111827] text-[clamp(1.9rem,4vw,2.6rem)] font-semibold leading-[1.16] tracking-normal">
+            휴대폰으로 로그인
+          </h1>
+          <p className="mx-0 mt-0 mb-8 w-full text-center text-[#6b7280] text-[1rem] leading-[1.6]">
             {codeSent
               ? "받으신 6자리 인증번호를 입력해주세요. 카카오톡을 확인하고 돌아오셔도 이 화면 그대로 이어집니다."
               : "인증코드를 받으실 휴대폰 번호를 입력해주세요. 인증번호는 카카오 알림톡(또는 문자)으로 발송됩니다."}
-          </Description>
+          </p>
         </>
       ) : (
         <SignInGreeting />
       )}
 
       {!showPhoneAuth ? (
-        <SignInChoices>
-          <PhoneButton onClick={handlePhoneAuthClick} disabled={kakaoPending}>
-            <DevicePhoneMobileIcon />
+        <div className="flex flex-col w-full gap-4 mt-[clamp(1.1rem,4.8vw,1.75rem)]">
+          <button
+            className={`${choiceButtonBaseClass} bg-white text-[#111827] border-[#d1d5db] hover:border-[#111827]`}
+            onClick={handlePhoneAuthClick}
+            disabled={kakaoPending}
+          >
+            <DevicePhoneMobileIcon className="w-[22px] h-[22px]" />
             전화번호로 시작하기
-          </PhoneButton>
-          <KakaoButton onClick={handleKakaoLoginClick} disabled={kakaoPending} aria-busy={kakaoPending}>
-            {kakaoPending ? <Spinner $dark aria-hidden="true" /> : <img src="/images/kakao_btn.png" alt="Kakao Login" />}
+          </button>
+          <button
+            className={`${choiceButtonBaseClass} bg-[#fee500] text-[#3c1e1e] border-[#fee500] hover:bg-[#fdd800] hover:border-[#fdd800]`}
+            onClick={handleKakaoLoginClick}
+            disabled={kakaoPending}
+            aria-busy={kakaoPending}
+          >
+            {kakaoPending ? (
+              <Spinner dark aria-hidden="true" />
+            ) : (
+              <img
+                className="w-[22px] h-[22px]"
+                src="/images/kakao_btn.png"
+                alt="Kakao Login"
+              />
+            )}
             카카오로 시작하기
-          </KakaoButton>
-        </SignInChoices>
+          </button>
+        </div>
       ) : (
-        <PhoneForm
+        <form
+          className="flex w-full flex-col items-stretch mt-[0.35rem] p-4 border-2 border-[#050505] rounded-[18px] bg-white shadow-[4px_4px_0_#050505]"
           onSubmit={(e) => {
             e.preventDefault();
             handlePrimaryAction();
@@ -954,8 +545,11 @@ function AuthContent() {
         >
           {/* The number stays on screen through the whole flow — sending the code
               reveals the next field below it instead of swapping the view. */}
-          <Field>
-            <Input
+          <div className="relative w-full">
+            <input
+              className={`${inputBaseClass} text-[1rem] ${
+                codeSent ? "pr-20" : "pr-[1.1rem]"
+              }`}
               type="tel"
               inputMode="numeric"
               autoComplete="tel"
@@ -963,32 +557,39 @@ function AuthContent() {
               value={phoneNumber}
               onChange={handlePhoneNumberChange}
               readOnly={codeSent}
-              $hasInlineAction={codeSent}
             />
             {codeSent && (
-              <InlineAction
+              <button
+                className="absolute top-1/2 right-[0.6rem] -translate-y-1/2 py-[0.4rem] px-[0.7rem] border-[1.5px] border-[#050505] rounded-full bg-white text-[#050505] text-[0.9rem] font-bold cursor-pointer hover:bg-[#f47a4a] disabled:text-[#9ca3af] disabled:cursor-not-allowed disabled:bg-transparent"
                 type="button"
                 onClick={handleEditPhoneNumber}
                 disabled={!!busy}
               >
                 번호 변경
-              </InlineAction>
+              </button>
             )}
-          </Field>
+          </div>
 
           {!codeSent &&
             (phoneNumber && !isValidPhoneNumber ? (
-              <ValidationMessage>
+              <p className="mx-0 mb-0 mt-[0.6rem] text-[0.92rem] text-[#d93025] text-left">
                 올바른 휴대폰 번호를 입력해주세요 (예: 01012345678)
-              </ValidationMessage>
+              </p>
             ) : (
-              <HelpText>공백이나 대시(-) 없이 번호만 입력해주세요.</HelpText>
+              <p className="mx-0 mb-0 mt-[0.6rem] text-[0.92rem] text-[rgba(5,5,5,0.62)] text-left">
+                공백이나 대시(-) 없이 번호만 입력해주세요.
+              </p>
             ))}
 
           {codeSent && (
-            <CodeStep>
-              <CodeLabel>인증번호 6자리</CodeLabel>
-              <CodeInput
+            /* The code step lives on the same screen — it slides in under the number. */
+            <div className="w-full animate-[auth-reveal-step_220ms_ease-out]">
+              <p className="mx-0 mt-[0.9rem] mb-2 text-[0.9rem] font-semibold text-[#050505] text-left">
+                인증번호 6자리
+              </p>
+              {/* indent keeps the digits optically centred despite the tracking */}
+              <input
+                className={`${inputBaseClass} pr-[1.1rem] text-center text-[1.35rem] font-bold tracking-[0.4em] indent-[0.4em]`}
                 ref={codeInputRef}
                 type="text"
                 inputMode="numeric"
@@ -999,24 +600,26 @@ function AuthContent() {
                 onChange={handleVerificationCodeChange}
                 disabled={busy === "verify"}
               />
-              <StepRow>
+              <div className="flex items-center justify-between gap-3 w-full mt-[0.6rem] text-[0.9rem] text-[rgba(5,5,5,0.62)] text-left">
                 <span>
                   {codeValidFor > 0
                     ? `인증번호 유효시간 ${formatCountdown(codeValidFor)}`
                     : "인증번호를 받지 못하셨나요?"}
                 </span>
-                <LinkButton
+                <button
+                  className={`${linkButtonBaseClass} text-[#050505] font-bold`}
                   type="button"
                   onClick={() => sendVerificationCode(true)}
                   disabled={!!busy || resendIn > 0}
                 >
                   {resendIn > 0 ? `재전송 (${resendIn}초)` : "재전송"}
-                </LinkButton>
-              </StepRow>
-            </CodeStep>
+                </button>
+              </div>
+            </div>
           )}
 
-          <Button
+          <button
+            className="w-full min-h-[54px] mt-5 py-[0.9rem] px-4 bg-[#f47a4a] text-[#050505] border-2 border-[#050505] rounded-full shadow-[3px_3px_0_#050505] cursor-pointer font-[760] text-[1rem] [transition:all_0.2s_ease] hover:bg-[#ff8f65] hover:[transform:translateY(-1px)] disabled:bg-[#e4e1dc] disabled:text-[rgba(5,5,5,0.45)] disabled:shadow-none disabled:cursor-not-allowed disabled:[transform:none]"
             id="send-code-button"
             type="submit"
             disabled={primaryDisabled}
@@ -1029,15 +632,33 @@ function AuthContent() {
               : codeSent
               ? "인증하고 시작하기"
               : "인증번호 전송"}
-          </Button>
+          </button>
 
-          {errorState && <ErrorMessage role="alert">{errorState}</ErrorMessage>}
-          {message && <SuccessMessage role="status">{message}</SuccessMessage>}
+          {errorState && (
+            <div
+              className={`${messageBaseClass} border-[1.5px] border-[#a72121] bg-[#fff1ef] text-[#8c1717]`}
+              role="alert"
+            >
+              {errorState}
+            </div>
+          )}
+          {message && (
+            <div
+              className={`${messageBaseClass} border-[1.5px] border-[#1f6b41] bg-[#eff9f1] text-[#155833]`}
+              role="status"
+            >
+              {message}
+            </div>
+          )}
 
-          <BackLink type="button" onClick={handleBackToChoices}>
+          <button
+            className={`${linkButtonBaseClass} self-center mt-5 text-[rgba(5,5,5,0.68)] font-semibold`}
+            type="button"
+            onClick={handleBackToChoices}
+          >
             다른 방법으로 로그인
-          </BackLink>
-        </PhoneForm>
+          </button>
+        </form>
       )}
     </AuthLayout>
   );

@@ -1,0 +1,11 @@
+/* Keyframes for the meetup event detail route (styled-components -> Tailwind migration). */
+
+/* Gradient shining sweep animation for join button. */
+@keyframes meetup-gradient-shine {
+  0% {
+    background-position: -100% center;
+  }
+  100% {
+    background-position: 100% center;
+  }
+}

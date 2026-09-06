@@ -1,5 +1,4 @@
 import React from "react";
-import styled from "styled-components";
 import { WordDefinitionModalState } from "../types/shadow";
 import { colors } from "../styles/shadow_styles";
 
@@ -8,157 +7,73 @@ interface WordDefinitionModalProps {
   onClose: () => void;
 }
 
-const DefinitionModalOverlay = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isOpen",
-})<{ isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  opacity: ${(props) => (props.isOpen ? 1 : 0)};
-  visibility: ${(props) => (props.isOpen ? "visible" : "hidden")};
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-`;
+function WordDefinitionContent({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`text-[#3c2e26] [font-family:'Apple_SD_Gothic_Neo','Noto_Sans_KR',sans-serif] leading-[1.6] whitespace-pre-line text-[1rem] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const DefinitionModalContent = styled.div`
-  background: ${colors.background};
-  border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-  padding: 1.8rem;
-  max-width: 90%;
-  width: 450px;
-  position: relative;
-  transform: scale(1);
-  transition: transform 0.3s ease;
-  border-left: 5px solid ${colors.accent};
-  border: 1px solid ${colors.border.light};
-  overflow-y: auto;
-  max-height: 90vh;
+function LoadingDefinitionContent({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`text-[#8d6e63] italic py-4 px-0 flex items-center justify-center min-h-[100px] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    width: 80%;
-    max-height: 80vh;
-  }
+function DefinitionSection({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={`mb-6 ${className}`} {...rest} />;
+}
 
-  @media (max-width: 480px) {
-    padding: 1.2rem;
-    width: 90%;
-    max-height: 75vh;
-  }
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: ${colors.text.muted};
-  cursor: pointer;
-  width: 2.1rem;
-  height: 2.1rem;
-  padding: 0;
-  line-height: 1;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  @media (max-width: 768px) {
-    top: 0.8rem;
-    right: 0.8rem;
-    width: 2rem;
-    height: 2rem;
-  }
-
-  &:hover {
-    color: ${colors.primary};
-    background: ${colors.border.light};
-  }
-`;
-
-const WordDefinitionTitle = styled.div`
-  font-weight: bold;
-  color: ${colors.primary};
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid ${colors.border.light};
-`;
-
-const WordDefinitionContent = styled.div`
-  color: ${colors.text.secondary};
-  font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  line-height: 1.6;
-  white-space: pre-line;
-  font-size: 1rem;
-`;
-
-const LoadingDefinitionContent = styled.div`
-  color: ${colors.text.muted};
-  font-style: italic;
-  padding: 1rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100px;
-`;
-
-const DefinitionSection = styled.div`
-  margin-bottom: 1.5rem;
-`;
-
-const DefinitionLabel = styled.div`
-  font-size: 1rem;
-  font-weight: 600;
-  color: ${colors.primary};
-  margin-bottom: 0.5rem;
-`;
-
-const Collapsible = styled.details`
-  margin-top: 1rem;
-
-  summary {
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    &:hover {
-      color: ${colors.primaryDark};
-    }
-  }
-
-  ul {
-    padding-left: 1.2rem;
-    margin: 0.5rem 0;
-    list-style: disc;
-    font-size: 0.9rem;
-    color: ${colors.text.secondary};
-  }
-`;
+function DefinitionLabel({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`text-[1rem] font-semibold text-[#3c2e26] mb-2 ${className}`}
+      {...rest}
+    />
+  );
+}
 
 const WordDefinitionModal: React.FC<WordDefinitionModalProps> = ({
   modalState,
   onClose,
 }) => {
   return (
-    <DefinitionModalOverlay isOpen={modalState.isOpen} onClick={onClose}>
-      <DefinitionModalContent
+    <div
+      onClick={onClose}
+      className={`fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-[1000] [transition:opacity_0.3s_ease,visibility_0.3s_ease] ${
+        modalState.isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+      }`}
+    >
+      <div
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        className="bg-[#faf8f6] rounded-xl shadow-[0_5px_20px_rgba(0,0,0,0.2)] p-[1.8rem] max-w-[90%] w-[450px] relative [transform:scale(1)] [transition:transform_0.3s_ease] border border-solid border-line overflow-y-auto max-h-[90vh] max-[768px]:p-6 max-[768px]:w-[80%] max-[768px]:max-h-[80vh] max-[480px]:p-[1.2rem] max-[480px]:w-[90%] max-[480px]:max-h-[75vh]"
       >
-        <CloseButton onClick={onClose}>×</CloseButton>
-        <WordDefinitionTitle>{modalState.word}</WordDefinitionTitle>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 bg-transparent border-none text-[1.5rem] text-[#8d6e63] cursor-pointer w-[2.1rem] h-[2.1rem] p-0 leading-none rounded-full flex items-center justify-center [transition:all_0.2s_ease] hover:text-[#3c2e26] hover:bg-[#e8ddd4] max-[768px]:top-[0.8rem] max-[768px]:right-[0.8rem] max-[768px]:w-8 max-[768px]:h-8"
+        >
+          ×
+        </button>
+        <div className="font-bold text-[#3c2e26] mb-4 text-[1.5rem] pb-[0.7rem] border-b border-solid border-line">
+          {modalState.word}
+        </div>
         {/* Combined loading state for initial fetch */}
         {modalState.isLoading &&
         !modalState.apiData &&
@@ -193,7 +108,7 @@ const WordDefinitionModal: React.FC<WordDefinitionModalProps> = ({
             ) : modalState.apiData &&
               Array.isArray(modalState.apiData) &&
               modalState.apiData.length > 0 ? (
-              <Collapsible>
+              <details className="mt-4 [&_summary]:text-[0.95rem] [&_summary]:font-semibold [&_summary]:cursor-pointer [&_summary]:list-none [&_summary]:m-0 [&_summary]:p-0 [&_summary:hover]:text-[#2c1810] [&_ul]:pl-[1.2rem] [&_ul]:my-2 [&_ul]:mx-0 [&_ul]:list-disc [&_ul]:text-[0.9rem] [&_ul]:text-[#3c2e26]">
                 <summary>📖 영어 사전 확인하기</summary>
 
                 {modalState.apiData.map((entry: any, entryIdx: number) => (
@@ -377,7 +292,7 @@ const WordDefinitionModal: React.FC<WordDefinitionModalProps> = ({
                     )}
                   </div>
                 ))}
-              </Collapsible>
+              </details>
             ) : modalState.apiData &&
               modalState.apiData.title === "No Definitions Found" ? (
               <LoadingDefinitionContent>
@@ -392,8 +307,8 @@ const WordDefinitionModal: React.FC<WordDefinitionModalProps> = ({
             )}
           </>
         )}
-      </DefinitionModalContent>
-    </DefinitionModalOverlay>
+      </div>
+    </div>
   );
 };
 

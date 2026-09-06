@@ -1,0 +1,14 @@
+/* Keyframes for the meetup routes (styled-components -> Tailwind migration). */
+
+/* Subtle glow for the closest upcoming event card. */
+@keyframes meetup-subtle-glow {
+  0% {
+    box-shadow: 4px 4px 0 #050505;
+  }
+  50% {
+    box-shadow: 5px 5px 0 #f47a4a;
+  }
+  100% {
+    box-shadow: 4px 4px 0 #050505;
+  }
+}

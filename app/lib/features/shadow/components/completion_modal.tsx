@@ -1,7 +1,8 @@
 import React from "react";
-import styled from "styled-components";
-import { colors } from "../styles/shadow_styles";
-import { ChatBubbleLeftRightIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import {
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 
 interface CompletionModalProps {
   isOpen: boolean;
@@ -10,171 +11,43 @@ interface CompletionModalProps {
   onFinish: () => void;
 }
 
-const ModalOverlay = styled.div.withConfig({
-  shouldForwardProp: (prop) => prop !== "isOpen",
-})<{ isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  opacity: ${(props) => (props.isOpen ? 1 : 0)};
-  visibility: ${(props) => (props.isOpen ? "visible" : "hidden")};
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-`;
+const optionButtonBase = [
+  "flex items-center justify-center py-6 px-8 text-[1.1rem] font-semibold rounded-2xl border-2 border-solid cursor-pointer",
+  "[transition:all_0.3s_cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden",
+  "[&_svg]:w-[1.2rem] [&_svg]:h-[1.2rem] [&_svg]:shrink-0",
+  "[&_span]:inline-flex [&_span]:items-center [&_span]:justify-center [&_span]:gap-2 [&_span]:relative [&_span]:z-[1]",
+  "active:[transform:translateY(0)]",
+].join(" ");
 
-const ModalContent = styled.div`
-  background: linear-gradient(
-    135deg,
-    ${colors.surface} 0%,
-    ${colors.background} 100%
+const optionButtonVariants = {
+  primary: [
+    "bg-[linear-gradient(135deg,#3c2e26,#2c1810)] text-white border-[#3c2e26]",
+    "before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-full",
+    "before:bg-[linear-gradient(135deg,#5d4037,#d4a574)] before:opacity-0 before:[transition:opacity_0.3s_ease]",
+    "hover:[transform:translateY(-2px)] hover:shadow-[0_10px_15px_rgba(44,24,16,0.1),0_4px_6px_rgba(44,24,16,0.05)]",
+    "hover:before:opacity-100",
+  ].join(" "),
+  secondary: [
+    "bg-white text-ink border-[#d7c7b8]",
+    "hover:bg-[#faf8f6] hover:border-[#3c2e26] hover:[transform:translateY(-2px)]",
+    "hover:shadow-[0_4px_6px_rgba(44,24,16,0.07),0_2px_4px_rgba(44,24,16,0.06)]",
+  ].join(" "),
+};
+
+function OptionButton({
+  variant,
+  className = "",
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant: "primary" | "secondary";
+}) {
+  return (
+    <button
+      className={`${optionButtonBase} ${optionButtonVariants[variant]} ${className}`}
+      {...rest}
+    />
   );
-  border-radius: 20px;
-  padding: 2.5rem;
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: ${colors.shadow.xl};
-  border: 1px solid ${colors.border.light};
-  position: relative;
-  transform: scale(0.9);
-  transition: transform 0.3s ease;
-
-  ${ModalOverlay}[data-open="true"] & {
-    transform: scale(1);
-  }
-`;
-
-const ModalHeader = styled.div`
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid ${colors.border.light};
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 1.8rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, ${colors.primary}, ${colors.accent});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-`;
-
-const ModalSubtitle = styled.p`
-  font-size: 1.1rem;
-  color: ${colors.text.secondary};
-  margin: 0;
-  line-height: 1.6;
-`;
-
-const OptionsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
-`;
-
-const OptionButton = styled.button<{ variant: "primary" | "secondary" }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 16px;
-  border: 2px solid;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-
-  svg {
-    width: 1.2rem;
-    height: 1.2rem;
-    flex-shrink: 0;
-  }
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  ${(props) =>
-    props.variant === "primary"
-      ? `
-        background: linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark});
-        color: ${colors.text.inverse};
-        border-color: ${colors.primary};
-        
-        &::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(135deg, ${colors.primaryLight}, ${colors.accent});
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-        
-        &:hover {
-          transform: translateY(-2px);
-          box-shadow: ${colors.shadow.lg};
-          
-          &::before {
-            opacity: 1;
-          }
-        }
-      `
-      : `
-        background: ${colors.surface};
-        color: ${colors.text.primary};
-        border-color: ${colors.border.medium};
-        
-        &:hover {
-          background: ${colors.background};
-          border-color: ${colors.primary};
-          transform: translateY(-2px);
-          box-shadow: ${colors.shadow.md};
-        }
-      `}
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  span {
-    position: relative;
-    z-index: 1;
-  }
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: ${colors.text.muted};
-  cursor: pointer;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: ${colors.text.primary};
-  }
-`;
+}
 
 const CompletionModal: React.FC<CompletionModalProps> = ({
   isOpen,
@@ -183,20 +56,38 @@ const CompletionModal: React.FC<CompletionModalProps> = ({
   onFinish,
 }) => {
   return (
-    <ModalOverlay isOpen={isOpen} data-open={isOpen} onClick={onClose}>
-      <ModalContent onClick={(e) => e.stopPropagation()}>
-        <CloseButton onClick={onClose}>✕</CloseButton>
+    <div
+      data-open={isOpen}
+      onClick={onClose}
+      className={`fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-[1000] [transition:opacity_0.3s_ease,visibility_0.3s_ease] ${
+        isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+      }`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-[linear-gradient(135deg,#ffffff_0%,#faf8f6_100%)] rounded-[20px] p-10 max-w-[500px] w-[90%] max-h-[80vh] overflow-y-auto shadow-[0_20px_25px_rgba(44,24,16,0.1),0_10px_10px_rgba(44,24,16,0.04)] border border-solid border-line relative [transition:transform_0.3s_ease] ${
+          isOpen ? "[transform:scale(1)]" : "[transform:scale(0.9)]"
+        }`}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 bg-transparent border-none text-[1.5rem] text-[#8d6e63] cursor-pointer [transition:color_0.2s_ease] hover:text-ink"
+        >
+          ✕
+        </button>
 
-        <ModalHeader>
-          <ModalTitle>🎉 학습 완료!</ModalTitle>
-          <ModalSubtitle>
+        <div className="text-center mb-8 pb-6 border-b-2 border-solid border-line">
+          <h2 className="text-[1.8rem] font-bold bg-[linear-gradient(135deg,#3c2e26,#d4a574)] bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] mb-2">
+            🎉 학습 완료!
+          </h2>
+          <p className="text-[1.1rem] text-[#3c2e26] m-0 leading-[1.6]">
             오늘 쉐도잉 학습을 완료하셨습니다.
             <br />
             다음 중 어떻게 마무리하고 싶으세요?
-          </ModalSubtitle>
-        </ModalHeader>
+          </p>
+        </div>
 
-        <OptionsContainer>
+        <div className="flex flex-col gap-4 mb-8">
           <OptionButton variant="primary" onClick={onAIChat}>
             <span>
               <ChatBubbleLeftRightIcon />
@@ -210,9 +101,9 @@ const CompletionModal: React.FC<CompletionModalProps> = ({
               그냥 끝내기
             </span>
           </OptionButton>
-        </OptionsContainer>
-      </ModalContent>
-    </ModalOverlay>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import styled, { keyframes } from "styled-components";
+import "./analysis_report.css";
 // Lazy-load lottie-react so it ships in its own chunk (matches the
 // dynamic-import pattern used by the loading screens).
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
@@ -16,545 +16,179 @@ interface AnalysisReportProps {
   sentences: SentenceForAssessment[];
 }
 
-const floatingAnimation = keyframes`
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-`;
+function MetricCard({
+  highlight,
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & { highlight?: boolean }) {
+  const classes = [
+    highlight
+      ? "bg-[linear-gradient(135deg,#3c2e2615_0%,#d4a57410_50%,#3c2e2615_100%)] border-[#3c2e26] before:bg-[linear-gradient(45deg,transparent,#3c2e2620,transparent)]"
+      : "bg-[linear-gradient(135deg,#ffffff_0%,#faf8f6_100%)] border-line before:bg-none",
+    "border-2 border-solid rounded-[20px] py-8 px-6 text-center",
+    "[transition:all_0.4s_cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden",
+    "animate-[shadow-report-float_3s_ease-in-out_infinite]",
+    "before:content-[''] before:absolute before:-top-1/2 before:-left-1/2 before:w-[200%] before:h-[200%]",
+    "before:[transform:rotate(-45deg)] before:[transition:all_0.6s_ease] before:opacity-0",
+    "hover:[transform:translateY(-8px)_scale(1.02)]",
+    "hover:shadow-[0_20px_25px_rgba(44,24,16,0.1),0_10px_10px_rgba(44,24,16,0.04),0_20px_40px_rgba(60,46,38,0.15)]",
+    "hover:border-[#3c2e26]",
+    "hover:before:opacity-100 hover:before:animate-[shadow-report-gradient-move_2s_linear_infinite]",
+    "[&:nth-child(2)]:[animation-delay:0.2s] [&:nth-child(3)]:[animation-delay:0.4s] [&:nth-child(4)]:[animation-delay:0.6s]",
+    className,
+  ].join(" ");
+  return <div className={classes} {...rest} />;
+}
 
-const pulseAnimation = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-`;
-
-const gradientMove = keyframes`
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-`;
-
-const ReportContainer = styled.div`
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2rem;
-  background: linear-gradient(
-    135deg,
-    ${colors.surface} 0%,
-    ${colors.background} 50%,
-    ${colors.surface} 100%
+function MetricValue({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`text-[3rem] font-extrabold bg-[linear-gradient(135deg,#3c2e26,#d4a574)] bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] mb-2 relative z-[2] ${className}`}
+      {...rest}
+    />
   );
-  border-radius: 24px;
-  box-shadow: ${colors.shadow.xl}, 0 0 40px rgba(60, 46, 38, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border: 1px solid ${colors.border.light};
-  position: relative;
-  overflow: hidden;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(
-      90deg,
-      ${colors.primary},
-      ${colors.accent},
-      ${colors.primary}
-    );
-    background-size: 200% 100%;
-    animation: ${gradientMove} 3s ease infinite;
-  }
-`;
-
-const LottieContainer = styled.div`
-  position: relative;
-  width: 120px;
-  height: 120px;
-  pointer-events: none;
-  z-index: 5;
-  margin: 0 auto 1rem auto;
-`;
-
-const ReportHeader = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 2px solid ${colors.border.light};
-  position: relative;
-`;
-
-const ReportTitle = styled.h1`
-  font-size: 2.8rem;
-  font-weight: 800;
-  background: linear-gradient(
-    135deg,
-    ${colors.primary} 0%,
-    ${colors.accent} 30%,
-    ${colors.primaryLight} 60%,
-    ${colors.primary} 100%
+function MetricLabel({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`text-[0.95rem] text-[#8d6e63] font-semibold uppercase tracking-[1px] relative z-[2] ${className}`}
+      {...rest}
+    />
   );
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-  animation: ${gradientMove} 4s ease infinite;
-  letter-spacing: -0.02em;
-`;
+}
 
-const ReportSubtitle = styled.p`
-  font-size: 1.5rem;
-  color: ${colors.text.muted};
-  margin: 20px 0;
-  font-weight: 500;
-`;
-
-const MetricsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-`;
-
-const MetricCard = styled.div<{ highlight?: boolean }>`
-  background: ${(props) =>
-    props.highlight
-      ? `linear-gradient(135deg, 
-          ${colors.primary}15 0%, 
-          ${colors.accent}10 50%, 
-          ${colors.primary}15 100%)`
-      : `linear-gradient(135deg, 
-          ${colors.surface} 0%, 
-          ${colors.background} 100%)`};
-  border: 2px solid
-    ${(props) => (props.highlight ? colors.primary : colors.border.light)};
-  border-radius: 20px;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  animation: ${floatingAnimation} 3s ease-in-out infinite;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: ${(props) =>
-      props.highlight
-        ? `linear-gradient(45deg, transparent, ${colors.primary}20, transparent)`
-        : "none"};
-    transform: rotate(-45deg);
-    transition: all 0.6s ease;
-    opacity: 0;
-  }
-
-  &:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: ${colors.shadow.xl}, 0 20px 40px rgba(60, 46, 38, 0.15);
-    border-color: ${colors.primary};
-
-    &::before {
-      opacity: 1;
-      animation: ${gradientMove} 2s linear infinite;
-    }
-  }
-
-  &:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  &:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-  &:nth-child(4) {
-    animation-delay: 0.6s;
-  }
-`;
-
-const MetricValue = styled.div`
-  font-size: 3rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, ${colors.primary}, ${colors.accent});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-  position: relative;
-  z-index: 2;
-`;
-
-const MetricLabel = styled.div`
-  font-size: 0.95rem;
-  color: ${colors.text.muted};
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  position: relative;
-  z-index: 2;
-`;
-
-const Section = styled.div`
-  margin-bottom: 3rem;
-  padding: 1.5rem;
-  border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.02) 100%
+function Section({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`mb-12 p-6 rounded-2xl bg-[linear-gradient(135deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] backdrop-blur-[10px] border border-solid border-[rgba(255,255,255,0.1)] ${className}`}
+      {...rest}
+    />
   );
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-`;
+}
 
-const SectionTitle = styled.h2`
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: ${colors.text.primary};
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-
-  &::before {
-    content: "";
-    width: 6px;
-    height: 32px;
-    background: linear-gradient(180deg, ${colors.primary}, ${colors.accent});
-    border-radius: 3px;
-    box-shadow: 0 2px 8px rgba(60, 46, 38, 0.3);
-  }
-`;
-
-const ProgressBar = styled.div<{ percentage: number; color?: string }>`
-  width: 100%;
-  height: 16px;
-  background: linear-gradient(
-    90deg,
-    ${colors.border.light},
-    ${colors.border.medium}
+function SectionTitle({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2
+      className={`text-[1.6rem] font-bold text-ink mb-6 flex items-center gap-3 before:content-[''] before:w-[6px] before:h-8 before:bg-[linear-gradient(180deg,#3c2e26,#d4a574)] before:rounded-[3px] before:shadow-[0_2px_8px_rgba(60,46,38,0.3)] ${className}`}
+      {...rest}
+    />
   );
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: ${(props) => props.percentage}%;
-    background: ${(props) => {
-      if (props.color) return props.color;
-      if (props.percentage >= 80)
-        return `linear-gradient(90deg, ${colors.success}, #6fd46f)`;
-      if (props.percentage >= 60)
-        return `linear-gradient(90deg, ${colors.warning}, #f4c430)`;
-      return `linear-gradient(90deg, ${colors.error}, #ff6b6b)`;
-    }};
-    border-radius: 8px;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-
-    &::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.3),
-        transparent
-      );
-      animation: ${gradientMove} 2s ease infinite;
-    }
-  }
-`;
-
-const ImprovementCard = styled.div`
-  background: linear-gradient(
-    135deg,
-    ${colors.surface} 0%,
-    ${colors.background} 100%
+function ProgressBar({
+  percentage,
+  color,
+  className = "",
+  style,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & {
+  percentage: number;
+  color?: string;
+}) {
+  const fillBackground = (() => {
+    if (color) return color;
+    if (percentage >= 80)
+      return `linear-gradient(90deg, ${colors.success}, #6fd46f)`;
+    if (percentage >= 60)
+      return `linear-gradient(90deg, ${colors.warning}, #f4c430)`;
+    return `linear-gradient(90deg, ${colors.error}, #ff6b6b)`;
+  })();
+  return (
+    <div
+      className={`w-full h-4 bg-[linear-gradient(90deg,#e8ddd4,#d7c7b8)] rounded-lg overflow-hidden relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] after:content-[''] after:absolute after:top-0 after:left-0 after:h-full after:w-[var(--bar-width)] after:[background:var(--bar-bg)] after:rounded-lg after:[transition:width_0.8s_cubic-bezier(0.4,0,0.2,1)] after:relative ${className}`}
+      style={
+        {
+          "--bar-width": `${percentage}%`,
+          "--bar-bg": fillBackground,
+          ...style,
+        } as React.CSSProperties
+      }
+      {...rest}
+    />
   );
-  border: 1px solid ${colors.border.light};
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 1rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(60, 46, 38, 0.05),
-      transparent
-    );
-    transition: left 0.6s ease;
-  }
+function ImprovementCard({
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  const classes = [
+    "bg-[linear-gradient(135deg,#ffffff_0%,#faf8f6_100%)] border border-solid border-line rounded-2xl p-8 mb-4",
+    "[transition:all_0.4s_cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden",
+    "before:content-[''] before:absolute before:top-0 before:-left-full before:w-full before:h-full",
+    "before:bg-[linear-gradient(90deg,transparent,rgba(60,46,38,0.05),transparent)] before:[transition:left_0.6s_ease]",
+    "hover:[transform:translateY(-4px)]",
+    "hover:shadow-[0_10px_15px_rgba(44,24,16,0.1),0_4px_6px_rgba(44,24,16,0.05)]",
+    "hover:border-[#3c2e2650] hover:before:left-full",
+    className,
+  ].join(" ");
+  return <div className={classes} {...rest} />;
+}
 
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: ${colors.shadow.lg};
-    border-color: ${colors.primary}50;
+function WordChip({
+  score,
+  className = "",
+  ...rest
+}: React.HTMLAttributes<HTMLSpanElement> & { score: number }) {
+  const tier =
+    score >= 80
+      ? "bg-[linear-gradient(135deg,#4e7c5920,#4e7c5910)] text-[#4e7c59] border-[#4e7c5940]"
+      : score >= 60
+      ? "bg-[linear-gradient(135deg,#c1781720,#c1781710)] text-[#c17817] border-[#c1781740]"
+      : "bg-[linear-gradient(135deg,#a8423f20,#a8423f10)] text-[#a8423f] border-[#a8423f40]";
+  const classes = [
+    "py-2 px-4 rounded-[25px] text-[0.9rem] font-semibold border-2 border-solid",
+    tier,
+    "[transition:all_0.3s_ease] relative overflow-hidden",
+    "before:content-[''] before:absolute before:top-0 before:-left-full before:w-full before:h-full",
+    "before:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] before:[transition:left_0.4s_ease]",
+    "hover:[transform:translateY(-2px)] hover:before:left-full",
+    className,
+  ].join(" ");
+  return <span className={classes} {...rest} />;
+}
 
-    &::before {
-      left: 100%;
-    }
-  }
-`;
+function RecommendationItem({
+  className = "",
+  ...rest
+}: React.LiHTMLAttributes<HTMLLIElement>) {
+  const classes = [
+    "py-4 px-0 text-[#3c2e26] leading-[1.7] flex items-start gap-4 font-medium [transition:all_0.3s_ease]",
+    "before:content-['→'] before:text-[#3c2e26] before:font-bold before:text-[1.2rem] before:mt-[0.1rem] before:[transition:transform_0.3s_ease]",
+    "hover:[transform:translateX(8px)] hover:before:[transform:scale(1.2)]",
+    className,
+  ].join(" ");
+  return <li className={classes} {...rest} />;
+}
 
-const ImprovementTitle = styled.h4`
-  font-size: 1.2rem;
-  font-weight: 700;
-  background: linear-gradient(
-    135deg,
-    ${colors.text.primary},
-    ${colors.primary}
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-`;
-
-const ImprovementDescription = styled.p`
-  color: ${colors.text.secondary};
-  line-height: 1.7;
-  margin-bottom: 1rem;
-  font-weight: 500;
-`;
-
-const WordList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-`;
-
-const WordChip = styled.span<{ score: number }>`
-  padding: 0.5rem 1rem;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: ${(props) => {
-    if (props.score >= 80)
-      return `linear-gradient(135deg, ${colors.success}20, ${colors.success}10)`;
-    if (props.score >= 60)
-      return `linear-gradient(135deg, ${colors.warning}20, ${colors.warning}10)`;
-    return `linear-gradient(135deg, ${colors.error}20, ${colors.error}10)`;
-  }};
-  color: ${(props) => {
-    if (props.score >= 80) return colors.success;
-    if (props.score >= 60) return colors.warning;
-    return colors.error;
-  }};
-  border: 2px solid
-    ${(props) => {
-      if (props.score >= 80) return `${colors.success}40`;
-      if (props.score >= 60) return `${colors.warning}40`;
-      return `${colors.error}40`;
-    }};
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    transition: left 0.4s ease;
-  }
-
-  &:hover {
-    transform: translateY(-2px);
-    &::before {
-      left: 100%;
-    }
-  }
-`;
-
-const RecommendationBox = styled.div`
-  background: linear-gradient(
-    135deg,
-    ${colors.primary}08 0%,
-    ${colors.accent}05 50%,
-    ${colors.primary}08 100%
-  );
-  border: 2px solid ${colors.primary}30;
-  border-radius: 20px;
-  padding: 2.5rem;
-  margin-top: 2rem;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      45deg,
-      transparent,
-      ${colors.primary}10,
-      transparent
-    );
-    animation: ${pulseAnimation} 4s ease-in-out infinite;
-  }
-`;
-
-const RecommendationTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, ${colors.primary}, ${colors.accent});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  position: relative;
-  z-index: 2;
-
-  svg {
-    width: 1.8rem;
-    height: 1.8rem;
-    animation: ${pulseAnimation} 2s ease-in-out infinite;
-  }
-`;
-
-const RecommendationList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  position: relative;
-  z-index: 2;
-`;
-
-const RecommendationItem = styled.li`
-  padding: 1rem 0;
-  color: ${colors.text.secondary};
-  line-height: 1.7;
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-
-  &::before {
-    content: "→";
-    color: ${colors.primary};
-    font-weight: bold;
-    font-size: 1.2rem;
-    margin-top: 0.1rem;
-    transition: transform 0.3s ease;
-  }
-
-  &:hover {
-    transform: translateX(8px);
-    &::before {
-      transform: scale(1.2);
-    }
-  }
-`;
-
-const FinishButton = styled.button`
-  margin-top: 2rem;
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem 3rem;
-  font-size: 1rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark});
-  color: ${colors.text.inverse};
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: ${colors.shadow.lg};
-  position: relative;
-  overflow: hidden;
-
-  svg {
-    width: 1.1rem;
-    height: 1.1rem;
-    flex-shrink: 0;
-  }
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      135deg,
-      ${colors.accent},
-      ${colors.primaryLight}
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  &:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: ${colors.shadow.xl};
-
-    &::before {
-      opacity: 1;
-    }
-  }
-
-  &:active {
-    transform: translateY(-2px) scale(1.01);
-  }
-
-  span {
-    position: relative;
-    z-index: 1;
-  }
-`;
+const finishButtonClasses = [
+  "mt-8 flex w-full items-center justify-center py-4 px-12 text-[1rem] font-bold",
+  "bg-[linear-gradient(135deg,#3c2e26,#2c1810)] text-white border-none rounded-[20px] cursor-pointer",
+  "[transition:all_0.3s_cubic-bezier(0.4,0,0.2,1)]",
+  "shadow-[0_10px_15px_rgba(44,24,16,0.1),0_4px_6px_rgba(44,24,16,0.05)]",
+  "relative overflow-hidden",
+  "[&_svg]:w-[1.1rem] [&_svg]:h-[1.1rem] [&_svg]:shrink-0",
+  "[&_span]:inline-flex [&_span]:items-center [&_span]:justify-center [&_span]:gap-2 [&_span]:relative [&_span]:z-[1]",
+  "before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-full",
+  "before:bg-[linear-gradient(135deg,#d4a574,#5d4037)] before:opacity-0 before:[transition:opacity_0.3s_ease]",
+  "hover:[transform:translateY(-4px)_scale(1.02)]",
+  "hover:shadow-[0_20px_25px_rgba(44,24,16,0.1),0_10px_10px_rgba(44,24,16,0.04)]",
+  "hover:before:opacity-100",
+  "active:[transform:translateY(-2px)_scale(1.01)]",
+].join(" ");
 
 const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
@@ -721,27 +355,29 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
   const showFireworks = overallScore >= 80;
 
   return (
-    <ReportContainer>
-      <ReportHeader>
+    <div className="max-w-[900px] mx-auto p-8 bg-[linear-gradient(135deg,#ffffff_0%,#faf8f6_50%,#ffffff_100%)] rounded-3xl shadow-[0_20px_25px_rgba(44,24,16,0.1),0_10px_10px_rgba(44,24,16,0.04),0_0_40px_rgba(60,46,38,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] border border-solid border-line relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-[linear-gradient(90deg,#3c2e26,#d4a574,#3c2e26)] before:[background-size:200%_100%] before:animate-[shadow-report-gradient-move_3s_ease_infinite]">
+      <div className="flex flex-col items-center justify-center text-center mb-12 pb-8 border-b-2 border-solid border-line relative">
         {showFireworks && welcomeAnimation && (
-          <LottieContainer>
+          <div className="relative w-[120px] h-[120px] pointer-events-none z-[5] mt-0 mx-auto mb-4">
             <Lottie
               animationData={welcomeAnimation}
               loop={true}
               style={{ width: "100%", height: "100%" }}
             />
-          </LottieContainer>
+          </div>
         )}
-        <ReportTitle>고생하셨습니다!</ReportTitle>
-        <ReportSubtitle>
+        <h1 className="text-[2.8rem] font-extrabold bg-[linear-gradient(135deg,#3c2e26_0%,#d4a574_30%,#5d4037_60%,#3c2e26_100%)] [background-size:300%_300%] bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] mb-2 animate-[shadow-report-gradient-move_4s_ease_infinite] tracking-[-0.02em]">
+          고생하셨습니다!
+        </h1>
+        <p className="text-[1.5rem] text-[#8d6e63] my-5 mx-0 font-medium">
           {useSampleData
             ? "스터디 분석 결과"
             : `총 ${totalSentences}개 문장 분석 결과`}
-        </ReportSubtitle>
-      </ReportHeader>
+        </p>
+      </div>
 
       {/* Overall Metrics */}
-      <MetricsGrid>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-6 mb-12">
         <MetricCard highlight>
           <MetricValue>{Math.round(overallScore)}</MetricValue>
           <MetricLabel>종합 점수</MetricLabel>
@@ -758,7 +394,7 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
           <MetricValue>{Math.round(avgFluency)}</MetricValue>
           <MetricLabel>유창성</MetricLabel>
         </MetricCard>
-      </MetricsGrid>
+      </div>
 
       {/* Detailed Scores */}
       <Section>
@@ -846,13 +482,13 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
             다음 단어들의 정확도가 낮게 나타났습니다. 이 단어들의 발음 연습에
             집중해보세요:
           </p>
-          <WordList>
+          <div className="flex flex-wrap gap-3">
             {wordIssues.slice(0, 15).map((issue, index) => (
               <WordChip key={index} score={issue.score}>
                 {issue.word} ({Math.round(issue.score)}%)
               </WordChip>
             ))}
-          </WordList>
+          </div>
         </Section>
       )}
 
@@ -862,22 +498,24 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
           <SectionTitle>개선이 필요한 영역</SectionTitle>
           {improvementAreas.map((area, index) => (
             <ImprovementCard key={index}>
-              <ImprovementTitle>{area.title}</ImprovementTitle>
-              <ImprovementDescription>
+              <h4 className="text-[1.2rem] font-bold bg-[linear-gradient(135deg,#2c1810,#3c2e26)] bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] mb-2">
+                {area.title}
+              </h4>
+              <p className="text-[#3c2e26] leading-[1.7] mb-4 font-medium">
                 {area.description}
-              </ImprovementDescription>
+              </p>
             </ImprovementCard>
           ))}
         </Section>
       )}
 
       {/* Recommendations */}
-      <RecommendationBox>
-        <RecommendationTitle>
+      <div className="bg-[linear-gradient(135deg,#3c2e2608_0%,#d4a57405_50%,#3c2e2608_100%)] border-2 border-solid border-[#3c2e2630] rounded-[20px] p-10 mt-8 relative overflow-hidden before:content-[''] before:absolute before:-top-1/2 before:-left-1/2 before:w-[200%] before:h-[200%] before:bg-[linear-gradient(45deg,transparent,#3c2e2610,transparent)] before:animate-[shadow-report-pulse_4s_ease-in-out_infinite]">
+        <h3 className="text-[1.5rem] font-bold bg-[linear-gradient(135deg,#3c2e26,#d4a574)] bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] mb-6 flex items-center gap-3 relative z-[2] [&_svg]:w-[1.8rem] [&_svg]:h-[1.8rem] [&_svg]:animate-[shadow-report-pulse_2s_ease-in-out_infinite]">
           <LightBulbIcon />
           다음 단계 추천
-        </RecommendationTitle>
-        <RecommendationList>
+        </h3>
+        <ul className="list-none p-0 m-0 relative z-[2]">
           {overallScore >= 80 ? (
             <>
               <RecommendationItem>
@@ -924,15 +562,18 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
           <RecommendationItem>
             내일 다시 돌아와서 이 연습을 반복하여 향상 정도를 확인해보세요!
           </RecommendationItem>
-        </RecommendationList>
-      </RecommendationBox>
+        </ul>
+      </div>
 
-      <FinishButton onClick={() => setIsCompletionModalOpen(true)}>
+      <button
+        className={finishButtonClasses}
+        onClick={() => setIsCompletionModalOpen(true)}
+      >
         <span>
           <TrophyIcon />
           마무리하기
         </span>
-      </FinishButton>
+      </button>
 
       {isCompletionModalOpen && (
         <CompletionModal
@@ -942,7 +583,7 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
           onFinish={handleFinish}
         />
       )}
-    </ReportContainer>
+    </div>
   );
 };
 

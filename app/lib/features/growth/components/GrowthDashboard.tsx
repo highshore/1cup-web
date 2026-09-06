@@ -1,7 +1,15 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import styled from "styled-components";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
 import {
   ArrowPathIcon,
   ChartBarIcon,
@@ -107,6 +115,224 @@ type PerformancePoint = {
   ctr: number;
 };
 
+/* --- Shared class strings (from the former styled-components) --- */
+
+const focusRingClass =
+  "focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2";
+
+// `font: inherit` expanded so the later font-size/weight utilities keep winning.
+const fontInheritClass =
+  "[font-family:inherit] [font-style:inherit] [line-height:inherit]";
+
+const formCardClass =
+  "bg-white border-[3px] border-[#050505] rounded-2xl shadow-[6px_6px_0_rgba(5,5,5,0.9)] p-6 max-[620px]:p-[18px] max-[620px]:shadow-[4px_4px_0_rgba(5,5,5,0.9)]";
+
+const chartCardClass =
+  "min-w-0 rounded-xl border-[1.5px] border-[#050505] bg-[#fcfcfc] p-3.5";
+
+const chartHeadingClass = "mb-2.5 flex items-baseline justify-between gap-2.5";
+
+const chartTitleClass = "m-0 text-[13px] font-black text-[#050505]";
+
+/* --- Small components replacing the reused styled-components --- */
+
+const Eyebrow = ({ children }: { children?: ReactNode }) => (
+  <span className="inline-flex items-center gap-1.5 text-[12px] font-black tracking-[0.05em] text-[#050505] uppercase">
+    {children}
+  </span>
+);
+
+const FormTitle = ({ children }: { children?: ReactNode }) => (
+  <h2 className="mx-0 mt-1 mb-1.5 text-[22px] font-black leading-[1.2] text-[#050505]">
+    {children}
+  </h2>
+);
+
+const Description = ({ children }: { children?: ReactNode }) => (
+  <p className="m-0 max-w-[720px] text-[14px] font-semibold leading-[1.55] text-[rgba(5,5,5,0.64)]">
+    {children}
+  </p>
+);
+
+const FieldHint = ({ children }: { children?: ReactNode }) => (
+  <span className="text-[12px] font-semibold leading-[1.45] text-[rgba(5,5,5,0.56)]">
+    {children}
+  </span>
+);
+
+const Field = ({ $full, children }: { $full?: boolean; children?: ReactNode }) => (
+  <label
+    className={`flex flex-col gap-[7px] text-[13px] font-black text-[#050505] ${
+      $full ? "col-span-full" : ""
+    }`}
+  >
+    {children}
+  </label>
+);
+
+const Input = ({ className = "", ...rest }: ComponentPropsWithoutRef<"input">) => (
+  <input
+    className={`box-border min-h-[44px] w-full rounded-[10px] border-2 border-[#050505] bg-white px-[11px] py-2.5 text-[#050505] ${fontInheritClass} [font-weight:inherit] text-[14px] ${focusRingClass} ${className}`}
+    {...rest}
+  />
+);
+
+const Select = ({ className = "", ...rest }: ComponentPropsWithoutRef<"select">) => (
+  <select
+    className={`box-border min-h-[44px] w-full rounded-[10px] border-2 border-[#050505] bg-white px-[11px] py-2.5 text-[#050505] ${fontInheritClass} [font-weight:inherit] text-[14px] ${focusRingClass} ${className}`}
+    {...rest}
+  />
+);
+
+const TextArea = ({ className = "", ...rest }: ComponentPropsWithoutRef<"textarea">) => (
+  <textarea
+    className={`box-border min-h-[145px] w-full resize-y rounded-[10px] border-2 border-[#050505] bg-white p-[11px] text-[#050505] [font-family:inherit] [font-style:inherit] [font-weight:inherit] text-[14px] leading-[1.55] ${focusRingClass} ${className}`}
+    {...rest}
+  />
+);
+
+const TemplatePickerActions = ({ children }: { children?: ReactNode }) => (
+  <div className="flex flex-wrap gap-2">{children}</div>
+);
+
+const PanelTitle = ({
+  children,
+  ...rest
+}: { children?: ReactNode } & ComponentPropsWithoutRef<"h3">) => (
+  <h3 className="m-0 text-[14px] font-black text-[#050505]" {...rest}>
+    {children}
+  </h3>
+);
+
+const PanelDescription = ({ children }: { children?: ReactNode }) => (
+  <p className="mx-0 mt-1 mb-0 text-[12px] font-semibold leading-[1.45] text-[rgba(5,5,5,0.6)]">
+    {children}
+  </p>
+);
+
+const CompactField = ({
+  as: Tag = "label",
+  children,
+}: {
+  as?: "label" | "span";
+  children?: ReactNode;
+}) => (
+  <Tag className="grid gap-1.5 text-[12px] font-black text-[#050505]">{children}</Tag>
+);
+
+const Button = ({
+  $secondary,
+  className = "",
+  children,
+  ...rest
+}: { $secondary?: boolean } & ComponentPropsWithoutRef<"button">) => (
+  <button
+    className={`inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-[7px] rounded-full border-2 border-[#050505] px-[13px] py-[7px] text-[#050505] shadow-[3px_3px_0_#050505] ${fontInheritClass} text-[13px] font-black transition-[transform,box-shadow] duration-[140ms] ease-[ease] enabled:hover:-translate-x-px enabled:hover:-translate-y-px enabled:hover:shadow-[4px_4px_0_#050505] disabled:cursor-wait disabled:opacity-[0.58] disabled:shadow-none ${
+      $secondary ? "bg-white" : "bg-[#f47a4a]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const SmallButton = ({
+  $danger,
+  className = "",
+  children,
+  ...rest
+}: { $danger?: boolean } & ComponentPropsWithoutRef<"button">) => (
+  <button
+    className={`inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] border-[#050505] px-[9px] py-[5px] ${fontInheritClass} text-[12px] font-black disabled:cursor-default disabled:opacity-60 ${
+      $danger
+        ? "bg-[#fff1f0] text-[#9d1c10] enabled:hover:bg-[#fee2e2]"
+        : "bg-white text-[#050505] enabled:hover:bg-[#fff1e9]"
+    } ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const Message = ({ $error, children }: { $error?: boolean; children?: ReactNode }) => (
+  <span
+    className={`text-[13px] font-extrabold leading-[1.4] ${
+      $error ? "text-[#ae260f]" : "text-[#17693a]"
+    }`}
+  >
+    {children}
+  </span>
+);
+
+const statusBgClass: Record<MarketingRunStatus, string> = {
+  completed: "bg-[#dff6df]",
+  failed: "bg-[#fee2e2]",
+  skipped: "bg-[#f5f5f5]",
+  awaitingPublisher: "bg-[#fff0c2]",
+  queued: "bg-[#eef2ff]",
+  running: "bg-[#eef2ff]",
+};
+
+const Status = ({
+  $status,
+  children,
+}: {
+  $status: MarketingRunStatus;
+  children?: ReactNode;
+}) => (
+  <span
+    className={`flex-none whitespace-nowrap rounded-full border-[1.5px] border-[#050505] px-[9px] py-1.5 text-[12px] font-black text-[#050505] ${statusBgClass[$status]}`}
+  >
+    {children}
+  </span>
+);
+
+const InlineActions = ({ children }: { children?: ReactNode }) => (
+  <div className="flex flex-wrap gap-2">{children}</div>
+);
+
+const Notice = ({ $error, children }: { $error?: boolean; children?: ReactNode }) => (
+  <div
+    className={`flex items-start gap-2 rounded-[10px] border-[1.5px] px-[11px] py-2.5 text-[12px] font-bold leading-[1.5] text-[#4a2600] ${
+      $error ? "border-[#c0341d] bg-[#fff1f0]" : "border-[#c68400] bg-[#fff9df]"
+    }`}
+  >
+    {children}
+  </div>
+);
+
+const TrackingLabel = ({ children }: { children?: ReactNode }) => (
+  <span className="text-[11px] font-black text-[rgba(5,5,5,0.56)] uppercase">
+    {children}
+  </span>
+);
+
+const TrackingValue = ({ children }: { children?: ReactNode }) => (
+  <span className="[overflow-wrap:anywhere] text-[#050505] [font-family:ui-monospace,SFMono-Regular,Menlo,monospace] text-[12px] font-bold">
+    {children}
+  </span>
+);
+
+const Metric = ({ children }: { children?: ReactNode }) => (
+  <div className="min-w-0 rounded-[10px] bg-[#fafafa] p-2.5">{children}</div>
+);
+
+const MetricLabel = ({ children }: { children?: ReactNode }) => (
+  <dt className="overflow-hidden text-[11px] font-extrabold text-ellipsis whitespace-nowrap text-[rgba(5,5,5,0.55)]">
+    {children}
+  </dt>
+);
+
+const MetricValue = ({ children }: { children?: ReactNode }) => (
+  <dd className="mx-0 mt-1 mb-0 text-[17px] font-black text-[#050505]">{children}</dd>
+);
+
+const Loading = ({ children }: { children?: ReactNode }) => (
+  <div className="flex min-h-[180px] items-center justify-center gap-[9px] text-[14px] font-extrabold text-[rgba(5,5,5,0.66)]">
+    {children}
+  </div>
+);
+
 const TimeSeriesChart = ({
   title,
   points,
@@ -126,10 +352,10 @@ const TimeSeriesChart = ({
 }) => {
   if (!points.length) {
     return (
-      <ChartCard>
-        <ChartHeading><ChartTitle>{title}</ChartTitle></ChartHeading>
-        <ChartEmpty>{emptyLabel}</ChartEmpty>
-      </ChartCard>
+      <section className={chartCardClass}>
+        <div className={chartHeadingClass}><h3 className={chartTitleClass}>{title}</h3></div>
+        <div className="grid min-h-[142px] place-items-center text-center text-[13px] font-bold text-[rgba(5,5,5,0.56)]">{emptyLabel}</div>
+      </section>
     );
   }
 
@@ -148,12 +374,12 @@ const TimeSeriesChart = ({
   const latest = values.at(-1) ?? 0;
 
   return (
-    <ChartCard>
-      <ChartHeading>
-        <ChartTitle>{title}</ChartTitle>
-        <ChartValue>{suffix ? `${latest.toFixed(1)}${suffix}` : latest.toLocaleString()}</ChartValue>
-      </ChartHeading>
-      <ChartSvg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+    <section className={chartCardClass}>
+      <div className={chartHeadingClass}>
+        <h3 className={chartTitleClass}>{title}</h3>
+        <strong className="text-[18px] font-black text-[#050505]">{suffix ? `${latest.toFixed(1)}${suffix}` : latest.toLocaleString()}</strong>
+      </div>
+      <svg className="block h-auto w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
         {[0, 0.5, 1].map((ratio) => {
           const y = padding.top + chartHeight - ratio * chartHeight;
           return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#dedede" strokeWidth="1" />;
@@ -166,826 +392,14 @@ const TimeSeriesChart = ({
           const [cx, cy] = coordinate.split(",");
           return <circle key={`${coordinate}_${index}`} cx={cx} cy={cy} r="3.5" fill="#ffffff" stroke={color} strokeWidth="2" />;
         })}
-      </ChartSvg>
-      <ChartAxis>
+      </svg>
+      <div className="mt-1 flex justify-between gap-3 text-[11px] font-bold text-[rgba(5,5,5,0.56)]">
         <span>{formatDate(points[0].at)}</span>
         <span>{formatDate(points.at(-1)!.at)}</span>
-      </ChartAxis>
-    </ChartCard>
+      </div>
+    </section>
   );
 };
-
-const FormCard = styled.section`
-  background: #ffffff;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  padding: 24px;
-
-  @media (max-width: 620px) {
-    padding: 18px;
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const AnalyticsPanel = styled(FormCard)`
-  margin-bottom: 32px;
-`;
-
-const AnalyticsHeader = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-`;
-
-const AnalyticsSelect = styled.select`
-  min-width: min(100%, 250px);
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 9px 10px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const ChartGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-
-  @media (max-width: 680px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ChartCard = styled.section`
-  min-width: 0;
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  padding: 14px;
-  background: #fcfcfc;
-`;
-
-const ChartHeading = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-`;
-
-const ChartTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 13px;
-  font-weight: 900;
-`;
-
-const ChartValue = styled.strong`
-  color: #050505;
-  font-size: 18px;
-  font-weight: 900;
-`;
-
-const ChartSvg = styled.svg`
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-`;
-
-const ChartAxis = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 11px;
-  font-weight: 700;
-`;
-
-const ChartEmpty = styled.div`
-  display: grid;
-  min-height: 142px;
-  place-items: center;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-`;
-
-const FormHeading = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-
-  @media (max-width: 620px) {
-    margin-bottom: 18px;
-  }
-`;
-
-const Eyebrow = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-`;
-
-const FormTitle = styled.h2`
-  margin: 4px 0 6px;
-  color: #050505;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.2;
-`;
-
-const Description = styled.p`
-  max-width: 720px;
-  margin: 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.55;
-`;
-
-const ScheduleState = styled.div<{ $enabled: boolean }>`
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: ${({ $enabled }) => ($enabled ? "#dff6df" : "#f5f5f5")};
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-
-  @media (max-width: 620px) {
-    display: none;
-  }
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
-
-  @media (max-width: 740px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Field = styled.label<{ $full?: boolean }>`
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  grid-column: ${({ $full }) => ($full ? "1 / -1" : "auto")};
-  color: #050505;
-  font-size: 13px;
-  font-weight: 900;
-`;
-
-const FieldHint = styled.span`
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.45;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-height: 44px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 10px 11px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 14px;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  min-height: 44px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 10px 11px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 14px;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 145px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 11px;
-  background: #ffffff;
-  color: #050505;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.55;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const TemplatePicker = styled.div`
-  display: grid;
-  grid-column: 1 / -1;
-  gap: 8px;
-`;
-
-const TemplatePickerActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const PanelTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 14px;
-  font-weight: 900;
-`;
-
-const PanelDescription = styled.p`
-  margin: 4px 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.45;
-`;
-
-const TemplateSaveRow = styled.div`
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 9px;
-`;
-
-const CompactField = styled.label`
-  display: grid;
-  gap: 6px;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-`;
-
-const SchedulePanel = styled.div`
-  display: grid;
-  gap: 14px;
-  grid-column: 1 / -1;
-  padding-bottom: 20px;
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.22);
-`;
-
-const RuleList = styled.div`
-  display: grid;
-  gap: 5px;
-`;
-
-const RuleTitle = styled.strong`
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-`;
-
-const ScheduleHeading = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-`;
-
-const ScheduleGrid = styled.div`
-  display: grid;
-  grid-template-columns: 120px 120px minmax(0, 1fr);
-  gap: 12px;
-
-  @media (max-width: 740px) {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const DayField = styled.div`
-  display: grid;
-  gap: 7px;
-
-  @media (max-width: 740px) {
-    grid-column: 1 / -1;
-  }
-`;
-
-const DayList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-`;
-
-const DayButton = styled.button<{ $active: boolean }>`
-  min-width: 32px;
-  min-height: 32px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: ${({ $active }) => ($active ? "#f47a4a" : "#ffffff")};
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const PhotoSection = styled.div`
-  display: grid;
-  grid-column: 1 / -1;
-  gap: 10px;
-`;
-
-const HiddenPhotoInput = styled.input`
-  display: none;
-`;
-
-const PhotoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-`;
-
-const PhotoCard = styled.div`
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 9px;
-  align-items: center;
-  padding: 8px;
-  border: 1.5px solid rgba(5, 5, 5, 0.4);
-  border-radius: 10px;
-`;
-
-const PhotoPreview = styled.img`
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: #f5f5f5;
-`;
-
-const PhotoDetails = styled.div`
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-`;
-
-const PhotoActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-`;
-
-const RunPhotoStrip = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const RunPhoto = styled.img`
-  width: 88px;
-  height: 60px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: #f5f5f5;
-`;
-
-const SwitchRow = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  width: fit-content;
-  color: #050505;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-`;
-
-const Switch = styled.input`
-  appearance: none;
-  position: relative;
-  width: 42px;
-  height: 24px;
-  margin: 0;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #d9d9d9;
-  cursor: pointer;
-  transition: background 0.16s ease;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid #050505;
-    border-radius: 50%;
-    background: #ffffff;
-    transition: transform 0.16s ease;
-  }
-
-  &:checked {
-    background: #f47a4a;
-  }
-
-  &:checked::after {
-    transform: translateX(17px);
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const ActionRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 20px;
-`;
-
-const Button = styled.button<{ $secondary?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 38px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 7px 13px;
-  background: ${({ $secondary }) => ($secondary ? "#ffffff" : "#f47a4a")};
-  color: #050505;
-  box-shadow: 3px 3px 0 #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 900;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.58;
-    box-shadow: none;
-  }
-`;
-
-const Message = styled.span<{ $error?: boolean }>`
-  color: ${({ $error }) => ($error ? "#ae260f" : "#17693a")};
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.4;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 32px 0 14px;
-`;
-
-const SectionTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 20px;
-  font-weight: 900;
-`;
-
-const Count = styled.span`
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 5px 9px;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-`;
-
-const RunList = styled.div`
-  display: grid;
-  gap: 16px;
-`;
-
-const RunCard = styled.article`
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const RunTop = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 18px 14px;
-`;
-
-const RunTopActions = styled.div`
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-`;
-
-const RunLabel = styled.div`
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 7px;
-`;
-
-const ChannelTag = styled.span`
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 11px;
-  font-weight: 900;
-`;
-
-const TriggerTag = styled.span`
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 12px;
-  font-weight: 800;
-`;
-
-const RunTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1.32;
-`;
-
-const Status = styled.span<{ $status: MarketingRunStatus }>`
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 6px 9px;
-  background: ${({ $status }) => {
-    if ($status === "completed") return "#dff6df";
-    if ($status === "failed") return "#fee2e2";
-    if ($status === "skipped") return "#f5f5f5";
-    if ($status === "awaitingPublisher") return "#fff0c2";
-    return "#eef2ff";
-  }};
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-  white-space: nowrap;
-`;
-
-const RunMeta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px 16px;
-  padding: 0 18px 15px;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-  font-weight: 700;
-`;
-
-const Content = styled.div`
-  display: grid;
-  gap: 16px;
-  border-top: 1px solid rgba(5, 5, 5, 0.16);
-  padding: 17px 18px 18px;
-`;
-
-const CopyPreview = styled.p`
-  margin: 0;
-  white-space: pre-wrap;
-  color: #252525;
-  font-size: 14px;
-  line-height: 1.6;
-`;
-
-const InlineActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const SmallButton = styled.button<{ $danger?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: ${({ $danger }) => ($danger ? "#fff1f0" : "#ffffff")};
-  color: ${({ $danger }) => ($danger ? "#9d1c10" : "#050505")};
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    background: ${({ $danger }) => ($danger ? "#fee2e2" : "#fff1e9")};
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-`;
-
-const ModalBackdrop = styled.div`
-  position: fixed;
-  z-index: 70;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(5, 5, 5, 0.45);
-`;
-
-const ModalCard = styled.div`
-  display: grid;
-  width: min(100%, 430px);
-  gap: 14px;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: 20px;
-  background: #ffffff;
-  box-shadow: 6px 6px 0 #050505;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 9px;
-`;
-
-const Tracking = styled.div`
-  display: grid;
-  gap: 5px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #fafafa;
-`;
-
-const TrackingLabel = styled.span`
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-`;
-
-const TrackingValue = styled.span`
-  overflow-wrap: anywhere;
-  color: #050505;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  font-weight: 700;
-`;
-
-const Notice = styled.div<{ $error?: boolean }>`
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  border: 1.5px solid ${({ $error }) => ($error ? "#c0341d" : "#c68400")};
-  border-radius: 10px;
-  padding: 10px 11px;
-  background: ${({ $error }) => ($error ? "#fff1f0" : "#fff9df")};
-  color: #4a2600;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-`;
-
-const MetricsGrid = styled.dl`
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-
-  @media (max-width: 860px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-`;
-
-const Metric = styled.div`
-  min-width: 0;
-  border-radius: 10px;
-  padding: 10px;
-  background: #fafafa;
-`;
-
-const MetricLabel = styled.dt`
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 11px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const MetricValue = styled.dd`
-  margin: 4px 0 0;
-  color: #050505;
-  font-size: 17px;
-  font-weight: 900;
-`;
-
-const Empty = styled.div`
-  border: 2px dashed rgba(5, 5, 5, 0.48);
-  border-radius: 16px;
-  padding: 36px 20px;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-`;
-
-const RunListFooter = styled.div`
-  display: flex;
-  justify-content: center;
-  min-height: 44px;
-  padding: 4px;
-`;
-
-const Loading = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 180px;
-  color: rgba(5, 5, 5, 0.66);
-  font-size: 14px;
-  font-weight: 800;
-`;
 
 const statusKey: Record<MarketingRunStatus, "queued" | "running" | "posted" | "skipped" | "awaitingPublisher" | "failed"> = {
   queued: "queued",
@@ -1480,8 +894,8 @@ export default function GrowthDashboard() {
 
   return (
     <>
-      <AnalyticsPanel>
-        <AnalyticsHeader>
+      <section className={`${formCardClass} mb-8`}>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
             <Eyebrow><ChartBarIcon width={15} /> {marketing.performanceAnalytics}</Eyebrow>
             <FormTitle>{marketing.performanceAnalyticsTitle}</FormTitle>
@@ -1489,7 +903,8 @@ export default function GrowthDashboard() {
           </div>
           <CompactField>
             {marketing.performanceTemplateSelect}
-            <AnalyticsSelect
+            <select
+              className={`box-border min-h-[42px] min-w-[min(100%,250px)] rounded-[10px] border-2 border-[#050505] bg-white px-[10px] py-[9px] text-[#050505] ${fontInheritClass} text-[13px] font-extrabold ${focusRingClass}`}
               value={selectedPerformanceTemplateId}
               onChange={(event) => setSelectedPerformanceTemplateId(event.target.value)}
             >
@@ -1497,10 +912,10 @@ export default function GrowthDashboard() {
               {performanceTemplateOptions.map((template) => (
                 <option key={template.id} value={template.id}>{template.name}</option>
               ))}
-            </AnalyticsSelect>
+            </select>
           </CompactField>
-        </AnalyticsHeader>
-        <ChartGrid>
+        </div>
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3.5 max-[680px]:grid-cols-1">
           <TimeSeriesChart
             title={marketing.viewsTimeSeries}
             points={performancePoints}
@@ -1518,23 +933,27 @@ export default function GrowthDashboard() {
             emptyLabel={marketing.noPerformanceData}
             formatDate={(date) => performanceDateFormatter.format(date)}
           />
-        </ChartGrid>
-      </AnalyticsPanel>
-      <FormCard>
-        <FormHeading>
+        </div>
+      </section>
+      <section className={formCardClass}>
+        <div className="mb-[22px] flex items-start justify-between gap-4 max-[620px]:mb-[18px]">
           <div>
             <Eyebrow><CalendarDaysIcon width={15} /> {marketing.koreapas}</Eyebrow>
             <FormTitle>{marketing.settingsTitle}</FormTitle>
             <Description>{marketing.settingsDescription}</Description>
           </div>
-          <ScheduleState $enabled={draft.enabled && scheduleHasDays}>
+          <div
+            className={`inline-flex flex-none items-center gap-[7px] rounded-full border-[1.5px] border-[#050505] px-2.5 py-[7px] text-[12px] font-black text-[#050505] max-[620px]:hidden ${
+              draft.enabled && scheduleHasDays ? "bg-[#dff6df]" : "bg-[#f5f5f5]"
+            }`}
+          >
             <CheckIcon width={14} /> {draft.enabled && scheduleHasDays ? marketing.enabled : marketing.scheduleDisabled}
-          </ScheduleState>
-        </FormHeading>
+          </div>
+        </div>
 
         <form onSubmit={handleSave}>
-          <FormGrid>
-            <TemplatePicker>
+          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-4 gap-y-5 max-[740px]:grid-cols-1">
+            <div className="col-span-full grid gap-2">
               <PanelTitle>{marketing.templateEditorTitle}</PanelTitle>
               <PanelDescription>{marketing.templateEditorDescription}</PanelDescription>
               <CompactField>
@@ -1576,15 +995,15 @@ export default function GrowthDashboard() {
                   {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
                 </SmallButton>
               </TemplatePickerActions>
-            </TemplatePicker>
-            <SchedulePanel>
-              <ScheduleHeading>
+            </div>
+            <div className="col-span-full grid gap-3.5 border-b-[1.5px] border-[rgba(5,5,5,0.22)] pb-5">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <PanelTitle>{marketing.scheduleTitle}</PanelTitle>
                   <PanelDescription>{marketing.scheduleDescription}</PanelDescription>
                 </div>
-              </ScheduleHeading>
-              <ScheduleGrid>
+              </div>
+              <div className="grid grid-cols-[120px_120px_minmax(0,1fr)] gap-3 max-[740px]:grid-cols-[1fr_1fr] max-[480px]:grid-cols-1">
                 <CompactField>
                   {marketing.scheduleHour}
                   <Select
@@ -1611,32 +1030,34 @@ export default function GrowthDashboard() {
                     ))}
                   </Select>
                 </CompactField>
-                <DayField>
+                <div className="grid gap-[7px] max-[740px]:col-span-full">
                   <CompactField as="span">{marketing.scheduleWeekdays}</CompactField>
-                  <DayList>
+                  <div className="flex flex-wrap gap-1.5">
                     {weekdays.map((weekday, day) => (
-                      <DayButton
+                      <button
                         key={weekday}
                         type="button"
-                        $active={draft.schedule.daysOfWeek.includes(day)}
+                        className={`min-h-8 min-w-8 cursor-pointer rounded-full border-[1.5px] border-[#050505] px-2 py-1 text-[#050505] ${fontInheritClass} text-[12px] font-black ${
+                          draft.schedule.daysOfWeek.includes(day) ? "bg-[#f47a4a]" : "bg-white"
+                        } ${focusRingClass}`}
                         onClick={() => toggleWeekday(day)}
                         aria-pressed={draft.schedule.daysOfWeek.includes(day)}
                       >
                         {weekday}
-                      </DayButton>
+                      </button>
                     ))}
-                  </DayList>
-                </DayField>
-              </ScheduleGrid>
+                  </div>
+                </div>
+              </div>
               {draft.schedule.daysOfWeek.length === 0 && (
                 <FieldHint>{marketing.scheduleDisabledWithoutDays}</FieldHint>
               )}
-              <RuleList>
+              <div className="grid gap-[5px]">
                 <PanelTitle>{marketing.otherRulesTitle}</PanelTitle>
-                <RuleTitle>{marketing.duplicateRuleTitle}</RuleTitle>
+                <strong className="text-[12px] font-black text-[#050505]">{marketing.duplicateRuleTitle}</strong>
                 <PanelDescription>{marketing.duplicateRuleDescription}</PanelDescription>
-              </RuleList>
-            </SchedulePanel>
+              </div>
+            </div>
             <Field $full>
               {marketing.destinationUrl}
               <Input
@@ -1679,12 +1100,13 @@ export default function GrowthDashboard() {
                 required
               />
             </Field>
-            <PhotoSection>
+            <div className="col-span-full grid gap-2.5">
               <div>
                 <PanelTitle>{marketing.photosTitle}</PanelTitle>
                 <PanelDescription>{marketing.photosDescription}</PanelDescription>
               </div>
-              <HiddenPhotoInput
+              <input
+                className="hidden"
                 ref={photoInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -1703,11 +1125,18 @@ export default function GrowthDashboard() {
                 <FieldHint>{marketing.photoLimit}</FieldHint>
               </InlineActions>
               {draft.photos.length > 0 && (
-                <PhotoGrid>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
                   {draft.photos.map((photo, index) => (
-                    <PhotoCard key={`${photo.url}_${index}`}>
-                      <PhotoPreview src={photo.url} alt={photo.alt || marketing.photoDefaultAlt} />
-                      <PhotoDetails>
+                    <div
+                      key={`${photo.url}_${index}`}
+                      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-[9px] rounded-[10px] border-[1.5px] border-[rgba(5,5,5,0.4)] p-2"
+                    >
+                      <img
+                        className="h-14 w-14 rounded-lg bg-[#f5f5f5] object-cover"
+                        src={photo.url}
+                        alt={photo.alt || marketing.photoDefaultAlt}
+                      />
+                      <div className="grid min-w-0 gap-1.5">
                         <Input
                           aria-label={marketing.photoAlt}
                           value={photo.alt}
@@ -1715,7 +1144,7 @@ export default function GrowthDashboard() {
                           placeholder={marketing.photoAltPlaceholder}
                           onChange={(event) => updatePhotoAlt(index, event.target.value)}
                         />
-                        <PhotoActions>
+                        <div className="flex flex-wrap gap-[5px]">
                           <SmallButton
                             type="button"
                             disabled={index === 0}
@@ -1733,14 +1162,14 @@ export default function GrowthDashboard() {
                           <SmallButton type="button" onClick={() => removePhoto(index)}>
                             {marketing.removePhoto}
                           </SmallButton>
-                        </PhotoActions>
-                      </PhotoDetails>
-                    </PhotoCard>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </PhotoGrid>
+                </div>
               )}
-            </PhotoSection>
-            <TemplateSaveRow>
+            </div>
+            <div className="col-span-full flex flex-wrap items-center gap-[9px]">
               {isTemplateDirty && hasTemplateContent && (
                 <SmallButton
                   type="button"
@@ -1760,19 +1189,20 @@ export default function GrowthDashboard() {
                   {marketing.deleteTemplate}
                 </SmallButton>
               )}
-            </TemplateSaveRow>
-          </FormGrid>
+            </div>
+          </div>
 
-          <ActionRow>
-            <SwitchRow>
-              <Switch
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-[9px] text-[13px] font-black text-[#050505]">
+              <input
+                className={`relative m-0 h-6 w-[42px] cursor-pointer appearance-none rounded-full border-2 border-[#050505] bg-[#d9d9d9] transition-[background] duration-[160ms] ease-[ease] checked:bg-[#f47a4a] after:absolute after:top-[3px] after:left-[3px] after:h-3.5 after:w-3.5 after:rounded-full after:border-[1.5px] after:border-[#050505] after:bg-white after:transition-transform after:duration-[160ms] after:ease-[ease] after:content-[''] checked:after:translate-x-[17px] ${focusRingClass}`}
                 type="checkbox"
                 checked={draft.enabled && scheduleHasDays}
                 disabled={!scheduleHasDays}
                 onChange={(event) => updateDraft("enabled", event.target.checked)}
               />
               {marketing.enabled}
-            </SwitchRow>
+            </label>
             <Button type="submit" disabled={saving || !canSaveSchedule}>
               {saving ? <ArrowPathIcon width={16} /> : <CheckIcon width={16} />}
               {saving ? marketing.savingSettings : marketing.saveSettings}
@@ -1787,13 +1217,18 @@ export default function GrowthDashboard() {
               {runningNow ? marketing.runningNow : marketing.runNow}
             </Button>
             {message && <Message $error={message.error}>{message.text}</Message>}
-          </ActionRow>
+          </div>
         </form>
-      </FormCard>
+      </section>
 
       {templateDialogOpen && (
-        <ModalBackdrop role="presentation" onMouseDown={() => setTemplateDialogOpen(false)}>
-          <ModalCard
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(5,5,5,0.45)] p-5"
+          role="presentation"
+          onMouseDown={() => setTemplateDialogOpen(false)}
+        >
+          <div
+            className="grid w-[min(100%,430px)] gap-3.5 rounded-2xl border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_#050505]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="save-template-title"
@@ -1819,7 +1254,7 @@ export default function GrowthDashboard() {
                 }}
               />
             </CompactField>
-            <ModalActions>
+            <div className="flex flex-wrap justify-end gap-[9px]">
               <SmallButton type="button" onClick={() => setTemplateDialogOpen(false)}>
                 {marketing.cancel}
               </SmallButton>
@@ -1831,22 +1266,26 @@ export default function GrowthDashboard() {
                 {savingTemplate ? <ArrowPathIcon width={16} /> : <CheckIcon width={16} />}
                 {savingTemplate ? marketing.savingTemplate : marketing.saveTemplate}
               </Button>
-            </ModalActions>
-          </ModalCard>
-        </ModalBackdrop>
+            </div>
+          </div>
+        </div>
       )}
 
-      <SectionHeader>
-        <SectionTitle>{marketing.runsTitle}</SectionTitle>
-        <Count>{marketing.runs.replace("{count}", String(runs.length))}</Count>
-      </SectionHeader>
+      <div className="mx-0 mt-8 mb-3.5 flex items-center justify-between gap-3">
+        <h2 className="m-0 text-[20px] font-black text-[#050505]">{marketing.runsTitle}</h2>
+        <span className="rounded-full border-[1.5px] border-[#050505] px-[9px] py-[5px] text-[12px] font-black text-[#050505]">
+          {marketing.runs.replace("{count}", String(runs.length))}
+        </span>
+      </div>
 
       {loading ? (
         <Loading><ArrowPathIcon width={19} /> {marketing.loading}</Loading>
       ) : runs.length === 0 ? (
-        <Empty>{marketing.noRuns}</Empty>
+        <div className="rounded-2xl border-2 border-dashed border-[rgba(5,5,5,0.48)] px-5 py-9 text-center text-[14px] font-bold text-[rgba(5,5,5,0.64)]">
+          {marketing.noRuns}
+        </div>
       ) : (
-        <RunList>
+        <div className="grid gap-4">
           {runs.map((run) => {
             const date = run.completedAt || run.startedAt || run.scheduledFor;
             const displayTitle = run.postTitle || marketing.koreapas;
@@ -1855,18 +1294,23 @@ export default function GrowthDashboard() {
               ? `${((run.performance.clicks / run.performance.impressions) * 100).toFixed(1)}%`
               : "—";
             return (
-              <RunCard key={run.id}>
-                <RunTop>
+              <article
+                key={run.id}
+                className="overflow-hidden rounded-2xl border-2 border-[#050505] bg-white shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+              >
+                <div className="flex items-start justify-between gap-4 px-[18px] pt-[18px] pb-3.5">
                   <div>
-                    <RunLabel>
-                      <ChannelTag>{marketing.koreapas}</ChannelTag>
-                      <TriggerTag>
+                    <div className="mb-[7px] flex flex-wrap items-center gap-[7px]">
+                      <span className="rounded-full bg-[#f47a4a] px-2 py-1 text-[11px] font-black text-[#050505]">
+                        {marketing.koreapas}
+                      </span>
+                      <span className="text-[12px] font-extrabold text-[rgba(5,5,5,0.58)]">
                         {run.trigger === "manual" ? marketing.triggerManual : marketing.triggerScheduled}
-                      </TriggerTag>
-                    </RunLabel>
-                    <RunTitle>{displayTitle}</RunTitle>
+                      </span>
+                    </div>
+                    <h3 className="m-0 text-[18px] font-black leading-[1.32] text-[#050505]">{displayTitle}</h3>
                   </div>
-                  <RunTopActions>
+                  <div className="flex flex-none items-center gap-2">
                     <SmallButton
                       type="button"
                       onClick={() =>
@@ -1884,9 +1328,9 @@ export default function GrowthDashboard() {
                       {isExpanded ? marketing.collapseRun : marketing.expandRun}
                     </SmallButton>
                     <Status $status={run.status}>{getStatusLabel(run.status)}</Status>
-                  </RunTopActions>
-                </RunTop>
-                <RunMeta>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-[7px] px-[18px] pt-0 pb-[15px] text-[12px] font-bold text-[rgba(5,5,5,0.6)]">
                   <span>{formatTemplate(marketing.scheduledFor, dateLabel(run.scheduledFor))}</span>
                   {run.completedAt && (
                     <span>{formatTemplate(marketing.completed, dateLabel(run.completedAt))}</span>
@@ -1894,9 +1338,12 @@ export default function GrowthDashboard() {
                   {!run.completedAt && run.startedAt && (
                     <span>{formatTemplate(marketing.started, dateLabel(run.startedAt))}</span>
                   )}
-                </RunMeta>
+                </div>
                 {isExpanded && (
-                <Content id={`marketing-run-${run.id}`}>
+                <div
+                  id={`marketing-run-${run.id}`}
+                  className="grid gap-4 border-t border-[rgba(5,5,5,0.16)] px-[18px] pt-[17px] pb-[18px]"
+                >
                   {run.status === "awaitingPublisher" && (
                     <Notice>
                       <ExclamationTriangleIcon width={16} />
@@ -1910,17 +1357,20 @@ export default function GrowthDashboard() {
                     </Notice>
                   )}
                   {run.photos.length > 0 && (
-                    <RunPhotoStrip>
+                    <div className="flex flex-wrap gap-2">
                       {run.photos.map((photo, index) => (
-                        <RunPhoto
+                        <img
                           key={`${photo.url}_${index}`}
+                          className="h-[60px] w-[88px] rounded-lg bg-[#f5f5f5] object-cover"
                           src={photo.url}
                           alt={photo.alt || marketing.photoDefaultAlt}
                         />
                       ))}
-                    </RunPhotoStrip>
+                    </div>
                   )}
-                  {run.postCopy && <CopyPreview>{run.postCopy}</CopyPreview>}
+                  {run.postCopy && (
+                    <p className="m-0 text-[14px] leading-[1.6] whitespace-pre-wrap text-[#252525]">{run.postCopy}</p>
+                  )}
                   {run.trackingUrl && (
                     <>
                       <InlineActions>
@@ -1937,13 +1387,13 @@ export default function GrowthDashboard() {
                           </SmallButton>
                         )}
                       </InlineActions>
-                      <Tracking>
+                      <div className="grid gap-[5px] rounded-[10px] bg-[#fafafa] p-3">
                         <TrackingLabel>{marketing.trackingUrl}</TrackingLabel>
                         <TrackingValue>{run.trackingUrl}</TrackingValue>
                         <TrackingLabel>{marketing.hiddenPostId}</TrackingLabel>
                         <TrackingValue>{run.hiddenPostId}</TrackingValue>
                         <FieldHint>{marketing.markerHint}</FieldHint>
-                      </Tracking>
+                      </div>
                     </>
                   )}
                   <InlineActions>
@@ -1960,7 +1410,7 @@ export default function GrowthDashboard() {
                   {date && (
                     <div>
                       <TrackingLabel>{marketing.performance}</TrackingLabel>
-                      <MetricsGrid>
+                      <dl className="m-0 grid grid-cols-[repeat(6,minmax(0,1fr))] gap-2 max-[860px]:grid-cols-[repeat(3,minmax(0,1fr))] max-[480px]:grid-cols-[repeat(2,minmax(0,1fr))]">
                         <Metric><MetricLabel>{marketing.trackedPosts}</MetricLabel><MetricValue>{run.performance.trackedPosts}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.views}</MetricLabel><MetricValue>{run.performance.impressions}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.clicks}</MetricLabel><MetricValue>{run.performance.clicks}</MetricValue></Metric>
@@ -1968,20 +1418,20 @@ export default function GrowthDashboard() {
                         <Metric><MetricLabel>{marketing.signups}</MetricLabel><MetricValue>{run.performance.signups}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.likes}</MetricLabel><MetricValue>{run.performance.likes}</MetricValue></Metric>
                         <Metric><MetricLabel>{marketing.comments}</MetricLabel><MetricValue>{run.performance.comments}</MetricValue></Metric>
-                      </MetricsGrid>
+                      </dl>
                     </div>
                   )}
-                </Content>
+                </div>
                 )}
-              </RunCard>
+              </article>
             );
           })}
-        </RunList>
+        </div>
       )}
       {hasMoreRuns && (
-        <RunListFooter ref={moreRunsRef} aria-live="polite">
+        <div ref={moreRunsRef} className="flex min-h-[44px] justify-center p-1" aria-live="polite">
           {loadingMoreRuns && <Loading><ArrowPathIcon width={18} /> {marketing.loadingMoreRuns}</Loading>}
-        </RunListFooter>
+        </div>
       )}
     </>
   );

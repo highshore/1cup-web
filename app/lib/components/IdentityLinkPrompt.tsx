@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import styled from "styled-components";
 
 // Offered to someone whose profile was created without matching an existing member.
 // Kakao withholds the phone number for about half our members, so a returning member
@@ -9,129 +8,21 @@ import styled from "styled-components";
 // history to a second profile. The OTP they already use to sign in settles it, without
 // depending on what the provider chose to share.
 
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  padding: 1rem;
-  backdrop-filter: blur(4px);
-`;
+const inputClass =
+  "w-full rounded-xl border border-[#e5e7eb] bg-[#fafbfc] px-[1.15rem] py-[0.95rem] text-[1rem] read-only:text-[#6b7280] focus:border-[#111827] focus:bg-white focus:outline-none";
 
-const Dialog = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2.25rem;
-  width: 100%;
-  max-width: 440px;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+const codeInputClass = `${inputClass} mt-3 text-center text-[1.3rem] font-bold tracking-[0.4em] [text-indent:0.4em]`;
 
-  @media (max-width: 480px) {
-    padding: 1.75rem 1.35rem;
-  }
-`;
+const primaryButtonClass =
+  "min-h-[50px] w-full cursor-pointer rounded-[14px] border-0 bg-[#111827] [font-family:inherit] text-[1rem] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#d1d5db]";
 
-const Title = styled.h2`
-  font-size: 1.35rem;
-  font-weight: 700;
-  margin: 0 0 0.6rem;
-  color: #1f2937;
-  text-align: center;
-`;
+const ghostButtonClass =
+  "w-full cursor-pointer border-0 bg-transparent p-[0.6rem] [font-family:inherit] text-[0.9rem] text-[#6b7280] underline underline-offset-[3px] disabled:cursor-not-allowed disabled:text-[#d1d5db]";
 
-const Description = styled.p`
-  font-size: 0.95rem;
-  color: #6b7280;
-  line-height: 1.65;
-  margin: 0 0 1.75rem;
-  text-align: center;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 0.95rem 1.15rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
-  background: #fafbfc;
-
-  &:focus {
-    outline: none;
-    border-color: #111827;
-    background: #ffffff;
-  }
-
-  &:read-only {
-    color: #6b7280;
-  }
-`;
-
-const CodeInput = styled(Input)`
-  margin-top: 0.75rem;
-  text-align: center;
-  font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: 0.4em;
-  text-indent: 0.4em;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 1.5rem;
-`;
-
-const PrimaryButton = styled.button`
-  width: 100%;
-  min-height: 50px;
-  border: 0;
-  border-radius: 14px;
-  background: #111827;
-  color: #fff;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-
-  &:disabled {
-    background: #d1d5db;
-    cursor: not-allowed;
-  }
-`;
-
-const GhostButton = styled.button`
-  width: 100%;
-  padding: 0.6rem;
-  border: 0;
-  background: none;
-  color: #6b7280;
-  font-family: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-
-  &:disabled {
-    color: #d1d5db;
-    cursor: not-allowed;
-  }
-`;
-
-const Message = styled.p<{ $error?: boolean }>`
-  margin: 1rem 0 0;
-  padding: 0.7rem 0.9rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  text-align: center;
-  background: ${(p) => (p.$error ? "#fdeded" : "#edf7ed")};
-  color: ${(p) => (p.$error ? "#5f2120" : "#1e4620")};
-`;
+const messageClass = (error: boolean) =>
+  `m-0 mt-4 rounded-[10px] px-[0.9rem] py-[0.7rem] text-center text-[0.9rem] leading-[1.5] ${
+    error ? "bg-[#fdeded] text-[#5f2120]" : "bg-[#edf7ed] text-[#1e4620]"
+  }`;
 
 interface IdentityLinkPromptProps {
   onComplete: () => void;
@@ -204,15 +95,26 @@ export default function IdentityLinkPrompt({ onComplete }: IdentityLinkPromptPro
   };
 
   return (
-    <Overlay>
-      <Dialog role="dialog" aria-modal="true" aria-labelledby="identity-link-title">
-        <Title id="identity-link-title">이전에 가입하신 적이 있나요?</Title>
-        <Description>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[4px]">
+      <div
+        className="w-full max-w-[440px] rounded-[20px] border border-black/5 bg-white p-9 shadow-[0_10px_50px_rgba(0,0,0,0.15)] max-[480px]:px-[1.35rem] max-[480px]:py-7"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="identity-link-title"
+      >
+        <h2
+          id="identity-link-title"
+          className="m-0 mb-[0.6rem] text-center text-[1.35rem] font-bold text-[#1f2937]"
+        >
+          이전에 가입하신 적이 있나요?
+        </h2>
+        <p className="m-0 mb-7 text-center text-[0.95rem] leading-[1.65] text-[#6b7280]">
           기존에 쓰시던 휴대폰 번호로 인증하시면 그 계정과 연결해 드립니다. 멤버십과
           학습 기록이 그대로 이어집니다. 처음이시라면 건너뛰셔도 됩니다.
-        </Description>
+        </p>
 
-        <Input
+        <input
+          className={inputClass}
           type="tel"
           inputMode="numeric"
           autoComplete="tel"
@@ -223,7 +125,8 @@ export default function IdentityLinkPrompt({ onComplete }: IdentityLinkPromptPro
         />
 
         {codeSent && (
-          <CodeInput
+          <input
+            className={codeInputClass}
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -235,33 +138,40 @@ export default function IdentityLinkPrompt({ onComplete }: IdentityLinkPromptPro
           />
         )}
 
-        <Actions>
+        <div className="mt-6 flex flex-col gap-[0.6rem]">
           {!codeSent ? (
-            <PrimaryButton
+            <button
+              className={primaryButtonClass}
               type="button"
               onClick={sendCode}
               disabled={!phoneValid || busy !== null}
             >
               {busy === "send" ? "전송 중..." : "인증번호 받기"}
-            </PrimaryButton>
+            </button>
           ) : (
-            <PrimaryButton
+            <button
+              className={primaryButtonClass}
               type="button"
               onClick={linkAccount}
               disabled={code.length !== 6 || busy !== null || done !== null}
             >
               {busy === "link" ? "연결 중..." : "기존 계정과 연결하기"}
-            </PrimaryButton>
+            </button>
           )}
 
-          <GhostButton type="button" onClick={dismiss} disabled={busy !== null}>
+          <button
+            className={ghostButtonClass}
+            type="button"
+            onClick={dismiss}
+            disabled={busy !== null}
+          >
             처음 가입이에요 · 건너뛰기
-          </GhostButton>
-        </Actions>
+          </button>
+        </div>
 
-        {error && <Message $error>{error}</Message>}
-        {done && <Message>{done}</Message>}
-      </Dialog>
-    </Overlay>
+        {error && <p className={messageClass(true)}>{error}</p>}
+        {done && <p className={messageClass(false)}>{done}</p>}
+      </div>
+    </div>
   );
 }

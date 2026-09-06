@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import styled from "styled-components";
 
 import {
   MeetupLeaderboardEntry,
@@ -9,7 +8,6 @@ import {
 } from "../lib/features/meetup/types/meetup_types";
 import { fetchMeetupLeaderboards } from "../lib/features/meetup/services/meetup_service";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
-import { appLayout } from "../lib/constants/app_layout";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { useAuth } from "../lib/contexts/auth_context";
 import { Celebration } from "../lib/features/celebration/types/celebration_types";
@@ -22,320 +20,13 @@ import {
 } from "../lib/features/celebration/services/celebration_service";
 import CelebrationEditor from "../lib/features/celebration/components/CelebrationEditor";
 
-const PageShell = styled.div`
-  width: 100%;
-  min-height: 100vh;
-  padding: 0 0 clamp(3rem, 6vw, 4rem);
-  background: transparent;
-  color: #050505;
-`;
+const leaderboardTitleClass =
+  "m-0 mb-[0.6rem] inline-flex items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[0.62rem] py-[0.28rem] text-[clamp(0.82rem,1.6vw,0.92rem)] font-black leading-[1.25] text-[#050505] [word-break:keep-all]";
 
-const Content = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop};
+const emptyStateClass = "py-[0.65rem] text-[0.9rem] text-[rgba(5,5,5,0.48)]";
 
-  @media (max-width: 768px) {
-    padding: 0 1rem;
-  }
-`;
-
-const LeaderboardsGrid = styled.section`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.85rem, 1.8vw, 1.1rem);
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const LeaderboardCard = styled.div`
-  min-width: 0;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: clamp(0.95rem, 2vw, 1.15rem);
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-
-  @media (max-width: 768px) {
-    border-radius: 12px;
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
-  }
-`;
-
-const LeaderboardTitle = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 0.6rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.28rem 0.62rem;
-  font-size: clamp(0.82rem, 1.6vw, 0.92rem);
-  font-weight: 900;
-  line-height: 1.25;
-  word-break: keep-all;
-`;
-
-const LeaderboardList = styled.ol`
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
-
-const LeaderboardItem = styled.li`
-  display: grid;
-  grid-template-columns: 1.45rem 32px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.65rem;
-  min-width: 0;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.08);
-  padding: 0.7rem 0;
-
-  &:last-child {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-`;
-
-const LeaderboardRank = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(5, 5, 5, 0.52);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 720;
-`;
-
-const LeaderboardAvatar = styled.div`
-  display: flex;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  background: #f3f3f1;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 760;
-`;
-
-const LeaderboardAvatarImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const LeaderboardName = styled.span`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.94rem;
-  font-weight: 680;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const LeaderboardValue = styled.span`
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.82rem;
-  font-weight: 680;
-  white-space: nowrap;
-`;
-
-const EmptyState = styled.div`
-  padding: 0.65rem 0;
-  color: rgba(5, 5, 5, 0.48);
-  font-size: 0.9rem;
-`;
-
-const ErrorState = styled.div`
-  border: 1px solid #fecaca;
-  border-radius: 16px;
-  background: #fef2f2;
-  padding: 1rem;
-  color: #991b1b;
-  font-weight: 700;
-`;
-
-const CelebrationSection = styled.section`
-  margin-bottom: clamp(1.5rem, 4vw, 2.25rem);
-`;
-
-const CelebrationHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.3rem;
-`;
-
-const CelebrationSubtitle = styled.p`
-  margin: 0 0 0.9rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: clamp(0.82rem, 1.6vw, 0.9rem);
-  font-weight: 600;
-  word-break: keep-all;
-`;
-
-const AddCelebrationButton = styled.button`
-  flex-shrink: 0;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.34rem 0.85rem;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 850;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #f47a4a;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #f47a4a;
-  }
-`;
-
-const CelebrationScroller = styled.div`
-  display: flex;
-  gap: clamp(0.75rem, 2vw, 1rem);
-  overflow-x: auto;
-  padding: 0.4rem 0.25rem 1.1rem;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-  &::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(5, 5, 5, 0.22);
-  }
-`;
-
-const CelebrationCard = styled.article`
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: clamp(13rem, 60vw, 15rem);
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 1.1rem 1rem 1rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-`;
-
-const CelebrationLogo = styled.div`
-  width: 100%;
-  margin-bottom: 0.85rem;
-  border-radius: 10px;
-  background: transparent;
-
-  img {
-    display: block;
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-  }
-`;
-
-const CelebrationMember = styled.span`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.82rem;
-  font-weight: 750;
-`;
-
-const CelebrationHeadline = styled.strong`
-  display: block;
-  margin: 0.18rem 0 0.4rem;
-  color: #050505;
-  font-size: clamp(1rem, 2.4vw, 1.12rem);
-  font-weight: 950;
-  line-height: 1.3;
-  word-break: keep-all;
-`;
-
-const CelebrationDesc = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.85rem;
-  font-weight: 600;
-  line-height: 1.5;
-  word-break: keep-all;
-`;
-
-const CelebrationDate = styled.span`
-  margin-top: 0.7rem;
-  color: rgba(5, 5, 5, 0.48);
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-`;
-
-const CelebrationEditButton = styled.button`
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.2rem 0.6rem;
-  font-family: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-
-  &:hover {
-    background: #f47a4a;
-  }
-`;
-
-const CelebrationReorder = styled.div`
-  position: absolute;
-  top: 0.55rem;
-  left: 0.55rem;
-  display: flex;
-  gap: 0.3rem;
-  z-index: 1;
-`;
-
-const CelebrationReorderButton = styled.button`
-  display: inline-grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: #f47a4a;
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-`;
+const celebrationReorderButtonClass =
+  "inline-grid h-6 w-6 cursor-pointer place-items-center rounded-full border-[1.5px] border-[#050505] bg-white text-[0.78rem] font-black leading-none text-[#050505] hover:enabled:bg-[#f47a4a] disabled:cursor-not-allowed disabled:opacity-35";
 
 export default function LeaderboardClient() {
   const { locale, t } = useI18n();
@@ -508,19 +199,25 @@ export default function LeaderboardClient() {
     getValueLabel: (entry: MeetupLeaderboardEntry) => string
   ) => {
     return (
-      <LeaderboardCard>
-        <LeaderboardTitle>{title}</LeaderboardTitle>
+      <div className="min-w-0 rounded-[14px] border-2 border-[#050505] bg-white p-[clamp(0.95rem,2vw,1.15rem)] shadow-[4px_4px_0_rgba(5,5,5,0.88)] max-[768px]:rounded-xl max-[768px]:shadow-[3px_3px_0_rgba(5,5,5,0.88)]">
+        <h2 className={leaderboardTitleClass}>{title}</h2>
         {entries.length > 0 ? (
-          <LeaderboardList>
+          <ol className="m-0 flex list-none flex-col p-0">
             {entries.map((entry, index) => {
               const maskedName = getMaskedDisplayName(entry.displayName);
 
               return (
-                <LeaderboardItem key={entry.uid}>
-                  <LeaderboardRank>{index + 1}</LeaderboardRank>
-                  <LeaderboardAvatar>
+                <li
+                  key={entry.uid}
+                  className="grid min-w-0 grid-cols-[1.45rem_32px_minmax(0,1fr)_auto] items-center gap-[0.65rem] border-b border-[rgba(5,5,5,0.08)] py-[0.7rem] last:border-b-0 last:pb-0"
+                >
+                  <span className="inline-flex items-center justify-center text-[0.82rem] font-[720] tabular-nums text-[rgba(5,5,5,0.52)]">
+                    {index + 1}
+                  </span>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-[1.5px] border-[#050505] bg-[#f3f3f1] text-[0.76rem] font-[760] text-[#050505]">
                     {entry.photoURL ? (
-                      <LeaderboardAvatarImage
+                      <img
+                        className="h-full w-full object-cover"
                         src={entry.photoURL}
                         alt={maskedName}
                         referrerPolicy="no-referrer"
@@ -528,113 +225,134 @@ export default function LeaderboardClient() {
                     ) : (
                       maskedName.charAt(0).toUpperCase()
                     )}
-                  </LeaderboardAvatar>
-                  <LeaderboardName>{maskedName}</LeaderboardName>
-                  <LeaderboardValue>{getValueLabel(entry)}</LeaderboardValue>
-                </LeaderboardItem>
+                  </div>
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[0.94rem] font-[680] text-[#050505]">
+                    {maskedName}
+                  </span>
+                  <span className="whitespace-nowrap text-[0.82rem] font-[680] text-[rgba(5,5,5,0.62)]">
+                    {getValueLabel(entry)}
+                  </span>
+                </li>
               );
             })}
-          </LeaderboardList>
+          </ol>
         ) : (
-          <EmptyState>{emptyLabel}</EmptyState>
+          <div className={emptyStateClass}>{emptyLabel}</div>
         )}
-      </LeaderboardCard>
+      </div>
     );
   };
 
   return (
-    <PageShell>
-      <Content>
+    <div className="min-h-screen w-full bg-transparent pb-[clamp(3rem,6vw,4rem)] text-[#050505]">
+      <div className="mx-auto w-full max-w-page px-gutter max-[768px]:px-4">
         {loading && <GlobalLoadingScreen />}
-        {error && <ErrorState>{error}</ErrorState>}
+        {error && (
+          <div className="rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-4 font-bold text-[#991b1b]">
+            {error}
+          </div>
+        )}
 
         {!loading && !error && (celebrations.length > 0 || isAdmin) && (
-          <CelebrationSection aria-label={t.meetup.leaderboards.celebration.title}>
-            <CelebrationHeader>
-              <LeaderboardTitle as="h2">
+          <section
+            className="mb-[clamp(1.5rem,4vw,2.25rem)]"
+            aria-label={t.meetup.leaderboards.celebration.title}
+          >
+            <div className="mb-[0.3rem] flex items-center justify-between gap-3">
+              <h2 className={leaderboardTitleClass}>
                 {t.meetup.leaderboards.celebration.title}
-              </LeaderboardTitle>
+              </h2>
               {isAdmin && (
-                <AddCelebrationButton
+                <button
                   type="button"
+                  className="shrink-0 cursor-pointer rounded-full border-2 border-[#050505] bg-white px-[0.85rem] py-[0.34rem] text-[0.82rem] font-[850] text-[#050505] shadow-[3px_3px_0_#f47a4a] transition-[transform,box-shadow] duration-[140ms] ease-[ease] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#f47a4a]"
                   onClick={handleCreateCelebration}
                 >
                   + {t.meetup.leaderboards.celebration.addButton}
-                </AddCelebrationButton>
+                </button>
               )}
-            </CelebrationHeader>
-            <CelebrationSubtitle>
+            </div>
+            <p className="m-0 mb-[0.9rem] text-[clamp(0.82rem,1.6vw,0.9rem)] font-semibold text-[rgba(5,5,5,0.6)] [word-break:keep-all]">
               {t.meetup.leaderboards.celebration.subtitle}
-            </CelebrationSubtitle>
+            </p>
 
             {celebrations.length > 0 ? (
-              <CelebrationScroller>
+              <div className="flex snap-x snap-mandatory gap-[clamp(0.75rem,2vw,1rem)] overflow-x-auto px-[0.25rem] pt-[0.4rem] pb-[1.1rem] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(5,5,5,0.22)]">
                 {celebrations.map((celebration, index) => (
-                  <CelebrationCard key={celebration.id}>
+                  <article
+                    key={celebration.id}
+                    className="relative flex w-[clamp(13rem,60vw,15rem)] flex-none snap-start flex-col rounded-[14px] border-2 border-[#050505] bg-white px-4 pt-[1.1rem] pb-4 shadow-[4px_4px_0_rgba(5,5,5,0.88)]"
+                  >
                     {isAdmin && (
                       <>
-                        <CelebrationReorder>
-                          <CelebrationReorderButton
+                        <div className="absolute top-[0.55rem] left-[0.55rem] z-[1] flex gap-[0.3rem]">
+                          <button
                             type="button"
+                            className={celebrationReorderButtonClass}
                             aria-label="앞으로 이동"
                             disabled={index === 0}
                             onClick={() => handleMoveCelebration(index, -1)}
                           >
                             ‹
-                          </CelebrationReorderButton>
-                          <CelebrationReorderButton
+                          </button>
+                          <button
                             type="button"
+                            className={celebrationReorderButtonClass}
                             aria-label="뒤로 이동"
                             disabled={index === celebrations.length - 1}
                             onClick={() => handleMoveCelebration(index, 1)}
                           >
                             ›
-                          </CelebrationReorderButton>
-                        </CelebrationReorder>
-                        <CelebrationEditButton
+                          </button>
+                        </div>
+                        <button
                           type="button"
+                          className="absolute top-[0.55rem] right-[0.55rem] cursor-pointer rounded-full border-[1.5px] border-[#050505] bg-white px-[0.6rem] py-[0.2rem] text-[0.72rem] font-extrabold text-[#050505] hover:bg-[#f47a4a]"
                           onClick={() => handleEditCelebration(celebration)}
                         >
                           {t.meetup.leaderboards.celebration.edit}
-                        </CelebrationEditButton>
+                        </button>
                       </>
                     )}
                     {celebration.logoUrl && (
-                      <CelebrationLogo>
+                      <div className="mb-[0.85rem] w-full rounded-[10px] bg-transparent">
                         <img
+                          className="block h-auto w-full object-contain"
                           src={celebration.logoUrl}
                           alt={celebration.headline}
                           referrerPolicy="no-referrer"
                         />
-                      </CelebrationLogo>
+                      </div>
                     )}
-                    <CelebrationMember>
+                    <span className="text-[0.82rem] font-[750] text-[rgba(5,5,5,0.6)]">
                       {celebration.memberName}
-                    </CelebrationMember>
-                    <CelebrationHeadline>
+                    </span>
+                    <strong className="mt-[0.18rem] mb-[0.4rem] block text-[clamp(1rem,2.4vw,1.12rem)] font-[950] leading-[1.3] text-[#050505] [word-break:keep-all]">
                       {celebration.headline}
-                    </CelebrationHeadline>
+                    </strong>
                     {celebration.description && (
-                      <CelebrationDesc>
+                      <p className="m-0 text-[0.85rem] font-semibold leading-[1.5] text-[rgba(5,5,5,0.68)] [word-break:keep-all]">
                         {celebration.description}
-                      </CelebrationDesc>
+                      </p>
                     )}
                     {celebration.achievedAt && (
-                      <CelebrationDate>
+                      <span className="mt-[0.7rem] text-[0.78rem] font-bold tabular-nums text-[rgba(5,5,5,0.48)]">
                         {formatAchievedAt(celebration.achievedAt)}
-                      </CelebrationDate>
+                      </span>
                     )}
-                  </CelebrationCard>
+                  </article>
                 ))}
-              </CelebrationScroller>
+              </div>
             ) : (
-              <EmptyState>{t.meetup.leaderboards.celebration.empty}</EmptyState>
+              <div className={emptyStateClass}>
+                {t.meetup.leaderboards.celebration.empty}
+              </div>
             )}
-          </CelebrationSection>
+          </section>
         )}
 
         {!loading && !error && leaderboards && (
-          <LeaderboardsGrid>
+          <section className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-[clamp(0.85rem,1.8vw,1.1rem)] max-[768px]:grid-cols-1">
             {renderLeaderboardCard(
               t.meetup.leaderboards.totalParticipation,
               leaderboards.totalParticipation,
@@ -661,9 +379,9 @@ export default function LeaderboardClient() {
               t.meetup.leaderboards.noNewMembers,
               (entry) => formatJoinedAt(entry.joinedAt)
             )}
-          </LeaderboardsGrid>
+          </section>
         )}
-      </Content>
+      </div>
 
       {showCelebrationEditor && (
         <CelebrationEditor
@@ -673,6 +391,6 @@ export default function LeaderboardClient() {
           onDelete={editingCelebration ? handleDeleteCelebration : undefined}
         />
       )}
-    </PageShell>
+    </div>
   );
 }

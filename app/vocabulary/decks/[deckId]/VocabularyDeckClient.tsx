@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -20,7 +27,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-import { appLayout } from "../../../lib/constants/app_layout";
 import { useAuth } from "../../../lib/contexts/auth_context";
 import { useI18n } from "../../../lib/i18n/I18nProvider";
 import { supabase } from "../../../lib/supabase/client";
@@ -164,399 +170,122 @@ const copyByLocale = {
   },
 } as const;
 
-const Page = styled.main`
-  width: 100%;
-  min-height: 100vh;
-  background: transparent;
-  padding: 1rem ${appLayout.pageGutterDesktop} 4rem;
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <main className="w-full min-h-screen bg-transparent pt-4 px-gutter pb-16 max-[768px]:pt-3 max-[768px]:px-gutter-mobile max-[768px]:pb-12">
+      {children}
+    </main>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.75rem ${appLayout.pageGutterMobile} 3rem;
-  }
-`;
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="w-full max-w-page mx-auto">{children}</div>;
+}
 
-const Shell = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-`;
+function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-[0.35rem] text-[#050505] text-[0.82rem] font-[850] no-underline [&_svg]:w-[17px] [&_svg]:h-[17px]"
+    >
+      {children}
+    </Link>
+  );
+}
 
-const BackLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 850;
-  text-decoration: none;
-  svg { width: 17px; height: 17px; }
-`;
+function Badge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center border-[1.5px] border-[#050505] rounded-full bg-white py-[0.3rem] px-2 text-[#050505] text-[0.66rem] font-black">
+      {children}
+    </span>
+  );
+}
 
-const DeckHeader = styled.section`
-  margin-top: 0.8rem;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: 1.15rem;
-  box-shadow: 4px 4px 0 #050505;
-`;
+function SecondaryButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`inline-flex items-center justify-center gap-[0.3rem] min-h-[2.45rem] border-[1.5px] border-[#050505] rounded-full ${$active ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.48rem] px-[0.7rem] text-[0.72rem] font-black cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:w-[15px] [&_svg]:h-[15px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const HeaderTop = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+function StatCard({ value, label }: { value: ReactNode; label: ReactNode }) {
+  return (
+    <div className="border-[1.5px] border-[#050505] rounded-[13px] bg-white p-3">
+      <div className="text-[#050505] text-[1.3rem] font-[950]">{value}</div>
+      <div className="mt-[0.1rem] text-[rgba(5,5,5,0.56)] text-[0.7rem] font-extrabold">{label}</div>
+    </div>
+  );
+}
 
-  @media (max-width: 640px) { flex-direction: column; }
-`;
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="m-0 text-[#050505] text-[1.18rem] font-[950]">{children}</h2>;
+}
 
-const IdentityRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-`;
+function SectionHint({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.15rem] mb-0 text-[rgba(5,5,5,0.58)] text-[0.78rem] leading-[1.45]">{children}</p>;
+}
 
-const DeckIcon = styled.div`
-  font-size: 2rem;
-  line-height: 1;
-`;
+function WordCard({ $compact, children }: { $compact?: boolean; children: ReactNode }) {
+  return (
+    <article
+      className={`min-w-0 border-2 border-[#050505] rounded-[15px] bg-white py-[0.95rem] px-4 shadow-[3px_3px_0_#050505] flex flex-col ${$compact ? "min-h-[190px]" : ""}`}
+    >
+      {children}
+    </article>
+  );
+}
 
-const DeckName = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.65rem, 5vw, 2.35rem);
-  line-height: 1.1;
-  font-weight: 950;
-`;
+function Term({ children }: { children: ReactNode }) {
+  return <h3 className="m-0 text-[#050505] text-[1.15rem] font-[950] [overflow-wrap:anywhere]">{children}</h3>;
+}
 
-const Description = styled.p`
-  max-width: 700px;
-  margin: 0.45rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.9rem;
-  line-height: 1.55;
-`;
+function MiniBadges({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap gap-[0.3rem] mt-[0.35rem]">{children}</div>;
+}
 
-const BadgeRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.65rem;
-`;
+function MiniBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="border border-[#050505] rounded-full bg-white py-[0.2rem] px-[0.42rem] text-[#050505] text-[0.62rem] font-[850]">
+      {children}
+    </span>
+  );
+}
 
-const Badge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.3rem 0.5rem;
-  color: #050505;
-  font-size: 0.66rem;
-  font-weight: 900;
-`;
+function Definition({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.7rem] mb-0 text-[#050505] text-[0.88rem] leading-[1.5]">{children}</p>;
+}
 
-const HeaderActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
-`;
+function KoreanDefinition({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.24rem] mb-0 text-[rgba(5,5,5,0.62)] text-[0.8rem] leading-[1.5]">{children}</p>;
+}
 
-const PrimaryLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 2.6rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.78rem;
-  font-weight: 950;
-  text-decoration: none;
-  box-shadow: 3px 3px 0 #050505;
-  svg { width: 17px; height: 17px; }
-  &:hover { color: #050505; text-decoration: none; }
-`;
+function MeaningRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-[0.65rem] mt-[0.65rem] pt-[0.65rem] border-t border-t-[rgba(5,5,5,0.14)]">
+      {children}
+    </div>
+  );
+}
 
-const SecondaryButton = styled.button<{ $active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  min-height: 2.45rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${(p) => (p.$active ? "#050505" : "#ffffff")};
-  color: ${(p) => (p.$active ? "#ffffff" : "#050505")};
-  padding: 0.48rem 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-  cursor: pointer;
-  white-space: nowrap;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  svg { width: 15px; height: 15px; }
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.65rem;
-  margin: 1rem 0 0;
-  @media (max-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-`;
-
-const StatCard = styled.div`
-  border: 1.5px solid #050505;
-  border-radius: 13px;
-  background: #ffffff;
-  padding: 0.75rem;
-`;
-
-const StatValue = styled.div`
-  color: #050505;
-  font-size: 1.3rem;
-  font-weight: 950;
-`;
-
-const StatLabel = styled.div`
-  margin-top: 0.1rem;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.7rem;
-  font-weight: 800;
-`;
-
-const Section = styled.section`
-  margin-top: 1.5rem;
-`;
-
-const SectionTop = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-`;
-
-const SectionText = styled.div`
-  min-width: 0;
-  flex: 1;
-`;
-
-const SectionTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1.18rem;
-  font-weight: 950;
-`;
-
-const SectionHint = styled.p`
-  margin: 0.15rem 0 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.78rem;
-  line-height: 1.45;
-`;
-
-const Toolbar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-`;
-
-const ViewToggle = styled.div`
-  display: inline-flex;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  overflow: hidden;
-`;
-
-const ViewButton = styled.button<{ $active: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 0;
-  border-right: 1px solid rgba(5,5,5,0.18);
-  background: ${(p) => (p.$active ? "#050505" : "#ffffff")};
-  color: ${(p) => (p.$active ? "#ffffff" : "#050505")};
-  padding: 0.48rem 0.6rem;
-  font-size: 0.68rem;
-  font-weight: 900;
-  cursor: pointer;
-  &:last-child { border-right: 0; }
-  svg { width: 14px; height: 14px; }
-`;
-
-const AddButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  min-height: 2.45rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.48rem 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  svg { width: 15px; height: 15px; }
-`;
-
-const VocabularyGrid = styled.div<{ $mode: ViewMode }>`
-  display: ${(p) => (p.$mode === "tiles" ? "grid" : "flex")};
-  grid-template-columns: ${(p) => (p.$mode === "tiles" ? "repeat(3, minmax(0, 1fr))" : "none")};
-  flex-direction: column;
-  gap: 0.75rem;
-
-  @media (max-width: 900px) {
-    grid-template-columns: ${(p) => (p.$mode === "tiles" ? "repeat(2, minmax(0, 1fr))" : "none")};
-  }
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const WordCard = styled.article<{ $compact?: boolean }>`
-  min-width: 0;
-  border: 2px solid #050505;
-  border-radius: 15px;
-  background: #ffffff;
-  padding: 0.95rem 1rem;
-  box-shadow: 3px 3px 0 #050505;
-  display: flex;
-  flex-direction: column;
-  min-height: ${(p) => (p.$compact ? "190px" : "auto")};
-`;
-
-const WordTop = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.7rem;
-`;
-
-const Term = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 1.15rem;
-  font-weight: 950;
-  overflow-wrap: anywhere;
-`;
-
-const MiniBadges = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.35rem;
-`;
-
-const MiniBadge = styled.span`
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.2rem 0.42rem;
-  color: #050505;
-  font-size: 0.62rem;
-  font-weight: 850;
-`;
-
-const Definition = styled.p`
-  margin: 0.7rem 0 0;
-  color: #050505;
-  font-size: 0.88rem;
-  line-height: 1.5;
-`;
-
-const KoreanDefinition = styled.p`
-  margin: 0.24rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.8rem;
-  line-height: 1.5;
-`;
-
-const WordActions = styled.div`
-  margin-top: auto;
-  padding-top: 0.7rem;
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const DictionaryPanel = styled.div`
-  margin-bottom: 1rem;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 0.9rem;
-  box-shadow: 3px 3px 0 rgba(5,5,5,0.88);
-`;
-
-const DictionaryHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-`;
-
-const SearchWrap = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0 0.75rem;
-  svg { width: 18px; height: 18px; flex: 0 0 auto; }
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  padding: 0.65rem 0;
-  color: #050505;
-  font-size: 0.82rem;
-`;
-
-const SearchResults = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin-top: 0.8rem;
-  @media (max-width: 700px) { grid-template-columns: 1fr; }
-`;
-
-const MeaningRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.65rem;
-  margin-top: 0.65rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid rgba(5, 5, 5, 0.14);
-`;
-
-const StateBox = styled.div`
-  padding: 2rem 1rem;
-  border: 2px dashed #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.62);
-  svg { width: 34px; height: 34px; color: #050505; }
-  strong { display: block; margin-top: 0.55rem; color: #050505; }
-`;
+function StateBox({ className = "", children, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`py-8 px-4 border-2 border-dashed border-[#050505] rounded-2xl bg-white text-center text-[rgba(5,5,5,0.62)] [&_svg]:w-[34px] [&_svg]:h-[34px] [&_svg]:text-[#050505] [&_strong]:block [&_strong]:mt-[0.55rem] [&_strong]:text-[#050505] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
 const asSingle = <T,>(value: T | T[] | null | undefined): T | null => {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -900,23 +629,23 @@ export default function VocabularyDeckClient({ deckId }: { deckId: string }) {
       <Shell>
         <BackLink href="/vocabulary"><ArrowLeftIcon />{copy.back}</BackLink>
 
-        <DeckHeader>
-          <HeaderTop>
-            <IdentityRow>
-              <DeckIcon>{deck.icon}</DeckIcon>
+        <section className="mt-[0.8rem] border-2 border-[#050505] rounded-[18px] bg-white p-[1.15rem] shadow-[4px_4px_0_#050505]">
+          <div className="flex items-start justify-between gap-4 max-[640px]:flex-col">
+            <div className="flex items-start gap-3">
+              <div className="text-[2rem] leading-none">{deck.icon}</div>
               <div>
-                <DeckName>{displayName}</DeckName>
-                <Description>{displayDescription}</Description>
-                <BadgeRow>
+                <h1 className="m-0 text-[#050505] text-[clamp(1.65rem,5vw,2.35rem)] leading-[1.1] font-[950]">{displayName}</h1>
+                <p className="max-w-[700px] mt-[0.45rem] mb-0 text-[rgba(5,5,5,0.62)] text-[0.9rem] leading-[1.55]">{displayDescription}</p>
+                <div className="flex flex-wrap gap-[0.35rem] mt-[0.65rem]">
                   {deck.isOfficial && <Badge>{copy.official}</Badge>}
                   {isOwner && <Badge>{isPersonalDeck ? copy.personalDeck : copy.yourCollection}</Badge>}
                   <Badge>{deck.visibility === "public" ? copy.public : copy.private}</Badge>
                   {!isOwner && added && <Badge>{copy.added}</Badge>}
                   <Badge>{copy.by}: {deck.isOfficial ? copy.officialBy : ownerName || "Member"}</Badge>
-                </BadgeRow>
+                </div>
               </div>
-            </IdentityRow>
-            <HeaderActions>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-end">
               {isOwner && !isPersonalDeck && (
                 <SecondaryButton type="button" disabled={updating} onClick={() => void toggleVisibility()}>
                   {deck.visibility === "public" ? <EyeSlashIcon /> : <EyeIcon />}
@@ -928,50 +657,71 @@ export default function VocabularyDeckClient({ deckId }: { deckId: string }) {
                   <UserGroupIcon />{added ? copy.removeDeck : copy.addDeck}
                 </SecondaryButton>
               )}
-              <PrimaryLink href={`/vocabulary/study/${deck.id}`}><AcademicCapIcon />{copy.study}</PrimaryLink>
-            </HeaderActions>
-          </HeaderTop>
+              <Link
+                href={`/vocabulary/study/${deck.id}`}
+                className="inline-flex items-center justify-center gap-[0.35rem] min-h-[2.6rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.55rem] px-[0.85rem] text-[0.78rem] font-[950] no-underline shadow-[3px_3px_0_#050505] hover:text-[#050505] hover:no-underline [&_svg]:w-[17px] [&_svg]:h-[17px]"
+              ><AcademicCapIcon />{copy.study}</Link>
+            </div>
+          </div>
 
-          <StatsGrid>
-            <StatCard><StatValue>{items.length}</StatValue><StatLabel>{copy.total}</StatLabel></StatCard>
-            <StatCard><StatValue>{wordCount}</StatValue><StatLabel>{copy.words}</StatLabel></StatCard>
-            <StatCard><StatValue>{expressionCount}</StatValue><StatLabel>{copy.expressions}</StatLabel></StatCard>
-            <StatCard><StatValue>{deck.followerCount}</StatValue><StatLabel>{copy.addedUsers}</StatLabel></StatCard>
-          </StatsGrid>
-        </DeckHeader>
+          <div className="grid grid-cols-4 gap-[0.65rem] mt-4 max-[640px]:grid-cols-2">
+            <StatCard value={items.length} label={copy.total} />
+            <StatCard value={wordCount} label={copy.words} />
+            <StatCard value={expressionCount} label={copy.expressions} />
+            <StatCard value={deck.followerCount} label={copy.addedUsers} />
+          </div>
+        </section>
 
-        <Section>
-          <SectionTop>
-            <SectionText>
+        <section className="mt-6">
+          <div className="flex items-center justify-between gap-[0.8rem] mb-3 flex-wrap">
+            <div className="min-w-0 flex-1">
               <SectionTitle>{copy.contents}</SectionTitle>
               <SectionHint>{copy.contentsHint}</SectionHint>
-            </SectionText>
-            <Toolbar>
+            </div>
+            <div className="flex items-center justify-end gap-[0.45rem] flex-wrap">
               {isOwner && (
-                <AddButton type="button" onClick={() => setSearchOpen((value) => !value)}>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-[0.3rem] min-h-[2.45rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.48rem] px-3 text-[0.72rem] font-[950] cursor-pointer shadow-[2px_2px_0_#050505] [&_svg]:w-[15px] [&_svg]:h-[15px]"
+                  onClick={() => setSearchOpen((value) => !value)}
+                >
                   {searchOpen ? <XMarkIcon /> : <PlusIcon />}
                   {searchOpen ? copy.closeSearch : copy.openSearch}
-                </AddButton>
+                </button>
               )}
-              <ViewToggle aria-label="Vocabulary layout">
-                <ViewButton type="button" $active={viewMode === "tiles"} onClick={() => setViewMode("tiles")}><Squares2X2Icon />{copy.tiles}</ViewButton>
-                <ViewButton type="button" $active={viewMode === "list"} onClick={() => setViewMode("list")}><Bars3Icon />{copy.list}</ViewButton>
-              </ViewToggle>
-            </Toolbar>
-          </SectionTop>
+              <div className="inline-flex border-[1.5px] border-[#050505] rounded-full bg-white overflow-hidden" aria-label="Vocabulary layout">
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 border-r border-r-[rgba(5,5,5,0.18)] last:border-r-0 ${viewMode === "tiles" ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.48rem] px-[0.6rem] text-[0.68rem] font-black cursor-pointer [&_svg]:w-[14px] [&_svg]:h-[14px]`}
+                  onClick={() => setViewMode("tiles")}
+                ><Squares2X2Icon />{copy.tiles}</button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 border-r border-r-[rgba(5,5,5,0.18)] last:border-r-0 ${viewMode === "list" ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} py-[0.48rem] px-[0.6rem] text-[0.68rem] font-black cursor-pointer [&_svg]:w-[14px] [&_svg]:h-[14px]`}
+                  onClick={() => setViewMode("list")}
+                ><Bars3Icon />{copy.list}</button>
+              </div>
+            </div>
+          </div>
 
           {isOwner && searchOpen && (
-            <DictionaryPanel>
-              <DictionaryHeader>
+            <div className="mb-4 border-2 border-[#050505] rounded-2xl bg-white p-[0.9rem] shadow-[3px_3px_0_rgba(5,5,5,0.88)]">
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <SectionTitle>{copy.addTitle}</SectionTitle>
                   <SectionHint>{copy.addHint}</SectionHint>
                 </div>
-              </DictionaryHeader>
-              <SearchWrap>
+              </div>
+              <label className="flex items-center gap-2 w-full border-2 border-[#050505] rounded-full bg-white py-0 px-3 [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:flex-none">
                 <MagnifyingGlassIcon />
-                <SearchInput autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.search} />
-              </SearchWrap>
+                <input
+                  className="w-full border-0 outline-0 bg-transparent py-[0.65rem] px-0 text-[#050505] text-[0.82rem]"
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={copy.search}
+                />
+              </label>
 
               {query.trim().length < 2 ? (
                 <StateBox style={{ marginTop: "0.8rem", padding: "1rem" }}>{copy.searchStart}</StateBox>
@@ -980,7 +730,7 @@ export default function VocabularyDeckClient({ deckId }: { deckId: string }) {
               ) : results.length === 0 ? (
                 <StateBox style={{ marginTop: "0.8rem", padding: "1rem" }}><strong>{copy.searchEmpty}</strong></StateBox>
               ) : (
-                <SearchResults>
+                <div className="grid grid-cols-2 gap-[0.7rem] mt-[0.8rem] max-[700px]:grid-cols-1">
                   {results.map((entry) => (
                     <WordCard key={entry.id}>
                       <Term>{entry.term}</Term>
@@ -1014,16 +764,22 @@ export default function VocabularyDeckClient({ deckId }: { deckId: string }) {
                       )}
                     </WordCard>
                   ))}
-                </SearchResults>
+                </div>
               )}
-            </DictionaryPanel>
+            </div>
           )}
 
           {items.length > 0 ? (
-            <VocabularyGrid $mode={viewMode}>
+            <div
+              className={
+                viewMode === "tiles"
+                  ? "grid grid-cols-3 gap-3 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1"
+                  : "flex flex-col gap-3"
+              }
+            >
               {items.map((item) => (
                 <WordCard key={item.id} $compact={viewMode === "tiles"}>
-                  <WordTop>
+                  <div className="flex items-start justify-between gap-[0.7rem]">
                     <div>
                       <Term>{item.term}</Term>
                       <MiniBadges>
@@ -1033,23 +789,23 @@ export default function VocabularyDeckClient({ deckId }: { deckId: string }) {
                         {item.meaning?.pronunciationIpa && <MiniBadge>{item.meaning.pronunciationIpa}</MiniBadge>}
                       </MiniBadges>
                     </div>
-                  </WordTop>
+                  </div>
                   <Definition>{item.meaning?.definitionEn || copy.noDefinition}</Definition>
                   {item.meaning?.definitionKo && <KoreanDefinition>{item.meaning.definitionKo}</KoreanDefinition>}
                   {isOwner && (
-                    <WordActions>
+                    <div className="mt-auto pt-[0.7rem] flex justify-end">
                       <SecondaryButton type="button" disabled={removingId === item.id} onClick={() => void removeItem(item)}>
                         <TrashIcon />{copy.remove}
                       </SecondaryButton>
-                    </WordActions>
+                    </div>
                   )}
                 </WordCard>
               ))}
-            </VocabularyGrid>
+            </div>
           ) : (
             <StateBox><BookOpenIcon /><strong>{copy.noItems}</strong></StateBox>
           )}
-        </Section>
+        </section>
       </Shell>
     </Page>
   );

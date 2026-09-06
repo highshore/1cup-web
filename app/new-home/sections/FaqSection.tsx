@@ -1,98 +1,6 @@
 import { useState } from "react";
-import styled from "styled-components";
-import { colors } from "../../lib/constants/colors";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { SectionTitle } from "../components/SectionHeading";
-
-const MOBILE_NAV_GUTTER = "1rem";
-
-const FAQSectionWrapper = styled.section`
-  padding: 5rem 0 0;
-  background: #f5f5f5;
-  margin-bottom: 0;
-`;
-
-const FAQInner = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const FAQContainer = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-`;
-
-const FAQItem = styled.div`
-  border-radius: 16px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: #050505;
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const FAQQuestion = styled.button<{ $isOpen: boolean }>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 1.5rem;
-  background: transparent;
-  border: none;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #1f2937;
-  cursor: pointer;
-  font-family: "Noto Sans KR", sans-serif;
-  text-align: left;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: ${colors.primary};
-  }
-
-  span {
-    font-size: 1.4rem;
-    font-weight: 400;
-    color: ${colors.primary};
-    transition: transform 0.25s ease;
-    transform: ${(props) => (props.$isOpen ? "rotate(180deg)" : "none")};
-    flex-shrink: 0;
-    margin-left: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    padding: 1.2rem;
-    font-size: 0.95rem;
-  }
-`;
-
-const FAQAnswer = styled.div<{ $isOpen: boolean }>`
-  max-height: ${(props) => (props.$isOpen ? "500px" : "0")};
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  padding: ${(props) => (props.$isOpen ? "0 1.5rem 1.5rem" : "0 1.5rem")};
-  font-size: 0.95rem;
-  color: #6b7280;
-  line-height: 1.7;
-  font-family: "Noto Sans KR", sans-serif;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: ${(props) => (props.$isOpen ? "0 1.2rem 1.2rem" : "0 1.2rem")};
-  }
-`;
 
 export default function FaqSection() {
   const { t } = useI18n();
@@ -104,26 +12,44 @@ export default function FaqSection() {
   };
 
   return (
-    <FAQSectionWrapper>
-      <FAQInner>
+    <section className="pt-20 pb-0 px-0 bg-[#f5f5f5] mb-0">
+      <div className="max-w-page mx-auto px-6 max-[768px]:px-4">
         <SectionTitle>{t.home.faq.title}</SectionTitle>
-        <FAQContainer>
-          {FAQ_ITEMS.map((faq, index) => (
-            <FAQItem key={index}>
-              <FAQQuestion
-                onClick={() => toggleFAQ(index)}
-                $isOpen={openFAQ === index}
+        <div className="w-full flex flex-col gap-[1.2rem]">
+          {FAQ_ITEMS.map((faq, index) => {
+            const isOpen = openFAQ === index;
+            return (
+              <div
+                key={index}
+                className="rounded-2xl overflow-hidden bg-white border border-[#e5e7eb] [transition:all_0.2s_ease] hover:border-[#050505] hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
               >
-                {faq.question}
-                <span>{openFAQ === index ? "−" : "+"}</span>
-              </FAQQuestion>
-              <FAQAnswer $isOpen={openFAQ === index}>
-                {faq.answer}
-              </FAQAnswer>
-            </FAQItem>
-          ))}
-        </FAQContainer>
-      </FAQInner>
-    </FAQSectionWrapper>
+                <button
+                  onClick={() => toggleFAQ(index)}
+                  className="flex justify-between items-center w-full p-6 bg-transparent border-none text-[1.05rem] font-semibold text-[#1f2937] cursor-pointer font-['Noto_Sans_KR',sans-serif] text-left [transition:color_0.2s_ease] hover:text-primary max-[768px]:p-[1.2rem] max-[768px]:text-[0.95rem]"
+                >
+                  {faq.question}
+                  <span
+                    className={`text-[1.4rem] font-normal text-primary [transition:transform_0.25s_ease] shrink-0 ml-4 ${
+                      isOpen ? "[transform:rotate(180deg)]" : "[transform:none]"
+                    }`}
+                  >
+                    {isOpen ? "−" : "+"}
+                  </span>
+                </button>
+                <div
+                  className={`overflow-hidden [transition:max-height_0.3s_ease,padding_0.3s_ease] text-[0.95rem] text-[#6b7280] leading-[1.7] font-['Noto_Sans_KR',sans-serif] max-[768px]:text-[0.9rem] ${
+                    isOpen
+                      ? "max-h-[500px] pt-0 px-6 pb-6 max-[768px]:px-[1.2rem] max-[768px]:pb-[1.2rem]"
+                      : "max-h-0 py-0 px-6 max-[768px]:px-[1.2rem]"
+                  }`}
+                >
+                  {faq.answer}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

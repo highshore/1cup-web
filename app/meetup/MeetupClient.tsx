@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import styled, { keyframes, css } from "styled-components";
 import dynamic from "next/dynamic";
+import "./meetup.css";
 import { MeetupEvent } from "../lib/features/meetup/types/meetup_types";
 import {
   fetchMeetupEvents,
@@ -21,7 +21,6 @@ import {
 import { BlogPost } from "../lib/features/blog/types/blog_types";
 import { fetchBlogPosts } from "../lib/features/blog/services/blog_service";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
-import { appLayout } from "../lib/constants/app_layout";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 
@@ -35,556 +34,12 @@ const meetupTheme = {
   pale: "#fff8dc",
 } as const;
 
-// Add subtle glow animation keyframes
-const subtleGlow = keyframes`
-  0% {
-    box-shadow: 4px 4px 0 #050505;
-  }
-  50% {
-    box-shadow: 5px 5px 0 #f47a4a;
-  }
-  100% {
-    box-shadow: 4px 4px 0 #050505;
-  }
-`;
-
-const NAVBAR_CONTENT_GAP_DESKTOP = "0.75rem";
-const NAVBAR_CONTENT_GAP_MOBILE = "0.5rem";
-
-// Styled components - Day Mode Theme
-const MeetupContainer = styled.div`
-  width: 100%;
-  min-height: 100vh;
-  background-color: transparent;
-  color: ${meetupTheme.text};
-  padding: ${NAVBAR_CONTENT_GAP_DESKTOP} 0 clamp(2.5rem, 5vw, 3rem);
-
-  @media (max-width: 768px) {
-    padding: ${NAVBAR_CONTENT_GAP_MOBILE} 0 clamp(2rem, 6vw, 2.5rem);
-  }
-`;
-
-const MeetupContent = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop};
-
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
-
-// Blog Banner Styled Components
-const BlogBanner = styled.div<{ $imageUrl?: string }>`
-  background: ${(props) =>
-    props.$imageUrl
-      ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${props.$imageUrl}) center/cover`
-      : "#f6f6f6"};
-  border-radius: 8px;
-  margin: 20px 0;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e1e5e9;
-  height: 160px;
-  position: relative;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    border-color: #ff6600;
-  }
-
-  @media (max-width: 768px) {
-    height: 140px;
-    margin: 16px 0;
-  }
-`;
-
-const BlogBannerContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-  }
-`;
-
-const BlogBannerText = styled.div`
-  flex: 1;
-  color: #333;
-`;
-
-const BlogBannerLabel = styled.div`
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #ff6600;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    margin-bottom: 0.375rem;
-  }
-`;
-
-const BlogBannerTitle = styled.h3<{ $imageUrl?: string }>`
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: ${(props) => (props.$imageUrl ? "white" : "#000")};
-  margin: 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-  ${(props) => props.$imageUrl && "text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);"};
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-    line-height: 1.2;
-  }
-`;
-
-// Blog Posts Grid Styled Components
-const BlogPostsGrid = styled.div`
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  padding: 8px 0 12px;
-  margin: 0;
-
-  /* Smooth scrolling */
-  scroll-behavior: smooth;
-
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-
-  &::-webkit-scrollbar {
-    display: none; /* WebKit */
-  }
-
-  @media (max-width: 768px) {
-    gap: 0.75rem;
-    padding: 6px 0 10px;
-  }
-`;
-
-const BlogPostCard = styled.div<{ $imageUrl?: string }>`
-  background: ${(props) =>
-    props.$imageUrl
-      ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${props.$imageUrl}) center/cover`
-      : meetupTheme.smoke};
-  border-radius: 14px;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-  box-shadow: 3px 3px 0 ${meetupTheme.border};
-  border: 2px solid ${meetupTheme.border};
-  aspect-ratio: 4 / 3;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  width: 220px;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 ${meetupTheme.accent};
-    border-color: ${meetupTheme.border};
-  }
-
-  @media (max-width: 768px) {
-    width: 160px;
-  }
-`;
-
-const BlogPostCardContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 1rem;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-  }
-`;
-
-const BlogPostCardText = styled.div<{ $imageUrl?: string }>`
-  flex: 1;
-  color: ${(props) => (props.$imageUrl ? "white" : "#333")};
-`;
-
-const BlogPostCardLabel = styled.div`
-  font-size: 0.8rem;
-  font-weight: 850;
-  color: ${meetupTheme.accent};
-  margin-bottom: 0.375rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-
-  @media (max-width: 768px) {
-    font-size: 0.65rem;
-    margin-bottom: 0.25rem;
-  }
-`;
-
-const BlogPostCardTitle = styled.h3<{ $imageUrl?: string }>`
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: ${(props) => (props.$imageUrl ? "white" : "#000")};
-  margin: 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  ${(props) => props.$imageUrl && "text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);"};
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    line-height: 1.2;
-    -webkit-line-clamp: 2;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  color: #333;
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin: 1.5rem 0 0.75rem 0;
-  line-height: 1.25;
-
-  @media (max-width: 768px) {
-    font-size: 1.3rem;
-    margin: 1.25rem 0 0.625rem 0;
-  }
-`;
-
-const FilterRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  margin: 0.25rem 0 0.75rem;
-
-  @media (max-width: 768px) {
-    justify-content: space-between;
-  }
-`;
-
-const FilterLabel = styled.span`
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #9ca3af;
-`;
-
-const FilterBar = styled.div`
-  display: inline-flex;
-  gap: 2px;
-  border: 1.5px solid #d1d5db;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 3px;
-`;
-
-const FilterButton = styled.button<{ $active: boolean }>`
-  border: 0;
-  border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#111111" : "transparent")};
-  color: ${({ $active }) => ($active ? "#ffffff" : "#4b5563")};
-  padding: 0.42rem 0.95rem;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
-
-  &:hover {
-    color: ${({ $active }) => ($active ? "#ffffff" : "#111111")};
-  }
-`;
-
-const EventCard = styled.div<{ $isPast?: boolean; $isClosest?: boolean }>`
-  background-color: #ffffff;
-  border-radius: 14px;
-  padding: 24px;
-  margin: 12px 0;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
-  box-shadow: ${(props) =>
-    props.$isPast ? "0 1px 4px rgba(0, 0, 0, 0.06)" : `4px 4px 0 ${meetupTheme.border}`};
-  border: ${(props) =>
-    props.$isPast ? "1px solid rgba(5, 5, 5, 0.08)" : `2px solid ${meetupTheme.border}`};
-  width: 100%;
-  opacity: ${(props) => (props.$isPast ? 0.52 : 1)};
-
-  /* Add subtle glow animation for closest upcoming event */
-  ${(props) =>
-    props.$isClosest && !props.$isPast
-      ? css`
-          animation: ${subtleGlow} 3s ease-in-out infinite;
-        `
-      : ""}
-
-  &:hover {
-    transform: ${(props) => (props.$isPast ? "translateY(-1px)" : "translate(-1px, -1px)")};
-    box-shadow: ${(props) =>
-      props.$isPast ? "0 3px 10px rgba(0, 0, 0, 0.08)" : `5px 5px 0 ${meetupTheme.accent}`};
-    opacity: ${(props) => (props.$isPast ? 0.8 : 1)};
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    margin: 10px 0;
-    border-radius: 12px;
-    box-shadow: 3px 3px 0 ${meetupTheme.border};
-  }
-`;
-
-const EventContent = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-
-  @media (max-width: 768px) {
-    gap: 12px;
-  }
-`;
-
-const EventImageContainer = styled.div<{ $isPast?: boolean }>`
-  width: 120px;
-  height: 120px;
-  border: 2px solid ${meetupTheme.border};
-  border-radius: 12px;
-  overflow: hidden;
-  background-color: #000000;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: ${(props) => (props.$isPast ? "grayscale(50%)" : "none")};
-
-  @media (max-width: 768px) {
-    width: 80px;
-    height: 80px;
-    border-radius: 12px;
-  }
-`;
-
-const EventImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const EventImagePlaceholder = styled.div`
-  color: #ccc;
-  font-size: 2.5rem;
-
-  svg {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.5rem;
-
-    svg {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-  }
-`;
-
-const EventDetails = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0; // Prevents flex item from overflowing
-`;
-
-const EventTitle = styled.h3<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.text)};
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-  word-wrap: break-word; // Prevents long titles from overflowing
-
-  @media (max-width: 768px) {
-    font-size: 15px;
-    margin: 0 0 6px 0;
-    line-height: 1.2;
-  }
-`;
-
-const CountdownPrefix = styled.span<{ $isUrgent?: boolean }>`
-  color: ${(props) =>
-    props.$isUrgent ? "#DC143C" : "inherit"}; /* Crimson for urgent countdown */
-  font-weight: ${(props) => (props.$isUrgent ? "bold" : "inherit")};
-`;
-
-const EventInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-`;
-
-const EventIcon = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.muted)};
-  flex-shrink: 0; // Prevents icons from shrinking
-  display: flex; // Added for better alignment of SVG
-  align-items: center; // Added for better alignment of SVG
-
-  @media (max-width: 768px) {
-    /* font-size: 14px; // Removed */
-  }
-`;
-
-const EventText = styled.span<{ $isPast?: boolean }>`
-  color: ${(props) => (props.$isPast ? "rgba(5, 5, 5, 0.48)" : meetupTheme.muted)};
-  font-size: 16px;
-  letter-spacing: 0;
-  word-wrap: break-word; // Prevents long text from overflowing
-
-  @media (max-width: 768px) {
-    font-size: 13px;
-  }
-`;
-
-const EventBottom = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-  gap: 8px; // Adds gap to prevent overlap
-  min-height: 30px; /* Ensure consistent height */
-
-  @media (max-width: 768px) {
-    margin-top: 4px;
-    gap: 6px;
-  }
-`;
-
-// New StatusBadge styled component
-const StatusBadge = styled.span<{ $statusColor: string }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff; // White text for better contrast
-  background-color: ${(props) => props.$statusColor};
-  border: 2px solid ${meetupTheme.border};
-  border-radius: 999px;
-  text-align: center;
-  min-width: 80px; // Minimum width for the badge
-  flex-shrink: 0; /* Prevent badge from shrinking */
-  white-space: nowrap; /* Keep badge text on one line */
-  transition: all 0.2s ease;
-
-  @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 6px 12px;
-    min-width: 80px;
-  }
-`;
-
-const LoadingContainer = styled.div`
-  text-align: center;
-  padding: 2rem 1rem;
-  color: ${meetupTheme.muted};
-  min-height: 50vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem 0.75rem;
-    font-size: 14px;
-    min-height: 40vh;
-  }
-`;
-
-const LoadingAnimation = styled.div`
-  width: 150px;
-  height: 150px;
-  margin-bottom: 1rem;
-
-  @media (max-width: 768px) {
-    width: 120px;
-    height: 120px;
-  }
-`;
-
-const LoadMoreButton = styled.button`
-  display: block;
-  margin: 2rem auto 1rem auto;
-  padding: 0.75rem 1.5rem;
-  background-color: #ffffff;
-  border: 2px solid ${meetupTheme.border};
-  border-radius: 999px;
-  color: ${meetupTheme.text};
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 100px;
-  box-shadow: 3px 3px 0 ${meetupTheme.accent};
-
-  &:hover {
-    background-color: ${meetupTheme.pale};
-    border-color: ${meetupTheme.border};
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 ${meetupTheme.accent};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem 1.25rem;
-    margin: 1.5rem auto 0.75rem auto;
-    font-size: 13px;
-    border-radius: 999px;
-  }
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 3rem 1rem;
-  color: ${meetupTheme.muted};
-
-  @media (max-width: 768px) {
-    padding: 2rem 1rem;
-    font-size: 14px;
-  }
-`;
+// Shared class fragments (Day Mode Theme)
+const emptyStateClass =
+  "py-12 px-4 text-center text-[rgba(5,5,5,0.66)] max-[768px]:py-8 max-[768px]:px-4 max-[768px]:text-[14px]";
+
+const sectionTitleClass =
+  "mx-0 mt-6 mb-3 text-[1.4rem] font-extrabold leading-[1.25] text-[#333] max-[768px]:mt-5 max-[768px]:mb-2.5 max-[768px]:text-[1.3rem]";
 
 const MeetupClient: React.FC = () => {
   const router = useRouter();
@@ -773,24 +228,41 @@ const MeetupClient: React.FC = () => {
     if (!blogPosts || blogPosts.length === 0) return null;
 
     return (
-      <BlogPostsGrid>
+      <div className="m-0 flex gap-4 overflow-x-auto pt-[8px] pb-[12px] scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[768px]:gap-3 max-[768px]:pt-[6px] max-[768px]:pb-[10px]">
         {blogPosts.map((post) => (
-          <BlogPostCard
+          <div
             key={post.id}
-            $imageUrl={post.featuredImage}
             onClick={() => handleBlogClick(post)}
+            className="relative aspect-[4/3] w-[220px] shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 border-solid border-[#050505] shadow-[3px_3px_0_#050505] [transition:transform_0.18s_ease,box-shadow_0.18s_ease,border-color_0.18s_ease] hover:border-[#050505] hover:shadow-[4px_4px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] max-[768px]:w-[160px]"
+            style={{
+              background: post.featuredImage
+                ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${post.featuredImage}) center/cover`
+                : meetupTheme.smoke,
+            }}
           >
-            <BlogPostCardContent>
-              <BlogPostCardText $imageUrl={post.featuredImage}>
-                <BlogPostCardLabel>{t.meetup.blogPost}</BlogPostCardLabel>
-                <BlogPostCardTitle $imageUrl={post.featuredImage}>
+            <div className="absolute top-0 left-0 flex h-full w-full flex-col items-start justify-center p-4 max-[768px]:p-3">
+              <div
+                className={`flex-1 ${
+                  post.featuredImage ? "text-white" : "text-[#333]"
+                }`}
+              >
+                <div className="mb-1.5 text-[0.8rem] [font-weight:850] uppercase tracking-[0.5px] text-[#f47a4a] max-[768px]:mb-1 max-[768px]:text-[0.65rem]">
+                  {t.meetup.blogPost}
+                </div>
+                <h3
+                  className={`m-0 line-clamp-3 break-words text-[1.2rem] font-semibold leading-[1.3] max-[768px]:line-clamp-2 max-[768px]:text-[0.8rem] max-[768px]:leading-[1.2] ${
+                    post.featuredImage
+                      ? "text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]"
+                      : "text-[#000]"
+                  }`}
+                >
                   {post.title}
-                </BlogPostCardTitle>
-              </BlogPostCardText>
-            </BlogPostCardContent>
-          </BlogPostCard>
+                </h3>
+              </div>
+            </div>
+          </div>
         ))}
-      </BlogPostsGrid>
+      </div>
     );
   };
 
@@ -831,47 +303,83 @@ const MeetupClient: React.FC = () => {
         : "#888"
       : "#4CAF50";
 
+    const cardStateClasses = isPast
+      ? "border border-solid border-[rgba(5,5,5,0.08)] opacity-[0.52] shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:opacity-80 hover:shadow-[0_3px_10px_rgba(0,0,0,0.08)] hover:[transform:translateY(-1px)] max-[768px]:hover:shadow-[0_3px_10px_rgba(0,0,0,0.08)]"
+      : "border-2 border-solid border-[#050505] shadow-[4px_4px_0_#050505] hover:shadow-[5px_5px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] max-[768px]:hover:shadow-[5px_5px_0_#f47a4a]";
+
+    const mutedColor = isPast
+      ? "text-[rgba(5,5,5,0.48)]"
+      : "text-[rgba(5,5,5,0.66)]";
+
     return (
-      <EventCard
+      <div
         key={meetup.id}
         onClick={() => handleEventClick(meetup.id)}
-        $isPast={isPast}
-        $isClosest={isClosest}
+        className={`my-[12px] w-full cursor-pointer rounded-[14px] bg-white p-[24px] [transition:transform_0.18s_ease,box-shadow_0.18s_ease,opacity_0.18s_ease,border-color_0.18s_ease] max-[768px]:my-[10px] max-[768px]:rounded-[12px] max-[768px]:p-[16px] max-[768px]:shadow-[3px_3px_0_#050505] ${cardStateClasses} ${
+          isClosest && !isPast
+            ? "animate-[meetup-subtle-glow_3s_ease-in-out_infinite]"
+            : ""
+        }`}
       >
-        <EventContent>
-          <EventImageContainer $isPast={isPast}>
+        <div className="flex items-start gap-[20px] max-[768px]:gap-[12px]">
+          <div
+            className={`flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-[12px] border-2 border-solid border-[#050505] bg-[#000000] max-[768px]:h-[80px] max-[768px]:w-[80px] ${
+              isPast ? "grayscale-[50%]" : ""
+            }`}
+          >
             {meetup.image_urls && meetup.image_urls.length > 0 ? (
-              <EventImage src={meetup.image_urls[0]} alt={meetup.title} />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="h-full w-full object-cover"
+                src={meetup.image_urls[0]}
+                alt={meetup.title}
+              />
             ) : (
-              <EventImagePlaceholder>
+              <div className="text-[2.5rem] text-[#ccc] [&_svg]:h-10 [&_svg]:w-10 max-[768px]:text-[1.5rem] max-[768px]:[&_svg]:h-6 max-[768px]:[&_svg]:w-6">
                 <PhotoIcon />
-              </EventImagePlaceholder>
+              </div>
             )}
-          </EventImageContainer>
-          <EventDetails>
-            <EventTitle $isPast={isPast}>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <h3
+              className={`mx-0 mt-0 mb-[8px] break-words text-[18px] font-bold leading-[1.3] max-[768px]:mb-[6px] max-[768px]:text-[15px] max-[768px]:leading-[1.2] ${
+                isPast ? "text-[rgba(5,5,5,0.48)]" : "text-[#050505]"
+              }`}
+            >
               {!isPast && countdownPrefix && (
-                <CountdownPrefix $isUrgent={isUrgent}>
+                <span
+                  className={
+                    isUrgent
+                      ? "font-bold text-[#DC143C]" /* Crimson for urgent countdown */
+                      : undefined
+                  }
+                >
                   {countdownPrefix}
-                </CountdownPrefix>
+                </span>
               )}
               {eventTitle}
-            </EventTitle>
-            <EventInfo>
-              <EventIcon $isPast={isPast}>
+            </h3>
+            <div className="mb-[8px] flex items-center gap-[8px] max-[768px]:mb-[4px] max-[768px]:gap-[6px]">
+              <span className={`flex shrink-0 items-center ${mutedColor}`}>
                 <PinIcon width="16px" height="16px" />
-              </EventIcon>
-              <EventText $isPast={isPast}>{meetup.location_name}</EventText>
-            </EventInfo>
-            <EventInfo>
-              <EventIcon $isPast={isPast}>
+              </span>
+              <span
+                className={`break-words text-[16px] tracking-normal max-[768px]:text-[13px] ${mutedColor}`}
+              >
+                {meetup.location_name}
+              </span>
+            </div>
+            <div className="mb-[8px] flex items-center gap-[8px] max-[768px]:mb-[4px] max-[768px]:gap-[6px]">
+              <span className={`flex shrink-0 items-center ${mutedColor}`}>
                 <CalendarIcon width="16px" height="16px" />
-              </EventIcon>
-              <EventText $isPast={isPast}>
+              </span>
+              <span
+                className={`break-words text-[16px] tracking-normal max-[768px]:text-[13px] ${mutedColor}`}
+              >
                 {formatMeetupDateTime(meetup)}
-              </EventText>
-            </EventInfo>
-            <EventBottom>
+              </span>
+            </div>
+            <div className="mt-[8px] flex min-h-[30px] items-center justify-between gap-[8px] max-[768px]:mt-[4px] max-[768px]:gap-[6px]">
               <UserAvatarStack
                 uids={[...meetup.leaders, ...meetup.participants]}
                 maxAvatars={8} // Balanced threshold to prevent overflow - matching homepage
@@ -879,49 +387,62 @@ const MeetupClient: React.FC = () => {
                 isPast={isPast}
                 onAvatarClick={handleAvatarClick}
               />
-              <StatusBadge $statusColor={statusColor}>
+              <span
+                className="inline-flex min-w-[80px] shrink-0 items-center justify-center whitespace-nowrap rounded-[999px] border-2 border-solid border-[#050505] px-[16px] py-[8px] text-center text-[14px] font-bold text-[#ffffff] [transition:all_0.2s_ease] max-[768px]:px-[12px] max-[768px]:py-[6px] max-[768px]:text-[12px]"
+                style={{ backgroundColor: statusColor }}
+              >
                 {getStatusText()} ({totalParticipants}/{meetup.max_participants}
                 )
-              </StatusBadge>
-            </EventBottom>
-          </EventDetails>
-        </EventContent>
-      </EventCard>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
   return (
-    <MeetupContainer>
-      <MeetupContent>
+    <div className="min-h-screen w-full bg-transparent pt-3 pb-[clamp(2.5rem,5vw,3rem)] text-[#050505] max-[768px]:pt-2 max-[768px]:pb-[clamp(2rem,6vw,2.5rem)]">
+      <div className="mx-auto w-full max-w-page px-gutter max-[768px]:px-0">
         {/* Blog Posts */}
         {blogPosts.length > 0 && <>{renderBlogPosts()}</>}
 
         {loading && <GlobalLoadingScreen />}
 
         {error && (
-          <EmptyState>
+          <div className={emptyStateClass}>
             {t.meetup.sections.errorLoading}: {error}
-          </EmptyState>
+          </div>
         )}
 
         {!loading && !error && (
           <>
             {/* Location filter */}
-            <FilterRow>
-              <FilterLabel>{t.meetup.filter.label}</FilterLabel>
-              <FilterBar role="group" aria-label={t.meetup.filter.label}>
+            <div className="mt-1 mb-3 flex items-center justify-end gap-[0.55rem] max-[768px]:justify-between">
+              <span className="text-[0.82rem] font-bold text-[#9ca3af]">
+                {t.meetup.filter.label}
+              </span>
+              <div
+                className="inline-flex gap-[2px] rounded-[999px] border-[1.5px] border-solid border-[#d1d5db] bg-[#ffffff] p-[3px]"
+                role="group"
+                aria-label={t.meetup.filter.label}
+              >
                 {(["all", "yeouido", "anam"] as const).map((loc) => (
-                  <FilterButton
+                  <button
                     key={loc}
                     type="button"
-                    $active={locationFilter === loc}
                     onClick={() => setLocationFilter(loc)}
+                    className={`cursor-pointer rounded-[999px] border-0 px-[0.95rem] py-[0.42rem] text-[0.84rem] font-bold [transition:background_150ms_ease,color_150ms_ease] ${
+                      locationFilter === loc
+                        ? "bg-[#111111] text-[#ffffff] hover:text-[#ffffff]"
+                        : "bg-transparent text-[#4b5563] hover:text-[#111111]"
+                    }`}
                   >
                     {t.meetup.filter[loc]}
-                  </FilterButton>
+                  </button>
                 ))}
-              </FilterBar>
-            </FilterRow>
+              </div>
+            </div>
 
             {(() => {
               const visibleUpcoming = upcomingEvents.filter(matchesFilter);
@@ -931,7 +452,9 @@ const MeetupClient: React.FC = () => {
                   {/* Upcoming Events Section */}
                   {visibleUpcoming.length > 0 && (
                     <>
-                      <SectionTitle>{t.meetup.sections.upcoming}</SectionTitle>
+                      <h2 className={sectionTitleClass}>
+                        {t.meetup.sections.upcoming}
+                      </h2>
                       {visibleUpcoming.map((meetup, index) =>
                         renderEventCard(meetup, false, index === 0)
                       )}
@@ -941,7 +464,9 @@ const MeetupClient: React.FC = () => {
                   {/* Past Events Section */}
                   {visiblePast.length > 0 && (
                     <>
-                      <SectionTitle>{t.meetup.sections.past}</SectionTitle>
+                      <h2 className={sectionTitleClass}>
+                        {t.meetup.sections.past}
+                      </h2>
                       {visiblePast.map((meetup) =>
                         renderEventCard(meetup, true, false)
                       )}
@@ -950,7 +475,9 @@ const MeetupClient: React.FC = () => {
 
                   {visibleUpcoming.length === 0 &&
                     visiblePast.length === 0 && (
-                      <EmptyState>{t.meetup.sections.noEvents}</EmptyState>
+                      <div className={emptyStateClass}>
+                        {t.meetup.sections.noEvents}
+                      </div>
                     )}
                 </>
               );
@@ -958,20 +485,21 @@ const MeetupClient: React.FC = () => {
 
             {/* Load More Button */}
             {hasMore && (
-              <LoadMoreButton
+              <button
                 ref={loadMoreButtonRef}
                 onClick={loadMoreEvents}
                 disabled={loadingMore}
+                className="mx-auto mt-8 mb-4 block min-w-[100px] cursor-pointer rounded-[999px] border-2 border-solid border-[#050505] bg-[#ffffff] px-6 py-3 text-[14px] font-semibold text-[#050505] shadow-[3px_3px_0_#f47a4a] [transition:all_0.2s] hover:border-[#050505] hover:bg-[#fff8dc] hover:shadow-[4px_4px_0_#f47a4a] enabled:hover:[transform:translate(-1px,-1px)] disabled:cursor-not-allowed disabled:opacity-50 max-[768px]:mt-6 max-[768px]:mb-3 max-[768px]:rounded-[999px] max-[768px]:px-5 max-[768px]:py-2.5 max-[768px]:text-[13px]"
               >
                 {loadingMore
                   ? t.meetup.sections.loadingMore
                   : t.meetup.sections.loadMore}
-              </LoadMoreButton>
+              </button>
             )}
           </>
         )}
-      </MeetupContent>
-    </MeetupContainer>
+      </div>
+    </div>
   );
 };
 

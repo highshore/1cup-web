@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "styled-components";
 
-import { appLayout } from "../lib/constants/app_layout";
 import { useAuth } from "../lib/contexts/auth_context";
 import {
   getOrCreateSystemConversation,
@@ -21,101 +19,11 @@ import {
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { supabase } from "../lib/supabase/client";
 
-const Page = styled.main`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 1.5rem ${appLayout.pageGutterDesktop} 2.5rem;
+const pageClass =
+  "w-full max-w-page mx-auto pt-6 px-gutter pb-10 max-[768px]:pt-4 max-[768px]:px-0 max-[768px]:pb-8";
 
-  @media (max-width: 768px) {
-    padding: 1rem 0 2rem;
-  }
-`;
-
-const NotificationList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const Notification = styled.article<{ $unread: boolean }>`
-  border: 2px solid ${({ $unread }) => ($unread ? "#050505" : "rgba(5, 5, 5, 0.22)")};
-  border-radius: 12px;
-  background: ${({ $unread }) => ($unread ? "#fff5ef" : "#ffffff")};
-  padding: 1rem;
-  box-shadow: ${({ $unread }) => ($unread ? "3px 3px 0 #f47a4a" : "none")};
-`;
-
-const NotificationHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-`;
-
-const NotificationTitle = styled.h2`
-  margin: 0 0 0.28rem;
-  color: #050505;
-  font-size: 0.95rem;
-  font-weight: 900;
-  line-height: 1.35;
-`;
-
-const NotificationBody = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.76);
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.55;
-  white-space: pre-wrap;
-`;
-
-const NotificationMeta = styled.time`
-  display: block;
-  margin-top: 0.55rem;
-  color: rgba(5, 5, 5, 0.5);
-  font-size: 0.74rem;
-`;
-
-const MarkReadButton = styled.button`
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 7px;
-  background: #ffffff;
-  padding: 0.3rem 0.45rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  &:hover { background: #f47a4a; }
-`;
-
-const ActionLink = styled(Link)`
-  display: inline-flex;
-  margin-top: 0.68rem;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #f47a4a;
-  padding: 0.38rem 0.58rem;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-decoration: none;
-  &:hover { background: #f88d63; }
-`;
-
-const State = styled.div`
-  border: 1.5px solid rgba(5, 5, 5, 0.2);
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 2.5rem 1rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.9rem;
-  font-weight: 700;
-  line-height: 1.45;
-  text-align: center;
-`;
+const stateClass =
+  "rounded-xl border-[1.5px] border-[rgba(5,5,5,0.2)] bg-white px-4 py-10 text-center text-[0.9rem] font-bold leading-[1.45] text-[rgba(5,5,5,0.6)]";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -223,48 +131,77 @@ export default function NotificationsClient() {
   };
 
   if (isAuthLoading || !currentUser) {
-    return <Page><State>{t.common.loading}</State></Page>;
+    return (
+      <main className={pageClass}>
+        <div className={stateClass}>{t.common.loading}</div>
+      </main>
+    );
   }
 
   return (
-    <Page>
+    <main className={pageClass}>
       {isLoading ? (
-        <State>{t.chat.notificationsLoading}</State>
+        <div className={stateClass}>{t.chat.notificationsLoading}</div>
       ) : isUnavailable ? (
-        <State>{t.chat.notificationsUnavailable}</State>
+        <div className={stateClass}>{t.chat.notificationsUnavailable}</div>
       ) : notifications.length === 0 ? (
-        <State>{t.chat.notificationsEmpty}</State>
+        <div className={stateClass}>{t.chat.notificationsEmpty}</div>
       ) : (
-        <NotificationList>
+        <div className="flex flex-col gap-3">
           {notifications.map((notification) => {
             const action = getSystemAction(notification.metadata);
             const title = getSystemTitle(notification.metadata);
+            const unread = !notification.readAt;
             return (
-              <Notification key={notification.id} $unread={!notification.readAt}>
-                <NotificationHeader>
+              <article
+                key={notification.id}
+                className={`rounded-xl border-2 p-4 ${
+                  unread
+                    ? "border-[#050505] bg-[#fff5ef] shadow-[3px_3px_0_#f47a4a]"
+                    : "border-[rgba(5,5,5,0.22)] bg-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
                   <div>
-                    {title && <NotificationTitle>{title}</NotificationTitle>}
-                    <NotificationBody>{notification.body}</NotificationBody>
+                    {title && (
+                      <h2 className="m-0 mb-[0.28rem] text-[0.95rem] font-black leading-[1.35] text-[#050505]">
+                        {title}
+                      </h2>
+                    )}
+                    <p className="m-0 whitespace-pre-wrap text-[0.88rem] font-semibold leading-[1.55] text-[rgba(5,5,5,0.76)]">
+                      {notification.body}
+                    </p>
                   </div>
-                  {!notification.readAt && (
-                    <MarkReadButton type="button" onClick={() => void handleMarkRead(notification)}>
+                  {unread && (
+                    <button
+                      type="button"
+                      className="flex-none cursor-pointer rounded-[7px] border-[1.5px] border-[#050505] bg-white px-[0.45rem] py-[0.3rem] text-[0.72rem] font-extrabold text-[#050505] hover:bg-[#f47a4a]"
+                      onClick={() => void handleMarkRead(notification)}
+                    >
                       {t.chat.markRead}
-                    </MarkReadButton>
+                    </button>
                   )}
-                </NotificationHeader>
-                <NotificationMeta dateTime={notification.createdAt}>
+                </div>
+                <time
+                  dateTime={notification.createdAt}
+                  className="mt-[0.55rem] block text-[0.74rem] text-[rgba(5,5,5,0.5)]"
+                >
                   {formatNotificationTime(notification.createdAt, locale)}
-                </NotificationMeta>
+                </time>
                 {action && (
-                  <ActionLink href={action.url} onClick={() => void handleMarkRead(notification)}>
+                  <Link
+                    href={action.url}
+                    className="mt-[0.68rem] inline-flex rounded-lg border-[1.5px] border-[#050505] bg-[#f47a4a] px-[0.58rem] py-[0.38rem] text-[0.76rem] font-extrabold text-[#050505] no-underline hover:bg-[#f88d63] hover:no-underline"
+                    onClick={() => void handleMarkRead(notification)}
+                  >
                     {action.label}
-                  </ActionLink>
+                  </Link>
                 )}
-              </Notification>
+              </article>
             );
           })}
-        </NotificationList>
+        </div>
       )}
-    </Page>
+    </main>
   );
 }

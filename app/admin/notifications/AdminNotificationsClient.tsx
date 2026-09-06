@@ -2,8 +2,15 @@
 
 import { BellAlertIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  LabelHTMLAttributes,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -23,564 +30,453 @@ import type {
   NotificationTemplateSchedule,
 } from "../../lib/features/notifications/types";
 
-const Page = styled.main`
-  width: min(1400px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  padding: 0 0 2.5rem;
-`;
-
-const Heading = styled.header`
-  margin: 0 0 1.35rem;
-`;
-
-const Eyebrow = styled.p`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.48rem;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.75rem, 4vw, 2.2rem);
-  font-weight: 900;
-  letter-spacing: -0.025em;
-`;
-
-const Description = styled.p`
-  max-width: 680px;
-  margin: 0.62rem 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.55;
-`;
-
-const Layout = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1.34fr) minmax(300px, 0.66fr);
-  align-items: start;
-  gap: 1.25rem;
-
-  @media (max-width: 850px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Card = styled.section`
-  overflow: hidden;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CardHeader = styled.div`
-  padding: 1.35rem 1.35rem 0;
-`;
-
-const CardTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 900;
-`;
-
-const CardDescription = styled.p`
-  margin: 0.38rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const CardBody = styled.div`
-  padding: 1.15rem 1.35rem 1.35rem;
-`;
-
-const Field = styled.label`
-  display: grid;
-  gap: 0.42rem;
-  margin-top: 1rem;
-  color: #050505;
-  font-size: 0.8rem;
-  font-weight: 900;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.62rem 0.72rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.88rem;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.62rem 0.72rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.88rem;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const Textarea = styled.textarea`
-  width: 100%;
-  min-height: 126px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.68rem 0.72rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.88rem;
-  line-height: 1.5;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const FieldHint = styled.p`
-  margin: -0.08rem 0 0;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.71rem;
-  font-weight: 600;
-`;
-
-const TemplateBar = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.62rem;
-  align-items: end;
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const QuietButton = styled.button`
-  min-height: 42px;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.58rem 0.7rem;
-  box-shadow: 2px 2px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.77rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #fff1ea;
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-`;
-
-const SchedulePanel = styled.div`
-  margin-top: 1rem;
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  background: #fff8f4;
-  padding: 0.82rem;
-`;
-
-const ScheduleHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.7rem;
-`;
-
-const ScheduleTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 900;
-`;
-
-const SwitchLabel = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  color: #050505;
-  font-size: 0.74rem;
-  font-weight: 900;
-  white-space: nowrap;
-
-  input {
-    width: 1rem;
-    height: 1rem;
-    accent-color: #f47a4a;
-  }
-`;
-
-const ScheduleFields = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.62rem;
-  margin-top: 0.68rem;
-`;
-
-const WeekdayRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.28rem;
-  margin-top: 0.68rem;
-`;
-
-const WeekdayButton = styled.button<{ $active: boolean }>`
-  min-height: 31px;
-  border: 1.5px solid #050505;
-  border-radius: 7px;
-  background: ${({ $active }) => ($active ? "#f47a4a" : "#ffffff")};
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.67rem;
-  font-weight: 900;
-`;
-
-const ScheduleActions = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.72rem;
-`;
-
-const AudienceGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-  margin-top: 0.58rem;
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const AudienceOption = styled.button<{ $selected: boolean }>`
-  min-height: 88px;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
-  padding: 0.68rem;
-  color: #050505;
-  box-shadow: ${({ $selected }) => ($selected ? "3px 3px 0 #f47a4a" : "none")};
-  cursor: pointer;
-  text-align: left;
-
-  &:hover {
-    background: #fff8f4;
-  }
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const AudienceName = styled.span`
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 900;
-`;
-
-const AudienceCount = styled.span`
-  display: block;
-  margin-top: 0.25rem;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.72rem;
-  font-weight: 700;
-`;
-
-const TwoColumns = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
-
-  @media (max-width: 540px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const MemberPicker = styled.div`
-  margin-top: 0.85rem;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-`;
-
-const SearchWrap = styled.div`
-  position: relative;
-  border-bottom: 1.5px solid #050505;
-
-  svg {
-    position: absolute;
-    top: 50%;
-    left: 0.7rem;
-    width: 1rem;
-    height: 1rem;
-    transform: translateY(-50%);
-    color: rgba(5, 5, 5, 0.52);
-  }
-`;
-
-const SearchInput = styled(Input)`
-  border: 0;
-  border-radius: 0;
-  padding-left: 2.1rem;
-
-  &:focus {
-    outline: none;
-  }
-`;
-
-const RecipientList = styled.div`
-  max-height: 235px;
-  overflow-y: auto;
-`;
-
-const RecipientRow = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 48px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
-  padding: 0.55rem 0.72rem;
-  cursor: pointer;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  &:hover {
-    background: #fff8f4;
-  }
-
-  input {
-    width: 1rem;
-    height: 1rem;
-    accent-color: #f47a4a;
-  }
-`;
-
-const Avatar = styled.span`
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.7rem;
-  font-weight: 850;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const RecipientName = styled.span`
-  min-width: 0;
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.81rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const EmptyMembers = styled.p`
-  margin: 0;
-  padding: 1.25rem 0.75rem;
-  color: rgba(5, 5, 5, 0.54);
-  font-size: 0.8rem;
-  text-align: center;
-`;
-
-const Preview = styled.div`
-  margin-top: 1rem;
-  border: 2px dashed #050505;
-  border-radius: 12px;
-  background: #fff1ea;
-  padding: 0.85rem;
-`;
-
-const PreviewLabel = styled.p`
-  margin: 0 0 0.44rem;
-  color: #050505;
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-`;
-
-const PreviewTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.86rem;
-  font-weight: 900;
-`;
-
-const PreviewBody = styled.p`
-  margin: 0.28rem 0 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.81rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-`;
-
-const PreviewAction = styled.span`
-  display: inline-flex;
-  margin-top: 0.55rem;
-  border: 1.5px solid #050505;
-  border-radius: 7px;
-  background: #f47a4a;
-  padding: 0.3rem 0.46rem;
-  color: #050505;
-  font-size: 0.71rem;
-  font-weight: 850;
-`;
-
-const SubmitRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-top: 1.1rem;
-`;
-
-const SendButton = styled.button`
-  min-height: 42px;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #f47a4a;
-  padding: 0.66rem 0.9rem;
-  box-shadow: 3px 3px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #f88d63;
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-    box-shadow: none;
-  }
-`;
-
-const InlineStatus = styled.p<{ $error?: boolean }>`
-  margin: 0;
-  color: ${({ $error }) => ($error ? "#991b1b" : "#0f6b32")};
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1.4;
-`;
-
-const DeliveryNote = styled.p`
-  margin: 0;
-  padding: 0.82rem 1.2rem;
-  border-top: 2px solid #050505;
-  background: #fff8f4;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1.45;
-`;
-
-const HistoryList = styled.div`
-  display: grid;
-  gap: 0.72rem;
-`;
-
-const HistoryItem = styled.article`
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.85rem;
-`;
-
-const HistoryTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.86rem;
-  font-weight: 900;
-`;
-
-const HistoryBody = styled.p`
-  display: -webkit-box;
-  margin: 0.3rem 0 0;
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.78rem;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-`;
-
-const HistoryMeta = styled.p`
-  margin: 0.58rem 0 0;
-  color: rgba(5, 5, 5, 0.52);
-  font-size: 0.69rem;
-  font-weight: 700;
-`;
-
-const LoadingState = styled.div`
-  display: grid;
-  min-height: 260px;
-  place-items: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.88rem;
-  font-weight: 800;
-`;
+type DivProps = HTMLAttributes<HTMLDivElement>;
+type SectionProps = HTMLAttributes<HTMLElement>;
+type SpanProps = HTMLAttributes<HTMLSpanElement>;
+type ParagraphProps = HTMLAttributes<HTMLParagraphElement>;
+type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+type InputProps = InputHTMLAttributes<HTMLInputElement>;
+
+function Page({ className = "", ...rest }: SectionProps) {
+  return (
+    <main
+      {...rest}
+      className={`w-[min(1400px,calc(100%-2.5rem))] mx-auto pb-10 ${className}`}
+    />
+  );
+}
+
+function Heading({ className = "", ...rest }: SectionProps) {
+  return <header {...rest} className={`mx-0 mt-0 mb-[1.35rem] ${className}`} />;
+}
+
+function Eyebrow({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`inline-flex items-center gap-[0.4rem] mx-0 mt-0 mb-[0.48rem] text-[#050505] text-[0.76rem] font-black tracking-[0.075em] uppercase [&_svg]:w-4 [&_svg]:h-4 ${className}`}
+    />
+  );
+}
+
+function Title({ className = "", ...rest }: HeadingProps) {
+  return (
+    <h1
+      {...rest}
+      className={`m-0 text-[#050505] text-[clamp(1.75rem,4vw,2.2rem)] font-black tracking-[-0.025em] ${className}`}
+    />
+  );
+}
+
+function Description({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`max-w-[680px] mx-0 mt-[0.62rem] mb-0 text-[rgba(5,5,5,0.64)] text-[0.88rem] font-semibold leading-[1.55] ${className}`}
+    />
+  );
+}
+
+function Layout({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1.34fr)_minmax(300px,0.66fr)] items-start gap-5 max-[850px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function Card({ className = "", ...rest }: SectionProps) {
+  return (
+    <section
+      {...rest}
+      className={`overflow-hidden border-[3px] border-[#050505] rounded-[16px] bg-white shadow-[6px_6px_0_rgba(5,5,5,0.9)] ${className}`}
+    />
+  );
+}
+
+function CardHeader({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`px-[1.35rem] pt-[1.35rem] ${className}`} />;
+}
+
+function CardTitle({ className = "", ...rest }: HeadingProps) {
+  return <h2 {...rest} className={`m-0 text-[#050505] text-[1rem] font-black ${className}`} />;
+}
+
+function CardDescription({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[0.38rem] mb-0 text-[rgba(5,5,5,0.6)] text-[0.78rem] font-semibold leading-[1.5] ${className}`}
+    />
+  );
+}
+
+function CardBody({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`px-[1.35rem] pt-[1.15rem] pb-[1.35rem] ${className}`} />;
+}
+
+function Field({
+  as: As = "label",
+  className = "",
+  ...rest
+}: { as?: "div" | "label" } & LabelHTMLAttributes<HTMLElement>) {
+  return (
+    <As
+      {...rest}
+      className={`grid gap-[0.42rem] mt-4 text-[#050505] text-[0.8rem] font-black ${className}`}
+    />
+  );
+}
+
+const controlClasses =
+  "w-full min-h-[42px] box-border border-2 border-[#050505] rounded-[10px] bg-white px-[0.72rem] py-[0.62rem] text-[#050505] text-[0.88rem] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a]";
+
+function Input({ className = "", ...rest }: InputProps) {
+  return <input {...rest} className={`${controlClasses} ${className}`} />;
+}
+
+function Select({ className = "", ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select {...rest} className={`${controlClasses} ${className}`} />;
+}
+
+function Textarea({ className = "", ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...rest}
+      className={`w-full min-h-[126px] box-border resize-y border-2 border-[#050505] rounded-[10px] bg-white px-[0.72rem] py-[0.68rem] text-[#050505] text-[0.88rem] leading-[1.5] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function FieldHint({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[-0.08rem] mb-0 text-[rgba(5,5,5,0.56)] text-[0.71rem] font-semibold ${className}`}
+    />
+  );
+}
+
+function TemplateBar({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] gap-[0.62rem] items-end max-[560px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function QuietButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[42px] border-2 border-[#050505] rounded-[10px] bg-white px-[0.7rem] py-[0.58rem] shadow-[2px_2px_0_#050505] text-[#050505] cursor-pointer text-[0.77rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#fff1ea] [&:hover:not(:disabled)]:shadow-[3px_3px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.55] ${className}`}
+    />
+  );
+}
+
+function SchedulePanel({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-4 border-[1.5px] border-[#050505] rounded-[12px] bg-[#fff8f4] p-[0.82rem] ${className}`}
+    />
+  );
+}
+
+function ScheduleHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`flex items-center justify-between gap-[0.7rem] ${className}`} />
+  );
+}
+
+function ScheduleTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 {...rest} className={`m-0 text-[#050505] text-[0.82rem] font-black ${className}`} />;
+}
+
+function SwitchLabel({ className = "", ...rest }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      {...rest}
+      className={`inline-flex items-center gap-[0.42rem] text-[#050505] text-[0.74rem] font-black whitespace-nowrap [&_input]:w-4 [&_input]:h-4 [&_input]:accent-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function ScheduleFields({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[1fr_1fr] gap-[0.62rem] mt-[0.68rem] ${className}`}
+    />
+  );
+}
+
+function WeekdayRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`grid grid-cols-7 gap-[0.28rem] mt-[0.68rem] ${className}`} />
+  );
+}
+
+function WeekdayButton({
+  $active,
+  className = "",
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[31px] border-[1.5px] border-[#050505] rounded-[7px] text-[#050505] cursor-pointer text-[0.67rem] font-black ${
+        $active ? "bg-[#f47a4a]" : "bg-white"
+      } ${className}`}
+    />
+  );
+}
+
+function ScheduleActions({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex gap-2 mt-[0.72rem] ${className}`} />;
+}
+
+function AudienceGrid({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-3 gap-[0.55rem] mt-[0.58rem] max-[600px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function AudienceOption({
+  $selected,
+  className = "",
+  ...rest
+}: { $selected: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[88px] border-2 border-[#050505] rounded-[12px] p-[0.68rem] text-[#050505] cursor-pointer text-left hover:bg-[#fff8f4] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2 ${
+        $selected ? "bg-[#fff1ea] shadow-[3px_3px_0_#f47a4a]" : "bg-white shadow-none"
+      } ${className}`}
+    />
+  );
+}
+
+function AudienceName({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`block text-[0.8rem] font-black ${className}`} />;
+}
+
+function AudienceCount({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`block mt-1 text-[rgba(5,5,5,0.58)] text-[0.72rem] font-bold ${className}`}
+    />
+  );
+}
+
+function TwoColumns({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 max-[540px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function MemberPicker({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-[0.85rem] overflow-hidden border-[1.5px] border-[#050505] rounded-[12px] ${className}`}
+    />
+  );
+}
+
+function SearchWrap({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative border-b-[1.5px] border-[#050505] [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:left-[0.7rem] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:translate-y-[-50%] [&_svg]:text-[rgba(5,5,5,0.52)] ${className}`}
+    />
+  );
+}
+
+function SearchInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[42px] box-border border-0 rounded-none bg-white py-[0.62rem] pr-[0.72rem] pl-[2.1rem] text-[#050505] text-[0.88rem] focus:outline-none ${className}`}
+    />
+  );
+}
+
+function RecipientList({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`max-h-[235px] overflow-y-auto ${className}`} />;
+}
+
+function RecipientRow({ className = "", ...rest }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      {...rest}
+      className={`flex items-center gap-[0.7rem] min-h-[48px] border-b border-[rgba(5,5,5,0.14)] px-[0.72rem] py-[0.55rem] cursor-pointer last:border-b-0 hover:bg-[#fff8f4] [&_input]:w-4 [&_input]:h-4 [&_input]:accent-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function Avatar({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`grid w-7 h-7 flex-none place-items-center overflow-hidden rounded-full bg-[#f47a4a] text-[#050505] text-[0.7rem] font-[850] [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function RecipientName({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`min-w-0 overflow-hidden text-[#050505] text-[0.81rem] font-extrabold text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function EmptyMembers({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-3 py-5 text-[rgba(5,5,5,0.54)] text-[0.8rem] text-center ${className}`}
+    />
+  );
+}
+
+function Preview({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-4 border-2 border-dashed border-[#050505] rounded-[12px] bg-[#fff1ea] p-[0.85rem] ${className}`}
+    />
+  );
+}
+
+function PreviewLabel({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-0 mb-[0.44rem] text-[#050505] text-[0.7rem] font-black tracking-[0.05em] uppercase ${className}`}
+    />
+  );
+}
+
+function PreviewTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 {...rest} className={`m-0 text-[#050505] text-[0.86rem] font-black ${className}`} />;
+}
+
+function PreviewBody({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[0.28rem] mb-0 text-[rgba(5,5,5,0.72)] text-[0.81rem] leading-[1.5] whitespace-pre-wrap ${className}`}
+    />
+  );
+}
+
+function PreviewAction({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex mt-[0.55rem] border-[1.5px] border-[#050505] rounded-[7px] bg-[#f47a4a] px-[0.46rem] py-[0.3rem] text-[#050505] text-[0.71rem] font-[850] ${className}`}
+    />
+  );
+}
+
+function SubmitRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-[0.8rem] mt-[1.1rem] ${className}`}
+    />
+  );
+}
+
+function SendButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[42px] border-2 border-[#050505] rounded-[10px] bg-[#f47a4a] px-[0.9rem] py-[0.66rem] shadow-[3px_3px_0_#050505] text-[#050505] cursor-pointer text-[0.82rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#f88d63] [&:hover:not(:disabled)]:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.55] disabled:shadow-none ${className}`}
+    />
+  );
+}
+
+function InlineStatus({
+  $error,
+  className = "",
+  ...rest
+}: { $error?: boolean } & ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 text-[0.78rem] font-extrabold leading-[1.4] ${
+        $error ? "text-[#991b1b]" : "text-[#0f6b32]"
+      } ${className}`}
+    />
+  );
+}
+
+function DeliveryNote({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-[1.2rem] py-[0.82rem] border-t-2 border-[#050505] bg-[#fff8f4] text-[rgba(5,5,5,0.6)] text-[0.74rem] font-semibold leading-[1.45] ${className}`}
+    />
+  );
+}
+
+function HistoryList({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`grid gap-[0.72rem] ${className}`} />;
+}
+
+function HistoryItem({ className = "", ...rest }: HTMLAttributes<HTMLElement>) {
+  return (
+    <article
+      {...rest}
+      className={`border-[1.5px] border-[#050505] rounded-[12px] bg-white p-[0.85rem] ${className}`}
+    />
+  );
+}
+
+function HistoryTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 {...rest} className={`m-0 text-[#050505] text-[0.86rem] font-black ${className}`} />;
+}
+
+function HistoryBody({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`line-clamp-3 mx-0 mt-[0.3rem] mb-0 text-[rgba(5,5,5,0.62)] text-[0.78rem] leading-[1.45] ${className}`}
+    />
+  );
+}
+
+function HistoryMeta({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[0.58rem] mb-0 text-[rgba(5,5,5,0.52)] text-[0.69rem] font-bold ${className}`}
+    />
+  );
+}
+
+function LoadingState({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid min-h-[260px] place-items-center text-[rgba(5,5,5,0.6)] text-[0.88rem] font-extrabold ${className}`}
+    />
+  );
+}
 
 function displayName(recipient: AdminNotificationRecipient, fallback: string): string {
   return recipient.displayName?.trim() || fallback;

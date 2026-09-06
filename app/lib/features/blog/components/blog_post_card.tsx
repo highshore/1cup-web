@@ -1,5 +1,4 @@
 import React from "react";
-import styled from "styled-components";
 import { colors } from "../../../constants/colors";
 import { BlogPost } from "../types/blog_types";
 import {
@@ -10,272 +9,49 @@ import {
 
 // Using shared colors
 
-const CardContainer = styled.article`
-  background: white;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px ${colors.shadow};
-  border: 1px solid ${colors.border};
-  transition: all 0.2s ease;
-  cursor: pointer;
-  position: relative;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+const statusBadgeBg: Record<string, string> = {
+  published: "bg-[#22c55e]",
+  draft: "bg-[#f59e0b]",
+  archived: "bg-[#6b7280]",
+};
 
-  display: flex;
-  flex-direction: column;
-  height: 400px;
+function StatusBadge({
+  $status,
+  children,
+}: {
+  $status: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`absolute top-3 right-3 px-2.5 py-1 rounded text-[0.75rem] font-semibold [font-family:inherit] uppercase tracking-[0.5px] text-white ${
+        statusBadgeBg[$status] ?? "bg-[#6b7280]"
+      } max-[768px]:text-[0.7rem] max-[768px]:px-2 max-[768px]:py-[3px] max-[768px]:top-2.5 max-[768px]:right-2.5`}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px ${colors.shadow};
-    border-color: ${colors.accent};
-  }
-
-  @media (max-width: 768px) {
-    border-radius: 4px;
-    height: 360px;
-
-    &:hover {
-      transform: translateY(-1px);
-    }
-  }
-`;
-
-const FeaturedImage = styled.div<{ $hasImage: boolean; $imageUrl?: string }>`
-  width: 100%;
-  height: 200px;
-  background: ${(props) =>
-    props.$hasImage && props.$imageUrl
-      ? `url(${props.$imageUrl}) center/cover`
-      : `${colors.gray.light}`};
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid ${colors.border};
-
-  @media (max-width: 768px) {
-    height: 160px;
-  }
-`;
-
-const ImagePlaceholder = styled.div`
-  color: ${colors.text.light};
-  font-size: 2.5rem;
-  font-weight: 300;
-
-  svg {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
-
-    svg {
-      width: 2rem;
-      height: 2rem;
-    }
-  }
-`;
-
-const StatusBadge = styled.div<{ $status: string }>`
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: inherit;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  background: ${(props) => {
-    switch (props.$status) {
-      case "published":
-        return "#22c55e";
-      case "draft":
-        return "#f59e0b";
-      case "archived":
-        return "#6b7280";
-      default:
-        return "#6b7280";
-    }
-  }};
-
-  @media (max-width: 768px) {
-    font-size: 0.7rem;
-    padding: 3px 8px;
-    top: 10px;
-    right: 10px;
-  }
-`;
-
-const CardContent = styled.div`
-  flex: 1;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-
-  @media (max-width: 768px) {
-    padding: 1.25rem;
-  }
-`;
-
-const ContentMain = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-`;
-
-const ContentFooter = styled.div`
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid ${colors.border};
-`;
-
-const PostTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
-  margin-bottom: 0.75rem;
-  line-height: 1.3;
-  font-family: inherit;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-  }
-`;
-
-const PostExcerpt = styled.p`
-  font-size: 0.9rem;
-  color: ${colors.text.medium};
-  line-height: 1.5;
-  margin-bottom: 1rem;
-  font-family: inherit;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    font-size: 0.85rem;
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
-  }
-`;
-
-const PostMeta = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-
-  @media (max-width: 768px) {
-    margin-bottom: 0.5rem;
-  }
-`;
-
-const Author = styled.span`
-  font-size: 0.85rem;
-  color: ${colors.text.dark};
-  font-weight: 500;
-  font-family: inherit;
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-  }
-`;
-
-const PostDate = styled.span`
-  font-size: 0.8rem;
-  color: ${colors.text.light};
-  font-family: inherit;
-
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-  }
-`;
-
-const TagsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const Tag = styled.span`
-  background: ${colors.primaryPale};
-  color: ${colors.accent};
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  font-family: inherit;
-  border: 1px solid ${colors.accent};
-
-  @media (max-width: 768px) {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
-  }
-`;
-
-const AdminActions = styled.div`
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  display: flex;
-  gap: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-
-  ${CardContainer}:hover & {
-    opacity: 1;
-  }
-
-  @media (max-width: 768px) {
-    top: 10px;
-    left: 10px;
-  }
-`;
-
-const ActionButton = styled.button`
-  background: white;
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px ${colors.shadow};
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  &:hover {
-    background: ${colors.primaryPale};
-    border-color: ${colors.accent};
-  }
-
-  &.delete:hover {
-    background: #fee;
-    border-color: #dc3545;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.375rem;
-    font-size: 0.8rem;
-  }
-`;
+function ActionButton({
+  className = "",
+  children,
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const isDelete = className.includes("delete");
+  return (
+    <button
+      className={`${className} bg-white border border-line rounded p-2 text-[0.9rem] cursor-pointer [transition:all_0.2s_ease] shadow-[0_2px_4px_rgba(0,0,0,0.1)] [&_svg]:w-4 [&_svg]:h-4 ${
+        isDelete
+          ? "hover:bg-[#ffeeee] hover:border-[#dc3545]"
+          : "hover:bg-primary-pale hover:border-accent"
+      } max-[768px]:p-1.5 max-[768px]:text-[0.8rem]`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface BlogPostCardProps {
   post: BlogPost;
@@ -334,21 +110,29 @@ export const BlogPostCard: React.FC<BlogPostCardProps> = ({
   };
 
   return (
-    <CardContainer onClick={onClick}>
-      <FeaturedImage
-        $hasImage={!!post.featuredImage}
-        $imageUrl={post.featuredImage}
+    <article
+      onClick={onClick}
+      className="group bg-white rounded-[20px] overflow-hidden shadow-app border border-line [transition:all_0.2s_ease] cursor-pointer relative [font-family:-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,'Helvetica_Neue',Arial,sans-serif] flex flex-col h-[400px] min-[769px]:hover:[transform:translateY(-2px)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-accent max-[768px]:rounded max-[768px]:h-[360px] max-[768px]:hover:[transform:translateY(-1px)]"
+    >
+      <div
+        className="w-full h-[200px] relative flex items-center justify-center border-b border-line max-[768px]:h-[160px]"
+        style={{
+          background:
+            post.featuredImage
+              ? `url(${post.featuredImage}) center/cover`
+              : `${colors.gray.light}`,
+        }}
       >
         {!post.featuredImage && (
-          <ImagePlaceholder>
+          <div className="text-ink-light text-[2.5rem] font-light [&_svg]:w-10 [&_svg]:h-10 max-[768px]:text-[2rem] max-[768px]:[&_svg]:w-8 max-[768px]:[&_svg]:h-8">
             <DocumentTextIcon />
-          </ImagePlaceholder>
+          </div>
         )}
 
         {isAdmin && (
           <>
             <StatusBadge $status={post.status}>{post.status}</StatusBadge>
-            <AdminActions>
+            <div className="absolute top-3 left-3 flex gap-2 opacity-0 [transition:opacity_0.2s_ease] group-hover:opacity-100 max-[768px]:top-2.5 max-[768px]:left-2.5">
               <ActionButton className="edit" onClick={handleEdit} title="Edit">
                 <PencilSquareIcon />
               </ActionButton>
@@ -359,35 +143,50 @@ export const BlogPostCard: React.FC<BlogPostCardProps> = ({
               >
                 <TrashIcon />
               </ActionButton>
-            </AdminActions>
+            </div>
           </>
         )}
-      </FeaturedImage>
+      </div>
 
-      <CardContent>
-        <ContentMain>
-          <PostTitle>{post.title}</PostTitle>
-          <PostExcerpt>{getExcerpt()}</PostExcerpt>
-        </ContentMain>
+      <div className="flex-1 p-6 flex flex-col min-h-0 max-[768px]:p-5">
+        <div className="flex-1 flex flex-col">
+          <h2 className="text-[1.25rem] font-semibold text-ink mb-3 leading-[1.3] [font-family:inherit] line-clamp-2 max-[768px]:text-[1.1rem] max-[768px]:mb-2">
+            {post.title}
+          </h2>
+          <p className="text-[0.9rem] text-ink-medium leading-[1.5] mb-4 [font-family:inherit] line-clamp-3 max-[768px]:text-[0.85rem] max-[768px]:mb-3 max-[768px]:leading-[1.4]">
+            {getExcerpt()}
+          </p>
+        </div>
 
-        <ContentFooter>
-          <PostMeta>
-            <Author>by 운영진</Author>
-            <PostDate>
+        <div className="mt-auto pt-4 border-t border-line">
+          <div className="flex justify-between items-center mb-3 max-[768px]:mb-2">
+            <span className="text-[0.85rem] text-ink font-medium [font-family:inherit] max-[768px]:text-[0.8rem]">
+              by 운영진
+            </span>
+            <span className="text-[0.8rem] text-ink-light [font-family:inherit] max-[768px]:text-[0.75rem]">
               {formatDate(post.publishedAt || post.createdAt)}
-            </PostDate>
-          </PostMeta>
+            </span>
+          </div>
 
           {post.tags && post.tags.length > 0 && (
-            <TagsContainer>
+            <div className="flex flex-wrap gap-2">
               {post.tags.slice(0, 3).map((tag, index) => (
-                <Tag key={index}>{tag}</Tag>
+                <span
+                  key={index}
+                  className="bg-primary-pale text-accent px-3 py-1 rounded text-[0.75rem] font-medium [font-family:inherit] border border-accent max-[768px]:text-[0.7rem] max-[768px]:px-[0.6rem] max-[768px]:py-[0.2rem]"
+                >
+                  {tag}
+                </span>
               ))}
-              {post.tags.length > 3 && <Tag>+{post.tags.length - 3}</Tag>}
-            </TagsContainer>
+              {post.tags.length > 3 && (
+                <span className="bg-primary-pale text-accent px-3 py-1 rounded text-[0.75rem] font-medium [font-family:inherit] border border-accent max-[768px]:text-[0.7rem] max-[768px]:px-[0.6rem] max-[768px]:py-[0.2rem]">
+                  +{post.tags.length - 3}
+                </span>
+              )}
+            </div>
           )}
-        </ContentFooter>
-      </CardContent>
-    </CardContainer>
+        </div>
+      </div>
+    </article>
   );
 };

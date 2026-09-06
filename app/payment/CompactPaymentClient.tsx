@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import styled from "styled-components";
 
 import { useAuth } from "../lib/contexts/auth_context";
 import { invokeFunction, supabase } from "../lib/supabase/client";
@@ -21,240 +20,36 @@ declare global {
   }
 }
 
-const Page = styled.main`
-  min-height: calc(100vh - 72px);
-  display: grid;
-  place-items: center;
-  background: transparent;
-  padding: 1rem;
-`;
+// Shared class strings (styled-components migration).
+const pageClass =
+  "min-h-[calc(100vh-72px)] grid place-items-center bg-transparent p-4";
 
-const Card = styled.section`
-  width: min(100%, 860px);
-  border: 3px solid #050505;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 6px 6px 0 #050505;
-  padding: 1.3rem;
+const titleClass = "m-0 text-[clamp(1.35rem,3vw,1.8rem)] font-[950]";
 
-  @media (max-width: 720px) {
-    padding: 1rem;
-    box-shadow: 4px 4px 0 #050505;
-  }
-`;
+const mutedClass = "text-[rgba(5,5,5,0.56)] text-[0.78rem] font-bold";
 
-const Header = styled.div`
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 2px solid #050505;
-  padding-bottom: 0.9rem;
+const labelClass = "mb-[0.55rem] text-[0.84rem] font-[900]";
 
-  @media (max-width: 620px) {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-`;
+const benefitClass =
+  "border-[1.5px] border-[#050505] rounded-[10px] py-[0.62rem] px-[0.7rem] text-[0.78rem] font-[750] leading-[1.35]";
 
-const Title = styled.h1`
-  margin: 0;
-  font-size: clamp(1.35rem, 3vw, 1.8rem);
-  font-weight: 950;
-`;
+const payButtonClass =
+  "min-w-[250px] border-2 border-[#050505] rounded-full bg-[#f47a4a] py-[0.9rem] px-[1.35rem] text-[#050505] text-[1rem] font-[950] cursor-pointer shadow-[4px_4px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none max-[620px]:w-full max-[620px]:min-w-0";
 
-const Price = styled.div`
-  font-size: clamp(1.2rem, 3vw, 1.65rem);
-  font-weight: 950;
-  white-space: nowrap;
-`;
+const stateCardClass =
+  "w-[min(100%,620px)] border-[3px] border-[#050505] rounded-[16px] bg-white p-6 text-center shadow-[5px_5px_0_#050505]";
 
-const Muted = styled.span`
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.78rem;
-  font-weight: 700;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 1rem;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Section = styled.div`
-  min-width: 0;
-`;
-
-const Label = styled.div`
-  margin-bottom: 0.55rem;
-  font-size: 0.84rem;
-  font-weight: 900;
-`;
-
-const RegionGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-`;
-
-const RegionButton = styled.button<{ $selected: boolean }>`
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${(p) => (p.$selected ? "#f47a4a" : "#fff")};
-  color: #050505;
-  padding: 0.8rem 0.65rem;
-  font: inherit;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: ${(p) => (p.$selected ? "2px 2px 0 #050505" : "none")};
-`;
-
-const InputRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-width: 0;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 0.75rem 0.8rem;
-  font: inherit;
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const SmallButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #fff;
-  padding: 0 1rem;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-`;
-
-const Message = styled.p<{ $error?: boolean }>`
-  margin: 0.42rem 0 0;
-  color: ${(p) => (p.$error ? "#b42318" : "#16794f")};
-  font-size: 0.78rem;
-  font-weight: 750;
-`;
-
-const BenefitRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-  margin-top: 1rem;
-
-  @media (max-width: 620px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Benefit = styled.div`
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  padding: 0.62rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.35;
-`;
-
-const Footer = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: end;
-  margin-top: 1rem;
-  border-top: 2px solid #050505;
-  padding-top: 1rem;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const PolicyGroup = styled.div`
-  display: grid;
-  gap: 0.55rem;
-  color: rgba(5, 5, 5, 0.65);
-  font-size: 0.76rem;
-  line-height: 1.45;
-
-  p {
-    margin: 0;
-  }
-
-  strong {
-    color: #050505;
-    font-weight: 850;
-  }
-
-  a {
-    color: #f47a4a;
-    font-weight: 850;
-    text-decoration: underline;
-  }
-`;
-
-const PolicyTitle = styled.div`
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 950;
-`;
-
-const PayButton = styled.button`
-  min-width: 250px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  padding: 0.9rem 1.35rem;
-  color: #050505;
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 4px 4px 0 #050505;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  @media (max-width: 620px) {
-    width: 100%;
-    min-width: 0;
-  }
-`;
-
-const StateCard = styled.div`
-  width: min(100%, 620px);
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #fff;
-  padding: 1.5rem;
-  text-align: center;
-  box-shadow: 5px 5px 0 #050505;
-`;
+function Message({ error, children }: { error?: boolean; children: ReactNode }) {
+  return (
+    <p
+      className={`mx-0 mb-0 mt-[0.42rem] text-[0.78rem] font-[750] ${
+        error ? "text-[#b42318]" : "text-[#16794f]"
+      }`}
+    >
+      {children}
+    </p>
+  );
+}
 
 function normalizeReferralPrice(discount: number, type: string) {
   const rawDiscount = type === "percent" ? BASE_PRICE * (discount / 100) : discount;
@@ -457,47 +252,68 @@ export default function CompactPaymentClient() {
   };
 
   if (loading) {
-    return <Page><StateCard>결제 정보를 불러오는 중...</StateCard></Page>;
+    return (
+      <main className={pageClass}>
+        <div className={stateCardClass}>결제 정보를 불러오는 중...</div>
+      </main>
+    );
   }
 
   if (alreadySubscribed) {
     return (
-      <Page>
-        <StateCard>
-          <Title>이미 구독 중입니다</Title>
+      <main className={pageClass}>
+        <div className={stateCardClass}>
+          <h1 className={titleClass}>이미 구독 중입니다</h1>
           <p>현재 멤버십을 이용 중입니다. 프로필에서 구독 상태를 확인해 주세요.</p>
-          <PayButton onClick={() => router.push("/profile")}>프로필로 이동</PayButton>
-        </StateCard>
-      </Page>
+          <button className={payButtonClass} onClick={() => router.push("/profile")}>프로필로 이동</button>
+        </div>
+      </main>
     );
   }
 
   return (
-    <Page>
-      <Card>
-        <Header>
+    <main className={pageClass}>
+      <section className="w-[min(100%,860px)] border-[3px] border-[#050505] rounded-[18px] bg-white shadow-[6px_6px_0_#050505] p-[1.3rem] max-[720px]:p-4 max-[720px]:shadow-[4px_4px_0_#050505]">
+        <div className="flex items-end justify-between gap-4 border-b-2 border-[#050505] pb-[0.9rem] max-[620px]:flex-col max-[620px]:items-start max-[620px]:gap-[0.4rem]">
           <div>
-            <Title>영어 한잔 월간 멤버십</Title>
-            <Muted>월 4회 오프라인 영어 모임 · 30일마다 자동 결제</Muted>
+            <h1 className={titleClass}>영어 한잔 월간 멤버십</h1>
+            <span className={mutedClass}>월 4회 오프라인 영어 모임 · 30일마다 자동 결제</span>
           </div>
-          <Price>
-            {totalAmount.toLocaleString()}원 <Muted>/ 1개월</Muted>
-          </Price>
-        </Header>
+          <div className="text-[clamp(1.2rem,3vw,1.65rem)] font-[950] whitespace-nowrap">
+            {totalAmount.toLocaleString()}원 <span className={mutedClass}>/ 1개월</span>
+          </div>
+        </div>
 
-        <Grid>
-          <Section>
-            <Label>참여 지역</Label>
-            <RegionGrid>
-              <RegionButton type="button" $selected={region === "yeouido"} onClick={() => setRegion("yeouido")}>여의도</RegionButton>
-              <RegionButton type="button" $selected={region === "anam"} onClick={() => setRegion("anam")}>안암</RegionButton>
-            </RegionGrid>
-          </Section>
+        <div className="grid grid-cols-2 gap-4 mt-4 max-[720px]:grid-cols-1">
+          <div className="min-w-0">
+            <div className={labelClass}>참여 지역</div>
+            <div className="grid grid-cols-2 gap-[0.55rem]">
+              <button
+                className={`border-2 border-[#050505] rounded-[12px] text-[#050505] py-[0.8rem] px-[0.65rem] font-[900] cursor-pointer ${
+                  region === "yeouido" ? "bg-[#f47a4a] shadow-[2px_2px_0_#050505]" : "bg-white shadow-none"
+                }`}
+                type="button"
+                onClick={() => setRegion("yeouido")}
+              >
+                여의도
+              </button>
+              <button
+                className={`border-2 border-[#050505] rounded-[12px] text-[#050505] py-[0.8rem] px-[0.65rem] font-[900] cursor-pointer ${
+                  region === "anam" ? "bg-[#f47a4a] shadow-[2px_2px_0_#050505]" : "bg-white shadow-none"
+                }`}
+                type="button"
+                onClick={() => setRegion("anam")}
+              >
+                안암
+              </button>
+            </div>
+          </div>
 
-          <Section>
-            <Label>지인 추천 코드 <Muted>(선택)</Muted></Label>
-            <InputRow>
-              <Input
+          <div className="min-w-0">
+            <div className={labelClass}>지인 추천 코드 <span className={mutedClass}>(선택)</span></div>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <input
+                className="w-full min-w-0 border-2 border-[#050505] rounded-[12px] py-[0.75rem] px-[0.8rem] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a]"
                 value={referralCode}
                 placeholder="추천 코드를 입력하세요"
                 onChange={(e) => {
@@ -506,33 +322,38 @@ export default function CompactPaymentClient() {
                   setReferralMessage("");
                 }}
               />
-              <SmallButton type="button" onClick={checkReferral} disabled={!referralCode.trim() || checkingReferral}>
+              <button
+                className="border-2 border-[#050505] rounded-full bg-white py-0 px-4 text-[0.84rem] font-[900] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+                type="button"
+                onClick={checkReferral}
+                disabled={!referralCode.trim() || checkingReferral}
+              >
                 {checkingReferral ? "확인 중" : "확인"}
-              </SmallButton>
-            </InputRow>
-            {referralMessage ? <Message $error={!discounted}>{referralMessage}</Message> : null}
-          </Section>
-        </Grid>
+              </button>
+            </div>
+            {referralMessage ? <Message error={!discounted}>{referralMessage}</Message> : null}
+          </div>
+        </div>
 
-        <BenefitRow>
-          <Benefit>✓ 통번역사 출신 리더와 실전 영어 토론</Benefit>
-          <Benefit>✓ 5명 이하 소규모 그룹 중심 운영</Benefit>
-          <Benefit>✓ WSJ·FT 등 글로벌 비즈니스 기사 기반</Benefit>
-        </BenefitRow>
+        <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-[0.55rem] mt-4 max-[620px]:grid-cols-1">
+          <div className={benefitClass}>✓ 통번역사 출신 리더와 실전 영어 토론</div>
+          <div className={benefitClass}>✓ 5명 이하 소규모 그룹 중심 운영</div>
+          <div className={benefitClass}>✓ WSJ·FT 등 글로벌 비즈니스 기사 기반</div>
+        </div>
 
-        <Footer>
-          <PolicyGroup>
-            <PolicyTitle>결제 및 환불 정책</PolicyTitle>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-end mt-4 border-t-2 border-[#050505] pt-4 max-[720px]:grid-cols-1">
+          <div className="grid gap-[0.55rem] text-[rgba(5,5,5,0.65)] text-[0.76rem] leading-[1.45] [&_p]:m-0 [&_strong]:text-[#050505] [&_strong]:font-[850] [&_a]:text-[#f47a4a] [&_a]:font-[850] [&_a]:underline">
+            <div className="text-[#050505] text-[0.82rem] font-[950]">결제 및 환불 정책</div>
             <p><strong>자동 결제</strong> · 30일마다 자동으로 결제됩니다. 재결제 시 알림톡을 드리며 언제든지 취소할 수 있습니다.</p>
             <p><strong>7일 체험 기간 및 환불 정책</strong> · 결제일로부터 <strong>7일 이내 전액 환불</strong>이 가능합니다. 7일 이후에는 사용하지 않은 기간에 대해 일할 계산으로 환불됩니다. 또한, 운영진 판단에 의거 정책 위반이나 원활한 서비스 제공이 어려울 경우 일방적으로 환불 처리를 해드릴 수 있습니다.</p>
             <p><strong>구독 관리</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 구독을 관리하실 수 있습니다.</p>
-            {error ? <Message $error>{error}</Message> : null}
-          </PolicyGroup>
-          <PayButton type="button" onClick={handlePayment} disabled={processing}>
+            {error ? <Message error>{error}</Message> : null}
+          </div>
+          <button className={payButtonClass} type="button" onClick={handlePayment} disabled={processing}>
             {processing ? "결제 준비 중..." : discounted ? `${totalAmount.toLocaleString()}원으로 시작하기` : "9,700원으로 시작하기"}
-          </PayButton>
-        </Footer>
-      </Card>
-    </Page>
+          </button>
+        </div>
+      </section>
+    </main>
   );
 }

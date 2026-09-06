@@ -2,543 +2,53 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import styled from "styled-components";
-import { appLayout } from "../lib/constants/app_layout";
 import StatsSection from "../lib/features/home/components/StatsSection";
 import { HomeStats } from "../lib/features/home/services/stats_service";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { useAuth } from "../lib/contexts/auth_context";
 import { supabase } from "../lib/supabase/client";
 
-const Page = styled.main`
-  min-height: 100vh;
-  overflow: hidden;
-  background: transparent;
-  color: #050505;
-`;
+const containerClass =
+  "mx-auto w-[min(var(--container-page),calc(100%-3rem))] max-[768px]:w-[calc(100%-2rem)]";
 
-const Container = styled.div`
-  width: min(${appLayout.pageMaxWidth}, calc(100% - 3rem));
-  margin: 0 auto;
+const eyebrowClass =
+  "mb-4 inline-block rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[0.68rem] py-[0.3rem] text-[0.72rem] font-[900] tracking-[0.02em] text-[#050505]";
 
-  @media (max-width: 768px) {
-    width: calc(100% - 2rem);
-  }
-`;
+const heroActionsClass =
+  "mt-[1.55rem] flex flex-wrap items-center gap-[0.7rem] max-[860px]:justify-center";
 
-const Hero = styled.section`
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.75fr);
-  gap: clamp(1.5rem, 4vw, 2.5rem);
-  align-items: center;
-  padding: clamp(3rem, 6vw, 4.75rem) 0 clamp(2.5rem, 5vw, 3.75rem);
+const pillButtonBase =
+  "inline-flex min-h-[46px] items-center justify-center rounded-full border-2 px-[1.05rem] py-[0.66rem] text-[0.88rem] font-[900] no-underline hover:no-underline";
 
-  @media (max-width: 860px) {
-    grid-template-columns: 1fr;
-    padding-top: 2.75rem;
-    text-align: center;
-  }
-`;
+const primaryButtonClass = `${pillButtonBase} border-[#050505] bg-[#050505] text-white shadow-[5px_5px_0_#f47a4a] [transition:transform_180ms_ease,box-shadow_180ms_ease] hover:-translate-x-px hover:-translate-y-px hover:text-white hover:shadow-[7px_7px_0_#f47a4a]`;
 
-const Eyebrow = styled.p`
-  display: inline-block;
-  margin: 0 0 1rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.3rem 0.68rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-`;
+const secondaryButtonClass = `${pillButtonBase} border-[#050505] bg-[#fff8dc] text-[#050505] hover:bg-white hover:text-[#050505]`;
 
-const Title = styled.h1`
-  max-width: 48rem;
-  margin: 0;
-  color: #050505;
-  font-size: clamp(2rem, 4.4vw, 3.7rem);
-  font-weight: 950;
-  line-height: 1.05;
-  letter-spacing: 0;
+const invertedButtonClass = `${pillButtonBase} border-white bg-white text-[#050505] hover:bg-[#fff8dc] hover:text-[#050505]`;
 
-  @media (max-width: 860px) {
-    max-width: 100%;
-  }
-`;
+const ghostButtonClass = `${pillButtonBase} border-[rgba(255,255,255,0.5)] bg-transparent text-white hover:border-white hover:text-white`;
 
-const Subtitle = styled.p`
-  max-width: 40rem;
-  margin: 1rem 0 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: clamp(0.98rem, 1.5vw, 1.08rem);
-  font-weight: 590;
-  line-height: 1.65;
+const sectionClass = "py-[clamp(2.75rem,5vw,3.75rem)]";
 
-  @media (max-width: 860px) {
-    margin-right: auto;
-    margin-left: auto;
-  }
-`;
+const sectionHeaderClass =
+  "mb-[clamp(1.35rem,3vw,2rem)] max-w-[42rem] max-[768px]:mx-auto max-[768px]:text-center";
 
-const HeroActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-  align-items: center;
-  margin-top: 1.55rem;
+const sectionTitleClass =
+  "m-0 text-[clamp(1.65rem,3vw,2.35rem)] font-[950] leading-[1.12] text-[#050505]";
 
-  @media (max-width: 860px) {
-    justify-content: center;
-  }
-`;
+const sectionDescriptionClass =
+  "mt-3 mb-0 text-[0.96rem] font-[590] leading-[1.65] text-[rgba(5,5,5,0.68)]";
 
-const PrimaryButton = styled(Link)`
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #050505;
-  color: #ffffff;
-  padding: 0.66rem 1.05rem;
-  font-size: 0.88rem;
-  font-weight: 900;
-  text-decoration: none;
-  box-shadow: 5px 5px 0 #f47a4a;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+const formFieldClass =
+  "grid gap-[0.42rem] text-[0.84rem] font-[850] text-[#050505]";
 
-  &:hover {
-    color: #ffffff;
-    text-decoration: none;
-    transform: translate(-1px, -1px);
-    box-shadow: 7px 7px 0 #f47a4a;
-  }
-`;
+const formInputClass =
+  "min-h-[46px] w-full rounded-lg border-[1.5px] border-[#050505] bg-white px-3 py-[0.65rem] [font-family:inherit] text-[0.92rem] text-[#050505] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#f47a4a]";
 
-const SecondaryButton = styled(Link)`
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #fff8dc;
-  color: #050505;
-  padding: 0.66rem 1.05rem;
-  font-size: 0.88rem;
-  font-weight: 900;
-  text-decoration: none;
-
-  &:hover {
-    color: #050505;
-    background: #ffffff;
-    text-decoration: none;
-  }
-`;
-
-const HeroCard = styled.aside`
-  position: relative;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #f47a4a;
-  padding: clamp(1.05rem, 2.5vw, 1.4rem);
-  box-shadow: 7px 7px 0 #050505;
-  text-align: left;
-
-  @media (max-width: 860px) {
-    max-width: 32rem;
-    margin: 0 auto;
-  }
-`;
-
-const HeroCardTitle = styled.h2`
-  margin: 0 0 1rem;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 950;
-  line-height: 1.25;
-`;
-
-const HeroList = styled.ul`
-  display: grid;
-  gap: 0.58rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
-
-const HeroListItem = styled.li`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.55rem;
-  align-items: start;
-  color: rgba(5, 5, 5, 0.82);
-  font-size: 0.9rem;
-  font-weight: 690;
-  line-height: 1.45;
-`;
-
-const Dot = styled.span`
-  width: 0.58rem;
-  height: 0.58rem;
-  margin-top: 0.42rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #fff8dc;
-`;
-
-const Section = styled.section`
-  padding: clamp(2.75rem, 5vw, 3.75rem) 0;
-`;
-
-const SectionHeader = styled.div`
-  max-width: 42rem;
-  margin-bottom: clamp(1.35rem, 3vw, 2rem);
-
-  @media (max-width: 768px) {
-    margin-right: auto;
-    margin-left: auto;
-    text-align: center;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
-  font-weight: 950;
-  line-height: 1.12;
-`;
-
-const SectionDescription = styled.p`
-  margin: 0.75rem 0 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.96rem;
-  font-weight: 590;
-  line-height: 1.65;
-`;
-
-const CardGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const InfoCard = styled.article`
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: clamp(1rem, 2.5vw, 1.25rem);
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.92);
-`;
-
-const CardNumber = styled.span`
-  display: inline-grid;
-  width: 1.9rem;
-  height: 1.9rem;
-  place-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 950;
-`;
-
-const CardTitle = styled.h3`
-  margin: 0.78rem 0 0.45rem;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 930;
-  line-height: 1.28;
-`;
-
-const CardText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.9rem;
-  font-weight: 590;
-  line-height: 1.65;
-`;
-
-const CountryList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.75rem;
-`;
-
-const CountryPill = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  border: 1px solid rgba(5, 5, 5, 0.18);
-  border-radius: 999px;
-  background: #fff8dc;
-  color: #050505;
-  padding: 0.28rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 850;
-`;
-
-const BenefitsBand = styled.section`
-  margin: clamp(1.25rem, 3vw, 2rem) 0;
-  border-top: 2px solid #050505;
-  border-bottom: 2px solid #050505;
-  background: #f47a4a;
-  padding: clamp(2.5rem, 5vw, 3.5rem) 0;
-`;
-
-const BenefitList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.7rem;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const BenefitNote = styled.p`
-  margin: 1rem 0 0;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.95rem 1rem;
-  color: #050505;
-  font-size: 0.9rem;
-  font-weight: 820;
-  line-height: 1.55;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.92);
-`;
-
-const BenefitCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #fff8dc;
-  padding: 0.9rem;
-  color: #050505;
-  font-size: 0.88rem;
-  font-weight: 720;
-  line-height: 1.5;
-`;
-
-const ProcessList = styled.div`
-  display: grid;
-  gap: 0.7rem;
-`;
-
-const ProcessItem = styled.article`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.85rem;
-  align-items: start;
-  border: 1px solid rgba(5, 5, 5, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0.9rem;
-
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-`;
-
-const ProcessNumber = styled.span`
-  display: inline-grid;
-  width: 2.05rem;
-  height: 2.05rem;
-  place-items: center;
-  border-radius: 8px;
-  background: #050505;
-  color: #ffffff;
-  font-weight: 950;
-
-  @media (max-width: 560px) {
-    margin: 0 auto;
-  }
-`;
-
-const ProcessTitle = styled.h3`
-  margin: 0 0 0.3rem;
-  color: #050505;
-  font-size: 0.94rem;
-  font-weight: 900;
-`;
-
-const ProcessText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.66);
-  font-size: 0.88rem;
-  font-weight: 590;
-  line-height: 1.6;
-`;
-
-const CtaBox = styled.section`
-  margin: clamp(1.5rem, 4vw, 3rem) 0 clamp(3rem, 6vw, 4.5rem);
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #050505;
-  padding: clamp(1.65rem, 4vw, 2.6rem);
-  color: #ffffff;
-  text-align: center;
-`;
-
-const CtaTitle = styled.h2`
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(1.55rem, 3.2vw, 2.55rem);
-  font-weight: 950;
-  line-height: 1.12;
-`;
-
-const CtaText = styled.p`
-  max-width: 42rem;
-  margin: 0.8rem auto 0;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.94rem;
-  font-weight: 590;
-  line-height: 1.7;
-`;
-
-const CtaActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: center;
-  margin-top: 1.3rem;
-`;
-
-const InvertedButton = styled(Link)`
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.66rem 1.05rem;
-  font-size: 0.88rem;
-  font-weight: 900;
-  text-decoration: none;
-
-  &:hover {
-    color: #050505;
-    background: #fff8dc;
-    text-decoration: none;
-  }
-`;
-
-const GhostButton = styled(Link)`
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 999px;
-  background: transparent;
-  color: #ffffff;
-  padding: 0.66rem 1.05rem;
-  font-size: 0.88rem;
-  font-weight: 900;
-  text-decoration: none;
-
-  &:hover {
-    color: #ffffff;
-    border-color: #ffffff;
-    text-decoration: none;
-  }
-`;
-
-const ApplicationCard = styled.section`
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #fff8dc;
-  padding: clamp(1.25rem, 3vw, 2rem);
-  box-shadow: 6px 6px 0 #050505;
-`;
-
-const ApplicationForm = styled.form`
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.25rem;
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormField = styled.label`
-  display: grid;
-  gap: 0.42rem;
-  color: #050505;
-  font-size: 0.84rem;
-  font-weight: 850;
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  min-height: 46px;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.65rem 0.75rem;
-  font: inherit;
-  font-size: 0.92rem;
-
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
-
-const FormAction = styled.button`
-  display: inline-flex;
-  width: fit-content;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #050505;
-  color: #ffffff;
-  padding: 0.66rem 1.05rem;
-  font-size: 0.88rem;
-  font-weight: 900;
-  cursor: pointer;
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.68;
-  }
-`;
-
-const FormNotice = styled.p<{ $success?: boolean }>`
-  margin: 0;
-  color: ${({ $success }) => ($success ? "#176b3a" : "#b42318")};
-  font-size: 0.88rem;
-  font-weight: 720;
-  line-height: 1.5;
-`;
+const formNoticeClass = (success: boolean) =>
+  `m-0 text-[0.88rem] font-[720] leading-[1.5] ${
+    success ? "text-[#176b3a]" : "text-[#b42318]"
+  }`;
 
 interface NonKoreanApplicantsClientProps {
   stats?: HomeStats;
@@ -658,119 +168,171 @@ export default function NonKoreanApplicantsClient({
   };
 
   return (
-    <Page>
-      <Container>
-        <Hero>
+    <main className="min-h-screen overflow-hidden bg-transparent text-[#050505]">
+      <div className={containerClass}>
+        <section className="relative grid grid-cols-[minmax(0,1.05fr)_minmax(280px,0.75fr)] items-center gap-[clamp(1.5rem,4vw,2.5rem)] pt-[clamp(3rem,6vw,4.75rem)] pb-[clamp(2.5rem,5vw,3.75rem)] max-[860px]:grid-cols-1 max-[860px]:pt-11 max-[860px]:text-center">
           <div>
-            <Eyebrow>{page.hero.eyebrow}</Eyebrow>
-            <Title>{page.hero.title}</Title>
-            <Subtitle>{page.hero.subtitle}</Subtitle>
-            <HeroActions>
+            <p className={eyebrowClass}>{page.hero.eyebrow}</p>
+            <h1 className="m-0 max-w-3xl text-[clamp(2rem,4.4vw,3.7rem)] font-[950] leading-[1.05] tracking-normal text-[#050505] max-[860px]:max-w-full">
+              {page.hero.title}
+            </h1>
+            <p className="mt-4 mb-0 max-w-[40rem] text-[clamp(0.98rem,1.5vw,1.08rem)] font-[590] leading-[1.65] text-[rgba(5,5,5,0.72)] max-[860px]:mx-auto">
+              {page.hero.subtitle}
+            </p>
+            <div className={heroActionsClass}>
               {currentUser ? (
-                <PrimaryButton href="#application" onClick={scrollToApplication}>
+                <Link
+                  className={primaryButtonClass}
+                  href="#application"
+                  onClick={scrollToApplication}
+                >
                   {page.hero.primaryCta}
-                </PrimaryButton>
+                </Link>
               ) : (
-                <PrimaryButton href={authHref}>{page.hero.primaryCta}</PrimaryButton>
+                <Link className={primaryButtonClass} href={authHref}>
+                  {page.hero.primaryCta}
+                </Link>
               )}
-              <SecondaryButton href="/meetup">{page.hero.secondaryCta}</SecondaryButton>
-            </HeroActions>
+              <Link className={secondaryButtonClass} href="/meetup">
+                {page.hero.secondaryCta}
+              </Link>
+            </div>
           </div>
 
-          <HeroCard aria-label={page.hero.cardTitle}>
-            <HeroCardTitle>{page.hero.cardTitle}</HeroCardTitle>
-            <HeroList>
+          <aside
+            className="relative rounded-[14px] border-2 border-[#050505] bg-[#f47a4a] p-[clamp(1.05rem,2.5vw,1.4rem)] text-left shadow-[7px_7px_0_#050505] max-[860px]:mx-auto max-[860px]:max-w-lg"
+            aria-label={page.hero.cardTitle}
+          >
+            <h2 className="mb-4 text-base font-[950] leading-[1.25] text-[#050505]">
+              {page.hero.cardTitle}
+            </h2>
+            <ul className="m-0 grid list-none gap-[0.58rem] p-0">
               {page.hero.points.map((point) => (
-                <HeroListItem key={point}>
-                  <Dot aria-hidden="true" />
+                <li
+                  className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-[0.55rem] text-[0.9rem] font-[690] leading-[1.45] text-[rgba(5,5,5,0.82)]"
+                  key={point}
+                >
+                  <span
+                    className="mt-[0.42rem] h-[0.58rem] w-[0.58rem] rounded-full border-2 border-[#050505] bg-[#fff8dc]"
+                    aria-hidden="true"
+                  />
                   <span>{point}</span>
-                </HeroListItem>
+                </li>
               ))}
-            </HeroList>
-          </HeroCard>
-        </Hero>
-      </Container>
+            </ul>
+          </aside>
+        </section>
+      </div>
 
       <StatsSection stats={stats} />
 
-      <Container>
-        <Section>
-          <SectionHeader>
-            <Eyebrow>{page.eligibility.eyebrow}</Eyebrow>
-            <SectionTitle>{page.eligibility.title}</SectionTitle>
-            <SectionDescription>{page.eligibility.description}</SectionDescription>
-          </SectionHeader>
-          <CardGrid>
+      <div className={containerClass}>
+        <section className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={eyebrowClass}>{page.eligibility.eyebrow}</p>
+            <h2 className={sectionTitleClass}>{page.eligibility.title}</h2>
+            <p className={sectionDescriptionClass}>{page.eligibility.description}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-[0.85rem] max-[760px]:grid-cols-1">
             {page.eligibility.items.map((item, index) => (
-              <InfoCard key={item.title}>
-                <CardNumber>{index + 1}</CardNumber>
-                <CardTitle>{item.title}</CardTitle>
-                <CardText>{item.description}</CardText>
+              <article
+                className="rounded-xl border-2 border-[#050505] bg-white p-[clamp(1rem,2.5vw,1.25rem)] shadow-[4px_4px_0_rgba(5,5,5,0.92)]"
+                key={item.title}
+              >
+                <span className="inline-grid h-[1.9rem] w-[1.9rem] place-items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] text-[0.78rem] font-[950] text-[#050505]">
+                  {index + 1}
+                </span>
+                <h3 className="mt-[0.78rem] mb-[0.45rem] text-base font-[930] leading-[1.28] text-[#050505]">
+                  {item.title}
+                </h3>
+                <p className="m-0 text-[0.9rem] font-[590] leading-[1.65] text-[rgba(5,5,5,0.68)]">
+                  {item.description}
+                </p>
                 {item.countries ? (
-                  <CountryList>
+                  <div className="mt-3 flex flex-wrap gap-[0.45rem]">
                     {item.countries.map((country) => (
-                      <CountryPill key={country.name}>
+                      <span
+                        className="inline-flex items-center gap-[0.28rem] rounded-full border border-[rgba(5,5,5,0.18)] bg-[#fff8dc] px-2 py-[0.28rem] text-[0.72rem] font-[850] text-[#050505]"
+                        key={country.name}
+                      >
                         <span aria-hidden="true">{country.flag}</span>
                         <span>{country.name}</span>
-                      </CountryPill>
+                      </span>
                     ))}
-                  </CountryList>
+                  </div>
                 ) : null}
-              </InfoCard>
+              </article>
             ))}
-          </CardGrid>
-        </Section>
-      </Container>
+          </div>
+        </section>
+      </div>
 
-      <BenefitsBand>
-        <Container>
-          <SectionHeader>
-            <Eyebrow>{page.benefits.eyebrow}</Eyebrow>
-            <SectionTitle>{page.benefits.title}</SectionTitle>
-          </SectionHeader>
-          <BenefitList>
+      <section className="my-[clamp(1.25rem,3vw,2rem)] border-y-2 border-[#050505] bg-[#f47a4a] py-[clamp(2.5rem,5vw,3.5rem)]">
+        <div className={containerClass}>
+          <div className={sectionHeaderClass}>
+            <p className={eyebrowClass}>{page.benefits.eyebrow}</p>
+            <h2 className={sectionTitleClass}>{page.benefits.title}</h2>
+          </div>
+          <div className="grid grid-cols-4 gap-[0.7rem] max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
             {page.benefits.items.map((benefit) => (
-              <BenefitCard key={benefit}>{benefit}</BenefitCard>
+              <div
+                className="rounded-[10px] border-2 border-[#050505] bg-[#fff8dc] p-[0.9rem] text-[0.88rem] font-[720] leading-[1.5] text-[#050505]"
+                key={benefit}
+              >
+                {benefit}
+              </div>
             ))}
-          </BenefitList>
-          <BenefitNote>{page.benefits.note}</BenefitNote>
-        </Container>
-      </BenefitsBand>
+          </div>
+          <p className="mt-4 mb-0 rounded-xl border-2 border-[#050505] bg-white px-4 py-[0.95rem] text-[0.9rem] font-[820] leading-[1.55] text-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.92)]">
+            {page.benefits.note}
+          </p>
+        </div>
+      </section>
 
-      <Container>
-        <Section>
-          <SectionHeader>
-            <Eyebrow>{page.process.eyebrow}</Eyebrow>
-            <SectionTitle>{page.process.title}</SectionTitle>
-            <SectionDescription>{page.process.description}</SectionDescription>
-          </SectionHeader>
-          <ProcessList>
+      <div className={containerClass}>
+        <section className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={eyebrowClass}>{page.process.eyebrow}</p>
+            <h2 className={sectionTitleClass}>{page.process.title}</h2>
+            <p className={sectionDescriptionClass}>{page.process.description}</p>
+          </div>
+          <div className="grid gap-[0.7rem]">
             {page.process.steps.map((step, index) => (
-              <ProcessItem key={step.title}>
-                <ProcessNumber>{index + 1}</ProcessNumber>
+              <article
+                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-[0.85rem] rounded-xl border border-[rgba(5,5,5,0.1)] bg-[rgba(255,255,255,0.78)] p-[0.9rem] max-[560px]:grid-cols-1 max-[560px]:text-center"
+                key={step.title}
+              >
+                <span className="inline-grid h-[2.05rem] w-[2.05rem] place-items-center rounded-lg bg-[#050505] font-[950] text-white max-[560px]:mx-auto">
+                  {index + 1}
+                </span>
                 <div>
-                  <ProcessTitle>{step.title}</ProcessTitle>
-                  <ProcessText>{step.description}</ProcessText>
+                  <h3 className="mt-0 mb-[0.3rem] text-[0.94rem] font-[900] text-[#050505]">
+                    {step.title}
+                  </h3>
+                  <p className="m-0 text-[0.88rem] font-[590] leading-[1.6] text-[rgba(5,5,5,0.66)]">
+                    {step.description}
+                  </p>
                 </div>
-              </ProcessItem>
+              </article>
             ))}
-          </ProcessList>
-        </Section>
+          </div>
+        </section>
 
-        <Section ref={applicationRef} id="application">
-          <ApplicationCard>
-            <SectionHeader>
-              <Eyebrow>{application.eyebrow}</Eyebrow>
-              <SectionTitle>{application.title}</SectionTitle>
-              <SectionDescription>{application.description}</SectionDescription>
-            </SectionHeader>
+        <section className={sectionClass} ref={applicationRef} id="application">
+          <div className="rounded-2xl border-2 border-[#050505] bg-[#fff8dc] p-[clamp(1.25rem,3vw,2rem)] shadow-[6px_6px_0_#050505]">
+            <div className={sectionHeaderClass}>
+              <p className={eyebrowClass}>{application.eyebrow}</p>
+              <h2 className={sectionTitleClass}>{application.title}</h2>
+              <p className={sectionDescriptionClass}>{application.description}</p>
+            </div>
 
             {authLoading || loadingApplication ? null : currentUser ? (
-              <ApplicationForm onSubmit={handleApply}>
-                <FormGrid>
-                  <FormField>
+              <form className="mt-5 grid gap-4" onSubmit={handleApply}>
+                <div className="grid grid-cols-2 gap-[0.85rem] max-[640px]:grid-cols-1">
+                  <label className={formFieldClass}>
                     {application.form.emailLabel}
-                    <FormInput
+                    <input
+                      className={formInputClass}
                       type="email"
                       autoComplete="email"
                       value={email}
@@ -779,10 +341,11 @@ export default function NonKoreanApplicantsClient({
                       maxLength={320}
                       required
                     />
-                  </FormField>
-                  <FormField>
+                  </label>
+                  <label className={formFieldClass}>
                     {application.form.nationalityLabel}
-                    <FormInput
+                    <input
+                      className={formInputClass}
                       type="text"
                       autoComplete="country-name"
                       value={nationality}
@@ -791,11 +354,12 @@ export default function NonKoreanApplicantsClient({
                       maxLength={100}
                       required
                     />
-                  </FormField>
-                </FormGrid>
-                <FormField>
+                  </label>
+                </div>
+                <label className={formFieldClass}>
                   {application.form.linkedinLabel}
-                  <FormInput
+                  <input
+                    className={formInputClass}
                     type="url"
                     autoComplete="url"
                     value={linkedinUrl}
@@ -804,43 +368,64 @@ export default function NonKoreanApplicantsClient({
                     maxLength={500}
                     required
                   />
-                </FormField>
+                </label>
                 {applicationStatus ? (
-                  <FormNotice $success>{application.form.submitted}</FormNotice>
+                  <p className={formNoticeClass(true)}>{application.form.submitted}</p>
                 ) : null}
                 {formMessage ? (
-                  <FormNotice $success={formMessage.tone === "success"} aria-live="polite">
+                  <p
+                    className={formNoticeClass(formMessage.tone === "success")}
+                    aria-live="polite"
+                  >
                     {formMessage.text}
-                  </FormNotice>
+                  </p>
                 ) : null}
-                <FormAction type="submit" disabled={submitting}>
+                <button
+                  className="inline-flex min-h-[46px] w-fit cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] bg-[#050505] px-[1.05rem] py-[0.66rem] text-[0.88rem] font-[900] text-white disabled:cursor-wait disabled:opacity-[0.68]"
+                  type="submit"
+                  disabled={submitting}
+                >
                   {submitting ? application.form.submitting : application.form.submit}
-                </FormAction>
-              </ApplicationForm>
+                </button>
+              </form>
             ) : (
-              <HeroActions>
-                <PrimaryButton href={authHref}>{application.signInCta}</PrimaryButton>
-                <SectionDescription>{application.signInHint}</SectionDescription>
-              </HeroActions>
+              <div className={heroActionsClass}>
+                <Link className={primaryButtonClass} href={authHref}>
+                  {application.signInCta}
+                </Link>
+                <p className={sectionDescriptionClass}>{application.signInHint}</p>
+              </div>
             )}
-          </ApplicationCard>
-        </Section>
+          </div>
+        </section>
 
-        <CtaBox>
-          <CtaTitle>{page.cta.title}</CtaTitle>
-          <CtaText>{page.cta.description}</CtaText>
-          <CtaActions>
+        <section className="mt-[clamp(1.5rem,4vw,3rem)] mb-[clamp(3rem,6vw,4.5rem)] rounded-2xl border-2 border-[#050505] bg-[#050505] p-[clamp(1.65rem,4vw,2.6rem)] text-center text-white">
+          <h2 className="m-0 text-[clamp(1.55rem,3.2vw,2.55rem)] font-[950] leading-[1.12] text-white">
+            {page.cta.title}
+          </h2>
+          <p className="mx-auto mt-[0.8rem] mb-0 max-w-[42rem] text-[0.94rem] font-[590] leading-[1.7] text-[rgba(255,255,255,0.76)]">
+            {page.cta.description}
+          </p>
+          <div className="mt-[1.3rem] flex flex-wrap justify-center gap-[0.65rem]">
             {currentUser ? (
-              <InvertedButton href="#application" onClick={scrollToApplication}>
+              <Link
+                className={invertedButtonClass}
+                href="#application"
+                onClick={scrollToApplication}
+              >
                 {page.cta.primary}
-              </InvertedButton>
+              </Link>
             ) : (
-              <InvertedButton href={authHref}>{page.cta.primary}</InvertedButton>
+              <Link className={invertedButtonClass} href={authHref}>
+                {page.cta.primary}
+              </Link>
             )}
-            <GhostButton href="/meetup">{page.cta.secondary}</GhostButton>
-          </CtaActions>
-        </CtaBox>
-      </Container>
-    </Page>
+            <Link className={ghostButtonClass} href="/meetup">
+              {page.cta.secondary}
+            </Link>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

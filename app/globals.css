@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens mirrored from app/lib/constants/colors.ts and
+ * app/lib/constants/app_layout.ts. Keep both in sync when a token changes.
+ */
+@theme {
+  /* Brand */
+  --color-primary: #2c1810;
+  --color-primary-light: #4a2f23;
+  --color-primary-dark: #1a0f0a;
+  --color-primary-pale: #f5ebe6;
+  --color-primary-bg: #fdf9f6;
+  --color-page: #f5f5f5; /* whitesmoke */
+  --color-landing: #ffffff;
+  --color-accent: #c8a27a;
+  --color-accent-hover: #b68c66;
+
+  /* Text (colors.text.*) */
+  --color-ink: #2c1810;
+  --color-ink-medium: #4a2f23;
+  --color-ink-light: #8b6b4f;
+
+  /* Grays (colors.gray.*) */
+  --color-gray-light: #f8f9fa;
+  --color-gray-medium: #e9ecef;
+  --color-gray-dark: #6c757d;
+
+  /* Border / shadow */
+  --color-line: #e8ddd4;
+  --shadow-app: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  /* Layout (appLayout.*) — max-w-page, px-gutter, px-gutter-mobile */
+  --container-page: 960px;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-mobile: 0.5rem;
+
+  /* Shared keyframe-backed animations */
+  --animate-fade-in: fade-in 0.3s ease both;
+  --animate-slide-up: slide-up 0.3s ease both;
+  --animate-slide-down: slide-down 0.3s ease both;
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+/*
+ * Base styles ported from app/lib/components/GlobalStyles.tsx.
+ * Tailwind Preflight replaces styled-reset once GlobalStyles is removed.
+ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-x: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :lang(ko) {
+    font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  button {
+    position: relative;
+    z-index: auto;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 600;
+    color: var(--color-ink);
+    letter-spacing: -0.02em;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+  }
+}
+
+@layer components {
+  /* Quick reading highlight style */
+  .highlighted {
+    color: var(--color-primary-dark);
+    font-weight: 800;
+  }
+
+  /* Legacy page container (see appLayout) */
+  .container {
+    max-width: var(--container-page);
+    margin: 0 auto;
+    padding: 0 var(--spacing-gutter);
+  }
+  @media (max-width: 768px) {
+    .container {
+      padding: 0 var(--spacing-gutter-mobile);
+    }
+  }
+}

@@ -1,16 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
   BookOpenIcon,
 } from "@heroicons/react/24/outline";
 
-import { appLayout } from "../../lib/constants/app_layout";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { supabase } from "../../lib/supabase/client";
@@ -78,186 +76,45 @@ const copyByLocale = {
   },
 } as const;
 
-const Page = styled.main`
-  width: 100%;
-  min-height: 100vh;
-  background: transparent;
-  padding: 1.25rem ${appLayout.pageGutterDesktop} 4rem;
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <main className="w-full min-h-screen bg-transparent pt-5 px-gutter pb-16 max-[768px]:pt-[0.85rem] max-[768px]:px-gutter-mobile max-[768px]:pb-12">
+      {children}
+    </main>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.85rem ${appLayout.pageGutterMobile} 3rem;
-  }
-`;
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="w-full max-w-page mx-auto">{children}</div>;
+}
 
-const Shell = styled.div`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-`;
+function Section({ children }: { children: ReactNode }) {
+  return <section className="mt-[1.35rem]">{children}</section>;
+}
 
-const BackLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 850;
-  text-decoration: none;
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="m-0 text-[#050505] text-[1.15rem] font-[950]">{children}</h2>;
+}
 
-  svg { width: 17px; height: 17px; }
-`;
+function SectionHint({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.2rem] mb-[0.65rem] text-[rgba(5,5,5,0.55)] text-[0.76rem] leading-[1.4]">{children}</p>;
+}
 
-const Hero = styled.section`
-  padding: 1.25rem 0 1.1rem;
-`;
+function DeckGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 max-[760px]:grid-cols-2 max-[520px]:grid-cols-1">
+      {children}
+    </div>
+  );
+}
 
-const Eyebrow = styled.div`
-  display: inline-flex;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  padding: 0.28rem 0.62rem;
-  font-size: 0.68rem;
-  font-weight: 950;
-  letter-spacing: 0.07em;
-`;
-
-const Title = styled.h1`
-  margin: 0.7rem 0 0.35rem;
-  color: #050505;
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 950;
-  line-height: 1.05;
-`;
-
-const Subtitle = styled.p`
-  max-width: 620px;
-  margin: 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.95rem;
-  line-height: 1.55;
-`;
-
-const Section = styled.section`
-  margin-top: 1.35rem;
-`;
-
-const SectionTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1.15rem;
-  font-weight: 950;
-`;
-
-const SectionHint = styled.p`
-  margin: 0.2rem 0 0.65rem;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.76rem;
-  line-height: 1.4;
-`;
-
-const DeckGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-
-  @media (max-width: 760px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const DeckCard = styled.article`
-  min-height: 190px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border: 2px solid #050505;
-  border-radius: 17px;
-  background: #ffffff;
-  padding: 1rem;
-  box-shadow: 4px 4px 0 #050505;
-`;
-
-const DeckIcon = styled.div`
-  font-size: 1.6rem;
-`;
-
-const DeckName = styled.h3`
-  margin: 0.55rem 0 0.25rem;
-  color: #050505;
-  font-size: 1.05rem;
-  font-weight: 950;
-  line-height: 1.25;
-`;
-
-const Description = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.76rem;
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const Meta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  margin-top: 0.75rem;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.68rem;
-  font-weight: 800;
-`;
-
-const Badge = styled.span`
-  display: inline-flex;
-  width: fit-content;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.25rem 0.45rem;
-  color: #050505;
-  font-size: 0.63rem;
-  font-weight: 900;
-`;
-
-const StudyLink = styled(Link)`
-  margin-top: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 2.5rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.76rem;
-  font-weight: 950;
-  text-decoration: none;
-  box-shadow: 2px 2px 0 #050505;
-
-  svg { width: 16px; height: 16px; }
-  &:hover { color: #050505; text-decoration: none; }
-`;
-
-const StateBox = styled.div`
-  padding: 2rem 1rem;
-  border: 2px dashed #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.82rem;
-
-  svg { width: 34px; height: 34px; color: #050505; }
-`;
+function StateBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="py-8 px-4 border-2 border-dashed border-[#050505] rounded-2xl bg-white text-center text-[rgba(5,5,5,0.58)] text-[0.82rem] [&_svg]:w-[34px] [&_svg]:h-[34px] [&_svg]:text-[#050505]">
+      {children}
+    </div>
+  );
+}
 
 function mapDeck(row: Record<string, unknown>): Deck {
   return {
@@ -348,23 +205,33 @@ export default function StudyDeckPicker() {
   const renderDeck = (deck: Deck) => {
     const isPersonal = deck.system_key?.startsWith("personal:");
     return (
-      <DeckCard key={deck.id}>
+      <article
+        key={deck.id}
+        className="min-h-[190px] flex flex-col justify-between border-2 border-[#050505] rounded-[17px] bg-white p-4 shadow-[4px_4px_0_#050505]"
+      >
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", alignItems: "flex-start" }}>
-            <DeckIcon>{deck.icon}</DeckIcon>
-            {deck.is_official && <Badge>{copy.official}</Badge>}
+            <div className="text-[1.6rem]">{deck.icon}</div>
+            {deck.is_official && (
+              <span className="inline-flex w-fit border-[1.5px] border-[#050505] rounded-full bg-white py-1 px-[0.45rem] text-[#050505] text-[0.63rem] font-black">
+                {copy.official}
+              </span>
+            )}
           </div>
-          <DeckName>{isPersonal ? copy.personalName : deck.name}</DeckName>
-          <Description>{isPersonal ? copy.personalDescription : deck.description}</Description>
-          <Meta>
+          <h3 className="mt-[0.55rem] mb-[0.25rem] text-[#050505] text-[1.05rem] font-[950] leading-[1.25]">{isPersonal ? copy.personalName : deck.name}</h3>
+          <p className="m-0 text-[rgba(5,5,5,0.6)] text-[0.76rem] leading-[1.45] line-clamp-2">{isPersonal ? copy.personalDescription : deck.description}</p>
+          <div className="flex flex-wrap gap-y-[0.35rem] gap-x-[0.65rem] mt-3 text-[rgba(5,5,5,0.56)] text-[0.68rem] font-extrabold">
             <span>{deck.item_count} {copy.items}</span>
             {deck.visibility === "public" && <span>{deck.follower_count} {copy.addedUsers}</span>}
-          </Meta>
+          </div>
         </div>
-        <StudyLink href={`/vocabulary/study/${deck.id}`}>
+        <Link
+          href={`/vocabulary/study/${deck.id}`}
+          className="mt-[0.85rem] inline-flex items-center justify-center gap-[0.35rem] min-h-10 border-2 border-[#050505] rounded-xl bg-[#f47a4a] text-[#050505] py-2 px-[0.7rem] text-[0.76rem] font-[950] no-underline shadow-[2px_2px_0_#050505] hover:text-[#050505] hover:no-underline [&_svg]:w-4 [&_svg]:h-4"
+        >
           <AcademicCapIcon />{copy.start}
-        </StudyLink>
-      </DeckCard>
+        </Link>
+      </article>
     );
   };
 
@@ -379,12 +246,15 @@ export default function StudyDeckPicker() {
   return (
     <Page>
       <Shell>
-        <BackLink href="/vocabulary"><ArrowLeftIcon />{copy.back}</BackLink>
-        <Hero>
-          <Eyebrow>{copy.eyebrow}</Eyebrow>
-          <Title>{copy.title}</Title>
-          <Subtitle>{copy.subtitle}</Subtitle>
-        </Hero>
+        <Link
+          href="/vocabulary"
+          className="inline-flex items-center gap-[0.35rem] text-[#050505] text-[0.82rem] font-[850] no-underline [&_svg]:w-[17px] [&_svg]:h-[17px]"
+        ><ArrowLeftIcon />{copy.back}</Link>
+        <section className="pt-5 pb-[1.1rem]">
+          <div className="inline-flex border-2 border-[#050505] rounded-full bg-[#f47a4a] py-[0.28rem] px-[0.62rem] text-[0.68rem] font-[950] tracking-[0.07em]">{copy.eyebrow}</div>
+          <h1 className="mt-[0.7rem] mb-[0.35rem] text-[#050505] text-[clamp(2rem,5vw,3rem)] font-[950] leading-[1.05]">{copy.title}</h1>
+          <p className="max-w-[620px] m-0 text-[rgba(5,5,5,0.62)] text-[0.95rem] leading-[1.55]">{copy.subtitle}</p>
+        </section>
 
         <Section>
           <SectionTitle>{copy.mine}</SectionTitle>

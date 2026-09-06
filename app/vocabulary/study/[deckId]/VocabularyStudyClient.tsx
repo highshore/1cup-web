@@ -1,9 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -13,7 +21,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-import { appLayout } from "../../../lib/constants/app_layout";
 import { useI18n } from "../../../lib/i18n/I18nProvider";
 
 type StudyAlgorithm = "fsrs" | "anki_legacy" | "leitner";
@@ -162,426 +169,109 @@ const copyByLocale = {
   },
 } as const;
 
-const Page = styled.main`
-  width: 100%;
-  min-height: 100vh;
-  background: transparent;
-  padding: 1rem ${appLayout.pageGutterDesktop} 4rem;
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <main className="w-full min-h-screen bg-transparent pt-4 px-gutter pb-16 max-[768px]:pt-3 max-[768px]:px-gutter-mobile max-[768px]:pb-12">
+      {children}
+    </main>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.75rem ${appLayout.pageGutterMobile} 3rem;
-  }
-`;
+function Shell({ children }: { children: ReactNode }) {
+  return <div className="w-full max-w-[860px] mx-auto">{children}</div>;
+}
 
-const Shell = styled.div`
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-`;
+function IconButton({ children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className="w-[38px] h-[38px] inline-flex items-center justify-center border-2 border-[#050505] rounded-full bg-white text-[#050505] cursor-pointer shadow-[2px_2px_0_#050505] [&_svg]:w-[18px] [&_svg]:h-[18px]"
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const TopRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.8rem;
-`;
+function Count({ children }: { children: ReactNode }) {
+  return (
+    <span className="border border-[#050505] rounded-full bg-white py-1 px-[0.48rem] text-[rgba(5,5,5,0.68)] text-[0.67rem] font-[850] [&_strong]:text-[#050505] [&_strong]:font-[950]">
+      {children}
+    </span>
+  );
+}
 
-const BackLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 850;
-  text-decoration: none;
-  svg { width: 17px; height: 17px; }
-`;
+function Badge({ children }: { children: ReactNode }) {
+  return (
+    <span className="border border-[#050505] rounded-full bg-white py-[0.22rem] px-[0.43rem] text-[#050505] text-[0.64rem] font-[850]">
+      {children}
+    </span>
+  );
+}
 
-const IconButton = styled.button`
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  svg { width: 18px; height: 18px; }
-`;
+function PrimaryButton({ children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className="min-h-12 w-full inline-flex items-center justify-center border-2 border-[#050505] rounded-[14px] bg-[#f47a4a] text-[#050505] py-[0.65rem] px-4 text-[0.88rem] font-[950] cursor-pointer shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed"
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const Header = styled.section`
-  border: 2px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 0.95rem 1rem;
-  box-shadow: 3px 3px 0 #050505;
-`;
+function SecondaryButton({ children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className="min-h-[2.45rem] inline-flex items-center justify-center gap-[0.35rem] border-[1.5px] border-[#050505] rounded-full bg-white text-[#050505] py-[0.48rem] px-[0.7rem] text-[0.74rem] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:w-[15px] [&_svg]:h-[15px]"
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const HeaderTop = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-`;
+function StateBox({ children, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className="mt-4 py-12 px-4 border-2 border-dashed border-[#050505] rounded-[18px] bg-white text-center text-[rgba(5,5,5,0.62)] [&_svg]:w-10 [&_svg]:h-10 [&_svg]:text-[#050505] [&_strong]:block [&_strong]:mt-[0.65rem] [&_strong]:text-[#050505] [&_strong]:text-[1rem] [&_p]:mt-[0.3rem] [&_p]:mb-0 [&_p]:mx-auto [&_p]:max-w-[480px] [&_p]:leading-[1.5]"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const DeckTitle = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.35rem, 4vw, 1.8rem);
-  font-weight: 950;
-`;
+function ModalHint({ children }: { children: ReactNode }) {
+  return <p className="mt-[0.25rem] mb-0 text-[rgba(5,5,5,0.58)] text-[0.76rem] leading-[1.45]">{children}</p>;
+}
 
-const AlgorithmBadge = styled.span`
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.28rem 0.5rem;
-  color: #050505;
-  font-size: 0.66rem;
-  font-weight: 900;
-`;
+function Field({ children }: { children: ReactNode }) {
+  return <label className="block mt-[0.9rem] text-[#050505] text-[0.76rem] font-[950]">{children}</label>;
+}
 
-const CountRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.7rem;
-`;
+function Choice({
+  $active,
+  children,
+  ...rest
+}: { $active: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`w-full border-2 border-[#050505] rounded-xl ${$active ? "bg-[#f5f5f5]" : "bg-white"} p-[0.7rem] text-[#050505] text-left cursor-pointer [&_strong]:block [&_strong]:text-[0.8rem] [&_strong]:font-[950] [&_span]:block [&_span]:mt-[0.18rem] [&_span]:text-[rgba(5,5,5,0.6)] [&_span]:text-[0.7rem] [&_span]:leading-[1.4]`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const Count = styled.span`
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.25rem 0.48rem;
-  color: rgba(5,5,5,0.68);
-  font-size: 0.67rem;
-  font-weight: 850;
-  strong { color: #050505; font-weight: 950; }
-`;
-
-const ProgressWrap = styled.div`
-  margin: 0.95rem 0 1rem;
-`;
-
-const ProgressMeta = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.3rem;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.68rem;
-  font-weight: 800;
-`;
-
-const ProgressTrack = styled.div`
-  height: 10px;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-`;
-
-const ProgressFill = styled.div<{ $value: number }>`
-  width: ${(p) => `${Math.max(0, Math.min(100, p.$value))}%`};
-  height: 100%;
-  background: #f47a4a;
-  transition: width 180ms ease;
-`;
-
-const FlashCard = styled.section`
-  min-height: 390px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border: 2px solid #050505;
-  border-radius: 20px;
-  background: #ffffff;
-  padding: clamp(1.15rem, 4vw, 1.9rem);
-  box-shadow: 5px 5px 0 #050505;
-`;
-
-const StateBadge = styled.span`
-  display: inline-flex;
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.22rem 0.45rem;
-  color: #050505;
-  font-size: 0.6rem;
-  font-weight: 950;
-`;
-
-const Term = styled.h2`
-  margin: 1.35rem 0 0;
-  color: #050505;
-  font-size: clamp(2.1rem, 8vw, 4rem);
-  line-height: 1.04;
-  text-align: center;
-  font-weight: 950;
-  overflow-wrap: anywhere;
-`;
-
-const Badges = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
-`;
-
-const Badge = styled.span`
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.22rem 0.43rem;
-  color: #050505;
-  font-size: 0.64rem;
-  font-weight: 850;
-`;
-
-const Prompt = styled.p`
-  margin: 1rem auto 0;
-  max-width: 520px;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.8rem;
-  line-height: 1.55;
-  text-align: center;
-`;
-
-const Answer = styled.div`
-  margin-top: 1.25rem;
-  padding-top: 1.05rem;
-  border-top: 1px solid rgba(5, 5, 5, 0.18);
-`;
-
-const Definition = styled.p`
-  margin: 0;
-  color: #050505;
-  font-size: 1.02rem;
-  line-height: 1.62;
-  text-align: center;
-  font-weight: 650;
-`;
-
-const KoreanDefinition = styled.p`
-  margin: 0.5rem 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.9rem;
-  line-height: 1.55;
-  text-align: center;
-`;
-
-const PrimaryButton = styled.button`
-  min-height: 3rem;
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.65rem 1rem;
-  font-size: 0.88rem;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
-
-const RatingGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem;
-  @media (max-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-`;
-
-const RatingButton = styled.button`
-  min-height: 4.1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.16rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
-
-const RatingName = styled.span`
-  font-size: 0.8rem;
-  font-weight: 950;
-`;
-
-const Interval = styled.span`
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.66rem;
-  font-weight: 800;
-`;
-
-const KeyboardHint = styled.p`
-  margin: 0.75rem 0 0;
-  color: rgba(5, 5, 5, 0.48);
-  font-size: 0.66rem;
-  font-weight: 750;
-  text-align: center;
-`;
-
-const StateBox = styled.div`
-  margin-top: 1rem;
-  padding: 3rem 1rem;
-  border: 2px dashed #050505;
-  border-radius: 18px;
-  background: #ffffff;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.62);
-  svg { width: 40px; height: 40px; color: #050505; }
-  strong { display: block; margin-top: 0.65rem; color: #050505; font-size: 1rem; }
-  p { margin: 0.3rem auto 0; max-width: 480px; line-height: 1.5; }
-`;
-
-const SecondaryButton = styled.button`
-  min-height: 2.45rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0.48rem 0.7rem;
-  font-size: 0.74rem;
-  font-weight: 900;
-  cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  svg { width: 15px; height: 15px; }
-`;
-
-const ModalBackdrop = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 1rem;
-`;
-
-const Modal = styled.div`
-  width: min(620px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: 1.1rem;
-  box-shadow: 7px 7px 0 #050505;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-`;
-
-const ModalTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1.2rem;
-  font-weight: 950;
-`;
-
-const ModalHint = styled.p`
-  margin: 0.25rem 0 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.76rem;
-  line-height: 1.45;
-`;
-
-const Field = styled.label`
-  display: block;
-  margin-top: 0.9rem;
-  color: #050505;
-  font-size: 0.76rem;
-  font-weight: 950;
-`;
-
-const ChoiceGrid = styled.div`
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
-`;
-
-const Choice = styled.button<{ $active: boolean }>`
-  width: 100%;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${(p) => (p.$active ? "#f5f5f5" : "#ffffff")};
-  padding: 0.7rem;
-  color: #050505;
-  text-align: left;
-  cursor: pointer;
-  strong { display: block; font-size: 0.8rem; font-weight: 950; }
-  span { display: block; margin-top: 0.18rem; color: rgba(5,5,5,0.6); font-size: 0.7rem; line-height: 1.4; }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  margin-top: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.65rem;
-  color: #050505;
-  font-size: 0.8rem;
-  font-weight: 850;
-`;
-
-const NumberInput = styled.input`
-  width: 100%;
-  margin-top: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.65rem;
-  color: #050505;
-  font-size: 0.8rem;
-  font-weight: 800;
-`;
-
-const ToggleRow = styled.label`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 0.9rem;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.65rem;
-  color: #050505;
-  font-size: 0.74rem;
-  font-weight: 850;
-  input { width: 18px; height: 18px; accent-color: #f47a4a; }
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-`;
+function NumberInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className="w-full mt-[0.35rem] border-2 border-[#050505] rounded-xl bg-white p-[0.65rem] text-[#050505] text-[0.8rem] font-extrabold"
+      {...props}
+    />
+  );
+}
 
 function formatInterval(seconds: number, locale: "ko" | "en") {
   const value = Math.max(0, Math.round(seconds));
@@ -776,48 +466,56 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
   return (
     <Page>
       <Shell>
-        <TopRow>
-          <BackLink href={`/vocabulary/decks/${deckId}`}><ArrowLeftIcon />{copy.back}</BackLink>
+        <div className="flex items-center justify-between gap-3 mb-[0.8rem]">
+          <Link
+            href={`/vocabulary/decks/${deckId}`}
+            className="inline-flex items-center gap-[0.35rem] text-[#050505] text-[0.82rem] font-[850] no-underline [&_svg]:w-[17px] [&_svg]:h-[17px]"
+          ><ArrowLeftIcon />{copy.back}</Link>
           <IconButton type="button" onClick={() => { setDraft({ ...data.preferences }); setSettingsOpen(true); }} aria-label={copy.settings}>
             <Cog6ToothIcon />
           </IconButton>
-        </TopRow>
+        </div>
 
-        <Header>
-          <HeaderTop>
-            <DeckTitle>{data.deck.icon} {data.deck.name}</DeckTitle>
-            <AlgorithmBadge>{algorithmLabel(data.preferences.algorithm)}</AlgorithmBadge>
-          </HeaderTop>
-          <CountRow>
+        <section className="border-2 border-[#050505] rounded-2xl bg-white py-[0.95rem] px-4 shadow-[3px_3px_0_#050505]">
+          <div className="flex items-start justify-between gap-[0.8rem]">
+            <h1 className="m-0 text-[#050505] text-[clamp(1.35rem,4vw,1.8rem)] font-[950]">{data.deck.icon} {data.deck.name}</h1>
+            <span className="flex-none border-[1.5px] border-[#050505] rounded-full bg-white py-[0.28rem] px-2 text-[#050505] text-[0.66rem] font-black">{algorithmLabel(data.preferences.algorithm)}</span>
+          </div>
+          <div className="flex flex-wrap gap-[0.4rem] mt-[0.7rem]">
             <Count>{copy.new} <strong>{data.counts.new}</strong></Count>
             <Count>{copy.learning} <strong>{data.counts.learning}</strong></Count>
             <Count>{copy.review} <strong>{data.counts.review}</strong></Count>
-          </CountRow>
-        </Header>
+          </div>
+        </section>
 
-        <ProgressWrap>
-          <ProgressMeta><span>{copy.progress}</span><span>{sessionReviewed}/{Math.max(sessionTotal, sessionReviewed)}</span></ProgressMeta>
-          <ProgressTrack><ProgressFill $value={progress} /></ProgressTrack>
-        </ProgressWrap>
+        <div className="mt-[0.95rem] mb-4">
+          <div className="flex justify-between mb-[0.3rem] text-[rgba(5,5,5,0.55)] text-[0.68rem] font-extrabold"><span>{copy.progress}</span><span>{sessionReviewed}/{Math.max(sessionTotal, sessionReviewed)}</span></div>
+          <div className="h-[10px] overflow-hidden border-[1.5px] border-[#050505] rounded-full bg-white">
+            <div
+              className="h-full bg-[#f47a4a] [transition:width_180ms_ease]"
+              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+            />
+          </div>
+        </div>
 
         {current ? (
           <>
-            <FlashCard>
+            <section className="min-h-[390px] flex flex-col justify-between border-2 border-[#050505] rounded-[20px] bg-white p-[clamp(1.15rem,4vw,1.9rem)] shadow-[5px_5px_0_#050505]">
               <div>
-                <StateBadge>{stateLabel(current.state, locale)}</StateBadge>
-                <Term>{current.term}</Term>
-                <Badges>
+                <span className="inline-flex border border-[#050505] rounded-full bg-white py-[0.22rem] px-[0.45rem] text-[#050505] text-[0.6rem] font-[950]">{stateLabel(current.state, locale)}</span>
+                <h2 className="mt-[1.35rem] mb-0 text-[#050505] text-[clamp(2.1rem,8vw,4rem)] leading-[1.04] text-center font-[950] [overflow-wrap:anywhere]">{current.term}</h2>
+                <div className="flex justify-center flex-wrap gap-[0.35rem] mt-3">
                   <Badge>{current.entryType}</Badge>
                   {current.grammarType && <Badge>{current.grammarType}</Badge>}
                   {current.pronunciationIpa && <Badge>{current.pronunciationIpa}</Badge>}
-                </Badges>
+                </div>
                 {!revealed ? (
-                  <Prompt><LightBulbIcon style={{ width: 16, verticalAlign: "middle", marginRight: 4 }} />{copy.thinkFirst}</Prompt>
+                  <p className="mt-4 mb-0 mx-auto max-w-[520px] text-[rgba(5,5,5,0.56)] text-[0.8rem] leading-[1.55] text-center"><LightBulbIcon style={{ width: 16, verticalAlign: "middle", marginRight: 4 }} />{copy.thinkFirst}</p>
                 ) : (
-                  <Answer>
-                    <Definition>{current.definitionEn || copy.noDefinition}</Definition>
-                    {current.definitionKo && <KoreanDefinition>{current.definitionKo}</KoreanDefinition>}
-                  </Answer>
+                  <div className="mt-5 pt-[1.05rem] border-t border-t-[rgba(5,5,5,0.18)]">
+                    <p className="m-0 text-[#050505] text-[1.02rem] leading-[1.62] text-center font-[650]">{current.definitionEn || copy.noDefinition}</p>
+                    {current.definitionKo && <p className="mt-2 mb-0 text-[rgba(5,5,5,0.64)] text-[0.9rem] leading-[1.55] text-center">{current.definitionKo}</p>}
+                  </div>
                 )}
               </div>
 
@@ -825,18 +523,24 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
                 {!revealed ? (
                   <PrimaryButton type="button" onClick={() => setRevealed(true)}>{copy.showAnswer}</PrimaryButton>
                 ) : (
-                  <RatingGrid>
+                  <div className="grid grid-cols-4 gap-2 max-[640px]:grid-cols-2">
                     {(["again", "hard", "good", "easy"] as StudyRating[]).map((rating, index) => (
-                      <RatingButton key={rating} type="button" disabled={submitting} onClick={() => void submitRating(rating)}>
-                        <RatingName>{copy[rating]}</RatingName>
-                        <Interval>{formatInterval(current.previews[rating].intervalSeconds, locale)} · {index + 1}</Interval>
-                      </RatingButton>
+                      <button
+                        key={rating}
+                        type="button"
+                        className="min-h-[4.1rem] flex flex-col items-center justify-center gap-[0.16rem] border-2 border-[#050505] rounded-[14px] bg-white text-[#050505] cursor-pointer shadow-[2px_2px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={submitting}
+                        onClick={() => void submitRating(rating)}
+                      >
+                        <span className="text-[0.8rem] font-[950]">{copy[rating]}</span>
+                        <span className="text-[rgba(5,5,5,0.58)] text-[0.66rem] font-extrabold">{formatInterval(current.previews[rating].intervalSeconds, locale)} · {index + 1}</span>
+                      </button>
                     ))}
-                  </RatingGrid>
+                  </div>
                 )}
               </div>
-            </FlashCard>
-            <KeyboardHint>{revealed ? copy.keyboardAfter : copy.keyboardBefore}</KeyboardHint>
+            </section>
+            <p className="mt-3 mb-0 text-[rgba(5,5,5,0.48)] text-[0.66rem] font-[750] text-center">{revealed ? copy.keyboardAfter : copy.keyboardBefore}</p>
           </>
         ) : data.counts.total === 0 ? (
           <StateBox><LightBulbIcon /><strong>{copy.empty}</strong></StateBox>
@@ -852,15 +556,21 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
       </Shell>
 
       {settingsOpen && draft && (
-        <ModalBackdrop onClick={() => !savingSettings && setSettingsOpen(false)}>
-          <Modal onClick={(event) => event.stopPropagation()}>
-            <ModalHeader>
-              <div><ModalTitle>{copy.settings}</ModalTitle><ModalHint>{copy.settingsHint}</ModalHint></div>
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.55)] p-4"
+          onClick={() => !savingSettings && setSettingsOpen(false)}
+        >
+          <div
+            className="w-[min(620px,100%)] max-h-[90vh] overflow-y-auto border-2 border-[#050505] rounded-[18px] bg-white p-[1.1rem] shadow-[7px_7px_0_#050505]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div><h2 className="m-0 text-[#050505] text-[1.2rem] font-[950]">{copy.settings}</h2><ModalHint>{copy.settingsHint}</ModalHint></div>
               <IconButton type="button" onClick={() => setSettingsOpen(false)}><XMarkIcon /></IconButton>
-            </ModalHeader>
+            </div>
 
             <Field>{copy.algorithm}</Field>
-            <ChoiceGrid>
+            <div className="grid gap-2 mt-[0.4rem]">
               <Choice type="button" $active={draft.algorithm === "fsrs"} onClick={() => setDraft({ ...draft, algorithm: "fsrs", queueStrategy: "due_first" })}>
                 <strong>{copy.fsrs}</strong><span>{copy.fsrsDesc}</span>
               </Choice>
@@ -870,17 +580,18 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
               <Choice type="button" $active={draft.algorithm === "leitner"} onClick={() => setDraft({ ...draft, algorithm: "leitner" })}>
                 <strong>{copy.leitner}</strong><span>{copy.leitnerDesc}</span>
               </Choice>
-            </ChoiceGrid>
+            </div>
 
             <Field>{copy.queue}
-              <Select
+              <select
+                className="w-full mt-[0.35rem] border-2 border-[#050505] rounded-xl bg-white p-[0.65rem] text-[#050505] text-[0.8rem] font-[850]"
                 value={draft.algorithm === "leitner" ? draft.queueStrategy : "due_first"}
                 disabled={draft.algorithm !== "leitner"}
                 onChange={(event) => setDraft({ ...draft, queueStrategy: event.target.value as QueueStrategy })}
               >
                 <option value="due_first">{copy.dueFirst}</option>
                 <option value="frequency">{copy.frequency}</option>
-              </Select>
+              </select>
             </Field>
 
             {draft.algorithm === "fsrs" && (
@@ -898,17 +609,17 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
             </Field>
 
             {draft.algorithm === "fsrs" && (
-              <ToggleRow>{copy.fuzz}
+              <label className="flex items-center justify-between gap-4 mt-[0.9rem] border-2 border-[#050505] rounded-xl bg-white p-[0.65rem] text-[#050505] text-[0.74rem] font-[850] [&_input]:w-[18px] [&_input]:h-[18px] [&_input]:accent-[#f47a4a]">{copy.fuzz}
                 <input type="checkbox" checked={draft.enableFuzz} onChange={(event) => setDraft({ ...draft, enableFuzz: event.target.checked })} />
-              </ToggleRow>
+              </label>
             )}
 
-            <ModalActions>
+            <div className="flex justify-end gap-2 mt-4">
               <SecondaryButton type="button" onClick={() => setSettingsOpen(false)}>{copy.cancel}</SecondaryButton>
               <PrimaryButton style={{ width: "auto", minHeight: "2.45rem" }} disabled={savingSettings} onClick={() => void saveSettings()}>{copy.saveSettings}</PrimaryButton>
-            </ModalActions>
-          </Modal>
-        </ModalBackdrop>
+            </div>
+          </div>
+        </div>
       )}
     </Page>
   );

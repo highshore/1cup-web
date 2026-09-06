@@ -11,269 +11,12 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname, useRouter } from "next/navigation";
-import styled, { css } from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
-import { appLayout } from "../../lib/constants/app_layout";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import NotificationDropdown from "../../lib/features/chat/components/NotificationDropdown";
 
-const NAV_COLLAPSE_BREAKPOINT = "920px";
-
-const Nav = styled.nav<{ $isTransparent: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: ${({ $isTransparent }) =>
-    $isTransparent ? "transparent" : "rgba(255, 255, 255, 0.94)"};
-  border-bottom: 1px solid
-    ${({ $isTransparent }) =>
-      $isTransparent ? "transparent" : "rgba(226, 232, 240, 0.82)"};
-  backdrop-filter: ${({ $isTransparent }) =>
-    $isTransparent ? "none" : "blur(14px)"};
-  transition: background-color 160ms ease, border-color 160ms ease,
-    backdrop-filter 160ms ease;
-`;
-
-const NavTrack = styled.div`
-  --nav-control-height: 60px;
-  --nav-item-height: 38px;
-  --nav-action-size: 38px;
-
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  position: relative;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  min-height: var(--nav-control-height);
-  align-items: center;
-  gap: 6px;
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop};
-  transition: min-height 140ms ease;
-
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    padding: 0 ${appLayout.pageGutterMobile};
-  }
-
-  @media (max-width: 520px) {
-    --nav-action-size: 44px;
-  }
-`;
-
-const BrandButton = styled.button`
-  display: inline-flex;
-  width: fit-content;
-  min-height: var(--nav-item-height);
-  align-items: center;
-  justify-content: center;
-  justify-self: start;
-  border: 0;
-  background: transparent;
-  padding: 4px 0;
-  cursor: pointer;
-  &:hover { opacity: 0.82; }
-
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: center;
-  }
-`;
-
-const LogoImage = styled.img`
-  display: block;
-  width: 90px;
-  height: auto;
-`;
-
-const NavLinks = styled.div`
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  justify-self: center;
-  gap: 3px;
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
-`;
-
-const NavLinkButton = styled.button<{ $active: boolean; $isTransparent: boolean }>`
-  display: inline-flex;
-  min-height: var(--nav-item-height);
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 0;
-  border-radius: 999px;
-  padding: 7px 15px;
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
-
-  ${({ $active, $isTransparent }) =>
-    $isTransparent
-      ? $active
-        ? css`background: rgba(255,255,255,0.18); color: #fff;`
-        : css`background: transparent; color: rgba(255,255,255,0.88); &:hover { background: rgba(255,255,255,0.14); color:#fff; }`
-      : $active
-        ? css`background:#e2e8f0; color:#0f172a;`
-        : css`background:transparent; color:#475569; &:hover { background:#f1f5f9; color:#0f172a; }`}
-  svg { width: 16px; height: 16px; }
-`;
-
-const RightActions = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  justify-self: end;
-  gap: 4px;
-  min-width: 0;
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    grid-column: 3;
-    grid-row: 1;
-    margin-left: auto;
-  }
-`;
-
-const LanguageButton = styled.button<{ $isTransparent: boolean }>`
-  display: inline-flex;
-  box-sizing: border-box;
-  width: var(--nav-action-size);
-  height: var(--nav-action-size);
-  min-height: var(--nav-action-size);
-  flex: 0 0 var(--nav-action-size);
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  padding: 0;
-  color: ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.88)" : "#475569"};
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  &:hover {
-    background: ${({ $isTransparent }) =>
-      $isTransparent ? "rgba(255,255,255,0.14)" : "#f8fafc"};
-    color: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
-  }
-`;
-
-const LangIcon = styled.img<{ $isTransparent: boolean }>`
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.58)" : "#e2e8f0"};
-  @media (max-width: 520px) { width: 28px; height: 28px; }
-`;
-
-const JoinButton = styled.button<{ $isTransparent: boolean }>`
-  display: inline-flex;
-  min-height: var(--nav-item-height);
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid ${({ $isTransparent }) =>
-    $isTransparent ? "rgba(255,255,255,0.92)" : "rgba(15,23,42,0.92)"};
-  border-radius: 999px;
-  background: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
-  padding: 7px 15px;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#0f172a" : "#fff")};
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 800;
-  box-shadow: 0 7px 16px rgba(15,23,42,0.14);
-  cursor: pointer;
-  &:hover { box-shadow: 0 10px 24px rgba(15,23,42,0.18); }
-  svg { width: 16px; height: 16px; }
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) { display: none; }
-`;
-
-const MobileMenuButton = styled.button<{ $isTransparent: boolean }>`
-  display: none;
-  min-height: var(--nav-item-height);
-  min-width: var(--nav-item-height);
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: ${({ $isTransparent }) => ($isTransparent ? "#fff" : "#0f172a")};
-  cursor: pointer;
-  &:hover { background: ${({ $isTransparent }) => $isTransparent ? "rgba(255,255,255,0.14)" : "#f1f5f9"}; }
-  svg { width: 20px; height: 20px; }
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: inline-flex;
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-  }
-`;
-
-const MobileMenu = styled.div`
-  display: none;
-  @media (max-width: ${NAV_COLLAPSE_BREAKPOINT}) {
-    display: grid;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    gap: 2px;
-    border: 1px solid rgba(226,232,240,0.9);
-    border-top: 0;
-    border-radius: 0 0 14px 14px;
-    background: rgba(255,255,255,0.98);
-    padding: 6px;
-  }
-`;
-
-const MobileNavButton = styled.button<{ $active?: boolean }>`
-  display: inline-flex;
-  min-height: 36px;
-  width: 100%;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-family: inherit;
-  font-size: 0.86rem;
-  font-weight: 750;
-  cursor: pointer;
-  ${({ $active }) => $active
-    ? css`background:#f1f5f9; color:#0f172a;`
-    : css`background:transparent; color:#475569; &:hover { background:#f1f5f9; color:#0f172a; }`}
-  svg { width: 15px; height: 15px; }
-`;
-
-const MobileJoinButton = styled.button`
-  display: inline-flex;
-  min-height: 36px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid rgba(15,23,42,0.92);
-  border-radius: 999px;
-  background: #0f172a;
-  padding: 6px 12px;
-  color: #fff;
-  font-family: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
-  cursor: pointer;
-`;
+// Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
   { path: "/shadow", labelKey: "shadowing", icon: ChatBubbleLeftRightIcon },
@@ -324,45 +67,76 @@ const NewNavbar: React.FC = () => {
     pathname === path || pathname.startsWith(`${path}/`);
 
   return (
-    <Nav $isTransparent={isTransparent}>
-      <NavTrack>
-        <BrandButton onClick={() => handleNavigate("/")} aria-label="Home">
-          <LogoImage src={logoSrc} alt="1 Cup English" />
-        </BrandButton>
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 [transition:background-color_160ms_ease,border-color_160ms_ease,backdrop-filter_160ms_ease] border-b ${
+        isTransparent
+          ? "bg-transparent border-transparent"
+          : "bg-[rgba(255,255,255,0.94)] border-[rgba(226,232,240,0.82)] backdrop-blur-[14px]"
+      }`}
+    >
+      <div className="[--nav-control-height:60px] [--nav-item-height:38px] [--nav-action-size:38px] max-[520px]:[--nav-action-size:44px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] relative box-border w-full max-w-page min-h-[var(--nav-control-height)] items-center gap-1.5 mx-auto px-gutter [transition:min-height_140ms_ease] max-[920px]:grid-cols-[1fr_auto_1fr] max-[920px]:px-gutter-mobile">
+        <button
+          className="inline-flex w-fit min-h-[var(--nav-item-height)] items-center justify-center justify-self-start border-0 bg-transparent px-0 py-1 cursor-pointer hover:opacity-[0.82] max-[920px]:col-start-2 max-[920px]:row-start-1 max-[920px]:justify-self-center"
+          onClick={() => handleNavigate("/")}
+          aria-label="Home"
+        >
+          <img className="block w-[90px] h-auto" src={logoSrc} alt="1 Cup English" />
+        </button>
 
-        <MobileMenuButton
+        <button
+          className={`hidden min-h-[var(--nav-item-height)] min-w-[var(--nav-item-height)] items-center justify-center border-0 rounded-full bg-transparent cursor-pointer [&_svg]:w-5 [&_svg]:h-5 max-[920px]:inline-flex max-[920px]:col-start-1 max-[920px]:row-start-1 max-[920px]:justify-self-start ${
+            isTransparent
+              ? "text-white hover:bg-[rgba(255,255,255,0.14)]"
+              : "text-[#0f172a] hover:bg-[#f1f5f9]"
+          }`}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
-          $isTransparent={isTransparent}
         >
           {isMobileMenuOpen ? <XMarkIcon /> : <Bars3Icon />}
-        </MobileMenuButton>
+        </button>
 
-        <NavLinks>
+        <div className="inline-flex flex-wrap items-center justify-center justify-self-center gap-[3px] max-[920px]:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+            const active = isActivePath(item.path);
             return (
-              <NavLinkButton
+              <button
                 key={item.path}
                 onClick={() => handleNavigate(item.path)}
-                $active={isActivePath(item.path)}
-                $isTransparent={isTransparent}
+                className={`inline-flex min-h-[var(--nav-item-height)] items-center justify-center gap-1.5 border-0 rounded-full px-[15px] py-[7px] [font-family:inherit] text-[0.88rem] font-bold cursor-pointer [transition:background-color_140ms_ease,color_140ms_ease,box-shadow_140ms_ease] [&_svg]:w-4 [&_svg]:h-4 ${
+                  isTransparent
+                    ? active
+                      ? "bg-[rgba(255,255,255,0.18)] text-white"
+                      : "bg-transparent text-[rgba(255,255,255,0.88)] hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
+                    : active
+                      ? "bg-[#e2e8f0] text-[#0f172a]"
+                      : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                }`}
               >
                 <Icon />
                 {t.nav[item.labelKey]}
-              </NavLinkButton>
+              </button>
             );
           })}
-        </NavLinks>
+        </div>
 
-        <RightActions>
-          <LanguageButton onClick={toggleLanguage} $isTransparent={isTransparent}>
-            <LangIcon
+        <div className="flex items-center justify-end justify-self-end gap-1 min-w-0 max-[920px]:col-start-3 max-[920px]:row-start-1 max-[920px]:ml-auto">
+          <button
+            className={`inline-flex box-border w-[var(--nav-action-size)] h-[var(--nav-action-size)] min-h-[var(--nav-action-size)] flex-[0_0_var(--nav-action-size)] items-center justify-center border-0 rounded-full bg-transparent p-0 [font-family:inherit] text-[0.88rem] font-bold cursor-pointer ${
+              isTransparent
+                ? "text-[rgba(255,255,255,0.88)] hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
+                : "text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]"
+            }`}
+            onClick={toggleLanguage}
+          >
+            <img
+              className={`w-[22px] h-[22px] rounded-full object-cover border max-[520px]:w-7 max-[520px]:h-7 ${
+                isTransparent ? "border-[rgba(255,255,255,0.58)]" : "border-[#e2e8f0]"
+              }`}
               src={locale === "en" ? "/images/flags/i18n_en.jpg" : "/images/flags/i18n_ko.jpg"}
               alt={locale}
-              $isTransparent={isTransparent}
             />
-          </LanguageButton>
+          </button>
 
           {isLoggedIn ? (
             // The profile photo is the single desktop account affordance. Notifications,
@@ -370,37 +144,54 @@ const NewNavbar: React.FC = () => {
             // directly on the photo so there is no competing bell icon in the navbar.
             <NotificationDropdown isTransparent={isTransparent} />
           ) : (
-            <JoinButton onClick={handleJoin} $isTransparent={isTransparent}>
+            <button
+              className={`inline-flex min-h-[var(--nav-item-height)] items-center justify-center gap-1.5 border rounded-full px-[15px] py-[7px] [font-family:inherit] text-[0.88rem] font-extrabold shadow-[0_7px_16px_rgba(15,23,42,0.14)] cursor-pointer hover:shadow-[0_10px_24px_rgba(15,23,42,0.18)] [&_svg]:w-4 [&_svg]:h-4 max-[920px]:hidden ${
+                isTransparent
+                  ? "border-[rgba(255,255,255,0.92)] bg-white text-[#0f172a]"
+                  : "border-[rgba(15,23,42,0.92)] bg-[#0f172a] text-white"
+              }`}
+              onClick={handleJoin}
+            >
               <UserCircleIcon />
               {t.nav.join}
-            </JoinButton>
+            </button>
           )}
 
-        </RightActions>
+        </div>
 
         {isMobileMenuOpen && (
-          <MobileMenu>
+          <div className="hidden max-[920px]:grid absolute top-full left-0 right-0 gap-[2px] border border-[rgba(226,232,240,0.9)] border-t-0 rounded-t-none rounded-b-[14px] bg-[rgba(255,255,255,0.98)] p-1.5">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
+              const active = isActivePath(item.path);
               return (
-                <MobileNavButton
+                <button
                   key={item.path}
                   onClick={() => handleNavigate(item.path)}
-                  $active={isActivePath(item.path)}
+                  className={`inline-flex min-h-9 w-full items-center gap-1.5 border-0 rounded-full px-3 py-1.5 [font-family:inherit] text-[0.86rem] font-[750] cursor-pointer [&_svg]:w-[15px] [&_svg]:h-[15px] ${
+                    active
+                      ? "bg-[#f1f5f9] text-[#0f172a]"
+                      : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                  }`}
                 >
                   <Icon />
                   {t.nav[item.labelKey]}
-                </MobileNavButton>
+                </button>
               );
             })}
 
             {!isLoggedIn && (
-              <MobileJoinButton onClick={handleJoin}>{t.nav.join}</MobileJoinButton>
+              <button
+                className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 border border-[rgba(15,23,42,0.92)] rounded-full bg-[#0f172a] px-3 py-1.5 text-white [font-family:inherit] text-[0.86rem] font-extrabold cursor-pointer"
+                onClick={handleJoin}
+              >
+                {t.nav.join}
+              </button>
             )}
-          </MobileMenu>
+          </div>
         )}
-      </NavTrack>
-    </Nav>
+      </div>
+    </nav>
   );
 };
 

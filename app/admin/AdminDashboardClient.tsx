@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 
 import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
@@ -26,119 +25,38 @@ type DashboardUser = {
   createdAt: string | null;
 };
 
-const Wrapper = styled.main`
-  display: flex;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px 20px;
-  flex-direction: column;
-  gap: 30px;
-`;
+const wrapperClass =
+  "flex max-w-[1400px] mx-auto pt-0 px-5 pb-5 flex-col gap-[30px]";
 
-const QuickActionsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 10px;
+const quickActionsGridClass =
+  "grid grid-cols-3 gap-3.5 mb-2.5 max-[980px]:grid-cols-2 max-[560px]:grid-cols-1";
 
-  @media (max-width: 980px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+const quickActionClass =
+  "min-h-[132px] p-[18px] border-2 border-[#050505] rounded-xl bg-white text-[#050505] cursor-pointer text-left shadow-[3px_3px_0_#f47a4a] transition-[translate,box-shadow] duration-[140ms] ease-[ease] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#f47a4a] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-[3px]";
 
-  @media (max-width: 560px) {
-    grid-template-columns: 1fr;
-  }
-`;
+const quickActionLabelClass = "text-[16px] font-black";
 
-const QuickAction = styled.button`
-  min-height: 132px;
-  padding: 18px;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-  text-align: left;
-  box-shadow: 3px 3px 0 #f47a4a;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+const quickActionDescriptionClass =
+  "mx-0 mt-2 mb-0 text-[rgba(5,5,5,0.64)] text-[13px] font-semibold leading-[1.5]";
 
-  &:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 #f47a4a;
-  }
+const headerClass = "mb-5";
 
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 3px;
-  }
-`;
+const titleClass = "m-0 text-[#050505] text-[28px] font-black";
 
-const QuickActionLabel = styled.div`
-  font-size: 16px;
-  font-weight: 900;
-`;
+const statsGridClass =
+  "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 mb-[30px]";
 
-const QuickActionDescription = styled.p`
-  margin: 8px 0 0;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-`;
+const statCardClass =
+  "border-[3px] border-[#050505] rounded-2xl bg-white p-6 shadow-[6px_6px_0_rgba(5,5,5,0.9)]";
 
-const Header = styled.div`
-  margin-bottom: 20px;
-`;
+const statNumberClass = "mb-2 text-[#050505] text-[32px] font-black";
 
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 28px;
-  font-weight: 900;
-`;
+const statLabelClass =
+  "text-[rgba(5,5,5,0.6)] text-[14px] font-bold tracking-[0.5px] uppercase";
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-`;
+const statSubtextClass = "mt-1 text-[rgba(5,5,5,0.6)] text-[12px]";
 
-const StatCard = styled.div`
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const StatNumber = styled.div`
-  margin-bottom: 8px;
-  color: #050505;
-  font-size: 32px;
-  font-weight: 900;
-`;
-
-const StatLabel = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-`;
-
-const StatSubtext = styled.div`
-  margin-top: 4px;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-`;
-
-const Loading = styled.div`
-  padding: 40px;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-  text-align: center;
-`;
+const loadingClass = "p-10 text-[rgba(5,5,5,0.6)] font-bold text-center";
 
 const QUICK_ACTIONS = [
   ["members", "/admin/members"],
@@ -247,57 +165,57 @@ export default function AdminDashboardClient() {
   }, [loading, totalEvents, users]);
 
   if (authLoading || loading || !currentUser || accountStatus !== "admin") {
-    return <Loading>{t.admin.dashboard.loading}</Loading>;
+    return <div className={loadingClass}>{t.admin.dashboard.loading}</div>;
   }
 
   return (
-    <Wrapper>
-      <QuickActionsGrid aria-label={t.admin.dashboard.title}>
+    <main className={wrapperClass}>
+      <div className={quickActionsGridClass} aria-label={t.admin.dashboard.title}>
         {QUICK_ACTIONS.map(([id, path]) => (
-          <QuickAction key={id} type="button" onClick={() => router.push(path)}>
-            <QuickActionLabel>{t.admin.dashboard.sections[id].label}</QuickActionLabel>
-            <QuickActionDescription>{t.admin.dashboard.sections[id].description}</QuickActionDescription>
-          </QuickAction>
+          <button key={id} type="button" className={quickActionClass} onClick={() => router.push(path)}>
+            <div className={quickActionLabelClass}>{t.admin.dashboard.sections[id].label}</div>
+            <p className={quickActionDescriptionClass}>{t.admin.dashboard.sections[id].description}</p>
+          </button>
         ))}
-      </QuickActionsGrid>
+      </div>
 
       <div>
-        <Header>
-          <Title>{t.admin.dashboard.title}</Title>
-        </Header>
-        <StatsGrid>
-          <StatCard>
-            <StatNumber>{stats.totalMembers}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.totalMembers.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.totalMembers.description}</StatSubtext>
-          </StatCard>
-          <StatCard>
-            <StatNumber>{stats.activeSubscriptions}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.activeSubscriptions.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.activeSubscriptions.description}</StatSubtext>
-          </StatCard>
-          <StatCard>
-            <StatNumber>{stats.cancelledBilling}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.cancelledBilling.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.cancelledBilling.description}</StatSubtext>
-          </StatCard>
-          <StatCard>
-            <StatNumber>{stats.newMembersThisMonth}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.newMembers.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.newMembers.description}</StatSubtext>
-          </StatCard>
-          <StatCard>
-            <StatNumber>{stats.totalEvents}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.totalEvents.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.totalEvents.description}</StatSubtext>
-          </StatCard>
-          <StatCard>
-            <StatNumber>{stats.purchasingMembers}</StatNumber>
-            <StatLabel>{t.admin.dashboard.stats.payingMembers.label}</StatLabel>
-            <StatSubtext>{t.admin.dashboard.stats.payingMembers.description}</StatSubtext>
-          </StatCard>
-        </StatsGrid>
+        <div className={headerClass}>
+          <h1 className={titleClass}>{t.admin.dashboard.title}</h1>
+        </div>
+        <div className={statsGridClass}>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.totalMembers}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.totalMembers.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.totalMembers.description}</div>
+          </div>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.activeSubscriptions}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.activeSubscriptions.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.activeSubscriptions.description}</div>
+          </div>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.cancelledBilling}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.cancelledBilling.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.cancelledBilling.description}</div>
+          </div>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.newMembersThisMonth}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.newMembers.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.newMembers.description}</div>
+          </div>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.totalEvents}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.totalEvents.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.totalEvents.description}</div>
+          </div>
+          <div className={statCardClass}>
+            <div className={statNumberClass}>{stats.purchasingMembers}</div>
+            <div className={statLabelClass}>{t.admin.dashboard.stats.payingMembers.label}</div>
+            <div className={statSubtextClass}>{t.admin.dashboard.stats.payingMembers.description}</div>
+          </div>
+        </div>
       </div>
-    </Wrapper>
+    </main>
   );
 }

@@ -2,7 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -14,233 +13,83 @@ import {
   queueShadowLesson,
 } from "../../lib/features/shadow/services/shadow_lesson_service";
 
-const Wrapper = styled.main`
-  display: flex;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 20px 40px;
-  flex-direction: column;
-  gap: 24px;
-`;
+const wrapperClass =
+  "flex max-w-[1100px] mx-auto pt-0 px-5 pb-10 flex-col gap-6";
 
-const Header = styled.header`
-  margin-top: 8px;
-`;
+const headerClass = "mt-2";
 
-const Eyebrow = styled.p`
-  margin: 0 0 6px;
-  color: #e0602e;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-`;
+const eyebrowClass =
+  "mx-0 mt-0 mb-1.5 text-[#e0602e] text-[12px] font-black tracking-[0.09em] uppercase";
 
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 28px;
-  font-weight: 900;
-`;
+const titleClass = "m-0 text-[#050505] text-[28px] font-black";
 
-const Description = styled.p`
-  max-width: 760px;
-  margin: 8px 0 0;
-  color: rgba(5, 5, 5, 0.65);
-  font-weight: 600;
-  line-height: 1.55;
-`;
+const descriptionClass =
+  "max-w-[760px] mx-0 mt-2 mb-0 text-[rgba(5,5,5,0.65)] font-semibold leading-[1.55]";
 
-const Panel = styled.section`
-  padding: 22px;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
+const panelClass =
+  "p-[22px] border-[3px] border-[#050505] rounded-2xl bg-white shadow-[6px_6px_0_rgba(5,5,5,0.9)]";
 
-const PanelTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 18px;
-  font-weight: 900;
-`;
+const panelTitleClass = "m-0 text-[#050505] text-[18px] font-black";
 
-const PanelDescription = styled.p`
-  max-width: 800px;
-  margin: 8px 0 18px;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
-`;
+const panelDescriptionClass =
+  "max-w-[800px] mx-0 mt-2 mb-[18px] text-[rgba(5,5,5,0.64)] text-[14px] font-semibold leading-[1.5]";
 
-const FormGrid = styled.form`
-  display: grid;
-  grid-template-columns: 2fr repeat(3, minmax(130px, 1fr)) auto;
-  gap: 10px;
-  align-items: end;
+const formGridClass =
+  "grid grid-cols-[2fr_repeat(3,minmax(130px,1fr))_auto] gap-2.5 items-end max-[850px]:grid-cols-2 max-[520px]:grid-cols-1";
 
-  @media (max-width: 850px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+const fieldClass =
+  "flex flex-col gap-1.5 text-[#050505] text-[12px] font-black";
 
-  @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-  }
-`;
+const inputClass =
+  "min-w-0 py-2.5 px-[11px] border-[1.5px] border-[#050505] rounded-lg bg-white text-[#050505] [font:inherit] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#e0602e] focus-visible:outline-offset-2";
 
-const Field = styled.label`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: #050505;
-  font-size: 12px;
-  font-weight: 900;
-`;
+const selectClass =
+  "min-w-0 py-2.5 px-[11px] border-[1.5px] border-[#050505] rounded-lg bg-white text-[#050505] [font:inherit]";
 
-const Input = styled.input`
-  min-width: 0;
-  padding: 10px 11px;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #fff;
-  color: #050505;
-  font: inherit;
+const buttonBaseClass =
+  "min-h-10 py-2.5 px-3.5 border-2 border-[#050505] rounded-lg text-[#050505] cursor-pointer text-[13px] font-black transition-[translate,box-shadow] duration-[140ms] ease-[ease] hover:enabled:-translate-x-px hover:enabled:-translate-y-px hover:enabled:shadow-[3px_3px_0_#050505] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#e0602e] focus-visible:outline-offset-[3px] disabled:cursor-default disabled:opacity-60";
 
-  &:focus-visible {
-    outline: 3px solid #e0602e;
-    outline-offset: 2px;
-  }
-`;
+const buttonClass = `${buttonBaseClass} bg-[#e0602e]`;
 
-const Select = styled.select`
-  min-width: 0;
-  padding: 10px 11px;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #fff;
-  color: #050505;
-  font: inherit;
-`;
+const secondaryButtonClass = `${buttonBaseClass} bg-white`;
 
-const Button = styled.button`
-  min-height: 40px;
-  padding: 10px 14px;
-  border: 2px solid #050505;
-  border-radius: 8px;
-  background: #e0602e;
-  color: #050505;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 900;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+const noticeClass = (error?: boolean) =>
+  `mx-0 mt-3.5 mb-0 text-[13px] font-extrabold ${
+    error ? "text-[#b42318]" : "text-[#176a3a]"
+  }`;
 
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+const lessonListClass = "flex flex-col gap-2.5";
 
-  &:focus-visible {
-    outline: 3px solid #e0602e;
-    outline-offset: 3px;
-  }
+const lessonCardClass =
+  "flex gap-4 items-start justify-between p-[15px] border-[1.5px] border-[#050505] rounded-[10px] max-[680px]:flex-col";
 
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-`;
+const lessonMainClass = "min-w-0";
 
-const SecondaryButton = styled(Button)`
-  background: #fff;
-`;
+const lessonTitleClass =
+  "[overflow-wrap:anywhere] m-0 text-[#050505] text-[15px] font-black";
 
-const Notice = styled.p<{ $error?: boolean }>`
-  margin: 14px 0 0;
-  color: ${({ $error }) => ($error ? "#b42318" : "#176a3a")};
-  font-size: 13px;
-  font-weight: 800;
-`;
+const lessonUrlClass =
+  "[overflow-wrap:anywhere] mx-0 mt-[5px] mb-0 text-[rgba(5,5,5,0.55)] text-[12px] font-semibold";
 
-const LessonList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
+const metaClass = "flex flex-wrap gap-[7px] mt-2.5";
 
-const LessonCard = styled.article`
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 15px;
-  border: 1.5px solid #050505;
-  border-radius: 10px;
+const badgeClass = (tone: "orange" | "green" | "red" | "gray") =>
+  `py-1 px-[7px] rounded-full text-[#050505] text-[11px] font-black ${
+    tone === "green"
+      ? "bg-[#dff6e6]"
+      : tone === "red"
+      ? "bg-[#fee4e2]"
+      : tone === "orange"
+      ? "bg-[#ffe0d2]"
+      : "bg-[#f1f1f1]"
+  }`;
 
-  @media (max-width: 680px) {
-    flex-direction: column;
-  }
-`;
+const errorDetailClass =
+  "mx-0 mt-[9px] mb-0 text-[#b42318] text-[12px] font-bold leading-[1.45]";
 
-const LessonMain = styled.div`
-  min-width: 0;
-`;
+const actionsClass = "flex flex-none flex-wrap gap-2";
 
-const LessonTitle = styled.h3`
-  overflow-wrap: anywhere;
-  margin: 0;
-  color: #050505;
-  font-size: 15px;
-  font-weight: 900;
-`;
-
-const LessonUrl = styled.p`
-  overflow-wrap: anywhere;
-  margin: 5px 0 0;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 12px;
-  font-weight: 600;
-`;
-
-const Meta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 10px;
-`;
-
-const Badge = styled.span<{ $tone: "orange" | "green" | "red" | "gray" }>`
-  padding: 4px 7px;
-  border-radius: 999px;
-  background: ${({ $tone }) =>
-    $tone === "green" ? "#dff6e6" : $tone === "red" ? "#fee4e2" : $tone === "orange" ? "#ffe0d2" : "#f1f1f1"};
-  color: #050505;
-  font-size: 11px;
-  font-weight: 900;
-`;
-
-const ErrorDetail = styled.p`
-  margin: 9px 0 0;
-  color: #b42318;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const Loading = styled.div`
-  padding: 40px;
-  color: rgba(5, 5, 5, 0.62);
-  font-weight: 800;
-  text-align: center;
-`;
+const loadingClass = "p-10 text-[rgba(5,5,5,0.62)] font-extrabold text-center";
 
 function formatDate(value: string | null, locale: string): string | null {
   if (!value) return null;
@@ -361,54 +210,54 @@ export default function AdminShadowClient() {
     }
   };
 
-  if (authLoading || !authorized) return <Loading>{t.admin.dashboard.loading}</Loading>;
+  if (authLoading || !authorized) return <div className={loadingClass}>{t.admin.dashboard.loading}</div>;
 
   return (
-    <Wrapper>
-      <Header>
-        <Eyebrow>{copy.eyebrow}</Eyebrow>
-        <Title>{copy.pageTitle}</Title>
-        <Description>{copy.pageDescription}</Description>
-      </Header>
+    <main className={wrapperClass}>
+      <header className={headerClass}>
+        <p className={eyebrowClass}>{copy.eyebrow}</p>
+        <h1 className={titleClass}>{copy.pageTitle}</h1>
+        <p className={descriptionClass}>{copy.pageDescription}</p>
+      </header>
 
-      <Panel>
-        <PanelTitle>{copy.queueTitle}</PanelTitle>
-        <PanelDescription>{copy.queueDescription}</PanelDescription>
-        <FormGrid onSubmit={queue}>
-          <Field>
+      <section className={panelClass}>
+        <h2 className={panelTitleClass}>{copy.queueTitle}</h2>
+        <p className={panelDescriptionClass}>{copy.queueDescription}</p>
+        <form className={formGridClass} onSubmit={queue}>
+          <label className={fieldClass}>
             {copy.youtubeUrl}
-            <Input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder={copy.youtubePlaceholder} required type="url" />
-          </Field>
-          <Field>
+            <input className={inputClass} value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder={copy.youtubePlaceholder} required type="url" />
+          </label>
+          <label className={fieldClass}>
             {copy.category}
-            <Input value={category} onChange={(event) => setCategory(event.target.value)} placeholder={copy.categoryPlaceholder} maxLength={80} />
-          </Field>
-          <Field>
+            <input className={inputClass} value={category} onChange={(event) => setCategory(event.target.value)} placeholder={copy.categoryPlaceholder} maxLength={80} />
+          </label>
+          <label className={fieldClass}>
             {copy.difficulty}
-            <Select value={difficulty} onChange={(event) => setDifficulty(event.target.value as ShadowDifficulty)}>
+            <select className={selectClass} value={difficulty} onChange={(event) => setDifficulty(event.target.value as ShadowDifficulty)}>
               <option value="novice">{copy.difficulties.novice}</option>
               <option value="intermediate">{copy.difficulties.intermediate}</option>
               <option value="advanced">{copy.difficulties.advanced}</option>
-            </Select>
-          </Field>
-          <Field>
+            </select>
+          </label>
+          <label className={fieldClass}>
             {copy.captionLanguage}
-            <Input value={captionLanguage} onChange={(event) => setCaptionLanguage(event.target.value)} maxLength={8} pattern="[a-z]{2,3}(-[A-Z]{2})?" required />
-          </Field>
-          <Button type="submit" disabled={submitting}>{submitting ? copy.queueing : copy.queue}</Button>
-        </FormGrid>
-        {notice ? <Notice $error={notice.error}>{notice.text}</Notice> : null}
-      </Panel>
+            <input className={inputClass} value={captionLanguage} onChange={(event) => setCaptionLanguage(event.target.value)} maxLength={8} pattern="[a-z]{2,3}(-[A-Z]{2})?" required />
+          </label>
+          <button className={buttonClass} type="submit" disabled={submitting}>{submitting ? copy.queueing : copy.queue}</button>
+        </form>
+        {notice ? <p className={noticeClass(notice.error)}>{notice.text}</p> : null}
+      </section>
 
-      <Panel>
-        <PanelTitle>{copy.jobsTitle}</PanelTitle>
-        <PanelDescription>{copy.pageDescription}</PanelDescription>
+      <section className={panelClass}>
+        <h2 className={panelTitleClass}>{copy.jobsTitle}</h2>
+        <p className={panelDescriptionClass}>{copy.pageDescription}</p>
         {loading ? (
-          <Loading>{copy.loading}</Loading>
+          <div className={loadingClass}>{copy.loading}</div>
         ) : lessons.length === 0 ? (
-          <Loading>{copy.empty}</Loading>
+          <div className={loadingClass}>{copy.empty}</div>
         ) : (
-          <LessonList>
+          <div className={lessonListClass}>
             {lessons.map((lesson) => {
               const status = lesson.job?.status ?? lesson.publicationStatus;
               const stage = lesson.job?.stage ?? lesson.processing?.stage ?? "queued";
@@ -416,37 +265,37 @@ export default function AdminShadowClient() {
               const formattedDate = formatDate(lesson.updatedAt, locale);
               const isActing = actionLessonId === lesson.id;
               return (
-                <LessonCard key={lesson.id}>
-                  <LessonMain>
-                    <LessonTitle>{lesson.title}</LessonTitle>
-                    <LessonUrl>{lesson.youtubeUrl}</LessonUrl>
-                    <Meta>
-                      <Badge $tone={tone}>{copy.status[status]}</Badge>
-                      <Badge $tone="gray">{copy.stages[stage as keyof typeof copy.stages] ?? stage}</Badge>
-                      <Badge $tone="gray">{lesson.job?.progress ?? lesson.processing?.progress ?? 0}%</Badge>
-                      <Badge $tone="gray">{copy.difficulties[lesson.difficulty]}</Badge>
-                      {formattedDate ? <Badge $tone="gray">{copy.updated.replace("{date}", formattedDate)}</Badge> : null}
-                    </Meta>
-                    {lesson.job?.errorMessage ? <ErrorDetail>{lesson.job.errorMessage}</ErrorDetail> : null}
-                  </LessonMain>
-                  <Actions>
+                <article className={lessonCardClass} key={lesson.id}>
+                  <div className={lessonMainClass}>
+                    <h3 className={lessonTitleClass}>{lesson.title}</h3>
+                    <p className={lessonUrlClass}>{lesson.youtubeUrl}</p>
+                    <div className={metaClass}>
+                      <span className={badgeClass(tone)}>{copy.status[status]}</span>
+                      <span className={badgeClass("gray")}>{copy.stages[stage as keyof typeof copy.stages] ?? stage}</span>
+                      <span className={badgeClass("gray")}>{lesson.job?.progress ?? lesson.processing?.progress ?? 0}%</span>
+                      <span className={badgeClass("gray")}>{copy.difficulties[lesson.difficulty]}</span>
+                      {formattedDate ? <span className={badgeClass("gray")}>{copy.updated.replace("{date}", formattedDate)}</span> : null}
+                    </div>
+                    {lesson.job?.errorMessage ? <p className={errorDetailClass}>{lesson.job.errorMessage}</p> : null}
+                  </div>
+                  <div className={actionsClass}>
                     {(status === "failed" || status === "needs_audio_stt") ? (
-                      <SecondaryButton type="button" onClick={() => void retry(lesson)} disabled={isActing}>
+                      <button className={secondaryButtonClass} type="button" onClick={() => void retry(lesson)} disabled={isActing}>
                         {isActing ? copy.retrying : copy.retry}
-                      </SecondaryButton>
+                      </button>
                     ) : null}
                     {status === "ready_for_review" ? (
-                      <Button type="button" onClick={() => void publish(lesson.id)} disabled={isActing}>
+                      <button className={buttonClass} type="button" onClick={() => void publish(lesson.id)} disabled={isActing}>
                         {isActing ? copy.publishing : copy.publish}
-                      </Button>
+                      </button>
                     ) : null}
-                  </Actions>
-                </LessonCard>
+                  </div>
+                </article>
               );
             })}
-          </LessonList>
+          </div>
         )}
-      </Panel>
-    </Wrapper>
+      </section>
+    </main>
   );
 }

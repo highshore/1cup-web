@@ -1,0 +1,6 @@
+/* Keyframes for the shadow feature's shared style module (Tailwind migration). */
+@keyframes shadow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

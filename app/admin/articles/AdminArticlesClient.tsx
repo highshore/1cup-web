@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, Ref } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import { format } from "date-fns";
 import { enUS, ko } from "date-fns/locale";
 import { TrashIcon } from "@heroicons/react/24/outline";
@@ -85,234 +85,196 @@ const sortArticles = (items: ArticleData[]) =>
 const mergeArticle = (items: ArticleData[], next: ArticleData) =>
   sortArticles([next, ...items.filter((item) => item.id !== next.id)]);
 
-const Wrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 0 20px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-  gap: 30px;
-`;
+type DivProps = HTMLAttributes<HTMLDivElement>;
+type SpanProps = HTMLAttributes<HTMLSpanElement>;
+type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-const Header = styled.div`
-  margin-bottom: -10px;
-`;
+function Wrapper({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex flex-col px-5 pb-10 max-w-[1400px] mx-auto gap-[30px] ${className}`}
+    />
+  );
+}
 
-const Title = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 28px;
-  font-weight: 900;
-`;
+function Header({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`mb-[-10px] ${className}`} />;
+}
 
-const ContentSection = styled.section`
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-  border: 3px solid #050505;
-`;
+function Title({ className = "", ...rest }: HeadingProps) {
+  return <h1 {...rest} className={`m-0 text-[#050505] text-[28px] font-black ${className}`} />;
+}
 
-const SectionTitle = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.3rem 0.7rem;
-  font-size: 16px;
-  font-weight: 900;
-  margin: 0 0 20px;
-`;
+function ContentSection({ className = "", ...rest }: HTMLAttributes<HTMLElement>) {
+  return (
+    <section
+      {...rest}
+      className={`bg-white rounded-[16px] p-6 shadow-[6px_6px_0_rgba(5,5,5,0.9)] border-[3px] border-[#050505] ${className}`}
+    />
+  );
+}
 
-const ArticlesList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
+function SectionTitle({ className = "", ...rest }: HeadingProps) {
+  return (
+    <h2
+      {...rest}
+      className={`inline-flex items-center border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] px-[0.7rem] py-[0.3rem] text-[16px] font-black mx-0 mt-0 mb-5 ${className}`}
+    />
+  );
+}
 
-const ArticleCard = styled.article`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1.5px solid #050505;
-  background: #ffffff;
-  color: #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-`;
+function ArticlesList({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-col gap-[10px] ${className}`} />;
+}
 
-const ArticleOpenButton = styled.button<{ $ready: boolean }>`
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  cursor: ${({ $ready }) => ($ready ? "pointer" : "default")};
-  text-align: left;
+function ArticleCard({ className = "", ...rest }: HTMLAttributes<HTMLElement>) {
+  return (
+    <article
+      {...rest}
+      className={`w-full flex flex-col box-border py-3 px-[14px] rounded-[10px] border-[1.5px] border-[#050505] bg-white text-[#050505] shadow-[3px_3px_0_rgba(5,5,5,0.9)] ${className}`}
+    />
+  );
+}
 
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-  }
+function ArticleOpenButton({
+  $ready,
+  className = "",
+  ...rest
+}: { $ready: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`flex w-full flex-col gap-[6px] border-0 p-0 bg-transparent text-inherit text-left [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-[5px] disabled:opacity-[0.78] ${
+        $ready ? "cursor-pointer" : "cursor-default"
+      } ${className}`}
+    />
+  );
+}
 
-  &:focus-visible {
-    outline: 3px solid #f47a4a;
-    outline-offset: 5px;
-  }
+function ArticleHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex justify-between items-start gap-3 max-[700px]:flex-col ${className}`}
+    />
+  );
+}
 
-  &:disabled {
-    opacity: 0.78;
-  }
-`;
+function ArticleTitle({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`text-[#050505] text-[15px] font-black leading-[1.45] ${className}`}
+    />
+  );
+}
 
-const ArticleHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+function ArticleSubtitle({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`text-[rgba(5,5,5,0.68)] text-[13px] font-bold ${className}`} />;
+}
 
-  @media (max-width: 700px) {
-    flex-direction: column;
-  }
-`;
+function ArticleMeta({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex flex-wrap justify-end gap-2 text-[rgba(5,5,5,0.6)] text-[12px] text-right max-[700px]:justify-start max-[700px]:text-left ${className}`}
+    />
+  );
+}
 
-const ArticleTitle = styled.div`
-  color: #050505;
-  font-size: 15px;
-  font-weight: 900;
-  line-height: 1.45;
-`;
+function ArticleFooter({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-col gap-[6px] mt-[6px] ${className}`} />;
+}
 
-const ArticleSubtitle = styled.div`
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 13px;
-  font-weight: 700;
-`;
+function ArticleStatus({
+  $tone,
+  className = "",
+  ...rest
+}: { $tone: ArticleStatus } & SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex w-fit items-center border-[1.5px] border-[#050505] rounded-full px-2 py-1 text-[11px] font-black ${
+        $tone === "failed" ? "bg-[#fee2e2]" : $tone === "published" ? "bg-[#dcfce7]" : "bg-[#fff3cd]"
+      } ${$tone === "failed" ? "text-[#991b1b]" : "text-[#050505]"} ${className}`}
+    />
+  );
+}
 
-const ArticleMeta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-  text-align: right;
+function ProgressTrack({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-full h-2 overflow-hidden border-[1.5px] border-[#050505] rounded-full bg-[#fff8f4] ${className}`}
+    />
+  );
+}
 
-  @media (max-width: 700px) {
-    justify-content: flex-start;
-    text-align: left;
-  }
-`;
+function ProgressFill({
+  $progress,
+  $failed,
+  className = "",
+  style,
+  ...rest
+}: { $progress: number; $failed: boolean } & DivProps) {
+  return (
+    <div
+      {...rest}
+      style={{ width: `${$progress}%`, ...style }}
+      className={`h-full ${$failed ? "bg-[#dc2626]" : "bg-[#f47a4a]"} ${className}`}
+    />
+  );
+}
 
-const ArticleFooter = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-`;
+function Hint({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`text-[rgba(5,5,5,0.6)] text-[12px] font-bold ${className}`} />;
+}
 
-const ArticleStatus = styled.span<{ $tone: ArticleStatus }>`
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: ${({ $tone }) =>
-    $tone === "failed" ? "#fee2e2" : $tone === "published" ? "#dcfce7" : "#fff3cd"};
-  color: ${({ $tone }) => ($tone === "failed" ? "#991b1b" : "#050505")};
-  font-size: 11px;
-  font-weight: 900;
-`;
+function ErrorDetail({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`border-l-[3px] border-l-[#dc2626] pl-[9px] text-[#991b1b] text-[12px] font-bold leading-[1.45] ${className}`}
+    />
+  );
+}
 
-const ProgressTrack = styled.div`
-  width: 100%;
-  height: 8px;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #fff8f4;
-`;
+function ArticleActions({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex justify-end mt-2 ${className}`} />;
+}
 
-const ProgressFill = styled.div<{ $progress: number; $failed: boolean }>`
-  width: ${({ $progress }) => $progress}%;
-  height: 100%;
-  background: ${({ $failed }) => ($failed ? "#dc2626" : "#f47a4a")};
-`;
+function DeleteButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`inline-flex items-center gap-[6px] px-[14px] py-2 rounded-full border-2 border-[#050505] bg-[#fee2e2] text-[#991b1b] text-[13px] font-extrabold cursor-pointer shadow-[2px_2px_0_#991b1b] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none [&_svg]:w-4 [&_svg]:h-4 ${className}`}
+    />
+  );
+}
 
-const Hint = styled.span`
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 12px;
-  font-weight: 700;
-`;
+function Loading({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex justify-center p-7 text-[rgba(5,5,5,0.6)] text-[13px] font-extrabold ${className}`}
+    />
+  );
+}
 
-const ErrorDetail = styled.div`
-  border-left: 3px solid #dc2626;
-  padding-left: 9px;
-  color: #991b1b;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-`;
+function Empty({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`p-9 text-center text-[rgba(5,5,5,0.6)] font-bold ${className}`} />
+  );
+}
 
-const ArticleActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-`;
-
-const DeleteButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 2px solid #050505;
-  background: #fee2e2;
-  color: #991b1b;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #991b1b;
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    box-shadow: none;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const Loading = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 28px;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 13px;
-  font-weight: 800;
-`;
-
-const Empty = styled.div`
-  padding: 36px;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
-
-const Sentinel = styled.div`
-  width: 100%;
-  height: 1px;
-`;
+function Sentinel({
+  className = "",
+  ...rest
+}: DivProps & { ref?: Ref<HTMLDivElement> }) {
+  return <div {...rest} className={`w-full h-px ${className}`} />;
+}
 
 export default function AdminArticlesClient() {
   const router = useRouter();

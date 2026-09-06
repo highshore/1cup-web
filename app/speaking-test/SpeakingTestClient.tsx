@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -12,10 +20,9 @@ import {
   SparklesIcon,
   SpeakerWaveIcon,
 } from "@heroicons/react/24/outline";
-import { styled } from "styled-components";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
-import { appLayout } from "../lib/constants/app_layout";
+import "./speaking-test.css";
 
 type Phase = "welcome" | "hardware" | "microphone" | "section" | "preparing" | "speaking" | "finishing" | "review" | "evaluating" | "report";
 
@@ -165,804 +172,616 @@ const EXAM_TEXT = {
   timeUpBody: "Your response has been captured. Please review the transcript before continuing.",
 };
 
-const Page = styled.main`
-  max-width: ${appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding: 3rem ${appLayout.pageGutterDesktop} 4.5rem;
-  color: #050505;
-
-  @media (max-width: 700px) {
-    padding: 2rem ${appLayout.pageGutterMobile} 3rem;
-  }
-`;
-
-const Hero = styled.section`
-  position: relative;
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 18px;
-  background: #050505;
-  padding: 3.25rem;
-  color: #fff;
-  box-shadow: 7px 7px 0 #f47a4a;
-
-  &::after {
-    position: absolute;
-    width: 460px;
-    height: 460px;
-    right: -190px;
-    bottom: -270px;
-    border: 42px solid rgba(244, 122, 74, 0.48);
-    border-radius: 50%;
-    content: "";
-  }
-
-  @media (max-width: 700px) { padding: 2.25rem 1.5rem; border-radius: 22px; }
-`;
-
-const Eyebrow = styled.p`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  margin: 0 0 0.9rem;
-  color: #f47a4a;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-`;
-
-const HeroTitle = styled.h1`
-  max-width: 690px;
-  margin: 0;
-  color: #fff;
-  font-size: clamp(2rem, 4.7vw, 3.5rem);
-  font-weight: 850;
-  letter-spacing: -0.05em;
-  line-height: 1.08;
-`;
-
-const HeroSubtitle = styled.p`
-  max-width: 625px;
-  margin: 1.15rem 0 1.75rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 1.04rem;
-  line-height: 1.65;
-`;
-
-const PrimaryButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-height: 50px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.8rem 1.2rem;
-  background: #fff;
-  color: #050505;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 4px 4px 0 #f47a4a;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-
-  &:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 #f47a4a; }
-  &:disabled { cursor: wait; opacity: 0.72; transform: none; }
-  svg { width: 19px; height: 19px; }
-`;
-
-const MetaRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 1.8rem;
-`;
-
-const MetaPill = styled.span`
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  border-radius: 999px;
-  padding: 0.42rem 0.72rem;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-`;
-
-const Note = styled.p`
-  margin: 0.9rem 0 0;
-  color: rgba(255, 255, 255, 0.59);
-  font-size: 0.75rem;
-  line-height: 1.5;
-`;
-
-const Section = styled.section`
-  margin-top: 3.25rem;
-`;
-
-const SectionTitle = styled.h2`
-  margin: 0 0 1.2rem;
-  font-size: 1.35rem;
-  font-weight: 850;
-  letter-spacing: -0.035em;
-`;
-
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  @media (max-width: 700px) { grid-template-columns: 1fr; }
-`;
-
-const HistoryList = styled.div`
-  border-top: 2px solid #050505;
-`;
-
-const HistoryItem = styled.button`
-  display: grid;
-  width: 100%;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 1rem;
-  border: 0;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.24);
-  background: transparent;
-  padding: 0.9rem 0;
-  color: #050505;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  &:hover { color: #c84932; }
-  @media (max-width: 540px) { grid-template-columns: 1fr auto; }
-`;
-
-const HistoryDate = styled.span`
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.82rem;
-  font-weight: 700;
-`;
-
-const HistoryScore = styled.strong`
-  color: #f47a4a;
-  font-size: 1.04rem;
-  font-weight: 900;
-`;
-
-const InfoCard = styled.div`
-  min-height: 145px;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 1.3rem;
-  background: #fff8dc;
-  box-shadow: 4px 4px 0 #050505;
-`;
-
-const CardNumber = styled.span`
-  display: flex;
-  width: 29px;
-  height: 29px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 850;
-`;
-
-const CardTitle = styled.h3`
-  margin: 0.75rem 0 0.3rem;
-  font-size: 1rem;
-  font-weight: 800;
-`;
-
-const CardText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.87rem;
-  line-height: 1.55;
-`;
-
-const TestShell = styled.section`
-  max-width: 880px;
-  margin: 0 auto;
-`;
-
-const SetupShell = styled.section`
-  max-width: 720px;
-  margin: 2.5rem auto 0;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: clamp(1.5rem, 5vw, 3.1rem);
-  background: #fff;
-  box-shadow: 6px 6px 0 #f47a4a;
-`;
-
-const SetupHeading = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.9rem, 4vw, 2.75rem);
-  font-weight: 850;
-  letter-spacing: -0.05em;
-  line-height: 1.12;
-`;
-
-const SetupBody = styled.p`
-  max-width: 595px;
-  margin: 1rem 0 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 1rem;
-  line-height: 1.7;
-`;
-
-const SetupChecks = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin: 2rem 0;
-  @media (max-width: 620px) { grid-template-columns: 1fr; }
-`;
-
-const SetupCheck = styled.div`
-  display: grid;
-  min-height: 135px;
-  place-items: center;
-  gap: 0.6rem;
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  padding: 1.1rem 0.7rem;
-  background: #fff8dc;
-  color: #050505;
-  text-align: center;
-  svg { width: 35px; height: 35px; }
-  span { color: #050505; font-size: 0.83rem; font-weight: 800; }
-`;
-
-const MeterPanel = styled.div`
-  margin: 2.1rem 0 1.15rem;
-  border-top: 2px solid #050505;
-  border-bottom: 2px solid #050505;
-  padding: clamp(1.2rem, 4vw, 2rem);
-  background: #fff8dc;
-`;
-
-const MeterBars = styled.div`
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  gap: 5px;
-  min-height: 78px;
-`;
-
-const MeterBar = styled.span<{ $active: boolean; $index: number }>`
-  width: 9px;
-  height: ${({ $index }) => 28 + (($index % 5) * 10)}px;
-  background: ${({ $active, $index }) =>
-    $active ? ($index > 17 ? "#f47a4a" : "#050505") : "#ddd7c7"};
-  transition: background 90ms ease;
-`;
-
-const MeterStatus = styled.div<{ $state: "quiet" | "good" | "loud" | "idle" }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-top: 1.15rem;
-  color: ${({ $state }) =>
-    $state === "loud" ? "#c84932" : $state === "good" ? "#050505" : "rgba(5, 5, 5, 0.58)"};
-  font-size: 0.9rem;
-  font-weight: 850;
-`;
-
-const TimeGuide = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  margin: 1.7rem 0 0;
-  border-top: 2px solid #050505;
-  border-bottom: 2px solid #050505;
-`;
-
-const TimeGuideItem = styled.div`
-  padding: 0.82rem 1rem;
-  &:first-child { border-right: 2px solid #050505; }
-  strong { display: block; color: #f47a4a; font-size: 0.72rem; font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
-  span { display: block; margin-top: 0.2rem; color: #050505; font-size: 0.94rem; font-weight: 850; }
-`;
-
-const ExamInstruction = styled.p`
-  margin: 0 0 1.4rem;
-  color: rgba(5, 5, 5, 0.66);
-  font-size: 1rem;
-  line-height: 1.6;
-`;
-
-const TimeTrack = styled.div`
-  height: 6px;
-  overflow: hidden;
-  margin-top: 1.25rem;
-  background: #dfd9ca;
-`;
-
-const TimeTrackFill = styled.div<{ $progress: number; $speaking: boolean }>`
-  width: ${({ $progress }) => `${Math.max(0, Math.min(100, $progress))}%`};
-  height: 100%;
-  background: ${({ $speaking }) => ($speaking ? "#050505" : "#f47a4a")};
-  transition: width 900ms linear;
-`;
-
-const PlaybackCard = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.95rem;
-  margin-top: 1.4rem;
-  border-top: 1px solid #050505;
-  border-bottom: 1px solid #050505;
-  padding: 0.9rem 0;
-`;
-
-const PlaybackButton = styled.button<{ $playing: boolean }>`
-  display: grid;
-  width: 43px;
-  height: 43px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: ${({ $playing }) => ($playing ? "#f47a4a" : "#050505")};
-  color: ${({ $playing }) => ($playing ? "#050505" : "#fff")};
-  cursor: pointer;
-  svg { width: 21px; height: 21px; }
-`;
-
-const PlaybackCopy = styled.div`
-  min-width: 0;
-  strong { display: block; color: #050505; font-size: 0.86rem; font-weight: 850; }
-  span { display: block; margin-top: 0.16rem; color: rgba(5, 5, 5, 0.62); font-size: 0.78rem; line-height: 1.45; }
-`;
-
-const FinishOverlay = styled.div`
-  position: fixed;
-  z-index: 100;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1.25rem;
-  background: rgba(5, 5, 5, 0.58);
-`;
-
-const FinishDialog = styled.div`
-  width: min(100%, 460px);
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: 2rem;
-  background: #fff;
-  box-shadow: 8px 8px 0 #f47a4a;
-  text-align: center;
-  svg { width: 38px; height: 38px; color: #f47a4a; }
-  h2 { margin: 0.7rem 0 0; color: #050505; font-size: 1.6rem; font-weight: 850; }
-  p { margin: 0.65rem 0 0; color: rgba(5, 5, 5, 0.68); font-size: 0.94rem; line-height: 1.58; }
-`;
-
-const Progress = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1.45rem;
-`;
-
-const ProgressPart = styled.div<{ $complete: boolean; $current: boolean }>`
-  height: 6px;
-  flex: 1;
-  background: ${({ $complete, $current }) => ($complete ? "#f47a4a" : $current ? "#050505" : "#ded8cb")};
-`;
-
-const TaskHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid #050505;
-  padding-bottom: 1rem;
-`;
-
-const TaskKicker = styled.p`
-  margin: 0 0 0.35rem;
-  color: #f47a4a;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-`;
-
-const TaskTitle = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.7rem, 4vw, 2.45rem);
-  font-weight: 850;
-  letter-spacing: -0.05em;
-`;
-
-const Timer = styled.div<{ $urgent: boolean }>`
-  display: inline-flex;
-  flex: 0 0 auto;
-  min-width: 92px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.68rem 0.75rem;
-  background: ${({ $urgent }) => ($urgent ? "#f47a4a" : "#fff8dc")};
-  color: #050505;
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 850;
-  svg { width: 18px; height: 18px; }
-`;
-
-const PromptCard = styled.article`
-  padding: 0 0 1.5rem;
-`;
-
-const PromptLabel = styled.h2`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.6rem;
-  color: #f47a4a;
-  font-size: 0.77rem;
-  font-weight: 850;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  svg { width: 17px; height: 17px; }
-`;
-
-const PromptText = styled.p`
-  margin: 0;
-  color: #050505;
-  font-size: clamp(1.2rem, 2.25vw, 1.55rem);
-  font-weight: 850;
-  line-height: 1.5;
-`;
-
-const SourceGrid = styled.div`
-  display: grid;
-  gap: 0.9rem;
-  margin: 1.35rem 0;
-`;
-
-const SourceCard = styled.div`
-  border-left: 3px solid #f47a4a;
-  padding: 0.2rem 0 0.2rem 0.95rem;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.87rem;
-  line-height: 1.58;
-`;
-
-const SourceLabel = styled.strong`
-  display: block;
-  margin-bottom: 0.4rem;
-  color: #050505;
-  font-size: 0.73rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-`;
-
-const PicturePrompt = styled.div`
-  width: min(100%, 620px);
-  margin: 1.45rem auto 0;
-  border: 2px solid #050505;
-  background: #fff8dc;
-
-  svg { display: block; width: 100%; height: auto; }
-`;
-
-const Stage = styled.div<{ $speaking: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-top: 1.35rem;
-  border-top: 1px solid #050505;
-  padding: 1rem 0;
-  color: #050505;
-`;
-
-const StageIcon = styled.div<{ $speaking: boolean }>`
-  display: grid;
-  width: 37px;
-  height: 37px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: ${({ $speaking }) => ($speaking ? "#050505" : "#f47a4a")};
-  color: ${({ $speaking }) => ($speaking ? "#fff" : "#050505")};
-  svg { width: 20px; height: 20px; }
-`;
-
-const StageTitle = styled.strong`
-  display: block;
-  margin-bottom: 0.15rem;
-  font-size: 0.92rem;
-`;
-
-const StageCopy = styled.span`
-  display: block;
-  font-size: 0.82rem;
-  line-height: 1.45;
-`;
-
-const TranscriptArea = styled.textarea`
-  width: 100%;
-  min-height: 160px;
-  margin-top: 1rem;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  padding: 1rem;
-  outline: none;
-  background: #fff;
-  color: #050505;
-  font: inherit;
-  font-size: 0.95rem;
-  line-height: 1.62;
-  &:focus { border-color: #050505; box-shadow: 4px 4px 0 #f47a4a; }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  margin-top: 1rem;
-`;
-
-const SecondaryButton = styled.button`
-  display: inline-flex;
-  min-height: 45px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.7rem 0.9rem;
-  background: #fff8dc;
-  color: #050505;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 800;
-  cursor: pointer;
-  svg { width: 18px; height: 18px; }
-`;
-
-const ContinueButton = styled(PrimaryButton)`
-  min-height: 45px;
-  background: #050505;
-  color: #fff;
-  box-shadow: 4px 4px 0 #f47a4a;
-`;
-
-const InlineNotice = styled.p<{ $error?: boolean }>`
-  margin: 0.7rem 0 0;
-  color: ${({ $error }) => ($error ? "#c84932" : "rgba(5, 5, 5, 0.62)")};
-  font-size: 0.78rem;
-  line-height: 1.5;
-`;
-
-const Evaluating = styled.div`
-  display: grid;
-  min-height: 390px;
-  place-items: center;
-  text-align: center;
-`;
-
-const Spinner = styled.div`
-  width: 48px;
-  height: 48px;
-  border: 4px solid #fff0c3;
-  border-top-color: #f47a4a;
-  border-radius: 50%;
-  animation: spin 0.85s linear infinite;
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
-
-const ReportHeader = styled.section`
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  @media (max-width: 700px) { grid-template-columns: 1fr; }
-`;
-
-const OverallCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  padding: 1.7rem;
-  background: #050505;
-  color: #fff;
-  box-shadow: 6px 6px 0 #f47a4a;
-`;
-
-const OverallTitle = styled.h1`
-  margin: 0.35rem 0 0;
-  color: #fff;
-  font-size: 2rem;
-  font-weight: 850;
-  letter-spacing: -0.045em;
-`;
-
-const OverallText = styled.p`
-  margin: 0.8rem 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.91rem;
-  line-height: 1.6;
-`;
-
-const ScoreCard = styled.div`
-  display: flex;
-  min-height: 180px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #fff8dc;
-`;
-
-const BigScore = styled.strong`
-  color: #f47a4a;
-  font-size: 3rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 900;
-  letter-spacing: -0.08em;
-`;
-
-const ReportSection = styled.section`
-  margin-top: 1.15rem;
-  border-top: 2px solid #050505;
-  padding: 1.35rem 0 0;
-`;
-
-const CriteriaGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.9rem;
-  @media (max-width: 740px) { grid-template-columns: 1fr; }
-`;
-
-const CriterionCard = styled.article`
-  border-left: 3px solid #f47a4a;
-  padding: 0.25rem 0 0.25rem 0.95rem;
-`;
-
-const CriterionTop = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-`;
-
-const CriterionTitle = styled.h3`
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 850;
-`;
-
-const Level = styled.span`
-  color: #f47a4a;
-  font-size: 0.83rem;
-  font-weight: 850;
-`;
-
-const CriterionDescription = styled.p`
-  margin: 0.75rem 0;
-  color: rgba(5, 5, 5, 0.68);
-  font-size: 0.86rem;
-  line-height: 1.55;
-`;
-
-const DetailLabel = styled.strong`
-  display: block;
-  margin: 0.7rem 0 0.2rem;
-  color: #f47a4a;
-  font-size: 0.7rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-`;
-
-const DetailText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.8rem;
-  line-height: 1.5;
-`;
-
-const TwoColumn = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 1.15rem;
-  @media (max-width: 700px) { grid-template-columns: 1fr; }
-`;
-
-const List = styled.ul`
-  display: grid;
-  gap: 0.68rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
-
-const ListItem = styled.li`
-  position: relative;
-  padding-left: 1.2rem;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.88rem;
-  line-height: 1.52;
-  &::before { position: absolute; left: 0; top: 0.48rem; width: 7px; height: 7px; border-radius: 50%; background: #f47a4a; content: ""; }
-`;
-
-const TaskFeedbackList = styled.div`
-  display: grid;
-  gap: 0.65rem;
-`;
-
-const TaskFeedback = styled.div`
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.8rem;
-  align-items: start;
-  border-left: 3px solid #050505;
-  padding: 0.25rem 0 0.25rem 0.85rem;
-`;
-
-const TaskScore = styled.span`
-  display: inline-grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 50%;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 850;
-`;
-
-const Plan = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.7rem;
-  @media (max-width: 700px) { grid-template-columns: 1fr; }
-`;
-
-const PlanItem = styled.article`
-  border-left: 3px solid #f47a4a;
-  padding: 0.35rem 0 0.35rem 0.75rem;
-`;
-
-const PlanDay = styled.strong`
-  display: block;
-  color: #f47a4a;
-  font-size: 0.74rem;
-  font-weight: 850;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-`;
-
-const PlanGoal = styled.h3`
-  margin: 0.35rem 0;
-  font-size: 0.92rem;
-  font-weight: 800;
-`;
-
-const ReportNote = styled.p`
-  margin: 1.1rem 0 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.76rem;
-  line-height: 1.55;
-`;
+// Layout primitives (styled-components -> Tailwind migration). Each keeps the
+// original styled-component name and rules; max-w-page / px-gutter mirror appLayout.
+type ElProps = HTMLAttributes<HTMLElement>;
+type BtnProps = ButtonHTMLAttributes<HTMLButtonElement>;
+
+function Page({ className = "", ...rest }: ElProps) {
+  return (
+    <main
+      className={`mx-auto max-w-page px-gutter pt-12 pb-[4.5rem] text-[#050505] max-[700px]:px-gutter-mobile max-[700px]:pt-8 max-[700px]:pb-12 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Hero({ className = "", ...rest }: ElProps) {
+  return (
+    <section
+      className={`relative overflow-hidden rounded-[18px] border-2 border-[#050505] bg-[#050505] p-[3.25rem] text-white shadow-[7px_7px_0_#f47a4a] after:absolute after:right-[-190px] after:bottom-[-270px] after:h-[460px] after:w-[460px] after:rounded-full after:border-[42px] after:border-[rgba(244,122,74,0.48)] after:content-[''] max-[700px]:rounded-[22px] max-[700px]:px-6 max-[700px]:py-9 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Eyebrow({ className = "", ...rest }: ElProps) {
+  return (
+    <p
+      className={`m-0 mb-[0.9rem] inline-flex items-center gap-[0.42rem] text-[0.8rem] font-extrabold uppercase tracking-[0.12em] text-[#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function HeroTitle({ className = "", ...rest }: ElProps) {
+  return (
+    <h1
+      className={`m-0 max-w-[690px] text-[clamp(2rem,4.7vw,3.5rem)] font-[850] leading-[1.08] tracking-[-0.05em] text-white ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function HeroSubtitle({ className = "", ...rest }: ElProps) {
+  return (
+    <p
+      className={`mx-0 mt-[1.15rem] mb-7 max-w-[625px] text-[1.04rem] leading-[1.65] text-[rgba(255,255,255,0.78)] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+const pillButtonBase =
+  "inline-flex cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] [transition:transform_140ms_ease,box-shadow_140ms_ease] enabled:hover:shadow-[6px_6px_0_#f47a4a] enabled:hover:[transform:translate(-1px,-1px)] disabled:cursor-wait disabled:opacity-[0.72]";
+
+function PrimaryButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${pillButtonBase} min-h-[50px] gap-[0.55rem] bg-white px-[1.2rem] py-[0.8rem] text-[0.95rem] font-extrabold text-[#050505] shadow-[4px_4px_0_#f47a4a] [&_svg]:h-[19px] [&_svg]:w-[19px] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function ContinueButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`${pillButtonBase} min-h-[45px] gap-[0.55rem] bg-[#050505] px-[1.2rem] py-[0.8rem] text-[0.95rem] font-extrabold text-white shadow-[4px_4px_0_#f47a4a] [&_svg]:h-[19px] [&_svg]:w-[19px] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function MetaRow({ className = "", ...rest }: ElProps) {
+  return <div className={`mt-[1.8rem] flex flex-wrap gap-[0.65rem] ${className}`} {...rest} />;
+}
+
+function MetaPill({ className = "", ...rest }: ElProps) {
+  return (
+    <span
+      className={`rounded-full border border-[rgba(255,255,255,0.48)] bg-[rgba(255,255,255,0.1)] px-[0.72rem] py-[0.42rem] text-[0.8rem] font-bold text-white ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Note({ className = "", ...rest }: ElProps) {
+  return (
+    <p className={`mx-0 mb-0 mt-[0.9rem] text-[0.75rem] leading-normal text-[rgba(255,255,255,0.59)] ${className}`} {...rest} />
+  );
+}
+
+function Section({ className = "", ...rest }: ElProps) {
+  return <section className={`mt-[3.25rem] ${className}`} {...rest} />;
+}
+
+function SectionTitle({ className = "", ...rest }: ElProps) {
+  return <h2 className={`mx-0 mt-0 mb-[1.2rem] text-[1.35rem] font-[850] tracking-[-0.035em] ${className}`} {...rest} />;
+}
+
+function InfoGrid({ className = "", ...rest }: ElProps) {
+  return <div className={`grid grid-cols-3 gap-4 max-[700px]:grid-cols-1 ${className}`} {...rest} />;
+}
+
+function HistoryList({ className = "", ...rest }: ElProps) {
+  return <div className={`border-t-2 border-[#050505] ${className}`} {...rest} />;
+}
+
+function HistoryItem({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-4 border-0 border-b border-b-[rgba(5,5,5,0.24)] bg-transparent px-0 py-[0.9rem] text-left text-[#050505] hover:text-[#c84932] max-[540px]:grid-cols-[1fr_auto] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function HistoryDate({ className = "", ...rest }: ElProps) {
+  return <span className={`text-[0.82rem] font-bold text-[rgba(5,5,5,0.62)] ${className}`} {...rest} />;
+}
+
+function HistoryScore({ className = "", ...rest }: ElProps) {
+  return <strong className={`text-[1.04rem] font-black text-[#f47a4a] ${className}`} {...rest} />;
+}
+
+function InfoCard({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`min-h-[145px] rounded-xl border-2 border-[#050505] bg-[#fff8dc] p-[1.3rem] shadow-[4px_4px_0_#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function CardNumber({ className = "", ...rest }: ElProps) {
+  return (
+    <span
+      className={`flex h-[29px] w-[29px] items-center justify-center rounded-full bg-[#f47a4a] text-[0.78rem] font-[850] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function CardTitle({ className = "", ...rest }: ElProps) {
+  return <h3 className={`mx-0 mt-3 mb-[0.3rem] text-[1rem] font-extrabold ${className}`} {...rest} />;
+}
+
+function CardText({ className = "", ...rest }: ElProps) {
+  return <p className={`m-0 text-[0.87rem] leading-[1.55] text-[rgba(5,5,5,0.68)] ${className}`} {...rest} />;
+}
+
+function TestShell({ className = "", ...rest }: ElProps) {
+  return <section className={`mx-auto max-w-[880px] ${className}`} {...rest} />;
+}
+
+function SetupShell({ className = "", ...rest }: ElProps) {
+  return (
+    <section
+      className={`mx-auto mt-10 mb-0 max-w-[720px] rounded-2xl border-2 border-[#050505] bg-white p-[clamp(1.5rem,5vw,3.1rem)] shadow-[6px_6px_0_#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function SetupHeading({ className = "", ...rest }: ElProps) {
+  return (
+    <h1
+      className={`m-0 text-[clamp(1.9rem,4vw,2.75rem)] font-[850] leading-[1.12] tracking-[-0.05em] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function SetupBody({ className = "", ...rest }: ElProps) {
+  return (
+    <p className={`mx-0 mb-0 mt-4 max-w-[595px] text-[1rem] leading-[1.7] text-[rgba(5,5,5,0.68)] ${className}`} {...rest} />
+  );
+}
+
+function SetupChecks({ className = "", ...rest }: ElProps) {
+  return <div className={`my-8 grid grid-cols-3 gap-3 max-[620px]:grid-cols-1 ${className}`} {...rest} />;
+}
+
+function SetupCheck({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`grid min-h-[135px] place-items-center gap-[0.6rem] rounded-[10px] border-[1.5px] border-[#050505] bg-[#fff8dc] px-[0.7rem] py-[1.1rem] text-center text-[#050505] [&_svg]:h-[35px] [&_svg]:w-[35px] [&_span]:text-[0.83rem] [&_span]:font-extrabold [&_span]:text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function MeterPanel({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`mx-0 mt-[2.1rem] mb-[1.15rem] border-y-2 border-[#050505] bg-[#fff8dc] p-[clamp(1.2rem,4vw,2rem)] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function MeterBars({ className = "", ...rest }: ElProps) {
+  return <div className={`flex min-h-[78px] items-end justify-center gap-[5px] ${className}`} {...rest} />;
+}
+
+const meterBarHeights = ["h-[28px]", "h-[38px]", "h-[48px]", "h-[58px]", "h-[68px]"];
+
+function MeterBar({ $active, $index }: { $active: boolean; $index: number }) {
+  return (
+    <span
+      className={`w-[9px] [transition:background_90ms_ease] ${meterBarHeights[$index % 5]} ${
+        $active ? ($index > 17 ? "bg-[#f47a4a]" : "bg-[#050505]") : "bg-[#ddd7c7]"
+      }`}
+    />
+  );
+}
+
+function MeterStatus({
+  $state,
+  className = "",
+  ...rest
+}: { $state: "quiet" | "good" | "loud" | "idle" } & ElProps) {
+  return (
+    <div
+      className={`mt-[1.15rem] flex items-center justify-center gap-[0.4rem] text-[0.9rem] font-[850] ${
+        $state === "loud" ? "text-[#c84932]" : $state === "good" ? "text-[#050505]" : "text-[rgba(5,5,5,0.58)]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function TimeGuide({ className = "", ...rest }: ElProps) {
+  return <div className={`mx-0 mb-0 mt-[1.7rem] grid grid-cols-2 border-y-2 border-[#050505] ${className}`} {...rest} />;
+}
+
+function TimeGuideItem({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`px-4 py-[0.82rem] first:border-r-2 first:border-r-[#050505] [&_strong]:block [&_strong]:text-[0.72rem] [&_strong]:font-[850] [&_strong]:uppercase [&_strong]:tracking-[0.07em] [&_strong]:text-[#f47a4a] [&_span]:mt-[0.2rem] [&_span]:block [&_span]:text-[0.94rem] [&_span]:font-[850] [&_span]:text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function ExamInstruction({ className = "", ...rest }: ElProps) {
+  return (
+    <p className={`mx-0 mt-0 mb-[1.4rem] text-[1rem] leading-[1.6] text-[rgba(5,5,5,0.66)] ${className}`} {...rest} />
+  );
+}
+
+function TimeTrack({ className = "", ...rest }: ElProps) {
+  return <div className={`mt-5 h-[6px] overflow-hidden bg-[#dfd9ca] ${className}`} {...rest} />;
+}
+
+function TimeTrackFill({ $progress, $speaking }: { $progress: number; $speaking: boolean }) {
+  return (
+    <div
+      className={`h-full [transition:width_900ms_linear] ${$speaking ? "bg-[#050505]" : "bg-[#f47a4a]"}`}
+      style={{ width: `${Math.max(0, Math.min(100, $progress))}%` }}
+    />
+  );
+}
+
+function PlaybackCard({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`mt-[1.4rem] flex items-center gap-[0.95rem] border-y border-[#050505] px-0 py-[0.9rem] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PlaybackButton({ $playing, className = "", ...rest }: { $playing: boolean } & BtnProps) {
+  return (
+    <button
+      className={`grid h-[43px] w-[43px] flex-none cursor-pointer place-items-center rounded-full border-2 border-[#050505] [&_svg]:h-[21px] [&_svg]:w-[21px] ${
+        $playing ? "bg-[#f47a4a] text-[#050505]" : "bg-[#050505] text-white"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PlaybackCopy({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`min-w-0 [&_strong]:block [&_strong]:text-[0.86rem] [&_strong]:font-[850] [&_strong]:text-[#050505] [&_span]:mt-[0.16rem] [&_span]:block [&_span]:text-[0.78rem] [&_span]:leading-[1.45] [&_span]:text-[rgba(5,5,5,0.62)] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function FinishOverlay({ className = "", ...rest }: ElProps) {
+  return (
+    <div className={`fixed inset-0 z-[100] grid place-items-center bg-[rgba(5,5,5,0.58)] p-5 ${className}`} {...rest} />
+  );
+}
+
+function FinishDialog({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`w-[min(100%,460px)] rounded-2xl border-2 border-[#050505] bg-white p-8 text-center shadow-[8px_8px_0_#f47a4a] [&_svg]:h-[38px] [&_svg]:w-[38px] [&_svg]:text-[#f47a4a] [&_h2]:mx-0 [&_h2]:mb-0 [&_h2]:mt-[0.7rem] [&_h2]:text-[1.6rem] [&_h2]:font-[850] [&_h2]:text-[#050505] [&_p]:mx-0 [&_p]:mb-0 [&_p]:mt-[0.65rem] [&_p]:text-[0.94rem] [&_p]:leading-[1.58] [&_p]:text-[rgba(5,5,5,0.68)] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Progress({ className = "", ...rest }: ElProps) {
+  return <div className={`mb-[1.45rem] flex gap-2 ${className}`} {...rest} />;
+}
+
+function ProgressPart({ $complete, $current }: { $complete: boolean; $current: boolean }) {
+  return (
+    <div className={`h-[6px] flex-1 ${$complete ? "bg-[#f47a4a]" : $current ? "bg-[#050505]" : "bg-[#ded8cb]"}`} />
+  );
+}
+
+function TaskHeader({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`mb-6 flex items-start justify-between gap-4 border-b-2 border-[#050505] pb-4 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function TaskKicker({ className = "", ...rest }: ElProps) {
+  return (
+    <p
+      className={`mx-0 mt-0 mb-[0.35rem] text-[0.78rem] font-extrabold uppercase tracking-[0.08em] text-[#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function TaskTitle({ className = "", ...rest }: ElProps) {
+  return (
+    <h1
+      className={`m-0 text-[clamp(1.7rem,4vw,2.45rem)] font-[850] tracking-[-0.05em] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Timer({ $urgent, className = "", ...rest }: { $urgent: boolean } & ElProps) {
+  return (
+    <div
+      className={`inline-flex min-w-[92px] flex-none items-center justify-center gap-[0.35rem] rounded-full border-2 border-[#050505] px-3 py-[0.68rem] text-[1.05rem] font-[850] text-[#050505] tabular-nums [&_svg]:h-[18px] [&_svg]:w-[18px] ${
+        $urgent ? "bg-[#f47a4a]" : "bg-[#fff8dc]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PromptCard({ className = "", ...rest }: ElProps) {
+  return <article className={`p-0 pb-6 ${className}`} {...rest} />;
+}
+
+function PromptLabel({ className = "", ...rest }: ElProps) {
+  return (
+    <h2
+      className={`mx-0 mt-0 mb-[0.6rem] flex items-center gap-[0.4rem] text-[0.77rem] font-[850] uppercase tracking-[0.09em] text-[#f47a4a] [&_svg]:h-[17px] [&_svg]:w-[17px] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PromptText({ className = "", ...rest }: ElProps) {
+  return (
+    <p
+      className={`m-0 text-[clamp(1.2rem,2.25vw,1.55rem)] font-[850] leading-[1.5] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PicturePrompt({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`mx-auto mb-0 mt-[1.45rem] w-[min(100%,620px)] border-2 border-[#050505] bg-[#fff8dc] [&_svg]:block [&_svg]:h-auto [&_svg]:w-full ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Stage({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`mt-[1.35rem] flex items-center gap-[0.85rem] border-t border-[#050505] px-0 py-4 text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function StageIcon({ $speaking, className = "", ...rest }: { $speaking: boolean } & ElProps) {
+  return (
+    <div
+      className={`grid h-[37px] w-[37px] flex-none place-items-center rounded-full border-2 border-[#050505] [&_svg]:h-5 [&_svg]:w-5 ${
+        $speaking ? "bg-[#050505] text-white" : "bg-[#f47a4a] text-[#050505]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function StageTitle({ className = "", ...rest }: ElProps) {
+  return <strong className={`mb-[0.15rem] block text-[0.92rem] ${className}`} {...rest} />;
+}
+
+function StageCopy({ className = "", ...rest }: ElProps) {
+  return <span className={`block text-[0.82rem] leading-[1.45] ${className}`} {...rest} />;
+}
+
+function TranscriptArea({ className = "", ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      className={`mt-4 min-h-[160px] w-full resize-y rounded-[10px] border-2 border-[#050505] bg-white p-4 text-[0.95rem] leading-[1.62] text-[#050505] outline-none focus:border-[#050505] focus:shadow-[4px_4px_0_#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function ButtonRow({ className = "", ...rest }: ElProps) {
+  return <div className={`mt-4 flex flex-wrap justify-end gap-[0.65rem] ${className}`} {...rest} />;
+}
+
+function SecondaryButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button
+      className={`inline-flex min-h-[45px] cursor-pointer items-center justify-center gap-[0.45rem] rounded-full border-2 border-[#050505] bg-[#fff8dc] px-[0.9rem] py-[0.7rem] text-[0.88rem] font-extrabold text-[#050505] [&_svg]:h-[18px] [&_svg]:w-[18px] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function InlineNotice({ $error, className = "", ...rest }: { $error?: boolean } & ElProps) {
+  return (
+    <p
+      className={`mx-0 mb-0 mt-[0.7rem] text-[0.78rem] leading-normal ${
+        $error ? "text-[#c84932]" : "text-[rgba(5,5,5,0.62)]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Evaluating({ className = "", ...rest }: ElProps) {
+  return <div className={`grid min-h-[390px] place-items-center text-center ${className}`} {...rest} />;
+}
+
+function Spinner({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`h-12 w-12 rounded-full border-4 border-[#fff0c3] border-t-[#f47a4a] animate-[speaking-test-spin_0.85s_linear_infinite] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function ReportHeader({ className = "", ...rest }: ElProps) {
+  return (
+    <section className={`mb-4 grid grid-cols-[1.1fr_0.9fr] gap-4 max-[700px]:grid-cols-1 ${className}`} {...rest} />
+  );
+}
+
+function OverallCard({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`rounded-[14px] border-2 border-[#050505] bg-[#050505] p-[1.7rem] text-white shadow-[6px_6px_0_#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function OverallTitle({ className = "", ...rest }: ElProps) {
+  return (
+    <h1 className={`mx-0 mb-0 mt-[0.35rem] text-[2rem] font-[850] tracking-[-0.045em] text-white ${className}`} {...rest} />
+  );
+}
+
+function OverallText({ className = "", ...rest }: ElProps) {
+  return (
+    <p
+      className={`mx-0 mb-0 mt-[0.8rem] text-[0.91rem] leading-[1.6] text-[rgba(255,255,255,0.78)] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function ScoreCard({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`flex min-h-[180px] flex-col items-center justify-center rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function BigScore({ className = "", ...rest }: ElProps) {
+  return (
+    <strong className={`text-[3rem] font-black tracking-[-0.08em] text-[#f47a4a] tabular-nums ${className}`} {...rest} />
+  );
+}
+
+function ReportSection({ className = "", ...rest }: ElProps) {
+  return <section className={`mt-[1.15rem] border-t-2 border-[#050505] p-0 pt-[1.35rem] ${className}`} {...rest} />;
+}
+
+function CriteriaGrid({ className = "", ...rest }: ElProps) {
+  return <div className={`grid grid-cols-3 gap-[0.9rem] max-[740px]:grid-cols-1 ${className}`} {...rest} />;
+}
+
+function CriterionCard({ className = "", ...rest }: ElProps) {
+  return <article className={`border-l-[3px] border-l-[#f47a4a] py-1 pl-[0.95rem] pr-0 ${className}`} {...rest} />;
+}
+
+function CriterionTop({ className = "", ...rest }: ElProps) {
+  return <div className={`flex items-baseline justify-between gap-2 ${className}`} {...rest} />;
+}
+
+function CriterionTitle({ className = "", ...rest }: ElProps) {
+  return <h3 className={`m-0 text-[1rem] font-[850] ${className}`} {...rest} />;
+}
+
+function Level({ className = "", ...rest }: ElProps) {
+  return <span className={`text-[0.83rem] font-[850] text-[#f47a4a] ${className}`} {...rest} />;
+}
+
+function CriterionDescription({ className = "", ...rest }: ElProps) {
+  return <p className={`mx-0 my-3 text-[0.86rem] leading-[1.55] text-[rgba(5,5,5,0.68)] ${className}`} {...rest} />;
+}
+
+function DetailLabel({ className = "", ...rest }: ElProps) {
+  return (
+    <strong
+      className={`mx-0 mt-[0.7rem] mb-[0.2rem] block text-[0.7rem] font-[850] uppercase tracking-[0.06em] text-[#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function DetailText({ className = "", ...rest }: ElProps) {
+  return <p className={`m-0 text-[0.8rem] leading-normal text-[rgba(5,5,5,0.72)] ${className}`} {...rest} />;
+}
+
+function TwoColumn({ className = "", ...rest }: ElProps) {
+  return <div className={`mt-[1.15rem] grid grid-cols-2 gap-4 max-[700px]:grid-cols-1 ${className}`} {...rest} />;
+}
+
+function List({ className = "", ...rest }: ElProps) {
+  return <ul className={`m-0 grid list-none gap-[0.68rem] p-0 ${className}`} {...rest} />;
+}
+
+function ListItem({ className = "", ...rest }: ElProps) {
+  return (
+    <li
+      className={`relative pl-[1.2rem] text-[0.88rem] leading-[1.52] text-[rgba(5,5,5,0.72)] before:absolute before:left-0 before:top-[0.48rem] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#f47a4a] before:content-[''] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function TaskFeedbackList({ className = "", ...rest }: ElProps) {
+  return <div className={`grid gap-[0.65rem] ${className}`} {...rest} />;
+}
+
+function TaskFeedback({ className = "", ...rest }: ElProps) {
+  return (
+    <div
+      className={`grid grid-cols-[auto_1fr] items-start gap-[0.8rem] border-l-[3px] border-l-[#050505] py-1 pl-[0.85rem] pr-0 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function TaskScore({ className = "", ...rest }: ElProps) {
+  return (
+    <span
+      className={`inline-grid h-[42px] w-[42px] place-items-center rounded-full bg-[#f47a4a] text-[0.79rem] font-[850] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function Plan({ className = "", ...rest }: ElProps) {
+  return <div className={`grid grid-cols-3 gap-[0.7rem] max-[700px]:grid-cols-1 ${className}`} {...rest} />;
+}
+
+function PlanItem({ className = "", ...rest }: ElProps) {
+  return <article className={`border-l-[3px] border-l-[#f47a4a] py-[0.35rem] pl-3 pr-0 ${className}`} {...rest} />;
+}
+
+function PlanDay({ className = "", ...rest }: ElProps) {
+  return (
+    <strong
+      className={`block text-[0.74rem] font-[850] uppercase tracking-[0.07em] text-[#f47a4a] ${className}`}
+      {...rest}
+    />
+  );
+}
+
+function PlanGoal({ className = "", ...rest }: ElProps) {
+  return <h3 className={`mx-0 my-[0.35rem] text-[0.92rem] font-extrabold ${className}`} {...rest} />;
+}
+
+function ReportNote({ className = "", ...rest }: ElProps) {
+  return (
+    <p className={`mx-0 mb-0 mt-[1.1rem] text-[0.76rem] leading-[1.55] text-[rgba(5,5,5,0.58)] ${className}`} {...rest} />
+  );
+}
 
 const formatTimer = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
@@ -1465,7 +1284,7 @@ export default function SpeakingTestClient() {
             <TimeGuideItem><strong>{EXAM_TEXT.preparationTime}</strong><span>{EXAM_TEXT.seconds(preparationSeconds)}</span></TimeGuideItem>
             <TimeGuideItem><strong>{EXAM_TEXT.responseTime}</strong><span>{EXAM_TEXT.seconds(speakingSeconds)}</span></TimeGuideItem>
           </TimeGuide>}
-          {!isReview && <Stage $speaking={isSpeaking}>
+          {!isReview && <Stage>
             <StageIcon $speaking={isSpeaking}>{isSpeaking ? <MicrophoneIcon /> : <PauseCircleIcon />}</StageIcon>
             <div><StageTitle>{isSpeaking ? (isListenAndRepeat ? "Repeat the sentence now" : EXAM_TEXT.speakHeading) : EXAM_TEXT.prepareHeading}</StageTitle><StageCopy>{isSpeaking ? (isListenAndRepeat ? "Repeat the sentence you heard. The sentence is not shown on screen." : EXAM_TEXT.speakHint) : EXAM_TEXT.prepareHint}</StageCopy></div>
           </Stage>}

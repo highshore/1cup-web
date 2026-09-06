@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase, invokeFunction } from "../../lib/supabase/client";
-import styled from "styled-components";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import React from "react";
@@ -29,7 +28,6 @@ import {
 
 // Import modular components
 import TranslationWarning from "./components/TranslationWarning";
-import { colors } from "./constants/colors";
 
 interface ArticleData {
   content: {
@@ -184,804 +182,295 @@ interface SavedVocabularyItem {
   meaningId: string | null;
 }
 
-const NAVBAR_MAX_WIDTH = 960;
-const NAVBAR_OFFSET_DESKTOP = 85;
-const NAVBAR_OFFSET_MOBILE = 75;
-const NAVBAR_PADDING_DESKTOP = "1.5rem";
-const NAVBAR_PADDING_MOBILE = "1.5rem";
-const DESKTOP_PAGE_TOP_PADDING = "1.75rem";
-
-const ArticleContainer = styled.div`
-  width: 100%;
-  max-width: ${NAVBAR_MAX_WIDTH}px;
-  margin: 0 auto;
-  padding: 0 ${NAVBAR_PADDING_DESKTOP} clamp(2rem, 3vw, 2.75rem);
-  min-height: 100vh;
-  background: transparent;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Roboto", "Helvetica Neue", Arial, sans-serif;
-  position: relative;
-  padding-top: 0;
-
-  @media (max-width: 768px) {
-    padding: 0 ${NAVBAR_PADDING_MOBILE} 1.75rem;
-    width: 100%;
-    min-height: auto;
-    overflow-x: hidden;
+// styled-components have been replaced with Tailwind utility classes. `tw`
+// builds a plain element component that keeps the old styled-component name
+// and merges any className passed at the call site.
+function tw<T extends keyof React.JSX.IntrinsicElements>(tag: T, base: string) {
+  function TwComponent(props: React.JSX.IntrinsicElements[T]) {
+    const { className, ...rest } = props as { className?: string };
+    return React.createElement(tag, {
+      ...rest,
+      className: className ? `${base} ${className}` : base,
+    });
   }
-
-  @media (max-width: 480px) {
-    padding: 0 ${NAVBAR_PADDING_MOBILE} 1rem;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 2rem;
-  margin: 0 0 0.5rem 0;
-  color: #050505;
-  font-weight: 900;
-  line-height: 1.2;
-  cursor: pointer;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Roboto", "Helvetica Neue", Arial, sans-serif;
-
-  @media (max-width: 768px) {
-    font-size: 1.7rem;
-  }
-
-  &:hover {
-    color: #f47a4a;
-  }
-`;
-
-const Subtitle = styled.h2<{ isVisible: boolean }>`
-  font-size: 1.6rem;
-  margin-bottom: 1.5rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 600;
-  line-height: 1.3;
-  max-height: ${(props) => (props.isVisible ? "200px" : "0")};
-  overflow: hidden;
-  opacity: ${(props) => (props.isVisible ? 1 : 0)};
-  transition: all 0.3s ease;
-  margin-top: ${(props) => (props.isVisible ? "0.25rem" : "0")};
-
-  @media (max-width: 768px) {
-    font-size: 1.4rem;
-    margin-bottom: 1.2rem;
-  }
-`;
-
-const TitleHeaderRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-`;
-
-const TitleTextGroup = styled.div`
-  flex: 1;
-  min-width: 250px;
-`;
-
-const QuickSummaryCard = styled.section`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  margin-bottom: 1rem;
-  overflow: hidden;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-
-  @media (max-width: 768px) {
-    border-radius: 12px;
-  }
-`;
-
-const QuickSummaryHeader = styled.div`
-  padding: 1rem 1.1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-
-  @media (max-width: 768px) {
-    padding: 0.9rem 1rem;
-  }
-`;
-
-const QuickSummaryTitle = styled.span`
-  font-size: 1.05rem;
-  font-weight: 800;
-`;
-
-const QuickSummaryActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-`;
-
-const QuickSummaryLanguageButton = styled.button`
-  min-height: 1.7rem;
-  box-sizing: border-box;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  padding: 0 0.5rem;
-  font-size: 0.64rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-
-  svg {
-    width: 0.72rem;
-    height: 0.72rem;
-  }
-
-  &:hover {
-    background: #f47a4a;
-  }
-`;
-
-const QuickSummaryExpandButton = styled.button`
-  width: 1.7rem;
-  height: 1.7rem;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #050505;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-
-  &:hover {
-    background: #f47a4a;
-  }
-
-  &:focus-visible {
-    outline: 3px solid rgba(244, 122, 74, 0.45);
-    outline-offset: 2px;
-  }
-`;
-
-const QuickSummaryChevron = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
-  width: 1.35rem;
-  height: 1.35rem;
-  flex: 0 0 auto;
-  transition: transform 0.18s ease;
-  transform: rotate(${(props) => (props.$isExpanded ? "180deg" : "0deg")});
-`;
-
-const QuickSummaryList = styled.ul`
-  margin: -0.1rem 1.1rem 1rem 2.35rem;
-  padding: 0;
-  color: #050505;
-  list-style: disc outside;
-
-  @media (max-width: 768px) {
-    margin: -0.1rem 1rem 0.9rem 2.1rem;
-  }
-`;
-
-const QuickSummaryItem = styled.li`
-  padding-left: 0.15rem;
-  font-size: 0.98rem;
-  line-height: 1.58;
-
-  & + & {
-    margin-top: 0.55rem;
-  }
-`;
-
-const QuickSummaryEllipsis = styled.li`
-  list-style: none;
-  margin: 0.15rem 0 0 0.15rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-`;
-
-const ReadingTime = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #050505;
-  font-weight: 700;
-  font-size: 0.85rem;
-  padding: 0.4rem 0.8rem;
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  height: 2rem;
-  box-sizing: border-box;
-
-  &::before {
-    content: "⏱";
-    font-size: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
-    height: 1.8rem;
-  }
-`;
-
-const SourceTab = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #050505;
-  font-weight: 700;
-  font-size: 0.85rem;
-  padding: 0.4rem 0.8rem;
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  height: 2rem;
-  box-sizing: border-box;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.16s ease;
-
-  &::before {
-    font-size: 1rem;
-  }
-
-  &:hover {
-    background: #f47a4a;
-    color: #050505;
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
-    height: 1.8rem;
-  }
-`;
-
-const SectionTitle = styled.h3`
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: 1.2rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.3rem 0.75rem;
-  font-size: 1.05rem;
-  font-weight: 900;
-  word-break: keep-all;
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-  }
-`;
-
-const ContentSection = styled.div`
-  margin-bottom: 1.5rem;
-  width: 100%;
-  background: transparent;
-`;
-
-const Paragraph = styled.p`
-  font-size: 1.1rem;
-  line-height: 1.7;
-  color: #050505;
-  font-weight: 400;
-  cursor: pointer;
-  margin-bottom: 0;
-
-  @media (max-width: 768px) {
-    font-size: 1.05rem;
-    line-height: 1.6;
-  }
-
-  &:hover {
-    color: #f47a4a;
-  }
-`;
-
-const KoreanParagraph = styled.p<{ isVisible: boolean }>`
-  font-size: 1.05rem;
-  line-height: 1.7;
-  margin-bottom: ${(props) => (props.isVisible ? "0.5rem" : "0")};
-  color: #050505;
-  font-weight: 400;
-  background: #fff6f0;
-  padding: 1rem;
-  border-radius: 10px;
-  max-height: ${(props) => (props.isVisible ? "auto" : "0")};
-  opacity: ${(props) => (props.isVisible ? 1 : 0)};
-  overflow-y: ${(props) => (props.isVisible ? "auto" : "hidden")};
-  transition: all 0.3s ease;
-  margin-top: ${(props) => (props.isVisible ? "0.15rem" : "0")};
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-    line-height: 1.6;
-    padding: 0.9rem;
-    max-height: ${(props) => (props.isVisible ? "none" : "0")};
-  }
-`;
-
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: rgba(5, 5, 5, 0.6);
-  background: transparent;
-`;
-
-const ErrorContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #050505;
-  background: transparent;
-`;
-
-const KeywordsSection = styled.div`
-  margin-bottom: 2.5rem;
-  position: relative;
-  width: 100%;
-  box-sizing: border-box;
-  display: block;
-`;
-
-const KeywordsContainer = styled.div`
-  position: relative;
-  width: 100%;
-  margin: 0;
-  overflow: visible;
-  box-sizing: border-box;
-  display: block;
-`;
-
-const KeywordsSlider = styled.div`
-  display: flex;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  padding: 0.8rem 0;
-  width: 100%;
-  box-sizing: border-box;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-
-  @media (max-width: 768px) {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  &:active {
-    cursor: grabbing;
-  }
-
-  &::after {
-    content: "";
-    flex: 0 0 20px;
-  }
-`;
-
-const KeywordCard = styled.div`
-  flex: 0 0 240px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
-  padding: 1rem;
-  margin-right: 0.6rem;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  border: 2px solid #050505;
-  box-sizing: border-box;
-  cursor: pointer;
-
-  @media (max-width: 768px) {
-    flex: 0 0 220px;
-    padding: 0.9rem;
-  }
-
-  &:first-child {
-    margin-left: 0;
-  }
-
-  &:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-  }
-`;
-
-const Word = styled.h4`
-  font-size: 1.2rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 0.5rem;
-`;
-
-const Meaning = styled.p`
-  font-size: 0.8rem;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.5;
-  margin-bottom: 0.8rem;
-`;
-
-const Synonyms = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.8rem;
-`;
-
-const Synonym = styled.span`
-  font-size: 0.7rem;
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-weight: 700;
-`;
-
-const Example = styled.div`
-  font-size: 0.8rem;
-  font-style: italic;
-  color: rgba(5, 5, 5, 0.6);
-  line-height: 1.5;
-  padding-top: 0.6rem;
-  border-top: 1.5px dashed #050505;
-`;
-
-const SliderButton = styled.button`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #050505;
-  border: 2px solid #050505;
-  box-shadow: 2px 2px 0 #050505;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 20;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  @media (max-width: 768px) {
-    width: 30px;
-    height: 34px;
-  }
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-`;
-
-const NextButton = styled(SliderButton)`
-  right: -16px;
-
-  @media (max-width: 768px) {
-    right: -14px;
-  }
-
-  &::after {
-    content: "›";
-    font-size: 1.3rem;
-    line-height: 1;
-    font-weight: 300;
-  }
-`;
-
-const PrevButton = styled(SliderButton)`
-  left: -16px;
-
-  @media (max-width: 768px) {
-    left: -14px;
-  }
-
-  &::after {
-    content: "‹";
-    font-size: 1.3rem;
-    line-height: 1;
-    font-weight: 300;
-  }
-`;
+  return TwComponent;
+}
+
+const ARTICLE_FONT_FAMILY =
+  "[font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI','Roboto','Helvetica_Neue',Arial,sans-serif]";
+
+const ArticleContainer = tw(
+  "div",
+  `w-full max-w-[960px] mx-auto pt-0 px-6 pb-[clamp(2rem,3vw,2.75rem)] min-h-screen bg-transparent ${ARTICLE_FONT_FAMILY} relative max-[768px]:pb-[1.75rem] max-[768px]:min-h-[auto] max-[768px]:overflow-x-hidden max-[480px]:pb-4`
+);
+
+const Title = tw(
+  "h1",
+  `text-[2rem] m-0 mb-2 text-[#050505] font-black leading-[1.2] cursor-pointer ${ARTICLE_FONT_FAMILY} max-[768px]:text-[1.7rem] hover:text-[#f47a4a]`
+);
+
+function Subtitle({
+  isVisible,
+  className,
+  ...rest
+}: { isVisible: boolean } & React.JSX.IntrinsicElements["h2"]) {
+  const base = `text-[1.6rem] mb-6 text-[rgba(5,5,5,0.6)] font-semibold leading-[1.3] overflow-hidden [transition:all_0.3s_ease] max-[768px]:text-[1.4rem] max-[768px]:mb-[1.2rem] ${
+    isVisible ? "max-h-[200px] opacity-100 mt-1" : "max-h-0 opacity-0 mt-0"
+  }`;
+  return <h2 {...rest} className={className ? `${base} ${className}` : base} />;
+}
+
+const TitleHeaderRow = tw(
+  "div",
+  "flex items-start justify-between gap-4 flex-wrap mb-4"
+);
+
+const TitleTextGroup = tw("div", "flex-1 min-w-[250px]");
+
+const QuickSummaryCard = tw(
+  "section",
+  "bg-white border-2 border-[#050505] rounded-[14px] mb-4 overflow-hidden shadow-[3px_3px_0_rgba(5,5,5,0.9)] max-[768px]:rounded-xl"
+);
+
+const QuickSummaryHeader = tw(
+  "div",
+  "py-4 px-[1.1rem] flex items-center justify-between gap-3 max-[768px]:py-[0.9rem] max-[768px]:px-4"
+);
+
+const QuickSummaryTitle = tw("span", "text-[1.05rem] font-extrabold");
+
+const QuickSummaryActions = tw("div", "flex items-center gap-[0.35rem]");
+
+const QuickSummaryLanguageButton = tw(
+  "button",
+  "min-h-[1.7rem] box-border border-[1.5px] border-[#050505] rounded-full bg-white text-[#050505] py-0 px-2 text-[0.64rem] font-extrabold cursor-pointer inline-flex items-center gap-1 [&_svg]:w-[0.72rem] [&_svg]:h-[0.72rem] hover:bg-[#f47a4a]"
+);
+
+const QuickSummaryExpandButton = tw(
+  "button",
+  "w-[1.7rem] h-[1.7rem] p-0 border-0 rounded-full bg-transparent text-[#050505] inline-flex items-center justify-center cursor-pointer hover:bg-[#f47a4a] focus-visible:outline-[3px] focus-visible:outline-[rgba(244,122,74,0.45)] focus-visible:outline-offset-2"
+);
+
+function QuickSummaryChevron({ $isExpanded }: { $isExpanded: boolean }) {
+  return (
+    <ChevronDownIcon
+      className={`w-[1.35rem] h-[1.35rem] flex-none [transition:transform_0.18s_ease] ${
+        $isExpanded ? "[transform:rotate(180deg)]" : "[transform:rotate(0deg)]"
+      }`}
+    />
+  );
+}
+
+const QuickSummaryList = tw(
+  "ul",
+  "mt-[-0.1rem] mr-[1.1rem] mb-4 ml-[2.35rem] p-0 text-[#050505] list-disc list-outside max-[768px]:mr-4 max-[768px]:mb-[0.9rem] max-[768px]:ml-[2.1rem]"
+);
+
+// `qsi` is a marker class replacing the styled-components `& + &` selector.
+const QuickSummaryItem = tw(
+  "li",
+  "qsi pl-[0.15rem] text-[0.98rem] leading-[1.58] [.qsi+&]:mt-[0.55rem]"
+);
+
+const QuickSummaryEllipsis = tw(
+  "li",
+  "list-none m-0 mt-[0.15rem] ml-[0.15rem] text-[rgba(5,5,5,0.6)] font-extrabold tracking-[0.12em]"
+);
+
+const ReadingTime = tw(
+  "div",
+  "flex items-center gap-[0.4rem] text-[#050505] font-bold text-[0.85rem] py-[0.4rem] px-[0.8rem] bg-white border-2 border-[#050505] rounded-full h-8 box-border before:content-['⏱'] before:text-[1rem] max-[768px]:text-[0.8rem] max-[768px]:py-[0.35rem] max-[768px]:px-[0.7rem] max-[768px]:h-[1.8rem]"
+);
+
+// Rendered as an anchor at its only call site (previously `as="a"`).
+function SourceTab({
+  as: _as,
+  className,
+  ...rest
+}: { as?: "a" } & React.JSX.IntrinsicElements["a"]) {
+  const base =
+    "flex items-center gap-[0.4rem] text-[#050505] font-bold text-[0.85rem] py-[0.4rem] px-[0.8rem] bg-white border-2 border-[#050505] rounded-full h-8 box-border cursor-pointer [transition:background_0.2s_ease,color_0.2s_ease,transform_0.16s_ease] hover:bg-[#f47a4a] hover:text-[#050505] hover:[transform:translateY(-1px)] max-[768px]:text-[0.8rem] max-[768px]:py-[0.35rem] max-[768px]:px-[0.7rem] max-[768px]:h-[1.8rem]";
+  return <a {...rest} className={className ? `${base} ${className}` : base} />;
+}
+
+const SectionTitle = tw(
+  "h3",
+  "inline-flex items-center mb-[1.2rem] border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.3rem] px-3 text-[1.05rem] font-black break-keep max-[768px]:text-[1rem] max-[768px]:mb-4"
+);
+
+const ContentSection = tw("div", "mb-6 w-full bg-transparent");
+
+const Paragraph = tw(
+  "p",
+  "text-[1.1rem] leading-[1.7] text-[#050505] font-normal cursor-pointer mb-0 max-[768px]:text-[1.05rem] max-[768px]:leading-[1.6] hover:text-[#f47a4a]"
+);
+
+function KoreanParagraph({
+  isVisible,
+  className,
+  ...rest
+}: { isVisible: boolean } & React.JSX.IntrinsicElements["p"]) {
+  const base = `text-[1.05rem] leading-[1.7] text-[#050505] font-normal bg-[#fff6f0] p-4 rounded-[10px] [transition:all_0.3s_ease] max-[768px]:text-[1rem] max-[768px]:leading-[1.6] max-[768px]:p-[0.9rem] ${
+    isVisible
+      ? "mb-2 mt-[0.15rem] max-h-none opacity-100 overflow-y-auto"
+      : "mb-0 mt-0 max-h-0 opacity-0 overflow-y-hidden"
+  }`;
+  return <p {...rest} className={className ? `${base} ${className}` : base} />;
+}
+
+const LoadingContainer = tw(
+  "div",
+  "flex justify-center items-center min-h-screen text-[1.2rem] font-bold text-[rgba(5,5,5,0.6)] bg-transparent"
+);
+
+const ErrorContainer = tw(
+  "div",
+  "flex justify-center items-center min-h-screen text-[1.2rem] font-extrabold text-[#050505] bg-transparent"
+);
+
+const KeywordsSection = tw(
+  "div",
+  "mb-10 relative w-full box-border block"
+);
+
+const KeywordsContainer = tw(
+  "div",
+  "relative w-full m-0 overflow-visible box-border block"
+);
+
+const KeywordsSlider = tw(
+  "div",
+  "flex overflow-x-hidden scroll-smooth py-[0.8rem] px-0 w-full box-border cursor-grab select-none [-webkit-user-select:none] [-webkit-touch-callout:none] max-[768px]:overflow-x-auto max-[768px]:[-webkit-overflow-scrolling:touch] max-[768px]:[scrollbar-width:none] max-[768px]:[&::-webkit-scrollbar]:hidden active:cursor-grabbing after:content-[''] after:flex-[0_0_20px]"
+);
+
+const KeywordCard = tw(
+  "div",
+  "flex-[0_0_240px] bg-white rounded-[10px] shadow-[3px_3px_0_rgba(5,5,5,0.88)] p-4 mr-[0.6rem] [transition:transform_0.16s_ease,box-shadow_0.16s_ease] border-2 border-[#050505] box-border cursor-pointer max-[768px]:flex-[0_0_220px] max-[768px]:p-[0.9rem] hover:[transform:translate(-2px,-2px)] hover:shadow-[5px_5px_0_rgba(5,5,5,0.88)]"
+);
+
+const Word = tw("h4", "text-[1.2rem] font-black text-[#050505] mb-2");
+
+const Meaning = tw(
+  "p",
+  "text-[0.8rem] text-[rgba(5,5,5,0.72)] leading-[1.5] mb-[0.8rem]"
+);
+
+const Synonyms = tw("div", "flex flex-wrap gap-[0.4rem] mb-[0.8rem]");
+
+const Synonym = tw(
+  "span",
+  "text-[0.7rem] bg-white text-[#050505] border-[1.5px] border-[#050505] py-[0.2rem] px-[0.55rem] rounded-full font-bold"
+);
+
+const Example = tw(
+  "div",
+  "text-[0.8rem] italic text-[rgba(5,5,5,0.6)] leading-[1.5] pt-[0.6rem] border-t-[1.5px] border-dashed border-[#050505]"
+);
+
+const sliderButtonBase =
+  "absolute top-1/2 [transform:translateY(-50%)] w-[34px] h-[34px] rounded-full bg-white text-[#050505] border-2 border-[#050505] shadow-[2px_2px_0_#050505] flex items-center justify-center cursor-pointer z-20 [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] max-[768px]:w-[30px] max-[768px]:h-[34px] enabled:hover:bg-[#f47a4a] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed";
+
+const NextButton = tw(
+  "button",
+  `${sliderButtonBase} right-[-16px] max-[768px]:right-[-14px] after:content-['›'] after:text-[1.3rem] after:leading-none after:font-light`
+);
+
+const PrevButton = tw(
+  "button",
+  `${sliderButtonBase} left-[-16px] max-[768px]:left-[-14px] after:content-['‹'] after:text-[1.3rem] after:leading-none after:font-light`
+);
 
 // Modal components for keyword popup
-const ModalOverlay = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  opacity: ${(props) => (props.isOpen ? 1 : 0)};
-  visibility: ${(props) => (props.isOpen ? "visible" : "hidden")};
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-  -webkit-overflow-scrolling: touch; /* Better scrolling on iOS */
-  touch-action: none; /* Prevent scrolling behind modal */
-`;
+function ModalOverlay({
+  isOpen,
+  className,
+  ...rest
+}: { isOpen: boolean } & React.JSX.IntrinsicElements["div"]) {
+  const base = `fixed inset-0 bg-black/70 flex justify-center items-center z-[1000] [transition:opacity_0.3s_ease,visibility_0.3s_ease] [-webkit-overflow-scrolling:touch] touch-none ${
+    isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+  }`;
+  return <div {...rest} className={className ? `${base} ${className}` : base} />;
+}
 
-const ModalContent = styled.div`
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 6px 6px 0 #050505;
-  padding: 2rem;
-  max-width: 90%;
-  width: 500px;
-  position: relative;
-  transform: scale(1);
-  transition: transform 0.3s ease;
-  border: 2px solid #050505;
-  overflow-y: auto; /* Allow scrolling within modal if content is too tall */
-  max-height: 90vh; /* Limit height on small screens */
+const ModalContent = tw(
+  "div",
+  "bg-white rounded-2xl shadow-[6px_6px_0_#050505] p-8 max-w-[90%] w-[500px] relative [transform:scale(1)] [transition:transform_0.3s_ease] border-2 border-[#050505] overflow-y-auto max-h-[90vh] max-[768px]:p-6 max-[768px]:w-[85%] max-[768px]:max-h-[80vh] max-[480px]:p-[1.2rem] max-[480px]:w-[90%] max-[480px]:max-h-[75vh]"
+);
 
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-    width: 85%;
-    max-height: 80vh;
-  }
-
-  @media (max-width: 480px) {
-    padding: 1.2rem;
-    width: 90%;
-    max-height: 75vh;
-  }
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: #ffffff;
-  border: 2px solid #050505;
-  font-size: 1.25rem;
-  color: #050505;
-  cursor: pointer;
-  width: 2rem;
-  height: 2rem;
-  line-height: 1;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease, transform 0.16s ease;
-
-  @media (max-width: 768px) {
-    top: 0.8rem;
-    right: 0.8rem;
-  }
-
-  &:hover {
-    background: #f47a4a;
-    transform: translateY(-1px);
-  }
-`;
+const CloseButton = tw(
+  "button",
+  "absolute top-4 right-4 bg-white border-2 border-[#050505] text-[1.25rem] text-[#050505] cursor-pointer w-8 h-8 leading-none rounded-full flex items-center justify-center [transition:background_0.2s_ease,transform_0.16s_ease] max-[768px]:top-[0.8rem] max-[768px]:right-[0.8rem] hover:bg-[#f47a4a] hover:[transform:translateY(-1px)]"
+);
 
 // Add new styled components for the improved modal layout
-const ModalSection = styled.div`
-  margin-bottom: 1.5rem;
+const ModalSection = tw("div", "mb-6 max-[768px]:mb-[1.2rem]");
 
-  @media (max-width: 768px) {
-    margin-bottom: 1.2rem;
-  }
-`;
+const ModalSectionTitle = tw(
+  "div",
+  "text-[0.85rem] text-[#f47a4a] mb-2 font-extrabold uppercase tracking-[0.5px]"
+);
 
-const ModalSectionTitle = styled.div`
-  font-size: 0.85rem;
-  color: #f47a4a;
-  margin-bottom: 0.5rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
+const DualText = tw("div", "flex flex-col gap-4");
 
-const DualText = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
+const KoreanText = tw(
+  "div",
+  "text-[0.95rem] text-[rgba(5,5,5,0.72)] leading-[1.5] [font-family:'Apple_SD_Gothic_Neo','Noto_Sans_KR',sans-serif] max-[768px]:text-[0.9rem]"
+);
 
-const KoreanText = styled.div`
-  font-size: 0.95rem;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.5;
-  font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+const ExampleKoreanText = tw(
+  "div",
+  "text-[rgba(5,5,5,0.72)] leading-[1.5] [font-family:'Apple_SD_Gothic_Neo','Noto_Sans_KR',sans-serif] not-italic mt-2 text-[0.9rem] opacity-90"
+);
 
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-  }
-`;
+const ModalSynonyms = tw("div", "flex flex-wrap gap-[0.6rem]");
 
-const ExampleKoreanText = styled(KoreanText)`
-  font-style: normal;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  opacity: 0.9;
-`;
-
-const ModalSynonyms = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-`;
-
-const ModalSynonym = styled.span`
-  font-size: 0.9rem;
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  font-weight: 700;
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.6rem;
-  }
-`;
+const ModalSynonym = tw(
+  "span",
+  "text-[0.9rem] bg-white text-[#050505] border-[1.5px] border-[#050505] py-[0.3rem] px-[0.8rem] rounded-full font-bold max-[768px]:text-[0.8rem] max-[768px]:py-[0.25rem] max-[768px]:px-[0.6rem]"
+);
 
 // Update the ModalWord component for better styling
-const ModalWord = styled.h3`
-  font-size: 2rem;
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 0.3rem;
-
-  @media (max-width: 768px) {
-    font-size: 1.7rem;
-  }
-`;
+const ModalWord = tw(
+  "h3",
+  "text-[2rem] font-black text-[#050505] mb-[0.3rem] max-[768px]:text-[1.7rem]"
+);
 
 // Update the ModalMeaning component
-const ModalMeaning = styled.p`
-  font-size: 1.1rem;
-  color: #050505;
-  line-height: 1.6;
-
-  @media (max-width: 768px) {
-    font-size: 1rem;
-  }
-`;
+const ModalMeaning = tw(
+  "p",
+  "text-[1.1rem] text-[#050505] leading-[1.6] max-[768px]:text-[1rem]"
+);
 
 // Update the Example component
-const ModalExample = styled.div`
-  font-size: 1rem;
-  font-style: italic;
-  color: rgba(5, 5, 5, 0.6);
-  line-height: 1.6;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-  }
-`;
+const ModalExample = tw(
+  "div",
+  "text-[1rem] italic text-[rgba(5,5,5,0.6)] leading-[1.6] max-[768px]:text-[0.9rem]"
+);
 // Add InfoContainer styled component
-const InfoContainer = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-    margin-top: 0.6rem;
-  }
-`;
+const InfoContainer = tw(
+  "div",
+  "flex items-center mb-4 gap-[0.6rem] flex-wrap mt-3 max-[768px]:gap-2 max-[768px]:mt-[0.6rem]"
+);
 
 // Keywords display components
-const Categories = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-bottom: 0.5rem;
-`;
+const Categories = tw("div", "flex flex-wrap gap-[0.3rem] mb-2");
 
-const Category = styled.span`
-  font-size: 0.65rem;
-  background: #f47a4a;
-  color: #050505;
-  border: 1.5px solid #050505;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  font-weight: 800;
-`;
+const Category = tw(
+  "span",
+  "text-[0.65rem] bg-[#f47a4a] text-[#050505] border-[1.5px] border-[#050505] py-[0.12rem] px-[0.45rem] rounded-full font-extrabold"
+);
 
-const SaveButton = styled.button`
-  border: 2px solid #050505;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.9rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  margin-left: 1rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  box-shadow: 2px 2px 0 #050505;
+const SaveButton = tw(
+  "button",
+  "border-2 border-[#050505] bg-[#f47a4a] text-[#050505] text-[0.9rem] py-[0.4rem] px-[0.9rem] rounded-full ml-4 font-extrabold cursor-pointer inline-flex items-center [transition:transform_0.16s_ease,box-shadow_0.16s_ease] shadow-[2px_2px_0_#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-default disabled:shadow-none max-[768px]:text-[0.8rem] max-[768px]:py-[0.3rem] max-[768px]:px-[0.7rem] [&_svg]:w-[0.95rem] [&_svg]:h-[0.95rem]"
+);
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+const SavedIndicator = tw(
+  "div",
+  "inline-flex items-center text-[#16a34a] text-[0.9rem] ml-4 font-bold before:content-['✓'] before:mr-[0.3rem] before:font-bold max-[768px]:text-[0.8rem]"
+);
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-    transform: none;
-    box-shadow: none;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    padding: 0.3rem 0.7rem;
-  }
-
-  svg {
-    width: 0.95rem;
-    height: 0.95rem;
-  }
-`;
-
-const SavedIndicator = styled.div`
-  display: inline-flex;
-  align-items: center;
-  color: #16a34a;
-  font-size: 0.9rem;
-  margin-left: 1rem;
-  font-weight: 700;
-
-  &::before {
-    content: "✓";
-    margin-right: 0.3rem;
-    font-weight: bold;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-  }
-`;
-
-const WordTitleRow = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.3rem;
-`;
+const WordTitleRow = tw("div", "flex items-center mb-[0.3rem]");
 
 // Add a helper function to better handle how words with hyphens are highlighted
 const highlightWithHyphens = (text: string): string => {
@@ -1182,195 +671,68 @@ const extractFullWordFromBionicText = (
   }
 };
 
-const ArticlePageWrapper = styled.div`
-  min-height: 100vh;
-  background-color: #faf8f4;
-  width: 100%;
-  padding-bottom: clamp(2rem, 4vw, 3rem);
-  margin-top: -${NAVBAR_OFFSET_DESKTOP}px;
-  padding-top: calc(${NAVBAR_OFFSET_DESKTOP}px + ${DESKTOP_PAGE_TOP_PADDING});
-
-  @media (max-width: 768px) {
-    /* Ensure proper mobile scrolling */
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
-    margin-top: -${NAVBAR_OFFSET_MOBILE}px;
-    padding-top: calc(${NAVBAR_OFFSET_MOBILE}px + 1.25rem);
-    padding-bottom: 2rem;
-  }
-`;
+const ArticlePageWrapper = tw(
+  "div",
+  "min-h-screen bg-[#faf8f4] w-full pb-[clamp(2rem,4vw,3rem)] mt-[-85px] pt-[calc(85px+1.75rem)] max-[768px]:[-webkit-overflow-scrolling:touch] max-[768px]:overflow-y-auto max-[768px]:mt-[-75px] max-[768px]:pt-[calc(75px+1.25rem)] max-[768px]:pb-8"
+);
 
 // Define necessary styled components
-const ParagraphContainer = styled.div`
-  position: relative;
-  padding: 0.85rem 0 0.9rem;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+const ParagraphContainer = tw(
+  "div",
+  "relative pt-[0.85rem] pb-[0.9rem] border-b border-[rgba(5,5,5,0.14)] first:pt-0 max-[768px]:pt-[0.55rem] max-[768px]:pb-[0.6rem]"
+);
 
-  &:first-child {
-    padding-top: 0;
-  }
+// Add a styled component for the translation toggle button.
+// The `.active` className toggle became the `$active` prop. Its former
+// top/bottom margins are omitted: its only render site sits inside
+// ParagraphActionRow, which always reset them to 0.
+function TranslationToggleButton({
+  $active,
+  className,
+  ...rest
+}: { $active?: boolean } & React.JSX.IntrinsicElements["button"]) {
+  const base = `${
+    $active ? "bg-[#f47a4a]" : "bg-white"
+  } text-[#050505] border-2 border-[#050505] rounded-full min-h-8 box-border py-0 px-[0.7rem] text-[0.72rem] font-extrabold cursor-pointer flex items-center justify-center [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] shadow-[2px_2px_0_#050505] enabled:hover:bg-[#f47a4a] enabled:hover:text-[#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] [&_svg]:w-[0.82rem] [&_svg]:h-[0.82rem] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:pointer-events-none max-[768px]:min-h-[1.85rem] max-[768px]:px-2 max-[768px]:text-[0.68rem]`;
+  return (
+    <button {...rest} className={className ? `${base} ${className}` : base} />
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.55rem 0 0.6rem;
-  }
-`;
+const CopyActionButton = tw(
+  "button",
+  "inline-flex items-center justify-center gap-[0.35rem] border-2 border-[#050505] rounded-full bg-white text-[#050505] min-h-8 box-border py-0 px-[0.7rem] text-[0.72rem] font-extrabold whitespace-nowrap cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] hover:bg-[#f47a4a] hover:[transform:translate(-1px,-1px)] hover:shadow-[3px_3px_0_#050505] focus-visible:outline-[3px] focus-visible:outline-[rgba(244,122,74,0.45)] focus-visible:outline-offset-2 [&_svg]:w-[0.9rem] [&_svg]:h-[0.9rem] max-[768px]:gap-1 max-[768px]:min-h-[1.85rem] max-[768px]:px-2 max-[768px]:text-[0.68rem]"
+);
 
-// Add a styled component for the translation toggle button
-const TranslationToggleButton = styled.button`
-  background: #ffffff;
-  color: #050505;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  min-height: 2rem;
-  box-sizing: border-box;
-  padding: 0 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-  margin-top: 0.6rem;
-  margin-bottom: 0.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-  box-shadow: 2px 2px 0 #050505;
-
-  &:hover {
-    background: #f47a4a;
-    color: #050505;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  svg {
-    width: 0.82rem;
-    height: 0.82rem;
-  }
-
-  &.active {
-    background: #f47a4a;
-    color: #050505;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-    pointer-events: none;
-  }
-
-  @media (max-width: 768px) {
-    min-height: 1.85rem;
-    padding: 0 0.5rem;
-    font-size: 0.68rem;
-  }
-`;
-
-const CopyActionButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #050505;
-  min-height: 2rem;
-  box-sizing: border-box;
-  padding: 0 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:focus-visible {
-    outline: 3px solid rgba(244, 122, 74, 0.45);
-    outline-offset: 2px;
-  }
-
-  svg {
-    width: 0.9rem;
-    height: 0.9rem;
-  }
-
-  @media (max-width: 768px) {
-    gap: 0.25rem;
-    min-height: 1.85rem;
-    padding: 0 0.5rem;
-    font-size: 0.68rem;
-  }
-`;
-
-const ParagraphActionRow = styled.div`
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0;
-
-  ${TranslationToggleButton} {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  @media (max-width: 768px) {
-    gap: 0.35rem;
-    margin-top: 0.35rem;
-  }
-`;
+const ParagraphActionRow = tw(
+  "div",
+  "flex items-center flex-wrap gap-[0.45rem] mt-2 mb-0 max-[768px]:gap-[0.35rem] max-[768px]:mt-[0.35rem]"
+);
 
 // Define a new modal overlay for word definitions
-const DefinitionModalOverlay = styled(ModalOverlay)`
-  /* Inherit styles from ModalOverlay */
-`;
+const DefinitionModalOverlay = ModalOverlay;
 
 // Define a new modal content for word definitions
-const DefinitionModalContent = styled(ModalContent)`
-  width: 450px;
-  padding: 1.8rem;
-
-  @media (max-width: 768px) {
-    width: 80%;
-  }
-`;
+const DefinitionModalContent = tw(
+  "div",
+  "bg-white rounded-2xl shadow-[6px_6px_0_#050505] max-w-[90%] relative [transform:scale(1)] [transition:transform_0.3s_ease] border-2 border-[#050505] overflow-y-auto max-h-[90vh] p-[1.8rem] w-[450px] max-[768px]:w-[80%] max-[768px]:max-h-[80vh] max-[480px]:max-h-[75vh]"
+);
 
 // Update the word definition displays for the modal
-const WordDefinitionTitle = styled.div`
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 2px solid #050505;
-`;
+const WordDefinitionTitle = tw(
+  "div",
+  "font-black text-[#050505] mb-4 text-[1.5rem] pb-[0.7rem] border-b-2 border-[#050505]"
+);
 
-const WordDefinitionContent = styled.div`
-  color: rgba(5, 5, 5, 0.72);
-  font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  line-height: 1.6;
-  white-space: pre-line;
-  font-size: 1rem;
-`;
+const WordDefinitionContent = tw(
+  "div",
+  "text-[rgba(5,5,5,0.72)] [font-family:'Apple_SD_Gothic_Neo','Noto_Sans_KR',sans-serif] leading-[1.6] whitespace-pre-line text-[1rem]"
+);
 
-const LoadingDefinitionContent = styled.div`
-  color: rgba(5, 5, 5, 0.6);
-  font-style: italic;
-  padding: 1rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100px;
-`;
+const LoadingDefinitionContent = tw(
+  "div",
+  "text-[rgba(5,5,5,0.6)] italic py-4 px-0 flex items-center justify-center min-h-[100px]"
+);
 
 const getWordDefinition = async (
   word: string,
@@ -1447,722 +809,275 @@ const getWordDefinition = async (
   }
 };
 
-const ArticleImage = styled.img`
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
-  border-radius: 14px;
-  margin: 1.25rem 0 0.45rem 0;
-  border: 2px solid #050505;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+const ArticleImage = tw(
+  "img",
+  "w-full aspect-[3/2] object-cover rounded-[14px] m-0 mt-5 mb-[0.45rem] border-2 border-[#050505] shadow-[5px_5px_0_rgba(5,5,5,0.9)] max-[768px]:mt-4 max-[768px]:mb-2"
+);
 
-  @media (max-width: 768px) {
-    margin: 1rem 0 0.5rem 0;
-  }
-`;
+const YouTubeIframe = tw(
+  "iframe",
+  "w-full aspect-video rounded-2xl my-6 border-2 border-[#050505] shadow-[5px_5px_0_rgba(5,5,5,0.9)] max-[768px]:my-4"
+);
 
-const YouTubeIframe = styled.iframe`
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 16px;
-  margin: 1.5rem 0 1.5rem 0;
-  border: 2px solid #050505;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-
-  @media (max-width: 768px) {
-    margin: 1rem 0 1rem 0;
-  }
-`;
-
-const ImageCaption = styled.p`
-  font-size: 0.8rem;
-  color: rgba(5, 5, 5, 0.6);
-  text-align: left;
-  margin: 0 0 1.25rem 0;
-  padding-left: 0.2rem;
-
-  @media (max-width: 768px) {
-    font-size: 0.7rem;
-    margin: 0 0 1rem 0;
-  }
-`;
+const ImageCaption = tw(
+  "p",
+  "text-[0.8rem] text-[rgba(5,5,5,0.6)] text-left m-0 mb-5 pl-[0.2rem] max-[768px]:text-[0.7rem] max-[768px]:mb-4"
+);
 
 // Inline article figures supplied by the editor.
-const FiguresSection = styled.div`
-  margin: 1.25rem 0;
-`;
+const FiguresSection = tw("div", "my-5");
 
-const FiguresGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
-  margin-top: 0.75rem;
-`;
+const FiguresGrid = tw("div", "grid grid-cols-1 gap-5 mt-3");
 
-const PhotoFiguresGrid = styled(FiguresGrid)`
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+const PhotoFiguresGrid = tw(
+  "div",
+  "grid gap-5 mt-3 grid-cols-2 max-[640px]:grid-cols-1"
+);
 
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FigureCard = styled.figure`
-  margin: 0;
-`;
+const FigureCard = tw("figure", "m-0");
 
 // Inline figures are visual breaks in the article, so they intentionally have
 // no visible label or caption.
-const ChartImage = styled.img`
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-  display: block;
-  border-radius: 14px;
-  margin: 1rem 0 0;
+const ChartImage = tw(
+  "img",
+  "w-full h-auto object-contain block rounded-[14px] m-0 mt-4 max-[768px]:mt-[0.9rem]"
+);
 
-  @media (max-width: 768px) {
-    margin: 0.9rem 0 0;
-  }
-`;
-
-const ArticlePhoto = styled.img`
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  display: block;
-  border: 2px solid #050505;
-  border-radius: 14px;
-`;
+const ArticlePhoto = tw(
+  "img",
+  "w-full aspect-[4/3] object-cover block border-2 border-[#050505] rounded-[14px]"
+);
 
 // Discussion topics components
-const DiscussionTopicsSection = styled.div`
-  margin-top: 0;
-  margin-bottom: 2rem;
+const DiscussionTopicsSection = tw(
+  "div",
+  "mt-0 mb-8 max-[768px]:mt-[1.8rem] max-[768px]:mb-[1.8rem]"
+);
 
-  @media (max-width: 768px) {
-    margin-top: 1.8rem;
-    margin-bottom: 1.8rem;
-  }
-`;
+const DiscussionTopicsList = tw(
+  "ul",
+  "list-none m-0 bg-white rounded-[14px] p-[1.2rem] border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+);
 
-const DiscussionTopicsList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 1.2rem;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
+const DiscussionTopicItem = tw(
+  "li",
+  "flex items-start gap-[0.65rem] py-[0.65rem] px-0 border-b border-[rgba(5,5,5,0.14)] last:border-b-0 last:pb-0 first:pt-0 max-[768px]:gap-2"
+);
 
-const DiscussionTopicItem = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
+const DiscussionTopicText = tw(
+  "span",
+  "flex-1 min-w-0 text-[1.02rem] text-[#050505] leading-[1.55] pl-[0.95rem] relative cursor-pointer [transition:color_0.2s_ease] before:content-['•'] before:text-[#f47a4a] before:font-bold before:absolute before:left-0 before:text-[1rem] hover:text-[#f47a4a] max-[768px]:text-[0.95rem] max-[768px]:pl-[0.85rem]"
+);
 
-  &:last-child {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
+const DiscussionVoteControls = tw(
+  "div",
+  "flex items-center gap-[0.2rem] flex-none"
+);
 
-  &:first-child {
-    padding-top: 0;
-  }
+function DiscussionVoteButton({
+  $active,
+  $negative,
+  className,
+  ...rest
+}: {
+  $active: boolean;
+  $negative?: boolean;
+} & React.JSX.IntrinsicElements["button"]) {
+  const base = `w-[1.85rem] h-[1.85rem] inline-flex items-center justify-center p-0 border-[1.5px] border-[#050505] rounded-full ${
+    $active ? ($negative ? "bg-[#ffd9d9]" : "bg-[#f47a4a]") : "bg-white"
+  } text-[#050505] cursor-pointer [transition:transform_0.16s_ease,background_0.16s_ease] [&_svg]:w-[0.82rem] [&_svg]:h-[0.82rem] ${
+    $negative ? "enabled:hover:bg-[#ffd9d9]" : "enabled:hover:bg-[#f47a4a]"
+  } enabled:hover:[transform:translateY(-1px)] disabled:opacity-[0.42] disabled:cursor-not-allowed`;
+  return (
+    <button {...rest} className={className ? `${base} ${className}` : base} />
+  );
+}
 
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-  }
-`;
+const DiscussionVoteScore = tw(
+  "span",
+  "min-w-[1.35rem] text-[0.72rem] font-extrabold text-center tabular-nums"
+);
 
-const DiscussionTopicText = styled.span`
-  flex: 1;
-  min-width: 0;
-  font-size: 1.02rem;
-  color: #050505;
-  line-height: 1.55;
-  padding-left: 0.95rem;
-  position: relative;
-  cursor: pointer;
-  transition: color 0.2s ease;
-
-  &::before {
-    content: "•";
-    color: #f47a4a;
-    font-weight: bold;
-    position: absolute;
-    left: 0;
-    font-size: 1rem;
-  }
-
-  &:hover {
-    color: #f47a4a;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.95rem;
-    padding-left: 0.85rem;
-  }
-`;
-
-const DiscussionVoteControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex: 0 0 auto;
-`;
-
-const DiscussionVoteButton = styled.button<{ $active: boolean; $negative?: boolean }>`
-  width: 1.85rem;
-  height: 1.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${(props) =>
-    props.$active ? (props.$negative ? "#ffd9d9" : "#f47a4a") : "#ffffff"};
-  color: #050505;
-  cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease;
-
-  svg {
-    width: 0.82rem;
-    height: 0.82rem;
-  }
-
-  &:hover:not(:disabled) {
-    background: ${(props) => (props.$negative ? "#ffd9d9" : "#f47a4a")};
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: 0.42;
-    cursor: not-allowed;
-  }
-`;
-
-const DiscussionVoteScore = styled.span`
-  min-width: 1.35rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-`;
-
-const VoteAccessNote = styled.p`
-  margin: 0.7rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.78rem;
-  line-height: 1.45;
-`;
+const VoteAccessNote = tw(
+  "p",
+  "m-0 mt-[0.7rem] text-[rgba(5,5,5,0.6)] text-[0.78rem] leading-[1.45]"
+);
 
 // Admin editing styled components
-const AdminControlsContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+const AdminControlsContainer = tw(
+  "div",
+  "flex items-center gap-[0.8rem] mb-4 flex-wrap max-[768px]:gap-[0.6rem]"
+);
 
-  @media (max-width: 768px) {
-    gap: 0.6rem;
-  }
-`;
+const AdminButton = tw(
+  "button",
+  "flex items-center justify-center gap-[0.3rem] bg-[#f47a4a] text-[#050505] border-2 border-[#050505] min-h-8 box-border py-0 px-[0.7rem] rounded-full text-[0.72rem] cursor-pointer [transition:transform_0.16s_ease,box-shadow_0.16s_ease] font-extrabold shadow-[2px_2px_0_#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none max-[768px]:text-[0.75rem] max-[768px]:px-[0.8rem] [&_svg]:w-[0.9rem] [&_svg]:h-[0.9rem]"
+);
 
-const AdminButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  background: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  min-height: 2rem;
-  box-sizing: border-box;
-  padding: 0 0.7rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  font-weight: 800;
-  box-shadow: 2px 2px 0 #050505;
+const EditableTopicInput = tw(
+  "input",
+  "w-full p-[0.6rem] border-2 border-[#050505] rounded-[10px] text-[0.95rem] text-[#050505] bg-white mb-2 [transition:box-shadow_0.16s_ease] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] max-[768px]:text-[0.9rem] max-[768px]:p-2"
+);
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+const EditableTopicContainer = tw(
+  "div",
+  "flex items-center gap-2 mb-[0.6rem] p-[0.6rem] bg-white rounded-xl border-[1.5px] border-[#050505] max-[768px]:gap-[0.4rem] max-[768px]:p-2"
+);
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
+const RemoveTopicButton = tw(
+  "button",
+  "bg-white text-[#050505] border-[1.5px] border-[#050505] rounded-full w-6 h-6 flex items-center justify-center cursor-pointer text-[0.8rem] [transition:background_0.16s_ease,color_0.16s_ease] shrink-0 hover:bg-[#e74c3c] hover:text-white max-[768px]:w-5 max-[768px]:h-5 max-[768px]:text-[0.7rem]"
+);
 
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-    padding: 0 0.8rem;
-  }
+const NewTopicContainer = tw(
+  "div",
+  "flex gap-2 mt-4 items-start max-[768px]:flex-col max-[768px]:gap-[0.4rem]"
+);
 
-  svg {
-    width: 0.9rem;
-    height: 0.9rem;
-  }
-`;
+const NewTopicInput = tw(
+  "input",
+  "flex-1 p-[0.6rem] border-2 border-[#050505] rounded-[10px] text-[0.9rem] text-[#050505] bg-white [transition:box-shadow_0.16s_ease] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a] max-[768px]:w-full max-[768px]:text-[0.85rem] max-[768px]:p-2"
+);
 
-const EditableTopicInput = styled.input`
-  width: 100%;
-  padding: 0.6rem;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  color: #050505;
-  background: white;
-  margin-bottom: 0.5rem;
-  transition: box-shadow 0.16s ease;
+const AddTopicButton = tw(
+  "button",
+  "bg-[#f47a4a] text-[#050505] border-2 border-[#050505] py-[0.6rem] px-4 rounded-full text-[0.8rem] cursor-pointer [transition:transform_0.16s_ease,box-shadow_0.16s_ease] font-extrabold whitespace-nowrap shadow-[2px_2px_0_#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none max-[768px]:w-full max-[768px]:text-[0.75rem] max-[768px]:py-2 max-[768px]:px-[0.8rem]"
+);
 
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
+const SectionHeaderRow = tw(
+  "div",
+  "flex items-center justify-between gap-[0.8rem] mt-8 mb-[0.9rem] max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-2"
+);
 
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: 0.5rem;
-  }
-`;
+const SectionActions = tw(
+  "div",
+  "flex items-center gap-2 flex-wrap max-[768px]:w-auto max-[768px]:gap-[0.35rem] max-[768px]:self-end max-[768px]:justify-end max-[768px]:[&>button]:flex-none"
+);
 
-const EditableTopicContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.6rem;
-  padding: 0.6rem;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1.5px solid #050505;
+const DiscussionHeaderRow = tw(
+  "div",
+  "flex items-center justify-between gap-[0.8rem] mt-8 mb-4 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-2"
+);
 
-  @media (max-width: 768px) {
-    gap: 0.4rem;
-    padding: 0.5rem;
-  }
-`;
+const AdminActionGroup = tw("div", "flex items-center gap-2 flex-wrap");
 
-const RemoveTopicButton = styled.button`
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: background 0.16s ease, color 0.16s ease;
-  flex-shrink: 0;
+function AdminActionButton({
+  variant,
+  className,
+  ...rest
+}: {
+  variant?: "primary" | "ghost";
+} & React.JSX.IntrinsicElements["button"]) {
+  const base = `inline-flex items-center justify-center gap-[0.35rem] min-h-8 box-border py-0 px-[0.7rem] rounded-full text-[0.72rem] font-extrabold border-2 border-[#050505] ${
+    variant === "ghost" ? "bg-white" : "bg-[#f47a4a]"
+  } text-[#050505] cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] enabled:hover:bg-[#f47a4a] enabled:hover:text-[#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none max-[768px]:gap-1 max-[768px]:min-h-[1.85rem] max-[768px]:px-2 max-[768px]:text-[0.68rem]`;
+  return (
+    <button {...rest} className={className ? `${base} ${className}` : base} />
+  );
+}
 
-  &:hover {
-    background: #e74c3c;
-    color: #ffffff;
-  }
+const AdminEditCard = tw(
+  "div",
+  "border-2 border-[#050505] rounded-2xl p-[1.2rem] bg-white shadow-[4px_4px_0_rgba(5,5,5,0.9)] mb-6"
+);
 
-  @media (max-width: 768px) {
-    width: 20px;
-    height: 20px;
-    font-size: 0.7rem;
-  }
-`;
+const AdminEditTitle = tw(
+  "div",
+  "flex items-center gap-2 font-extrabold text-[#050505] mb-[0.9rem]"
+);
 
-const NewTopicContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  align-items: flex-start;
+const AdminFieldLabel = tw(
+  "label",
+  "block text-[0.85rem] font-bold text-[rgba(5,5,5,0.72)] mb-[0.4rem]"
+);
 
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-`;
+const AdminInput = tw(
+  "input",
+  "w-full rounded-[10px] border-2 border-[#050505] py-[0.55rem] px-3 text-[0.95rem] text-[#050505] bg-white [transition:box-shadow_0.16s_ease] mb-4 focus:outline-none focus:shadow-[2px_2px_0_#f47a4a]"
+);
 
-const NewTopicInput = styled.input`
-  flex: 1;
-  padding: 0.6rem;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  color: #050505;
-  background: white;
-  transition: box-shadow 0.16s ease;
+const AdminTextArea = tw(
+  "textarea",
+  "w-full rounded-[10px] border-2 border-[#050505] py-3 px-[0.85rem] text-[0.95rem] text-[#050505] bg-white [transition:box-shadow_0.16s_ease] min-h-[120px] resize-y mb-[0.8rem] leading-[1.5] focus:outline-none focus:shadow-[2px_2px_0_#f47a4a]"
+);
 
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
+const ParagraphEditorWrapper = tw("div", "flex flex-col gap-4");
 
-  @media (max-width: 768px) {
-    width: 100%;
-    font-size: 0.85rem;
-    padding: 0.5rem;
-  }
-`;
+const ParagraphEditorCard = tw(
+  "div",
+  "border-2 border-[#050505] rounded-[14px] p-4 bg-white shadow-[3px_3px_0_rgba(5,5,5,0.9)]"
+);
 
-const AddTopicButton = styled.button`
-  background: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  padding: 0.6rem 1rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  font-weight: 800;
-  white-space: nowrap;
-  box-shadow: 2px 2px 0 #050505;
+const ParagraphEditorHeader = tw(
+  "div",
+  "flex items-center justify-between gap-2 mb-[0.8rem]"
+);
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+const ParagraphBadge = tw(
+  "span",
+  "text-[0.8rem] font-extrabold text-[#050505] bg-[#f47a4a] border-[1.5px] border-[#050505] rounded-full py-[0.2rem] px-[0.8rem]"
+);
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
+const IconCircleButton = tw(
+  "button",
+  "w-8 h-8 inline-flex items-center justify-center rounded-full border-2 border-[#050505] bg-white text-[#050505] cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] enabled:hover:bg-[#f47a4a] enabled:hover:text-[#050505] enabled:hover:[transform:translate(-1px,-1px)] enabled:hover:shadow-[3px_3px_0_#050505] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+);
 
-  @media (max-width: 768px) {
-    width: 100%;
-    font-size: 0.75rem;
-    padding: 0.5rem 0.8rem;
-  }
-`;
+const AddParagraphButton = tw(
+  "button",
+  "w-full rounded-xl border-2 border-dashed border-[#050505] p-[0.7rem] inline-flex items-center justify-center gap-[0.4rem] bg-white text-[#050505] font-extrabold cursor-pointer [transition:background_0.16s_ease,color_0.16s_ease] hover:bg-[#f47a4a] hover:text-[#050505]"
+);
 
-const SectionHeaderRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-top: 2rem;
-  margin-bottom: 0.9rem;
+const MediaPreview = tw(
+  "div",
+  "w-full rounded-[14px] overflow-hidden border-2 border-[#050505] bg-white shadow-[4px_4px_0_rgba(5,5,5,0.9)] mb-4"
+);
 
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-`;
+const MediaPreviewImage = tw("img", "w-full block object-cover");
 
-const SectionActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+const EditorHint = tw(
+  "p",
+  "text-[0.85rem] text-[rgba(5,5,5,0.6)] mb-[0.8rem]"
+);
 
-  @media (max-width: 768px) {
-    width: auto;
-    gap: 0.35rem;
-    align-self: flex-end;
-    justify-content: flex-end;
+const EmptyMediaState = tw(
+  "div",
+  "border-2 border-dashed border-[#050505] rounded-xl p-4 text-center text-[rgba(5,5,5,0.6)] text-[0.9rem]"
+);
 
-    > button {
-      flex: 0 0 auto;
-    }
-  }
-`;
+const FileUploadRow = tw(
+  "div",
+  "flex items-center gap-[0.6rem] mb-[0.8rem] flex-wrap"
+);
 
-const DiscussionHeaderRow = styled(SectionHeaderRow)`
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-`;
+const HiddenFileInput = tw("input", "hidden");
 
-const AdminActionGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-`;
+function UploadStatus({
+  variant,
+  className,
+  ...rest
+}: {
+  variant?: "error" | "success";
+} & React.JSX.IntrinsicElements["div"]) {
+  const base = `text-[0.85rem] font-bold text-[#050505] border-[1.5px] border-[#050505] ${
+    variant === "error" ? "bg-[#ffd9d9]" : "bg-[#fff0e8]"
+  } rounded-[10px] py-2 px-3 mb-[0.8rem]`;
+  return <div {...rest} className={className ? `${base} ${className}` : base} />;
+}
 
-const AdminActionButton = styled.button<{ variant?: "primary" | "ghost" }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 2rem;
-  box-sizing: border-box;
-  padding: 0 0.7rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  border: 2px solid #050505;
-  background: ${(props) =>
-    props.variant === "ghost" ? "#ffffff" : "#f47a4a"};
-  color: #050505;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+const PaywallNotice = tw(
+  "div",
+  "flex items-start gap-[0.8rem] py-4 px-[1.2rem] rounded-2xl border-2 border-[#050505] bg-white text-[#050505] mb-6 shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+);
 
-  &:hover:not(:disabled) {
-    background: ${(props) =>
-      props.variant === "ghost" ? "#f47a4a" : "#f47a4a"};
-    color: #050505;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+const PaywallText = tw("div", "flex flex-col gap-[0.3rem]");
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
+const PaywallTitle = tw("div", "font-extrabold text-[1rem]");
 
-  @media (max-width: 768px) {
-    gap: 0.25rem;
-    min-height: 1.85rem;
-    padding: 0 0.5rem;
-    font-size: 0.68rem;
-  }
-`;
-
-const AdminEditCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: 1.2rem;
-  background: #ffffff;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  margin-bottom: 1.5rem;
-`;
-
-const AdminEditTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 800;
-  color: #050505;
-  margin-bottom: 0.9rem;
-`;
-
-const AdminFieldLabel = styled.label`
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: rgba(5, 5, 5, 0.72);
-  margin-bottom: 0.4rem;
-`;
-
-const AdminInput = styled.input`
-  width: 100%;
-  border-radius: 10px;
-  border: 2px solid #050505;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.95rem;
-  color: #050505;
-  background: #ffffff;
-  transition: box-shadow 0.16s ease;
-  margin-bottom: 1rem;
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const AdminTextArea = styled.textarea`
-  width: 100%;
-  border-radius: 10px;
-  border: 2px solid #050505;
-  padding: 0.75rem 0.85rem;
-  font-size: 0.95rem;
-  color: #050505;
-  background: #ffffff;
-  transition: box-shadow 0.16s ease;
-  min-height: 120px;
-  resize: vertical;
-  margin-bottom: 0.8rem;
-  line-height: 1.5;
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const ParagraphEditorWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const ParagraphEditorCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  padding: 1rem;
-  background: white;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const ParagraphEditorHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.8rem;
-`;
-
-const ParagraphBadge = styled.span`
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #050505;
-  background: #f47a4a;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 0.2rem 0.8rem;
-`;
-
-const IconCircleButton = styled.button`
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 2px solid #050505;
-  background: white;
-  color: #050505;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    color: #050505;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-  }
-`;
-
-const AddParagraphButton = styled.button`
-  width: 100%;
-  border-radius: 12px;
-  border: 2px dashed #050505;
-  padding: 0.7rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  background: #ffffff;
-  color: #050505;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    color: #050505;
-  }
-`;
-
-const MediaPreview = styled.div`
-  width: 100%;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 2px solid #050505;
-  background: #ffffff;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  margin-bottom: 1rem;
-`;
-
-const MediaPreviewImage = styled.img`
-  width: 100%;
-  display: block;
-  object-fit: cover;
-`;
-
-const EditorHint = styled.p`
-  font-size: 0.85rem;
-  color: rgba(5, 5, 5, 0.6);
-  margin-bottom: 0.8rem;
-`;
-
-const EmptyMediaState = styled.div`
-  border: 2px dashed #050505;
-  border-radius: 12px;
-  padding: 1rem;
-  text-align: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.9rem;
-`;
-
-const FileUploadRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.8rem;
-  flex-wrap: wrap;
-`;
-
-const HiddenFileInput = styled.input`
-  display: none;
-`;
-
-const UploadStatus = styled.div<{ variant?: "error" | "success" }>`
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #050505;
-  border: 1.5px solid #050505;
-  background: ${(props) =>
-    props.variant === "error" ? "#ffd9d9" : "#fff0e8"};
-  border-radius: 10px;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.8rem;
-`;
-
-const PaywallNotice = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
-  padding: 1rem 1.2rem;
-  border-radius: 16px;
-  border: 2px solid #050505;
-  background: #ffffff;
-  color: #050505;
-  margin-bottom: 1.5rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const PaywallText = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-`;
-
-const PaywallTitle = styled.div`
-  font-weight: 800;
-  font-size: 1rem;
-`;
-
-const PaywallDescription = styled.p`
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: rgba(5, 5, 5, 0.72);
-`;
+const PaywallDescription = tw(
+  "p",
+  "m-0 text-[0.9rem] leading-[1.5] text-[rgba(5,5,5,0.72)]"
+);
 
 const GUEST_PARAGRAPH_LIMIT = 2;
 
@@ -4183,9 +3098,7 @@ const Article = () => {
                     </CopyActionButton>
                     <TranslationToggleButton
                       onClick={() => toggleKoreanParagraph(index)}
-                      className={
-                        visibleKoreanParagraphs.includes(index) ? "active" : ""
-                      }
+                      $active={visibleKoreanParagraphs.includes(index)}
                       disabled={!hasKoreanParagraph}
                     >
                       <LanguageIcon />

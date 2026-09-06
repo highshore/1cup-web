@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ComponentProps, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowPathIcon,
   ArrowRightIcon,
@@ -13,7 +13,6 @@ import {
   UserGroupIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import styled from "styled-components";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { loadExamCenter, postExamAction } from "../../lib/features/exam/services/exam_admin_client";
@@ -21,177 +20,33 @@ import type { ExamCenterOverview, ExamInterviewer, ExamInterviewerStatus } from 
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { Button, Card, ExamAvatar, ExamHeader, ExamPage, Eyebrow, InterviewerStatusPill, Loading, Notice, PageLead, PageTitle, SetStatusPill } from "./exam_ui";
 
-const Hero = styled.section`
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(250px, 0.75fr);
-  gap: 20px;
-  margin-bottom: 28px;
-  border: 2px solid #050505;
-  border-radius: 16px;
-  padding: clamp(20px, 4vw, 38px);
-  background: #050505;
-  color: #fff;
-  box-shadow: 6px 6px 0 #f47a4a;
+function HeroStat({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-[10px] border border-[rgba(255,255,255,0.48)] bg-[rgba(255,255,255,0.07)] p-[13px] [&_span]:mt-[3px] [&_span]:block [&_span]:text-[11px] [&_span]:font-[750] [&_span]:text-[rgba(255,255,255,0.72)] [&_strong]:block [&_strong]:text-[24px] [&_strong]:font-black [&_strong]:tracking-[-0.05em] [&_strong]:text-white">{children}</div>;
+}
 
-  @media (max-width: 760px) { grid-template-columns: 1fr; }
-`;
+function NavLink({ $active, className = "", children, ...rest }: { $active?: boolean } & ComponentProps<typeof Link>) {
+  return <Link className={`inline-flex items-center gap-[7px] rounded-full border-2 border-[#050505] px-[13px] py-[9px] text-[12px] font-[850] no-underline ${$active ? "bg-[#050505] text-white" : "bg-white text-[#050505]"} [&_svg]:h-4 [&_svg]:w-4 ${className}`} {...rest}>{children}</Link>;
+}
 
-const HeroKicker = styled(Eyebrow)`
-  color: #f47a4a;
-`;
+function SectionHeader({ children, ...rest }: ComponentProps<"div">) {
+  return <div className="m-0 mb-[15px] flex items-end justify-between gap-[14px] max-[600px]:flex-col max-[600px]:items-start [&_h2]:m-0 [&_h2]:text-[20px] [&_h2]:font-black [&_h2]:tracking-[-0.035em] [&_p]:m-0 [&_p]:mt-1.5 [&_p]:text-[13px] [&_p]:font-[550] [&_p]:leading-[1.5] [&_p]:text-[rgba(5,5,5,.63)]" {...rest}>{children}</div>;
+}
 
-const HeroTitle = styled.h2`
-  max-width: 620px;
-  margin: 0;
-  color: #fff;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 1.02;
-`;
+function Filter({ $active, ...rest }: { $active?: boolean } & ComponentProps<"button">) {
+  return <button className={`cursor-pointer rounded-full border-[1.5px] border-[#050505] px-[9px] py-1.5 text-[11px] font-[850] text-[#050505] ${$active ? "bg-[#f47a4a]" : "bg-white"}`} {...rest} />;
+}
 
-const HeroCopy = styled.p`
-  max-width: 630px;
-  margin: 13px 0 0;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 14px;
-  line-height: 1.6;
-`;
+function CandidateGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-3 gap-[14px] max-[900px]:grid-cols-2 max-[580px]:grid-cols-1">{children}</div>;
+}
 
-const HeroStats = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-content: center;
-  gap: 10px;
-`;
+function CandidateCard({ $selected, className = "", children, ...rest }: { $selected?: boolean } & ComponentProps<"article">) {
+  return <article className={`overflow-hidden rounded-[14px] bg-white ${$selected ? "border-2 border-[#f47a4a] shadow-[5px_5px_0_#f47a4a]" : "border-2 border-[#050505] shadow-[4px_4px_0_#050505]"} ${className}`} {...rest}>{children}</article>;
+}
 
-const HeroStat = styled.div`
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  border-radius: 10px;
-  padding: 13px;
-  background: rgba(255, 255, 255, 0.07);
-  strong { display: block; color: #fff; font-size: 24px; font-weight: 900; letter-spacing: -0.05em; }
-  span { display: block; margin-top: 3px; color: rgba(255, 255, 255, 0.72); font-size: 11px; font-weight: 750; }
-`;
-
-const WorkspaceNav = styled.nav`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 26px;
-`;
-
-const NavLink = styled(Link)<{ $active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 9px 13px;
-  background: ${({ $active }) => $active ? "#050505" : "#fff"};
-  color: ${({ $active }) => $active ? "#fff" : "#050505"};
-  font-size: 12px;
-  font-weight: 850;
-  text-decoration: none;
-  svg { width: 16px; height: 16px; }
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 0 0 15px;
-  h2 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.035em; }
-  p { margin: 6px 0 0; color: rgba(5,5,5,.63); font-size: 13px; font-weight: 550; line-height: 1.5; }
-  @media (max-width: 600px) { align-items: flex-start; flex-direction: column; }
-`;
-
-const FilterRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-`;
-
-const Filter = styled.button<{ $active?: boolean }>`
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  padding: 6px 9px;
-  background: ${({ $active }) => $active ? "#f47a4a" : "#fff"};
-  color: #050505;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 850;
-  cursor: pointer;
-`;
-
-const CandidateGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (max-width: 580px) { grid-template-columns: 1fr; }
-`;
-
-const CandidateCard = styled(Card)<{ $selected?: boolean }>`
-  overflow: hidden;
-  border-color: ${({ $selected }) => $selected ? "#f47a4a" : "#050505"};
-  box-shadow: ${({ $selected }) => $selected ? "5px 5px 0 #f47a4a" : "4px 4px 0 #050505"};
-`;
-
-const CandidateVisual = styled.div`
-  position: relative;
-  border-bottom: 2px solid #050505;
-  padding: 10px;
-  background: #fff8dc;
-`;
-
-const CandidateMeta = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 13px 13px 0;
-  h3 { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: -0.035em; }
-  p { margin: 5px 0 0; color: rgba(5,5,5,.66); font-size: 11px; font-weight: 700; line-height: 1.45; }
-`;
-
-const CandidateDetails = styled.p`
-  margin: 10px 13px 0;
-  border-top: 1px solid rgba(5,5,5,.25);
-  padding-top: 9px;
-  color: rgba(5,5,5,.7);
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1.55;
-`;
-
-const CandidateActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  padding: 13px;
-  button, a { flex: 1 1 auto; }
-`;
-
-const CompactButton = styled(Button)`
-  min-height: 35px;
-  padding: 7px 9px;
-  font-size: 11px;
-  box-shadow: 2px 2px 0 #050505;
-`;
-
-const Empty = styled(Card)`
-  display: grid;
-  min-height: 180px;
-  place-items: center;
-  padding: 24px;
-  background: #fff8dc;
-  color: rgba(5,5,5,.68);
-  font-size: 13px;
-  font-weight: 750;
-  text-align: center;
-`;
+function CompactButton(props: ComponentProps<typeof Button>) {
+  return <Button sizeClassName="min-h-[35px] px-[9px] py-[7px] text-[11px] shadow-[2px_2px_0_#050505]" {...props} />;
+}
 
 type FilterName = "all" | "approved" | "pending" | "rejected";
 
@@ -258,18 +113,18 @@ export default function ExamCenterClient() {
       <Button $tone="cream" disabled={busy === "create-candidates{}"} onClick={() => void act("create-candidates", {}, "A fresh candidate batch is ready for review.")}><SparklesIcon />{t.examCenter.generateCandidates}</Button>
     </ExamHeader>
 
-    <Hero>
-      <div><HeroKicker>Web-native production flow</HeroKicker><HeroTitle>From interviewer review to a timed 11-response exam.</HeroTitle><HeroCopy>The desktop prototype’s local candidate approval and media checks are now persistent, shareable records. Browser preview media gives every administrator a reliable review run without depending on temporary provider downloads.</HeroCopy></div>
-      <HeroStats><HeroStat><strong>{approved}</strong><span>Hired interviewers</span></HeroStat><HeroStat><strong>{pending}</strong><span>Awaiting review</span></HeroStat><HeroStat><strong>{workspace.sets.length}</strong><span>Exam sets</span></HeroStat><HeroStat><strong>{published}</strong><span>Published runs</span></HeroStat></HeroStats>
-    </Hero>
+    <section className="mb-7 grid grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)] gap-5 rounded-2xl border-2 border-[#050505] bg-[#050505] p-[clamp(20px,4vw,38px)] text-white shadow-[6px_6px_0_#f47a4a] max-[760px]:grid-cols-1">
+      <div><p className="m-0 mb-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#f47a4a]">Web-native production flow</p><h2 className="m-0 max-w-[620px] text-[clamp(28px,4vw,44px)] font-black leading-[1.02] tracking-[-0.055em] text-white">From interviewer review to a timed 11-response exam.</h2><p className="m-0 mt-[13px] max-w-[630px] text-[14px] leading-[1.6] text-[rgba(255,255,255,0.76)]">The desktop prototype’s local candidate approval and media checks are now persistent, shareable records. Browser preview media gives every administrator a reliable review run without depending on temporary provider downloads.</p></div>
+      <div className="grid grid-cols-2 content-center gap-2.5"><HeroStat><strong>{approved}</strong><span>Hired interviewers</span></HeroStat><HeroStat><strong>{pending}</strong><span>Awaiting review</span></HeroStat><HeroStat><strong>{workspace.sets.length}</strong><span>Exam sets</span></HeroStat><HeroStat><strong>{published}</strong><span>Published runs</span></HeroStat></div>
+    </section>
 
-    <WorkspaceNav aria-label="Exam workflow navigation"><NavLink $active href="/admin/test-center"><UserGroupIcon />{t.examCenter.roster}</NavLink><NavLink href="/admin/test-center/exams"><PlusIcon />{t.examCenter.setup}</NavLink></WorkspaceNav>
+    <nav className="mb-[26px] flex flex-wrap gap-2" aria-label="Exam workflow navigation"><NavLink $active href="/admin/test-center"><UserGroupIcon />{t.examCenter.roster}</NavLink><NavLink href="/admin/test-center/exams"><PlusIcon />{t.examCenter.setup}</NavLink></nav>
 
     {notice && <Notice $error={notice.error}>{notice.text}</Notice>}
 
     <SectionHeader>
       <div><h2>{t.examCenter.interviewerBuilding}</h2><p>Approve a consistent profile before it can be used in an exam set. Preview media is intentionally neutral and silent while the web uses browser speech for questions.</p></div>
-      <FilterRow>{(["all", "approved", "pending", "rejected"] as FilterName[]).map((name) => <Filter key={name} $active={filter === name} onClick={() => setFilter(name)}>{name === "approved" ? t.examCenter.hired : name === "all" ? t.examCenter.all : name === "pending" ? t.examCenter.pending : t.examCenter.rejected} · {counts[name]}</Filter>)}</FilterRow>
+      <div className="flex flex-wrap gap-[7px]">{(["all", "approved", "pending", "rejected"] as FilterName[]).map((name) => <Filter key={name} $active={filter === name} onClick={() => setFilter(name)}>{name === "approved" ? t.examCenter.hired : name === "all" ? t.examCenter.all : name === "pending" ? t.examCenter.pending : t.examCenter.rejected} · {counts[name]}</Filter>)}</div>
     </SectionHeader>
 
     <CandidateGrid>
@@ -277,18 +132,18 @@ export default function ExamCenterClient() {
         const working = Boolean(busy);
         const selected = selectedId === person.id;
         return <CandidateCard $selected={selected} key={person.id} onClick={() => setSelectedId(person.id)}>
-          <CandidateVisual><ExamAvatar interviewer={person} large /></CandidateVisual>
-          <CandidateMeta><div><h3>{person.name}</h3><p>{person.gender} · {person.occupation} · {person.voice_tone}</p></div><InterviewerStatusPill status={person.status} /></CandidateMeta>
-          <CandidateDetails>{person.personality} presence · {person.attire} · Shot and nodding-preview state: {person.image_status === "ready" && person.video_status === "ready" ? "ready" : "needs refresh"}.</CandidateDetails>
-          <CandidateActions>
+          <div className="relative border-b-2 border-[#050505] bg-[#fff8dc] p-2.5"><ExamAvatar interviewer={person} large /></div>
+          <div className="flex items-start justify-between gap-2.5 px-[13px] pb-0 pt-[13px] [&_h3]:m-0 [&_h3]:text-[16px] [&_h3]:font-black [&_h3]:tracking-[-0.035em] [&_p]:m-0 [&_p]:mt-[5px] [&_p]:text-[11px] [&_p]:font-bold [&_p]:leading-[1.45] [&_p]:text-[rgba(5,5,5,.66)]"><div><h3>{person.name}</h3><p>{person.gender} · {person.occupation} · {person.voice_tone}</p></div><InterviewerStatusPill status={person.status} /></div>
+          <p className="mx-[13px] mb-0 mt-2.5 border-t border-[rgba(5,5,5,.25)] pt-[9px] text-[11px] font-[650] leading-[1.55] text-[rgba(5,5,5,.7)]">{person.personality} presence · {person.attire} · Shot and nodding-preview state: {person.image_status === "ready" && person.video_status === "ready" ? "ready" : "needs refresh"}.</p>
+          <div className="flex flex-wrap gap-[7px] p-[13px] [&_a]:flex-auto [&_button]:flex-auto">
             {person.status !== "approved" && <CompactButton disabled={working} onClick={(event) => { event.stopPropagation(); void act("set-interviewer-status", { interviewerId: person.id, status: "approved" satisfies ExamInterviewerStatus }, `${person.name} is now available for exam set-up.`); }}><CheckIcon />{t.examCenter.hire}</CompactButton>}
             {person.status !== "rejected" && <CompactButton $tone="cream" disabled={working} onClick={(event) => { event.stopPropagation(); void act("set-interviewer-status", { interviewerId: person.id, status: "rejected" satisfies ExamInterviewerStatus }, `${person.name} was moved out of the active roster.`); }}><XMarkIcon />{t.examCenter.reject}</CompactButton>}
             <CompactButton $tone="orange" disabled={working} onClick={(event) => { event.stopPropagation(); void act("refresh-interviewer-media", { interviewerId: person.id }, "The browser preview media is ready to inspect."); }}><FilmIcon />{t.examCenter.refreshPreview}</CompactButton>
             {person.status === "approved" && <CompactButton as={Link} href={`/admin/test-center/exams?interviewer=${person.id}`}><ArrowRightIcon />{t.examCenter.buildSet}</CompactButton>}
-          </CandidateActions>
+          </div>
         </CandidateCard>;
       })}
-      {!visibleInterviewers.length && <Empty>No profiles match this view. Generate a fresh review batch to begin.</Empty>}
+      {!visibleInterviewers.length && <article className="grid min-h-[180px] place-items-center rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-6 text-center text-[13px] font-[750] text-[rgba(5,5,5,.68)] shadow-[4px_4px_0_#050505]">No profiles match this view. Generate a fresh review batch to begin.</article>}
     </CandidateGrid>
 
     <SectionHeader style={{ marginTop: 42 }}><div><h2>{t.examCenter.recentSets}</h2><p>Jump back into any saved draft or open a published timed preview.</p></div></SectionHeader>

@@ -1,5 +1,4 @@
 import { useMemo, useCallback, type CSSProperties } from "react";
-import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { CheckBadgeIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -17,315 +16,6 @@ interface CostComparison {
   color: string;
   highlight?: boolean;
 }
-
-const MOBILE_NAV_GUTTER = "1rem";
-
-const MembershipSectionContainer = styled.section`
-  padding: clamp(4rem, 8vw, 5.5rem) 0;
-  background: #f3f3f1;
-  position: relative;
-  overflow: hidden;
-  color: #050505;
-`;
-
-const MembershipWrapper = styled.div`
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 1.25rem;
-
-  @media (max-width: 768px) {
-    padding: 0 ${MOBILE_NAV_GUTTER};
-    text-align: center;
-  }
-`;
-
-const MembershipGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(1.5rem, 4vw, 2.25rem);
-  
-  @media (min-width: 860px) {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    align-items: stretch;
-  }
-`;
-
-const LeftCol = styled.div`
-  color: #050505;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1.15rem;
-  position: relative;
-  z-index: 1;
-
-  @media (max-width: 768px) {
-    text-align: center;
-    align-items: center;
-    width: 100%;
-  }
-`;
-
-const RightCol = styled.div`
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  position: relative;
-  z-index: 1;
-  overflow: visible;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    margin-top: 1.5rem;
-    align-items: stretch;
-  }
-`;
-
-const BulletList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    max-width: 34rem;
-  }
-`;
-
-const BulletItem = styled.p`
-  font-size: 0.96rem;
-  color: rgba(5, 5, 5, 0.76);
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin: 0;
-  line-height: 1.55;
-  font-weight: 700;
-
-  svg {
-    margin-top: 0.12rem;
-    color: #050505;
-  }
-
-  @media (max-width: 768px) {
-    justify-content: center;
-    text-align: center;
-  }
-`;
-
-const chartBreath = keyframes`
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -3px, 0);
-  }
-`;
-
-const ComparisonChart = styled.div`
-  background: #ffffff;
-  border-radius: 10px;
-  padding: clamp(1.05rem, 2.5vw, 1.4rem);
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  transition: border-color 180ms ease, box-shadow 180ms ease;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  max-width: none;
-  animation: ${chartBreath} 5.2s ease-in-out infinite;
-
-  &::before {
-    display: none;
-  }
-
-  &::after {
-    display: none;
-  }
-  
-  &:hover {
-    border-color: #050505;
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-  
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-`;
-
-const ChartHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.12);
-  font-size: 0.86rem;
-  font-weight: 850;
-  color: #050505;
-  position: relative;
-  z-index: 1;
-`;
-
-const CostBarContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.82rem;
-  position: relative;
-  z-index: 1;
-`;
-
-const fadeInUp = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const CostItem = styled.div<{ $delay: number }>`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: ${fadeInUp} 0.45s ease forwards;
-  animation-delay: ${({ $delay }) => `${$delay}s`};
-`;
-
-const CostLabelRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.86rem;
-  color: #050505;
-  font-weight: 760;
-`;
-
-const CostBarWrapper = styled.div`
-  width: 100%;
-  height: 12px;
-  background: #fff8dc;
-  border-radius: 9999px;
-  overflow: hidden;
-  border: 1px solid rgba(5, 5, 5, 0.16);
-  position: relative;
-`;
-
-const growBar = keyframes`
-  from { width: 0; }
-  to { width: var(--target-width, 100%); }
-`;
-
-const CostBar = styled.div<{ $color: string }>`
-  position: relative;
-  height: 100%;
-  width: 0;
-  background: ${props => props.$color};
-  border-radius: 9999px;
-  animation: ${growBar} 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--delay, 0s);
-  box-shadow: none;
-  overflow: hidden;
-
-  &::after {
-    display: none;
-  }
-`;
-
-const CostValue = styled.span<{ $highlight?: boolean }>`
-  color: ${props => props.$highlight ? '#050505' : 'rgba(5, 5, 5, 0.58)'};
-  font-weight: ${props => props.$highlight ? '920' : '650'};
-  font-size: 0.85rem;
-  white-space: nowrap;
-`;
-
-const CostLabelText = styled.span<{ $highlight?: boolean }>`
-  color: #050505;
-  font-weight: ${({ $highlight }) => ($highlight ? 920 : 760)};
-`;
-
-const BulletIcon = styled(CheckBadgeIcon)`
-  flex-shrink: 0;
-`;
-
-const CtaButton = styled.button`
-  min-height: 48px;
-  background: #ffffff;
-  color: #050505;
-  font-weight: 850;
-  padding: 0.85rem 1.55rem;
-  border-radius: 999px;
-  transition: background-color 160ms ease, border-color 160ms ease,
-    box-shadow 160ms ease, transform 160ms ease;
-  box-shadow: 5px 5px 0 #f47a4a;
-  width: max-content;
-  border: 2px solid #050505;
-  cursor: pointer;
-  font-size: 1rem;
-
-  &:hover {
-    background: #fff8dc;
-    border-color: #050505;
-    transform: translate(-1px, -1px);
-    box-shadow: 7px 7px 0 #f47a4a;
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    margin: 0 auto;
-  }
-`;
-
-const ValueIntro = styled.div`
-  display: grid;
-  gap: 0.8rem;
-
-  @media (max-width: 768px) {
-    justify-items: center;
-    text-align: center;
-  }
-`;
-
-const MembershipTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  word-break: keep-all;
-`;
-
-const MembershipHighlight = styled.span`
-  display: inline;
-  color: #d95f2d;
-`;
-
-const CaveatBox = styled.div`
-  margin-top: 1.15rem;
-  border: 1px solid rgba(5, 5, 5, 0.16);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.68);
-  padding: 0.9rem;
-`;
-
-const CaveatText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.82rem;
-  font-weight: 580;
-  line-height: 1.6;
-  word-break: keep-all;
-`;
 
 export default function MembershipSection() {
   const { t, locale } = useI18n();
@@ -393,52 +83,58 @@ export default function MembershipSection() {
   );
 
   return (
-    <MembershipSectionContainer>
-      <MembershipWrapper>
-        <MembershipGrid>
-          <LeftCol>
-            <ValueIntro>
-              <MembershipTitle>
+    <section className="py-[clamp(4rem,8vw,5.5rem)] px-0 bg-[#f3f3f1] relative overflow-hidden text-[#050505]">
+      <div className="max-w-page mx-auto px-5 max-[768px]:px-4 max-[768px]:text-center">
+        <div className="grid grid-cols-1 gap-[clamp(1.5rem,4vw,2.25rem)] min-[860px]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] min-[860px]:items-stretch">
+          <div className="text-[#050505] flex flex-col justify-center gap-[1.15rem] relative z-[1] max-[768px]:text-center max-[768px]:items-center max-[768px]:w-full">
+            <div className="grid gap-[0.8rem] max-[768px]:justify-items-center max-[768px]:text-center">
+              <h2 className="m-0 text-[#050505] font-['Noto_Sans_KR',sans-serif] text-[clamp(1.85rem,3vw,2.4rem)] font-black leading-[1.18] tracking-[0] break-keep">
                 {membershipSectionTitleLines[0]}
                 {membershipSectionTitleLines[1] && (
                   <>
                     <br />
-                    <MembershipHighlight>
+                    <span className="inline text-[#d95f2d]">
                       {membershipSectionTitleLines[1]}
-                    </MembershipHighlight>
+                    </span>
                   </>
                 )}
-              </MembershipTitle>
-            </ValueIntro>
+              </h2>
+            </div>
             <div>
-              <BulletList>
+              <div className="flex flex-col gap-[0.55rem] w-full max-[768px]:max-w-[34rem]">
                 {[membershipAccessBullet, t.home.pricingNew.referralDiscount].map((text, idx) => (
-                  <BulletItem key={idx}>
-                    <BulletIcon width={20} />
+                  <p
+                    key={idx}
+                    className="text-[0.96rem] text-[rgba(5,5,5,0.76)] flex items-start gap-2 m-0 leading-[1.55] font-bold [&_svg]:mt-[0.12rem] [&_svg]:text-[#050505] max-[768px]:justify-center max-[768px]:text-center"
+                  >
+                    <CheckBadgeIcon width={20} className="shrink-0" />
                     {text}
-                  </BulletItem>
+                  </p>
                 ))}
-              </BulletList>
-              <CaveatBox>
-                <CaveatText>
+              </div>
+              <div className="mt-[1.15rem] border border-[rgba(5,5,5,0.16)] rounded-xl bg-[rgba(255,255,255,0.68)] p-[0.9rem]">
+                <p className="m-0 text-[rgba(5,5,5,0.62)] text-[0.82rem] font-[580] leading-[1.6] break-keep">
                   {t.home.pricingNew.caveats.line1}<br/>
                   {t.home.pricingNew.caveats.line2}<br/>
                   {t.home.pricingNew.caveats.line3}<br/>
                   {t.home.pricingNew.caveats.line4}
-                </CaveatText>
-              </CaveatBox>
+                </p>
+              </div>
             </div>
-            <CtaButton onClick={() => router.push("/payment")}>
+            <button
+              className="min-h-12 bg-white text-[#050505] font-[850] px-[1.55rem] py-[0.85rem] rounded-full [transition:background-color_160ms_ease,border-color_160ms_ease,box-shadow_160ms_ease,transform_160ms_ease] shadow-[5px_5px_0_#f47a4a] w-max border-2 border-[#050505] cursor-pointer text-[1rem] hover:bg-[#fff8dc] hover:border-[#050505] hover:[transform:translate(-1px,-1px)] hover:shadow-[7px_7px_0_#f47a4a] active:[transform:translateY(0)] max-[768px]:mx-auto"
+              onClick={() => router.push("/payment")}
+            >
               {t.home.pricing.cta}
-            </CtaButton>
-          </LeftCol>
-          <RightCol>
-            <ComparisonChart>
-              <ChartHeader>
+            </button>
+          </div>
+          <div className="p-0 flex flex-col justify-center items-stretch relative z-[1] overflow-visible w-full max-[768px]:mt-6 max-[768px]:items-stretch">
+            <div className="bg-white rounded-[10px] p-[clamp(1.05rem,2.5vw,1.4rem)] border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)] [transition:border-color_180ms_ease,box-shadow_180ms_ease] relative overflow-hidden w-full max-w-none animate-[nh-chart-breath_5.2s_ease-in-out_infinite] motion-reduce:animate-none hover:border-[#050505] hover:shadow-[5px_5px_0_rgba(5,5,5,0.9)]">
+              <div className="flex justify-between gap-4 mb-[1.1rem] pb-[0.8rem] border-b border-[rgba(5,5,5,0.12)] text-[0.86rem] font-[850] text-[#050505] relative z-[1]">
                 <span>{t.home.pricingNew.chart.header}</span>
                 <span>{t.home.pricingNew.chart.unit}</span>
-              </ChartHeader>
-              <CostBarContainer>
+              </div>
+              <div className="flex flex-col gap-[0.82rem] relative z-[1]">
                 {costComparisons.map((item, index) => {
                   const widthPercent = Math.max(
                     1.5,
@@ -449,26 +145,41 @@ export default function MembershipSection() {
                     "--delay": `${index * 0.08}s`,
                   };
                   return (
-                    <CostItem key={item.key} $delay={index * 0.08}>
-                      <CostLabelRow>
-                        <CostLabelText $highlight={item.highlight}>
+                    <div
+                      key={item.key}
+                      className="flex flex-col gap-2 opacity-0 [transform:translateY(10px)] animate-[nh-fade-in-up_0.45s_ease_forwards]"
+                      style={{ animationDelay: `${index * 0.08}s` }}
+                    >
+                      <div className="flex justify-between items-center gap-3 text-[0.86rem] text-[#050505] font-[760]">
+                        <span
+                          className={`text-[#050505] ${item.highlight ? "font-[920]" : "font-[760]"}`}
+                        >
                           {item.label}
-                        </CostLabelText>
-                        <CostValue $highlight={item.highlight}>
+                        </span>
+                        <span
+                          className={`text-[0.85rem] whitespace-nowrap ${
+                            item.highlight
+                              ? "text-[#050505] font-[920]"
+                              : "text-[rgba(5,5,5,0.58)] font-[650]"
+                          }`}
+                        >
                           {item.displayValue}
-                        </CostValue>
-                      </CostLabelRow>
-                      <CostBarWrapper>
-                        <CostBar $color={item.color} style={barStyle} />
-                      </CostBarWrapper>
-                    </CostItem>
+                        </span>
+                      </div>
+                      <div className="w-full h-3 bg-[#fff8dc] rounded-full overflow-hidden border border-[rgba(5,5,5,0.16)] relative">
+                        <div
+                          className="relative h-full w-0 rounded-full animate-[nh-grow-bar_1.3s_cubic-bezier(0.22,1,0.36,1)_forwards] [animation-delay:var(--delay,0s)] shadow-none overflow-hidden"
+                          style={{ ...barStyle, background: item.color }}
+                        />
+                      </div>
+                    </div>
                   );
                 })}
-              </CostBarContainer>
-            </ComparisonChart>
-          </RightCol>
-        </MembershipGrid>
-      </MembershipWrapper>
-    </MembershipSectionContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

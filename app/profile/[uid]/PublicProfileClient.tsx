@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
 import {
   AcademicCapIcon,
   BriefcaseIcon,
@@ -45,371 +44,156 @@ interface PublicProfile {
   memberSince?: string | null;
 }
 
-const Page = styled.main`
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 0 1.25rem 4rem;
-  background: transparent;
+const actionButtonClass =
+  "cursor-pointer rounded-[10px] border-2 border-[#050505] px-[0.8rem] py-2 text-[0.84rem] font-[900] shadow-[2px_2px_0_rgba(5,5,5,0.9)] hover:enabled:[transform:translate(1px,1px)] hover:enabled:shadow-[1px_1px_0_rgba(5,5,5,0.9)] disabled:cursor-wait disabled:opacity-70";
 
-  @media (max-width: 640px) {
-    padding: 0 1rem 3rem;
-  }
-`;
+const cardClass =
+  "rounded-[14px] border-2 border-[#050505] bg-white px-[1.2rem] py-[1.15rem] shadow-[4px_4px_0_rgba(5,5,5,0.9)]";
 
-const Hero = styled.section`
-  display: flex;
-  align-items: center;
-  gap: 1.75rem;
-  margin-bottom: 1.25rem;
+function Pill({
+  $variant,
+  children,
+}: {
+  $variant?: "orange" | "dark" | "plain";
+  children: React.ReactNode;
+}) {
+  const variantClass =
+    $variant === "dark"
+      ? "bg-[#050505] text-white"
+      : $variant === "orange"
+        ? "bg-[#f47a4a] text-[#050505]"
+        : "bg-white text-[#050505]";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border-2 border-[#050505] px-[0.6rem] py-[0.18rem] text-[0.66rem] font-[900] uppercase tracking-[0.04em] ${variantClass}`}
+    >
+      {children}
+    </span>
+  );
+}
 
-  @media (max-width: 640px) {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-`;
+function MessageButton({
+  className = "",
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`${actionButtonClass} bg-[#f47a4a] text-[#050505] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const Avatar = styled.img`
-  width: 132px;
-  height: 132px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #f3f3f1;
-  border: 3px solid #050505;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
+function LikeButton({
+  $active,
+  $mutual,
+  className = "",
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  $active?: boolean;
+  $mutual?: boolean;
+}) {
+  const colorClass = $mutual
+    ? "bg-[#050505] text-white"
+    : $active
+      ? "bg-[#fff0e8] text-[#050505]"
+      : "bg-white text-[#050505]";
+  const fillClass = $active ? "[&_svg]:fill-[currentColor]" : "[&_svg]:fill-none";
+  return (
+    <button
+      className={`${actionButtonClass} ${colorClass} ${fillClass} [&_svg]:h-[17px] [&_svg]:w-[17px] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  @media (max-width: 640px) {
-    width: 110px;
-    height: 110px;
-  }
-`;
+function KakaoButton({
+  className = "",
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`${actionButtonClass} bg-[#fee500] text-[#050505] [&_svg]:h-[17px] [&_svg]:w-[17px] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const HeroText = styled.div`
-  min-width: 0;
-`;
+function ConnectionHint({
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p
+      className="mx-0 mb-0 mt-[0.1rem] w-full text-[0.78rem] font-[650] leading-[1.45] text-[rgba(5,5,5,0.62)] max-[640px]:text-center"
+      {...rest}
+    >
+      {children}
+    </p>
+  );
+}
 
-const BadgeRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.55rem;
+function StatCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[14px] border-2 border-[#050505] bg-white px-[0.9rem] py-4 text-center shadow-[3px_3px_0_rgba(5,5,5,0.9)]">
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 640px) {
-    justify-content: center;
-  }
-`;
+function StatValue({
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className="text-[1.3rem] font-[900] leading-[1.1] text-[#050505]"
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const Pill = styled.span<{ $variant?: "orange" | "dark" | "plain" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.18rem 0.6rem;
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: ${({ $variant }) =>
-    $variant === "dark" ? "#050505" : $variant === "orange" ? "#f47a4a" : "#ffffff"};
-  color: ${({ $variant }) => ($variant === "dark" ? "#ffffff" : "#050505")};
-`;
+function StatLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-[0.35rem] text-[0.64rem] font-[800] uppercase tracking-[0.05em] text-[rgba(5,5,5,0.55)]">
+      {children}
+    </div>
+  );
+}
 
-const Name = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1.1;
+function CardLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mx-0 mb-[0.7rem] mt-0 text-[0.68rem] font-[900] uppercase tracking-[0.07em] text-[rgba(5,5,5,0.55)]">
+      {children}
+    </h2>
+  );
+}
 
-  @media (max-width: 640px) {
-    font-size: 1.7rem;
-  }
-`;
+function CardHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mx-0 mb-[0.7rem] mt-0 inline-flex items-center gap-[0.4rem] text-[1.05rem] font-[900] text-[#050505] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:text-[#f47a4a]">
+      {children}
+    </h2>
+  );
+}
 
-const Tagline = styled.p`
-  margin: 0.4rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 1rem;
-  font-style: italic;
-  line-height: 1.4;
-`;
+function BodyText({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="m-0 text-[0.92rem] leading-[1.65] text-[rgba(5,5,5,0.78)]">
+      {children}
+    </p>
+  );
+}
 
-const HeroActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.9rem;
-
-  @media (max-width: 640px) {
-    justify-content: center;
-  }
-`;
-
-const MessageButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #f47a4a;
-  padding: 0.5rem 0.8rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0 rgba(5, 5, 5, 0.9);
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.7;
-  }
-`;
-
-const LikeButton = styled(MessageButton)<{ $active?: boolean; $mutual?: boolean }>`
-  background: ${({ $mutual, $active }) =>
-    $mutual ? "#050505" : $active ? "#fff0e8" : "#ffffff"};
-  color: ${({ $mutual }) => ($mutual ? "#ffffff" : "#050505")};
-
-  svg {
-    width: 17px;
-    height: 17px;
-    fill: ${({ $active }) => ($active ? "currentColor" : "none")};
-  }
-`;
-
-const KakaoButton = styled(MessageButton)`
-  background: #fee500;
-
-  svg {
-    width: 17px;
-    height: 17px;
-  }
-`;
-
-const ConnectionHint = styled.p`
-  width: 100%;
-  margin: 0.1rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.45;
-
-  @media (max-width: 640px) {
-    text-align: center;
-  }
-`;
-
-const DetailsLockedCard = styled.section`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #fff8dc;
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-`;
-
-const StatCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 1rem 0.9rem;
-  text-align: center;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const StatValue = styled.div`
-  color: #050505;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.1;
-`;
-
-const StatLabel = styled.div`
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-top: 0.35rem;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 0.85rem;
-  align-items: start;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Col = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-`;
-
-const Card = styled.section<{ $tint?: boolean }>`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: ${({ $tint }) => ($tint ? "#fff0e8" : "#ffffff")};
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CardLabel = styled.h2`
-  margin: 0 0 0.7rem;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-`;
-
-const CardHeading = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.7rem;
-  color: #050505;
-  font-size: 1.05rem;
-  font-weight: 900;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #f47a4a;
-  }
-`;
-
-const BodyText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.78);
-  font-size: 0.92rem;
-  line-height: 1.65;
-`;
-
-const QuoteText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.9rem;
-  font-style: italic;
-  line-height: 1.55;
-`;
-
-const ChipGroupLabel = styled.div`
-  margin: 0.9rem 0 0.5rem;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 800;
-
-  &:first-child {
-    margin-top: 0;
-  }
-`;
-
-const Chips = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-`;
-
-const Chip = styled.span`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.25rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #050505;
-`;
-
-const Detail = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  color: #050505;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-top: 0.55rem;
-
-  &:first-of-type {
-    margin-top: 0;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #f47a4a;
-    flex: 0 0 auto;
-  }
-`;
-
-const InfoCard = styled.section`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #102733;
-  color: #ffffff;
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const InfoLabel = styled.div`
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  margin-bottom: 0.45rem;
-`;
-
-const InfoTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.05rem;
-  font-weight: 900;
-`;
-
-const Dot = styled.span`
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #34d27b;
-  box-shadow: 0 0 0 3px rgba(52, 210, 123, 0.25);
-`;
-
-const InfoSub = styled.div`
-  margin-top: 0.45rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.85rem;
-  line-height: 1.5;
-`;
-
-const Centered = styled.div`
-  text-align: center;
-  padding: 4rem 1rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
+function Detail({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-[0.55rem] flex items-center gap-2 text-[0.9rem] font-semibold text-[#050505] first-of-type:mt-0 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:text-[#f47a4a]">
+      {children}
+    </div>
+  );
+}
 
 const toChips = (value?: string): string[] =>
   (value || "")
@@ -448,8 +232,18 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
     void loadProfile();
   }, [loadProfile]);
 
-  if (error) return <Centered>{error}</Centered>;
-  if (!profile) return <Centered>{t.profile.loading}</Centered>;
+  if (error)
+    return (
+      <div className="px-4 py-16 text-center font-bold text-[rgba(5,5,5,0.6)]">
+        {error}
+      </div>
+    );
+  if (!profile)
+    return (
+      <div className="px-4 py-16 text-center font-bold text-[rgba(5,5,5,0.6)]">
+        {t.profile.loading}
+      </div>
+    );
 
   const interestChips = toChips(profile.interests);
   const memberSinceLabel = profile.memberSince
@@ -517,14 +311,15 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
         : "";
 
   return (
-    <Page>
-      <Hero>
-        <Avatar
+    <main className="mx-auto w-full max-w-[860px] bg-transparent px-5 pb-16 max-[640px]:px-4 max-[640px]:pb-12">
+      <section className="mb-5 flex items-center gap-7 max-[640px]:flex-col max-[640px]:gap-4 max-[640px]:text-center">
+        <img
+          className="h-[132px] w-[132px] flex-none rounded-full border-[3px] border-[#050505] bg-[#f3f3f1] object-cover shadow-[5px_5px_0_rgba(5,5,5,0.9)] max-[640px]:h-[110px] max-[640px]:w-[110px]"
           src={profile.photoURL || "/images/default_user.jpg"}
           alt={profile.displayName}
         />
-        <HeroText>
-          <BadgeRow>
+        <div className="min-w-0">
+          <div className="mb-[0.55rem] flex flex-wrap gap-[0.4rem] max-[640px]:justify-center">
             {(profile.badges.activeMember || profile.badges.role) && (
               <Pill $variant="orange">{t.profile.verified}</Pill>
             )}
@@ -532,15 +327,17 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
               <Pill $variant="dark">{t.profile.activeMember}</Pill>
             )}
             {profile.badges.role && <Pill>{profile.badges.role}</Pill>}
-          </BadgeRow>
-          <Name>{profile.displayName}</Name>
-          <Tagline>
+          </div>
+          <h1 className="m-0 text-[2rem] font-[900] leading-[1.1] text-[#050505] max-[640px]:text-[1.7rem]">
+            {profile.displayName}
+          </h1>
+          <p className="mx-0 mb-0 mt-[0.4rem] text-[1rem] italic leading-[1.4] text-[rgba(5,5,5,0.6)]">
             {profile.bio
               ? `“${profile.bio.split(/(?<=[.!?。])\s/)[0]}”`
               : `“${t.profile.taglineDefault}”`}
-          </Tagline>
+          </p>
           {currentUser?.uid !== profile.uid && (
-            <HeroActions>
+            <div className="mt-[0.9rem] flex flex-wrap gap-[0.55rem] max-[640px]:justify-center">
               <LikeButton
                 type="button"
                 onClick={() => void handleToggleLike()}
@@ -567,12 +364,12 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
               {connectionHint && <ConnectionHint>{connectionHint}</ConnectionHint>}
               {likeError && <ConnectionHint role="alert">{likeError}</ConnectionHint>}
               {shareMessage && <ConnectionHint role="status">{shareMessage}</ConnectionHint>}
-            </HeroActions>
+            </div>
           )}
-        </HeroText>
-      </Hero>
+        </div>
+      </section>
 
-      <StatsGrid>
+      <div className="mb-[0.85rem] grid grid-cols-4 gap-3 max-[640px]:grid-cols-2">
         <StatCard>
           <StatValue>{profile.stats.meetupCount}</StatValue>
           <StatLabel>{t.profile.meetupsCompleted}</StatLabel>
@@ -593,12 +390,12 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           <StatValue style={{ fontSize: "1rem" }}>{memberSinceLabel}</StatValue>
           <StatLabel>{t.profile.memberSince}</StatLabel>
         </StatCard>
-      </StatsGrid>
+      </div>
 
       {profile.detailsVisible ? (
-      <Grid>
-        <Col>
-          <Card>
+      <div className="grid grid-cols-[1.05fr_0.95fr] items-start gap-[0.85rem] max-[720px]:grid-cols-1">
+        <div className="flex flex-col gap-[0.85rem]">
+          <section className={cardClass}>
             <CardHeading>
               <SparklesIcon /> {t.profile.myStory}
             </CardHeading>
@@ -607,10 +404,10 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
                 ? t.profile.privateProfile
                 : profile.bio || t.profile.storyDefault}
             </BodyText>
-          </Card>
+          </section>
 
           {hasAbout && (
-            <Card>
+            <section className={cardClass}>
               <CardLabel>{t.profile.about}</CardLabel>
               {profile.work && (
                 <Detail>
@@ -630,42 +427,52 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
                   <span>{profile.location}</span>
                 </Detail>
               )}
-            </Card>
+            </section>
           )}
-        </Col>
+        </div>
 
-        <Col>
+        <div className="flex flex-col gap-[0.85rem]">
           {interestChips.length > 0 && (
-            <Card>
+            <section className={cardClass}>
               <CardLabel>{t.profile.interestsTopics}</CardLabel>
-              <ChipGroupLabel>{t.profile.passions}</ChipGroupLabel>
-              <Chips>
+              <div className="mx-0 mb-2 mt-[0.9rem] text-[0.82rem] font-[800] text-[#050505] first:mt-0">
+                {t.profile.passions}
+              </div>
+              <div className="flex flex-wrap gap-[0.4rem]">
                 {interestChips.map((chip) => (
-                  <Chip key={chip}>{chip}</Chip>
+                  <span
+                    key={chip}
+                    className="inline-flex items-center rounded-full border-[1.5px] border-[#050505] bg-white px-[0.65rem] py-1 text-[0.8rem] font-bold text-[#050505]"
+                  >
+                    {chip}
+                  </span>
                 ))}
-              </Chips>
-            </Card>
+              </div>
+            </section>
           )}
 
-          <InfoCard>
-            <InfoLabel>{t.profile.status}</InfoLabel>
-            <InfoTitle>
-              <Dot /> {t.profile.statusMember}
-            </InfoTitle>
-            <InfoSub>
+          <section className="rounded-[14px] border-2 border-[#050505] bg-[#102733] px-[1.2rem] py-[1.15rem] text-white shadow-[4px_4px_0_rgba(5,5,5,0.9)]">
+            <div className="mb-[0.45rem] text-[0.66rem] font-[800] uppercase tracking-[0.07em] text-[rgba(255,255,255,0.6)]">
+              {t.profile.status}
+            </div>
+            <div className="flex items-center gap-2 text-[1.05rem] font-[900]">
+              <span className="h-[9px] w-[9px] rounded-full bg-[#34d27b] shadow-[0_0_0_3px_rgba(52,210,123,0.25)]" />{" "}
+              {t.profile.statusMember}
+            </div>
+            <div className="mt-[0.45rem] text-[0.85rem] leading-[1.5] text-[rgba(255,255,255,0.78)]">
               {t.profile.statusSince.replace("{date}", memberSinceLabel)}
-            </InfoSub>
-          </InfoCard>
-        </Col>
-      </Grid>
+            </div>
+          </section>
+        </div>
+      </div>
       ) : (
-        <DetailsLockedCard>
+        <section className="rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] px-[1.2rem] py-[1.15rem] shadow-[4px_4px_0_rgba(5,5,5,0.9)]">
           <CardHeading>
             <UserGroupIcon /> {t.profile.detailsLockedTitle}
           </CardHeading>
           <BodyText>{t.profile.detailsLockedBody}</BodyText>
-        </DetailsLockedCard>
+        </section>
       )}
-    </Page>
+    </main>
   );
 }
