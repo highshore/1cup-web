@@ -13,7 +13,7 @@ export default function ProfilePage() {
     <>
       <div style={{ maxWidth: 1120, margin: "18px auto 0", padding: "0 20px", width: "100%" }}>
         <Link href="/payment/refunds" style={{ fontSize: 14, fontWeight: 800, textDecoration: "underline" }}>
-          5회 이용권 환불/정산 보기
+          5회 이용권 환불
         </Link>
       </div>
       <ProfileClient />

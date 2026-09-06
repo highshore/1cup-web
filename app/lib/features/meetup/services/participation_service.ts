@@ -45,7 +45,11 @@ export async function getMeetupEntitlement(input: {
 }): Promise<MeetupEntitlement> {
   const creditBalance = await getParticipationCreditBalance();
   if (input.isComplimentary) {
-    return { canJoin: true, source: "complimentary", creditBalance };
+    // Complimentary access is an internal authorization detail. Keep the
+    // learner-facing event page on the normal eligible-state copy; the
+    // registration RPC remains server-authoritative and still records the
+    // actual complimentary access type.
+    return { canJoin: true, source: "subscription", creditBalance };
   }
   if (input.hasActiveSubscription) {
     return { canJoin: true, source: "subscription", creditBalance };
