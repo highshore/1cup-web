@@ -56,7 +56,6 @@ import {
 } from "../types/growth_types";
 
 type SettingsDraft = {
-  enabled: boolean;
   schedule: MarketingCronSchedule;
   templateId: string;
   destinationUrl: string;
@@ -67,7 +66,6 @@ type SettingsDraft = {
 };
 
 const toDraft = (settings: MarketingCronSettings): SettingsDraft => ({
-  enabled: settings.enabled,
   schedule: settings.schedule,
   templateId: settings.templateId,
   destinationUrl: settings.destinationUrl,
@@ -110,9 +108,13 @@ const formatTemplate = (template: string, date: string) =>
   template.replace("{date}", date);
 
 type PerformancePoint = {
+  runId: string;
   at: Date;
   views: number;
   ctr: number;
+  clicks: number;
+  templateName: string;
+  postTitle: string;
 };
 
 /* --- Shared class strings (from the former styled-components) --- */
@@ -128,7 +130,10 @@ const formCardClass =
   "bg-white border-[3px] border-[#050505] rounded-2xl shadow-[6px_6px_0_rgba(5,5,5,0.9)] p-6 max-[620px]:p-[18px] max-[620px]:shadow-[4px_4px_0_rgba(5,5,5,0.9)]";
 
 const chartCardClass =
-  "min-w-0 rounded-xl border-[1.5px] border-[#050505] bg-[#fcfcfc] p-3.5";
+  "relative min-w-0 rounded-xl border-[1.5px] border-[#050505] bg-[#fcfcfc] p-3.5";
+
+const chartTooltipClass =
+  "pointer-events-none absolute top-[42px] right-3.5 z-[2] grid max-w-[min(280px,calc(100%-28px))] gap-[3px] rounded-[9px] border-[1.5px] border-[#050505] bg-[rgba(255,255,255,0.97)] px-[9px] py-2 text-[11px] font-bold leading-[1.35] text-[#050505] shadow-[2px_2px_0_rgba(5,5,5,0.86)]";
 
 const chartHeadingClass = "mb-2.5 flex items-baseline justify-between gap-2.5";
 
@@ -341,6 +346,8 @@ const TimeSeriesChart = ({
   suffix = "",
   emptyLabel,
   formatDate,
+  formatDateTime,
+  tooltipLabels,
 }: {
   title: string;
   points: PerformancePoint[];
@@ -349,7 +356,10 @@ const TimeSeriesChart = ({
   suffix?: string;
   emptyLabel: string;
   formatDate: (date: Date) => string;
+  formatDateTime: (date: Date) => string;
+  tooltipLabels: { template: string; post: string; views: string; clicks: string; ctr: string };
 }) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   if (!points.length) {
     return (
       <section className={chartCardClass}>
@@ -372,6 +382,7 @@ const TimeSeriesChart = ({
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const latest = values.at(-1) ?? 0;
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <section className={chartCardClass}>
@@ -379,7 +390,23 @@ const TimeSeriesChart = ({
         <h3 className={chartTitleClass}>{title}</h3>
         <strong className="text-[18px] font-black text-[#050505]">{suffix ? `${latest.toFixed(1)}${suffix}` : latest.toLocaleString()}</strong>
       </div>
-      <svg className="block h-auto w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+      {hoveredPoint && (
+        <div className={chartTooltipClass} role="status">
+          <strong>{formatDateTime(hoveredPoint.at)}</strong>
+          <span>{tooltipLabels.template}: {hoveredPoint.templateName}</span>
+          {hoveredPoint.postTitle && <span>{tooltipLabels.post}: {hoveredPoint.postTitle}</span>}
+          <span>
+            {tooltipLabels.views}: {hoveredPoint.views.toLocaleString()} · {tooltipLabels.clicks}: {hoveredPoint.clicks.toLocaleString()} · {tooltipLabels.ctr}: {hoveredPoint.ctr.toFixed(1)}%
+          </span>
+        </div>
+      )}
+      <svg
+        className="block h-auto w-full overflow-visible [&_circle]:cursor-pointer"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={title}
+        onPointerLeave={() => setHoveredIndex(null)}
+      >
         {[0, 0.5, 1].map((ratio) => {
           const y = padding.top + chartHeight - ratio * chartHeight;
           return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#dedede" strokeWidth="1" />;
@@ -390,7 +417,22 @@ const TimeSeriesChart = ({
         <polyline points={coordinates.join(" ")} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         {coordinates.map((coordinate, index) => {
           const [cx, cy] = coordinate.split(",");
-          return <circle key={`${coordinate}_${index}`} cx={cx} cy={cy} r="3.5" fill="#ffffff" stroke={color} strokeWidth="2" />;
+          return (
+            <circle
+              key={`${coordinate}_${index}`}
+              cx={cx}
+              cy={cy}
+              r="6"
+              fill="#ffffff"
+              stroke={color}
+              strokeWidth="2.5"
+              tabIndex={0}
+              aria-label={`${formatDateTime(points[index].at)} · ${points[index].templateName}`}
+              onPointerEnter={() => setHoveredIndex(index)}
+              onFocus={() => setHoveredIndex(index)}
+              onBlur={() => setHoveredIndex(null)}
+            />
+          );
         })}
       </svg>
       <div className="mt-1 flex justify-between gap-3 text-[11px] font-bold text-[rgba(5,5,5,0.56)]">
@@ -472,7 +514,6 @@ export default function GrowthDashboard() {
               copy: savedTemplate.copy,
               callToAction: savedTemplate.callToAction,
               photos: savedTemplate.photos,
-              enabled: savedTemplate.scheduleEnabled,
               schedule: savedTemplate.schedule,
             }
           : toDraft(settings)
@@ -564,12 +605,16 @@ export default function GrowthDashboard() {
     [locale],
   );
 
+  const performanceTemplateNames = useMemo(
+    () => new Map(templates.map((template) => [template.id, template.name])),
+    [templates],
+  );
+
   const performanceTemplateOptions = useMemo(() => {
-    const names = new Map(templates.map((template) => [template.id, template.name]));
     return [...new Set(performanceRuns.map((run) => run.templateId).filter(Boolean))]
-      .map((id) => ({ id, name: names.get(id) || id }))
+      .map((id) => ({ id, name: performanceTemplateNames.get(id) || id }))
       .sort((left, right) => left.name.localeCompare(right.name, locale));
-  }, [locale, performanceRuns, templates]);
+  }, [locale, performanceRuns, performanceTemplateNames]);
 
   const performancePoints = useMemo<PerformancePoint[]>(() =>
     performanceRuns
@@ -579,14 +624,18 @@ export default function GrowthDashboard() {
         if (!at) return null;
         const views = run.performance.impressions;
         return {
+          runId: run.id,
           at,
           views,
           ctr: views > 0 ? (run.performance.clicks / views) * 100 : 0,
+          clicks: run.performance.clicks,
+          templateName: performanceTemplateNames.get(run.templateId) || run.templateId || marketing.unknownTemplate,
+          postTitle: run.postTitle,
         };
       })
       .filter((point): point is PerformancePoint => !!point)
       .sort((left, right) => left.at.getTime() - right.at.getTime()),
-    [performanceRuns, selectedPerformanceTemplateId],
+    [marketing.unknownTemplate, performanceRuns, performanceTemplateNames, selectedPerformanceTemplateId],
   );
 
   const updateDraft = <Key extends keyof SettingsDraft>(
@@ -615,7 +664,6 @@ export default function GrowthDashboard() {
             copy: template.copy,
             callToAction: template.callToAction,
             photos: template.photos,
-            enabled: template.scheduleEnabled,
             schedule: template.schedule,
           }
         : { ...current, templateId: "" }
@@ -626,6 +674,7 @@ export default function GrowthDashboard() {
     setDraft({
       ...toDraft(DEFAULT_MARKETING_CRON_SETTINGS),
       destinationUrl: draft.destinationUrl || DEFAULT_MARKETING_CRON_SETTINGS.destinationUrl,
+      schedule: { ...DEFAULT_MARKETING_CRON_SETTINGS.schedule, daysOfWeek: [] },
     });
     setTemplateName("");
     setAiBrief("");
@@ -639,7 +688,6 @@ export default function GrowthDashboard() {
       : [...draft.schedule.daysOfWeek, day].sort((a, b) => a - b);
     setDraft((current) => ({
       ...current,
-      enabled: next.length > 0 ? current.enabled : false,
       schedule: { ...current.schedule, daysOfWeek: next },
     }));
   };
@@ -710,7 +758,6 @@ export default function GrowthDashboard() {
       if (!draft.templateId) throw new Error("Select a template first.");
       await saveMarketingTemplateSchedule({
         templateId: draft.templateId,
-        scheduleEnabled: draft.enabled,
         schedule: draft.schedule,
       });
       setMessage({ text: marketing.settingsSaved });
@@ -733,7 +780,6 @@ export default function GrowthDashboard() {
         copy: draft.copy,
         callToAction: draft.callToAction,
         photos: draft.photos,
-        scheduleEnabled: draft.enabled,
         schedule: draft.schedule,
       });
       setTemplateName("");
@@ -750,7 +796,6 @@ export default function GrowthDashboard() {
           copy: saved.copy,
           callToAction: saved.callToAction,
           photos: saved.photos,
-          enabled: saved.scheduleEnabled,
           schedule: saved.schedule,
         }));
       }
@@ -783,9 +828,6 @@ export default function GrowthDashboard() {
         copy: generated.copy,
         callToAction: generated.callToAction,
         schedule: generated.schedule,
-        // A generated draft never activates a schedule until the admin explicitly
-        // turns the toggle on before saving it as a template.
-        enabled: false,
       }));
       setMessage({ text: marketing.aiDraftReady });
     } catch (error) {
@@ -923,6 +965,14 @@ export default function GrowthDashboard() {
             color="#f47a4a"
             emptyLabel={marketing.noPerformanceData}
             formatDate={(date) => performanceDateFormatter.format(date)}
+            formatDateTime={(date) => formatter.format(date)}
+            tooltipLabels={{
+              template: marketing.tooltipTemplate,
+              post: marketing.tooltipPost,
+              views: marketing.views,
+              clicks: marketing.clicks,
+              ctr: marketing.ctr,
+            }}
           />
           <TimeSeriesChart
             title={marketing.ctrTimeSeries}
@@ -932,6 +982,14 @@ export default function GrowthDashboard() {
             suffix="%"
             emptyLabel={marketing.noPerformanceData}
             formatDate={(date) => performanceDateFormatter.format(date)}
+            formatDateTime={(date) => formatter.format(date)}
+            tooltipLabels={{
+              template: marketing.tooltipTemplate,
+              post: marketing.tooltipPost,
+              views: marketing.views,
+              clicks: marketing.clicks,
+              ctr: marketing.ctr,
+            }}
           />
         </div>
       </section>
@@ -944,15 +1002,37 @@ export default function GrowthDashboard() {
           </div>
           <div
             className={`inline-flex flex-none items-center gap-[7px] rounded-full border-[1.5px] border-[#050505] px-2.5 py-[7px] text-[12px] font-black text-[#050505] max-[620px]:hidden ${
-              draft.enabled && scheduleHasDays ? "bg-[#dff6df]" : "bg-[#f5f5f5]"
+              scheduleHasDays ? "bg-[#dff6df]" : "bg-[#f5f5f5]"
             }`}
           >
-            <CheckIcon width={14} /> {draft.enabled && scheduleHasDays ? marketing.enabled : marketing.scheduleDisabled}
+            <CheckIcon width={14} /> {scheduleHasDays ? marketing.enabled : marketing.scheduleDisabled}
           </div>
         </div>
 
         <form onSubmit={handleSave}>
           <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-4 gap-y-5 max-[740px]:grid-cols-1">
+            <section className="col-span-full grid gap-2.5 rounded-xl border-2 border-[#050505] bg-[#fff1e9] p-[15px]">
+              <div>
+                <PanelTitle>{marketing.aiTemplateBrief}</PanelTitle>
+                <PanelDescription>{marketing.aiTemplateDescription}</PanelDescription>
+              </div>
+              <TextArea
+                value={aiBrief}
+                maxLength={2000}
+                placeholder={marketing.aiTemplateBriefPlaceholder}
+                onChange={(event) => setAiBrief(event.target.value)}
+              />
+              <TemplatePickerActions>
+                <SmallButton
+                  type="button"
+                  disabled={generatingTemplate}
+                  onClick={() => void handleGenerateTemplate()}
+                >
+                  {generatingTemplate ? <ArrowPathIcon width={15} /> : <SparklesIcon width={15} />}
+                  {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
+                </SmallButton>
+              </TemplatePickerActions>
+            </section>
             <div className="col-span-full grid gap-2">
               <PanelTitle>{marketing.templateEditorTitle}</PanelTitle>
               <PanelDescription>{marketing.templateEditorDescription}</PanelDescription>
@@ -973,26 +1053,6 @@ export default function GrowthDashboard() {
               <TemplatePickerActions>
                 <SmallButton type="button" onClick={startNewTemplate}>
                   <PlusIcon width={15} /> {marketing.newTemplate}
-                </SmallButton>
-              </TemplatePickerActions>
-              <CompactField>
-                {marketing.aiTemplateBrief}
-                <TextArea
-                  value={aiBrief}
-                  maxLength={2000}
-                  placeholder={marketing.aiTemplateBriefPlaceholder}
-                  onChange={(event) => setAiBrief(event.target.value)}
-                />
-                <FieldHint>{marketing.aiTemplateDescription}</FieldHint>
-              </CompactField>
-              <TemplatePickerActions>
-                <SmallButton
-                  type="button"
-                  disabled={generatingTemplate}
-                  onClick={() => void handleGenerateTemplate()}
-                >
-                  {generatingTemplate ? <ArrowPathIcon width={15} /> : <SparklesIcon width={15} />}
-                  {generatingTemplate ? marketing.generatingTemplate : marketing.generateTemplate}
                 </SmallButton>
               </TemplatePickerActions>
             </div>
@@ -1193,16 +1253,6 @@ export default function GrowthDashboard() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
-            <label className="inline-flex w-fit cursor-pointer items-center gap-[9px] text-[13px] font-black text-[#050505]">
-              <input
-                className={`relative m-0 h-6 w-[42px] cursor-pointer appearance-none rounded-full border-2 border-[#050505] bg-[#d9d9d9] transition-[background] duration-[160ms] ease-[ease] checked:bg-[#f47a4a] after:absolute after:top-[3px] after:left-[3px] after:h-3.5 after:w-3.5 after:rounded-full after:border-[1.5px] after:border-[#050505] after:bg-white after:transition-transform after:duration-[160ms] after:ease-[ease] after:content-[''] checked:after:translate-x-[17px] ${focusRingClass}`}
-                type="checkbox"
-                checked={draft.enabled && scheduleHasDays}
-                disabled={!scheduleHasDays}
-                onChange={(event) => updateDraft("enabled", event.target.checked)}
-              />
-              {marketing.enabled}
-            </label>
             <Button type="submit" disabled={saving || !canSaveSchedule}>
               {saving ? <ArrowPathIcon width={16} /> : <CheckIcon width={16} />}
               {saving ? marketing.savingSettings : marketing.saveSettings}

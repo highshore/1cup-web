@@ -11,6 +11,10 @@ import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { saveFeedback } from "../lib/services/feedback_service";
 import {
+  getParticipationCreditBalance,
+  getParticipationCreditHistory,
+} from "../lib/features/meetup/services/participation_service";
+import {
   AcademicCapIcon,
   ArrowTopRightOnSquareIcon,
   BookOpenIcon,
@@ -190,6 +194,16 @@ interface SubscriptionData {
   paymentMethod?: string;
   billingKey?: string;
   billingCancelled?: boolean;
+}
+
+interface ParticipationCreditHistoryItem {
+  id: string;
+  amount: number;
+  type: string;
+  meetup_id: string | null;
+  expires_at: string | null;
+  created_at: string;
+  meetups?: { title?: string | null; date_time?: string | null } | null;
 }
 
 interface UserData {
@@ -503,6 +517,8 @@ export default function ProfileClient() {
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
     status: "unknown",
   });
+  const [participationCreditBalance, setParticipationCreditBalance] = useState(0);
+  const [participationCreditHistory, setParticipationCreditHistory] = useState<ParticipationCreditHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [referralGenerating, setReferralGenerating] = useState(false);
   const [kakaoReady, setKakaoReady] = useState(false);
@@ -663,6 +679,22 @@ export default function ProfileClient() {
 
     fetchUserData();
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) {
+      setParticipationCreditBalance(0);
+      setParticipationCreditHistory([]);
+      return;
+    }
+    void Promise.all([getParticipationCreditBalance(), getParticipationCreditHistory(6)])
+      .then(([balance, history]) => {
+        setParticipationCreditBalance(balance);
+        setParticipationCreditHistory(history as ParticipationCreditHistoryItem[]);
+      })
+      .catch((creditError) => {
+        console.error("Unable to load participation credits:", creditError);
+      });
+  }, [user]);
 
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { files } = e.target;
@@ -1806,6 +1838,45 @@ export default function ProfileClient() {
                   <ChevronRightIcon />
                 </NbManageRow>
               )}
+            </section>
+
+            <section className={nbCardClass}>
+              <NbManageTitle>이용권</NbManageTitle>
+              <NbManageSub>멤버십과 회차 참여권은 서로 독립적으로 관리됩니다.</NbManageSub>
+              <NbManageRow as="div">
+                <CreditCardIcon />
+                <span className="nb-row-label">회차 참여권</span>
+                <span className="nb-row-value">{participationCreditBalance}회 남음</span>
+              </NbManageRow>
+              {participationCreditHistory.length > 0 ? (
+                participationCreditHistory.map((entry) => {
+                  const meetup = entry.meetups;
+                  const label = entry.type === "purchase"
+                    ? "참여권 구매"
+                    : entry.type === "registration"
+                      ? `${meetup?.title || "밋업"} 신청`
+                      : entry.type === "registration_refund"
+                        ? `${meetup?.title || "밋업"} 취소`
+                        : entry.type === "payment_refund"
+                          ? "참여권 구매 환불"
+                          : "관리자 조정";
+                  return (
+                    <NbManageRow as="div" key={entry.id}>
+                      <CreditCardIcon />
+                      <span className="nb-row-label">{entry.amount > 0 ? `+${entry.amount}` : entry.amount} · {label}</span>
+                      <span className="nb-row-value">{new Date(entry.created_at).toLocaleDateString()}</span>
+                    </NbManageRow>
+                  );
+                })
+              ) : (
+                <NbManageSub>아직 참여권 이용 내역이 없습니다.</NbManageSub>
+              )}
+              <NbManageRow type="button" onClick={() => router.push("/payment?product=participation_pack_5")}>
+                <CreditCardIcon />
+                <span className="nb-row-label">참여권 구매</span>
+                <span className="nb-row-value">5회 참여권 보기</span>
+                <ChevronRightIcon />
+              </NbManageRow>
             </section>
 
             {/* 5. PRIMARY EDIT PROFILE BUTTON */}

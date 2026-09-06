@@ -38,10 +38,17 @@ const actionButtonSecondaryClass = `${actionButtonBaseClass} bg-white text-[#050
 const errorTextClass =
   "text-[0.875rem] text-[rgba(5,5,5,0.72)] leading-[1.5] mb-2 last:mb-0";
 
+const resultDetailsClass =
+  "bg-[#faf8f4] border-2 border-[#050505] rounded-[12px] p-6 my-8 text-left shadow-[4px_4px_0_rgba(5,5,5,0.9)] max-[768px]:p-4";
+
 interface PaymentResult {
   success: boolean;
   message: string;
   errorCode?: string;
+  productType?: "participation_pack_purchase" | "subscription_initial_payment" | string;
+  creditBalance?: number;
+  creditsGranted?: number;
+  creditExpiresAt?: string | null;
   data?: {
     PCD_PAY_RST: string;
     PCD_PAY_MSG: string;
@@ -72,6 +79,7 @@ export default function PaymentResultClient() {
   );
   const [isProcessed, setIsProcessed] = useState(false);
   const [hasAttemptedProcessing, setHasAttemptedProcessing] = useState(false);
+  const isParticipationPack = paymentResult?.productType === "participation_pack_purchase";
 
   // Prevent back navigation and double payment processing
   useEffect(() => {
@@ -448,13 +456,30 @@ export default function PaymentResultClient() {
 
           {paymentResult?.success ? (
             <>
-              <h1 className={titleClass}>구독 등록 완료</h1>
+              <h1 className={titleClass}>{isParticipationPack ? "참여권 구매 완료" : "구독 등록 완료"}</h1>
               <p className={subtitleClass}>
-                One Cup English 프리미엄 멤버십에 가입되었습니다
+                {isParticipationPack
+                  ? `${paymentResult.creditsGranted ?? 5}회 참여권을 구매했습니다. 멤버십은 별도로 유지됩니다.`
+                  : "One Cup English 프리미엄 멤버십에 가입되었습니다"}
               </p>
 
-              {paymentResult.data && (
-                <div className="bg-[#faf8f4] border-2 border-[#050505] rounded-[12px] p-6 my-8 text-left shadow-[4px_4px_0_rgba(5,5,5,0.9)] max-[768px]:p-4">
+              {isParticipationPack ? (
+                <div className={resultDetailsClass}>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>현재 잔여 참여권</span>
+                    <span className={detailValueClass}>{paymentResult.creditBalance ?? 0}회</span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>유효기간</span>
+                    <span className={detailValueClass}>
+                      {paymentResult.creditExpiresAt
+                        ? new Date(paymentResult.creditExpiresAt).toLocaleDateString()
+                        : "구매 내역에서 확인"}
+                    </span>
+                  </div>
+                </div>
+              ) : paymentResult.data && (
+                <div className={resultDetailsClass}>
                   <div className={detailRowClass}>
                     <span className={detailLabelClass}>결제 결과</span>
                     <span className={detailValueClass}>

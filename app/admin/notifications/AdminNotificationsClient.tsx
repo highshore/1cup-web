@@ -1,6 +1,6 @@
 "use client";
 
-import { BellAlertIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ButtonHTMLAttributes,
@@ -43,37 +43,6 @@ function Page({ className = "", ...rest }: SectionProps) {
     <main
       {...rest}
       className={`w-[min(1400px,calc(100%-2.5rem))] mx-auto pb-10 ${className}`}
-    />
-  );
-}
-
-function Heading({ className = "", ...rest }: SectionProps) {
-  return <header {...rest} className={`mx-0 mt-0 mb-[1.35rem] ${className}`} />;
-}
-
-function Eyebrow({ className = "", ...rest }: ParagraphProps) {
-  return (
-    <p
-      {...rest}
-      className={`inline-flex items-center gap-[0.4rem] mx-0 mt-0 mb-[0.48rem] text-[#050505] text-[0.76rem] font-black tracking-[0.075em] uppercase [&_svg]:w-4 [&_svg]:h-4 ${className}`}
-    />
-  );
-}
-
-function Title({ className = "", ...rest }: HeadingProps) {
-  return (
-    <h1
-      {...rest}
-      className={`m-0 text-[#050505] text-[clamp(1.75rem,4vw,2.2rem)] font-black tracking-[-0.025em] ${className}`}
-    />
-  );
-}
-
-function Description({ className = "", ...rest }: ParagraphProps) {
-  return (
-    <p
-      {...rest}
-      className={`max-w-[680px] mx-0 mt-[0.62rem] mb-0 text-[rgba(5,5,5,0.64)] text-[0.88rem] font-semibold leading-[1.55] ${className}`}
     />
   );
 }
@@ -764,15 +733,6 @@ export default function AdminNotificationsClient() {
 
   return (
     <Page>
-      <Heading>
-        <Eyebrow>
-          <BellAlertIcon />
-          {copy.eyebrow}
-        </Eyebrow>
-        <Title>{copy.pageTitle}</Title>
-        <Description>{copy.pageDescription}</Description>
-      </Heading>
-
       {loadError ? (
         <Card>
           <CardBody>

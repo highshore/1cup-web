@@ -50,7 +50,8 @@ const fetchParticipantsForMeetups = async (
   const { data, error } = await supabase
     .from("meetup_participants")
     .select("meetup_id, user_id, role")
-    .in("meetup_id", meetupIds);
+    .in("meetup_id", meetupIds)
+    .eq("registration_status", "registered");
 
   if (error) throw error;
 
@@ -327,7 +328,8 @@ export const fetchMeetupLeaderboards = async (
         ),
       supabase
         .from("meetup_participants")
-        .select("meetup_id, user_id, role"),
+        .select("meetup_id, user_id, role")
+        .eq("registration_status", "registered"),
       fetchFirstSubscriptionDates(),
     ]);
 

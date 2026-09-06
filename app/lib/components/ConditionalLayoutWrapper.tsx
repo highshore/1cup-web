@@ -31,8 +31,12 @@ export default function ConditionalLayoutWrapper({
 
   // Pages that should NOT use the main layout (with GNB and Footer)
   const authPages = ["/auth", "/kakao_callback"];
+  const isExamPreview = /^\/admin\/test-center\/exams\/[^/]+\/preview$/.test(
+    pathname,
+  );
+  const isExamPipeline = /^\/admin\/test-center(?:\/.*)?$/.test(pathname);
 
-  const shouldUseMainLayout = !authPages.includes(pathname);
+  const shouldUseMainLayout = !authPages.includes(pathname) && !isExamPreview && !isExamPipeline;
 
   return (
     <I18nProvider>
@@ -41,14 +45,18 @@ export default function ConditionalLayoutWrapper({
       ) : (
         children
       )}
-      {shouldUseMainLayout && !identityLinkLoading && shouldShowIdentityLink && (
-        <IdentityLinkPrompt onComplete={hideIdentityLink} />
-      )}
+      {shouldUseMainLayout &&
+        !identityLinkLoading &&
+        shouldShowIdentityLink && (
+          <IdentityLinkPrompt onComplete={hideIdentityLink} />
+        )}
       {shouldUseMainLayout &&
         !identityLinkLoading &&
         !shouldShowIdentityLink &&
         !onboardingLoading &&
-        shouldShowOnboarding && <OnboardingWizard onComplete={completeOnboarding} />}
+        shouldShowOnboarding && (
+          <OnboardingWizard onComplete={completeOnboarding} />
+        )}
       <RouteTransitionLoader />
     </I18nProvider>
   );

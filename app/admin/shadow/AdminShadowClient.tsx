@@ -16,16 +16,6 @@ import {
 const wrapperClass =
   "flex max-w-[1100px] mx-auto pt-0 px-5 pb-10 flex-col gap-6";
 
-const headerClass = "mt-2";
-
-const eyebrowClass =
-  "mx-0 mt-0 mb-1.5 text-[#e0602e] text-[12px] font-black tracking-[0.09em] uppercase";
-
-const titleClass = "m-0 text-[#050505] text-[28px] font-black";
-
-const descriptionClass =
-  "max-w-[760px] mx-0 mt-2 mb-0 text-[rgba(5,5,5,0.65)] font-semibold leading-[1.55]";
-
 const panelClass =
   "p-[22px] border-[3px] border-[#050505] rounded-2xl bg-white shadow-[6px_6px_0_rgba(5,5,5,0.9)]";
 
@@ -214,12 +204,6 @@ export default function AdminShadowClient() {
 
   return (
     <main className={wrapperClass}>
-      <header className={headerClass}>
-        <p className={eyebrowClass}>{copy.eyebrow}</p>
-        <h1 className={titleClass}>{copy.pageTitle}</h1>
-        <p className={descriptionClass}>{copy.pageDescription}</p>
-      </header>
-
       <section className={panelClass}>
         <h2 className={panelTitleClass}>{copy.queueTitle}</h2>
         <p className={panelDescriptionClass}>{copy.queueDescription}</p>

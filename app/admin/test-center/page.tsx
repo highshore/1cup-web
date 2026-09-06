@@ -3,8 +3,8 @@ import { Metadata } from "next";
 import ExamCenterClient from "./ExamCenterClient";
 
 export const metadata: Metadata = {
-  title: "Exam Interviewer Pipeline - Admin - OneCup English",
-  description: "Build interviewer-led speaking exams, inspect media readiness, and publish practice runs.",
+  title: "Test Center - Admin - OneCup English",
+  description: "Deploy approved speaking tests and review learner scoring evidence.",
 };
 
 export default function TestCenterPage() {

@@ -1,174 +1,648 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftIcon, MicrophoneIcon, PauseIcon, PlayIcon, SpeakerWaveIcon, StopIcon } from "@heroicons/react/24/outline";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../../../../lib/contexts/auth_context";
 import { loadExamSet } from "../../../../../lib/features/exam/services/exam_admin_client";
-import type { ExamItem, ExamNarration, ExamSetDetail } from "../../../../../lib/features/exam/types";
-import { useI18n } from "../../../../../lib/i18n/I18nProvider";
-import { Button, ExamAvatar, GardenScene, Loading, Notice } from "../../../exam_ui";
+import type {
+  ExamItem,
+  ExamNarration,
+  ExamSetDetail,
+} from "../../../../../lib/features/exam/types";
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-screen bg-[#fff8dc] text-[#050505]">{children}</main>;
+import "./exam-preview.css";
+
+type SpeakingState =
+  | "welcome"
+  | "section_intro"
+  | "listen_repeat_intro"
+  | "listen_repeat_scenario"
+  | "listen_repeat_playing"
+  | "listen_repeat_recording"
+  | "interview_intro"
+  | "interview_scenario"
+  | "interview_question_playing"
+  | "interview_recording"
+  | "complete";
+type PlaybackState = "idle" | "playing" | "blocked";
+
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
 }
 
-function Topbar({ children }: { children: React.ReactNode }) {
-  return <header className="mx-auto grid max-w-[1240px] grid-cols-[1fr_auto_1fr] items-center gap-[14px] border-b-2 border-[#050505] px-5 py-4 max-[700px]:grid-cols-[1fr_auto]">{children}</header>;
+const NARRATION_STAGE: Partial<
+  Record<SpeakingState, ExamNarration["cue_key"]>
+> = {
+  section_intro: "section_intro",
+  listen_repeat_intro: "listen_repeat_instructions",
+  listen_repeat_scenario: "listen_repeat_scenario",
+  interview_intro: "interview_instructions",
+  interview_scenario: "interview_scenario",
+};
+
+function responseTime(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+function isRecordingState(stage: SpeakingState) {
+  return stage === "listen_repeat_recording" || stage === "interview_recording";
+}
+function narrationScreenCopy(id: ExamNarration["cue_key"]) {
+  if (id === "section_intro")
+    return { eyebrow: "SPEAKING SECTION", title: "Speaking" };
+  if (id === "listen_repeat_instructions")
+    return { eyebrow: "TASK 1 OF 2", title: "Listen and Repeat" };
+  if (id === "listen_repeat_scenario")
+    return { eyebrow: "TASK 1 SCENARIO", title: "Your situation" };
+  if (id === "interview_instructions")
+    return { eyebrow: "TASK 2 OF 2", title: "Take an Interview" };
+  return { eyebrow: "TASK 2 SCENARIO", title: "Your interview" };
+}
+function isReadyForPreview(examSet: ExamSetDetail) {
+  return (
+    examSet.narration.length === 5 &&
+    examSet.narration.every(
+      (cue) => cue.media_status === "ready" && cue.audio_url,
+    ) &&
+    examSet.items.length === 11 &&
+    examSet.items.every((item) =>
+      item.module === "listen_repeat"
+        ? item.audio_status === "ready" &&
+          item.visual_status === "ready" &&
+          item.audio_url &&
+          item.image_url
+        : item.video_status === "ready" && item.video_url,
+    ) &&
+    Boolean(examSet.interviewer.video_url)
+  );
+}
+function stopStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => track.stop());
 }
 
-function Brand(props: ComponentProps<typeof Link>) {
-  return <Link className="text-[13px] font-black text-[#050505] no-underline" {...props} />;
-}
-
-function TopCenter({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`text-center text-[11px] font-extrabold text-[rgba(5,5,5,.66)] max-[700px]:hidden ${className}`}>{children}</div>;
-}
-
-function Exit(props: ComponentProps<typeof Link>) {
-  return <Link className="justify-self-end text-[11px] font-[850] text-[#050505] underline underline-offset-[3px]" {...props} />;
-}
-
-function Stage({ children }: { children: React.ReactNode }) {
-  return <section className="grid min-h-[calc(100vh-67px)] place-items-center px-5 pb-[54px] pt-6">{children}</section>;
-}
-
-function Welcome({ children }: { children: React.ReactNode }) {
-  return <div className="w-[min(100%,630px)] rounded-2xl border-2 border-[#050505] bg-white p-[clamp(22px,5vw,42px)] shadow-[7px_7px_0_#f47a4a]">{children}</div>;
-}
-
-function Kicker({ children }: { children: React.ReactNode }) {
-  return <p className="m-0 mb-2 text-[11px] font-black uppercase tracking-[.12em] text-[#c84932]">{children}</p>;
-}
-
-function Heading({ children }: { children: React.ReactNode }) {
-  return <h1 className="m-0 text-[clamp(29px,6vw,50px)] font-black leading-[1.02] tracking-[-.06em]">{children}</h1>;
-}
-
-function Lead({ children }: { children: React.ReactNode }) {
-  return <p className="m-0 mt-[14px] max-w-[540px] text-[14px] leading-[1.65] text-[rgba(5,5,5,.67)]">{children}</p>;
-}
-
-function Run(props: ComponentProps<typeof Button>) {
-  return <Button sizeClassName="min-h-[49px] px-[17px] py-[11px] text-[13px] shadow-[3px_3px_0_#050505]" {...props} />;
-}
-
-const promptSurfaceClass = "mt-5 overflow-hidden rounded-[14px] border-2 border-[#050505] bg-white shadow-[5px_5px_0_#050505]";
-
-type SequenceEntry = { type: "narration"; value: ExamNarration } | { type: "item"; value: ExamItem };
-type Phase = "welcome" | "playing" | "recording" | "complete";
-
-function timer(seconds: number) { return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; }
-
-function browserSpeech(text: string) {
-  return new Promise<void>((resolve, reject) => {
-    if (!("speechSynthesis" in window)) { reject(new Error("Browser speech is not available in this browser.")); return; }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.lang = "en-US";
-    utterance.onend = () => resolve();
-    utterance.onerror = () => reject(new Error("Browser speech could not play this prompt."));
-    window.speechSynthesis.speak(utterance);
-  });
-}
-
-export default function ExamPreviewClient({ examSetId }: { examSetId: string }) {
+export default function ExamPreviewClient({
+  examSetId,
+}: {
+  examSetId: string;
+}) {
   const router = useRouter();
   const { currentUser, accountStatus, isLoading } = useAuth();
-  const { t } = useI18n();
   const [examSet, setExamSet] = useState<ExamSetDetail | null>(null);
-  const [phase, setPhase] = useState<Phase>("welcome");
-  const [index, setIndex] = useState(0);
-  const [seconds, setSeconds] = useState(0);
-  const [error, setError] = useState("");
-  const stream = useRef<MediaStream | null>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
+  const [stage, setStage] = useState<SpeakingState>("welcome");
+  const [responseIndex, setResponseIndex] = useState(0);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
+  const [narrationComplete, setNarrationComplete] = useState(false);
+  const [inputLevel, setInputLevel] = useState(0);
+  const [loadedVisualItemId, setLoadedVisualItemId] = useState<string | null>(
+    null,
+  );
+  const [microphoneError, setMicrophoneError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const narrationAudioRef = useRef<HTMLAudioElement>(null);
+  const sentenceAudioRef = useRef<HTMLAudioElement>(null);
+  const questionVideoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const transitionRef = useRef<number | null>(null);
+  const isTransitioningRef = useRef(false);
+  const meterContextRef = useRef<AudioContext | null>(null);
+  const meterFrameRef = useRef<number | null>(null);
 
-  useEffect(() => { if (!isLoading && (!currentUser || accountStatus !== "admin")) router.replace("/"); }, [accountStatus, currentUser, isLoading, router]);
-  useEffect(() => { if (currentUser && accountStatus === "admin") void loadExamSet(examSetId).then(setExamSet).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load the exam interface.")); }, [accountStatus, currentUser, examSetId]);
-  useEffect(() => () => { window.speechSynthesis?.cancel(); recorder.current?.stop(); stream.current?.getTracks().forEach((track) => track.stop()); }, []);
-
-  const sequence = useMemo<SequenceEntry[]>(() => {
-    if (!examSet) return [];
-    const narration = new Map(examSet.narration.map((cue) => [cue.cue_key, cue]));
-    const listening = examSet.items.filter((item) => item.module === "listen_repeat").sort((left, right) => left.position - right.position);
-    const interview = examSet.items.filter((item) => item.module === "interview").sort((left, right) => left.position - right.position);
-    const introduction: SequenceEntry[] = [
-      "section_intro", "listen_repeat_instructions", "listen_repeat_scenario",
-    ].flatMap((key) => narration.get(key as ExamNarration["cue_key"]) ? [{ type: "narration" as const, value: narration.get(key as ExamNarration["cue_key"])! }] : []);
-    const transition: SequenceEntry[] = ["interview_instructions", "interview_scenario"]
-      .flatMap((key) => narration.get(key as ExamNarration["cue_key"]) ? [{ type: "narration" as const, value: narration.get(key as ExamNarration["cue_key"])! }] : []);
-    return [
-      ...introduction,
-      ...listening.map((value): SequenceEntry => ({ type: "item", value })),
-      ...transition,
-      ...interview.map((value): SequenceEntry => ({ type: "item", value })),
-    ];
-  }, [examSet]);
-  const current = sequence[index];
-  const responseItems = sequence.filter((entry) => entry.type === "item");
-  const responsePosition = responseItems.findIndex((entry) => entry === current) + 1;
-
-  const beginRecording = useCallback((item: ExamItem) => {
-    try {
-      recorder.current?.stop();
-      if (stream.current && typeof MediaRecorder !== "undefined") {
-        recorder.current = new MediaRecorder(stream.current);
-        recorder.current.start();
-      }
-    } catch { /* The timed view remains usable when recording is unavailable. */ }
-    setSeconds(item.response_seconds);
-    setPhase("recording");
+  const stopInputMeter = useCallback(() => {
+    if (meterFrameRef.current !== null)
+      cancelAnimationFrame(meterFrameRef.current);
+    meterFrameRef.current = null;
+    void meterContextRef.current?.close();
+    meterContextRef.current = null;
+    setInputLevel(0);
   }, []);
 
-  const advance = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    recorder.current?.state === "recording" && recorder.current.stop();
-    if (index + 1 >= sequence.length) { setPhase("complete"); return; }
-    setIndex((value) => value + 1);
-    setPhase("playing");
-  }, [index, sequence.length]);
+  const startInputMeter = useCallback(
+    async (stream: MediaStream) => {
+      stopInputMeter();
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const context = new AudioContextClass();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.82;
+      context.createMediaStreamSource(stream).connect(analyser);
+      const values = new Uint8Array(analyser.fftSize);
+      meterContextRef.current = context;
+
+      try {
+        await context.resume();
+      } catch {
+        // The recorder can continue even if a browser keeps the meter paused.
+      }
+
+      const updateLevel = () => {
+        analyser.getByteTimeDomainData(values);
+        const average =
+          values.reduce((sum, value) => sum + Math.abs(value - 128), 0) /
+          values.length;
+        setInputLevel(Math.min(1, average / 36));
+        meterFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+      updateLevel();
+    },
+    [stopInputMeter],
+  );
 
   useEffect(() => {
-    if (phase !== "playing" || !current) return;
-    let cancelled = false;
-    void browserSpeech(current.type === "item" ? current.value.prompt : current.value.script)
-      .then(() => {
-        if (cancelled) return;
-        if (current.type === "item") beginRecording(current.value);
-        else advance();
-      })
-      .catch((cause) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Prompt audio could not play."); });
-    return () => { cancelled = true; window.speechSynthesis?.cancel(); };
-  }, [advance, beginRecording, current, phase]);
-
+    if (!isLoading && (!currentUser || accountStatus !== "admin"))
+      router.replace("/");
+  }, [accountStatus, currentUser, isLoading, router]);
   useEffect(() => {
-    if (phase !== "recording") return;
-    if (seconds <= 0) { advance(); return; }
-    const timeout = window.setTimeout(() => setSeconds((value) => value - 1), 1000);
+    if (!currentUser || accountStatus !== "admin") return;
+    void loadExamSet(examSetId)
+      .then(setExamSet)
+      .catch((cause) =>
+        setLoadError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not load the saved speaking test.",
+        ),
+      );
+  }, [accountStatus, currentUser, examSetId]);
+  useEffect(
+    () => () => {
+      if (transitionRef.current) window.clearTimeout(transitionRef.current);
+      if (recorderRef.current?.state !== "inactive") recorderRef.current.stop();
+      stopInputMeter();
+      stopStream(streamRef.current);
+    },
+    [stopInputMeter],
+  );
+  const narration = useMemo(
+    () =>
+      examSet?.narration
+        .slice()
+        .sort((left, right) => left.position - right.position) ?? [],
+    [examSet],
+  );
+  const responses = useMemo(
+    () =>
+      examSet
+        ? [
+            ...examSet.items
+              .filter((item) => item.module === "listen_repeat")
+              .sort((left, right) => left.position - right.position),
+            ...examSet.items
+              .filter((item) => item.module === "interview")
+              .sort((left, right) => left.position - right.position),
+          ]
+        : [],
+    [examSet],
+  );
+  const activeItem = responses[responseIndex] ?? null;
+  const narrationId = NARRATION_STAGE[stage];
+  const activeNarration = narrationId
+    ? (narration.find((cue) => cue.cue_key === narrationId) ?? null)
+    : null;
+  const isRecording = isRecordingState(stage);
+  const visualReady =
+    activeItem?.module !== "listen_repeat" ||
+    loadedVisualItemId === activeItem.id;
+  const advanceNarration = useCallback(() => {
+    setPlaybackState("idle");
+    setNarrationComplete(false);
+    if (stage === "section_intro") setStage("listen_repeat_intro");
+    if (stage === "listen_repeat_intro") setStage("listen_repeat_scenario");
+    if (stage === "listen_repeat_scenario") setStage("listen_repeat_playing");
+    if (stage === "interview_intro") setStage("interview_scenario");
+    if (stage === "interview_scenario") setStage("interview_question_playing");
+  }, [stage]);
+  const finishNarration = useCallback(() => {
+    setPlaybackState("idle");
+    setNarrationComplete(true);
+  }, []);
+  const playCurrentMedia = useCallback(async () => {
+    const player = activeNarration
+      ? narrationAudioRef.current
+      : stage === "listen_repeat_playing"
+        ? sentenceAudioRef.current
+        : stage === "interview_question_playing"
+          ? questionVideoRef.current
+          : null;
+    if (!player) return;
+    player.currentTime = 0;
+    try {
+      await player.play();
+      setPlaybackState("playing");
+    } catch {
+      setPlaybackState("blocked");
+    }
+  }, [activeNarration, stage]);
+  useEffect(() => {
+    if (
+      !activeNarration &&
+      stage !== "listen_repeat_playing" &&
+      stage !== "interview_question_playing"
+    )
+      return;
+    if (stage === "listen_repeat_playing" && !visualReady) return;
+    void playCurrentMedia();
+  }, [activeNarration, playCurrentMedia, stage, visualReady]);
+  const finishResponse = useCallback(() => {
+    if (!activeItem || isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    stopInputMeter();
+    if (recorderRef.current?.state !== "inactive") recorderRef.current.stop();
+    setSecondsRemaining(0);
+    transitionRef.current = window.setTimeout(() => {
+      const nextIndex = responseIndex + 1;
+      isTransitioningRef.current = false;
+      if (nextIndex >= responses.length) {
+        stopInputMeter();
+        stopStream(streamRef.current);
+        streamRef.current = null;
+        setStage("complete");
+        return;
+      }
+      setResponseIndex(nextIndex);
+      setStage(
+        nextIndex === 7
+          ? "interview_intro"
+          : responses[nextIndex].module === "listen_repeat"
+            ? "listen_repeat_playing"
+            : "interview_question_playing",
+      );
+    }, 650);
+  }, [activeItem, responseIndex, responses, stopInputMeter]);
+  const startResponseRecording = useCallback(() => {
+    const stream = streamRef.current;
+    if (!activeItem || !stream || isTransitioningRef.current) return;
+    try {
+      const recorder = MediaRecorder.isTypeSupported("audio/webm")
+        ? new MediaRecorder(stream, { mimeType: "audio/webm" })
+        : new MediaRecorder(stream);
+      recorder.start();
+      recorderRef.current = recorder;
+      void startInputMeter(stream);
+      setPlaybackState("idle");
+      setSecondsRemaining(activeItem.response_seconds);
+      setStage(
+        activeItem.module === "listen_repeat"
+          ? "listen_repeat_recording"
+          : "interview_recording",
+      );
+    } catch {
+      setMicrophoneError(
+        "Recording could not start. Check that your microphone is available, then restart the practice run.",
+      );
+      setStage("welcome");
+    }
+  }, [activeItem, startInputMeter]);
+  useEffect(() => {
+    if (!isRecording) return;
+    if (secondsRemaining === 0) {
+      finishResponse();
+      return;
+    }
+    const timeout = window.setTimeout(
+      () => setSecondsRemaining((current) => current - 1),
+      1000,
+    );
     return () => window.clearTimeout(timeout);
-  }, [advance, phase, seconds]);
-
-  async function start() {
-    setError("");
-    try { stream.current = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-    catch { setError("Microphone access was not granted. The preview will continue, but no local recording will be captured."); }
-    setIndex(0); setPhase("playing");
-  }
-
-  if (isLoading || !examSet) return <Shell><Stage><Loading>{error || "Loading timed exam interface…"}</Loading></Stage></Shell>;
-  if (examSet.status !== "published") return <Shell><Topbar><Brand href={`/admin/test-center/exams/${examSetId}`}>{t.examCenter.pipelineTitle}</Brand><TopCenter className="center">{t.examCenter.timedPreview}</TopCenter><Exit href={`/admin/test-center/exams/${examSetId}`}>{t.examCenter.returnInspection}</Exit></Topbar><Stage><Welcome><Kicker>{t.examCenter.previewLocked}</Kicker><Heading>{t.examCenter.publishFirst}</Heading><Lead>Return to individual inspection, complete all browser media checks, and publish the set before starting its timed run.</Lead><div style={{ marginTop: 22 }}><Button as={Link} href={`/admin/test-center/exams/${examSetId}`}><ArrowLeftIcon />{t.examCenter.returnInspection}</Button></div></Welcome></Stage></Shell>;
-
-  return <Shell><Topbar><Brand href={`/admin/test-center/exams/${examSetId}`}>{t.examCenter.pipelineTitle}</Brand><TopCenter className="center">{phase === "welcome" ? "Speaking section · about 8 minutes" : `${t.examCenter.response} ${Math.max(0, responsePosition)} of 11`}</TopCenter><Exit href={`/admin/test-center/exams/${examSetId}`}>{t.examCenter.exitPractice}</Exit></Topbar>{error && <div style={{ maxWidth: 810, margin: "17px auto 0", padding: "0 20px" }}><Notice $error>{error}</Notice></div>}<Stage>
-    {phase === "welcome" && <Welcome><Kicker>{t.examCenter.timedRun}</Kicker><Heading>{examSet.title}</Heading><Lead>One uninterrupted flow: Listen and Repeat comes first, followed by Take an Interview. Every prompt plays once. A microphone recording is kept only in this browser for this preview session.</Lead><dl className="my-6 grid grid-cols-3 gap-0 border-b-2 border-t-2 border-[#050505] [&_dd]:m-0 [&_dd]:mt-1 [&_dd]:text-[15px] [&_dd]:font-black [&_dt]:text-[10px] [&_dt]:font-extrabold [&_dt]:uppercase [&_dt]:text-[rgba(5,5,5,.62)] [&_div:not(:last-child)]:border-r [&_div:not(:last-child)]:border-[rgba(5,5,5,.35)] [&_div]:px-[9px] [&_div]:py-[13px]"><div><dt>{t.examCenter.responses}</dt><dd>11</dd></div><div><dt>{t.examCenter.preparation}</dt><dd>{t.examCenter.none}</dd></div><div><dt>{t.examCenter.recording}</dt><dd>{t.examCenter.timed}</dd></div></dl><Run onClick={() => void start()}><MicrophoneIcon />{t.examCenter.beginSpeaking}</Run></Welcome>}
-    {(phase === "playing" || phase === "recording") && current && <div className="w-[min(100%,810px)]"><div className="h-2 overflow-hidden border-[1.5px] border-[#050505] bg-white"><div className="h-full bg-[#f47a4a] [transition:width_.35s_ease]" style={{ width: `${Math.max(0, Math.min(((index + 1) / sequence.length) * 100, 100))}%` }} /></div><div className="mt-[25px] flex items-start justify-between gap-[18px] border-b-2 border-[#050505] pb-[15px]"><div><Kicker>{current.type === "narration" ? "Speaking directions" : current.value.module === "listen_repeat" ? "Listen and Repeat" : "Take an Interview"}</Kicker><h1 className="m-0 text-[clamp(26px,4.5vw,41px)] font-black leading-[1.06] tracking-[-.055em]">{current.type === "narration" ? current.value.label : `${current.value.label} of ${current.value.module === "listen_repeat" ? 7 : 4}`}</h1></div><div className="flex-none rounded-full border-2 border-[#050505] bg-white px-[11px] py-2 text-[11px] font-black text-[#050505]">{current.type === "item" ? `${responsePosition} / 11` : "Directions"}</div></div>
-      {current.type === "narration" ? <div className={`${promptSurfaceClass} grid min-h-[270px] place-items-center p-[27px] text-center`}><div><SpeakerWaveIcon style={{ width: 34, height: 34, color: "#f47a4a", marginBottom: 15 }} /><p className="m-0 max-w-[620px] text-[clamp(18px,3vw,26px)] font-extrabold leading-[1.5] text-[#050505]">{current.value.script}</p><p style={{ margin: "17px 0 0", color: "rgba(5,5,5,.59)", fontSize: 11, fontWeight: 750 }}>{phase === "playing" ? "Playing browser voice…" : ""}</p></div></div> : <div className={promptSurfaceClass}>{current.value.module === "listen_repeat" ? <div className="min-h-[310px] bg-[#fff8dc] p-[18px]"><GardenScene target={current.value.visual_target} /></div> : <div className={`grid min-h-[310px] place-items-center p-5 [transition:background_.2s_ease] ${phase === "recording" ? "bg-[#d8ead2]" : "bg-[#fff8dc]"}`}><ExamAvatar interviewer={examSet.interviewer} large /><p style={{ margin: "13px 0 0", color: "rgba(5,5,5,.67)", fontSize: 12, fontWeight: 850 }}>{phase === "recording" ? `${examSet.interviewer.name} is listening` : `${examSet.interviewer.name} is asking a question`}</p></div>}<p className="mx-[18px] mb-[18px] mt-[15px] text-center text-[12px] font-[650] leading-[1.55] text-[rgba(5,5,5,.66)]">{phase === "playing" ? "Listen carefully. The prompt will play once, then recording starts immediately." : "Speak now. The recording stops automatically when time runs out."}</p></div>}
-      {current.type === "item" && <div className="mt-5 flex items-center justify-between gap-[15px] border-b-2 border-t-2 border-[#050505] py-4 text-[#050505]"><div className={`signal grid h-[42px] w-[42px] flex-none place-items-center rounded-full border-2 border-[#050505] ${phase === "recording" ? "bg-[#f47a4a]" : "bg-white"}`}>{phase === "recording" ? <MicrophoneIcon /> : <SpeakerWaveIcon />}</div><div><strong className="block text-[12px] font-black">{phase === "recording" ? "Recording response" : "Prompt playing"}</strong><span className="mt-[3px] block text-[11px] font-[650] leading-[1.4] text-[rgba(5,5,5,.62)]">{phase === "recording" ? "Use the remaining time to give a complete answer." : "Recording begins automatically after the voice finishes."}</span></div><div className="timer ml-auto text-[29px] font-black tabular-nums tracking-[-.06em]">{phase === "recording" ? timer(seconds) : "…"}</div></div>}
-      <div className="mt-[17px] flex flex-wrap justify-end gap-[9px]">{phase === "playing" && <Button $tone="cream" onClick={() => { if (current.type === "item") beginRecording(current.value); else advance(); }}><PlayIcon />{t.examCenter.skipPlayback}</Button>}{phase === "recording" && <Button $tone="cream" onClick={advance}><StopIcon />{t.examCenter.finishResponse}</Button>}</div>
-    </div>}
-    {phase === "complete" && <Welcome><Kicker>{t.examCenter.practiceComplete}</Kicker><Heading>{t.examCenter.sectionFinished}</Heading><Lead>You moved through all 11 timed responses. The next production step can attach secure transcription and scoring to the new `exam_attempts` model without exposing source prompts to other learners.</Lead><div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 23 }}><Run onClick={() => void start()}><ArrowLeftIcon />{t.examCenter.runAgain}</Run><Button as={Link} href={`/admin/test-center/exams/${examSetId}`} $tone="cream"><PauseIcon />{t.examCenter.reviewMedia}</Button></div></Welcome>}
-  </Stage></Shell>;
+  }, [finishResponse, isRecording, secondsRemaining]);
+  const startExam = useCallback(async () => {
+    setMicrophoneError("");
+    try {
+      stopInputMeter();
+      stopStream(streamRef.current);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      streamRef.current = stream;
+      setResponseIndex(0);
+      setSecondsRemaining(0);
+      setPlaybackState("idle");
+      setNarrationComplete(false);
+      setStage("section_intro");
+    } catch {
+      setMicrophoneError(
+        "Microphone access is required for this timed practice run. Allow access in your browser and try again.",
+      );
+    }
+  }, [stopInputMeter]);
+  if (isLoading || !examSet)
+    return (
+      <main className="speaking-preview">
+        <div className="preview-assessment-bar">1CUP ENGLISH</div>
+        <div className="preview-loading">
+          {loadError || "Loading saved speaking test…"}
+        </div>
+      </main>
+    );
+  if (!isReadyForPreview(examSet))
+    return (
+      <main className="speaking-preview">
+        <div className="preview-assessment-bar">1CUP ENGLISH</div>
+        <div className="preview-message">
+          <p className="preview-kicker">TEST PREVIEW LOCKED</p>
+          <h1>Finish all media first.</h1>
+          <p>
+            The continuous run unlocks when the shared narration, sentence
+            audio and masks, and interviewer videos are ready.
+          </p>
+          <Link href={`/admin/test-center/exams/${examSetId}`}>
+            Return to item inspection
+          </Link>
+        </div>
+      </main>
+    );
+  const responseNumber = Math.min(responseIndex + 1, responses.length);
+  const promptIsPlaying =
+    stage === "listen_repeat_playing" || stage === "interview_question_playing";
+  return (
+    <main className="speaking-preview">
+      <div className="preview-assessment-bar">1CUP ENGLISH</div>
+      {stage === "welcome" && (
+        <section className="preview-welcome">
+          <div className="preview-welcome-card">
+            <p className="preview-kicker">TOEFL SPEAKING PRACTICE</p>
+            <h1>{examSet.title}</h1>
+            <p className="preview-lead">
+              This is one uninterrupted run: seven Listen and Repeat responses
+              followed by four Take an Interview responses.
+            </p>
+            <dl className="preview-overview">
+              <div>
+                <dt>Responses</dt>
+                <dd>11</dd>
+              </div>
+              <div>
+                <dt>Preparation</dt>
+                <dd>None</dd>
+              </div>
+              <div>
+                <dt>Recording</dt>
+                <dd>Automatic</dd>
+              </div>
+            </dl>
+            <div className="preview-instructions">
+              <strong>Before you begin</strong>
+              <p>
+                Use headphones and allow microphone access. Prompts play once
+                only. Recording starts immediately after each prompt and stops
+                automatically.
+              </p>
+            </div>
+            {microphoneError && (
+              <p className="preview-error" role="alert">
+                {microphoneError}
+              </p>
+            )}
+            <button
+              className="preview-primary"
+              onClick={() => void startExam()}
+            >
+              Begin speaking section
+            </button>
+          </div>
+        </section>
+      )}
+      {activeNarration && (
+        <section className="preview-welcome">
+          <div className="preview-welcome-card preview-section-intro">
+            <p className="preview-kicker">
+              {narrationScreenCopy(activeNarration.cue_key).eyebrow}
+            </p>
+            <h1>{narrationScreenCopy(activeNarration.cue_key).title}</h1>
+            <p className="preview-lead">{activeNarration.script}</p>
+            {activeNarration.cue_key === "section_intro" ? (
+              <dl
+                className="preview-task-types"
+                aria-label="Speaking task types"
+              >
+                <div>
+                  <dt>Listen and Repeat</dt>
+                  <dd>
+                    Listen to a short sentence and repeat it exactly once.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Take an Interview</dt>
+                  <dd>
+                    Answer an interviewer&apos;s questions in the time
+                    allowed.
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+            <div className="preview-audio-status">
+              <span
+                className={playbackState === "playing" ? "is-playing" : ""}
+              />
+              {playbackState === "playing"
+                ? "Audio is playing"
+                : "Preparing audio"}
+            </div>
+            {playbackState === "blocked" && (
+              <button
+                className="preview-secondary"
+                onClick={() => void playCurrentMedia()}
+              >
+                Enable audio to continue
+              </button>
+            )}
+            <div className="preview-narration-actions">
+              <button
+                className="preview-primary"
+                disabled={!narrationComplete}
+                onClick={advanceNarration}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <audio
+            ref={narrationAudioRef}
+            src={activeNarration.audio_url ?? undefined}
+            onEnded={finishNarration}
+            onError={() => setPlaybackState("blocked")}
+          />
+        </section>
+      )}
+      {(promptIsPlaying || isRecording) && activeItem && (
+        <section className="preview-task-shell">
+          <div
+            className="preview-progress"
+            aria-label={`Response ${responseNumber} of 11`}
+          >
+            <span
+              style={{
+                width: `${(responseNumber / responses.length) * 100}%`,
+              }}
+            />
+          </div>
+          <div className="preview-task-heading">
+            <p className="preview-kicker">
+              RESPONSE {responseNumber} OF {responses.length}
+            </p>
+            <h1>
+              {isRecording
+                ? "Speak now."
+                : activeItem.module === "listen_repeat"
+                  ? "Listen and repeat once."
+                  : "Listen to the interviewer."}
+            </h1>
+          </div>
+          <div className="preview-prompt-area">
+            {activeItem.module === "listen_repeat" ? (
+              <>
+                <figure className="preview-segmentation">
+                  <Image
+                    src={activeItem.image_url!}
+                    alt="Listen and Repeat task illustration"
+                    width={1200}
+                    height={900}
+                    priority
+                    sizes="(max-width: 780px) calc(100vw - 48px), 710px"
+                    onLoad={() => setLoadedVisualItemId(activeItem.id)}
+                  />
+                </figure>
+                <audio
+                  ref={sentenceAudioRef}
+                  src={activeItem.audio_url ?? undefined}
+                  onEnded={startResponseRecording}
+                />
+              </>
+            ) : (
+              <>
+                <div
+                  className={`preview-interviewer-stage ${isRecording ? "is-listening" : ""}`}
+                >
+                  {isRecording ? (
+                    <video
+                      autoPlay
+                      key={`${activeItem.id}-listening`}
+                      className="preview-nodding-video is-playing"
+                      loop
+                      muted
+                      playsInline
+                      preload="auto"
+                      poster={examSet.interviewer.image_url ?? undefined}
+                      src={examSet.interviewer.video_url ?? undefined}
+                      onPlaying={() => setPlaybackState("playing")}
+                      onError={() => setPlaybackState("blocked")}
+                    />
+                  ) : (
+                    <video
+                      key={activeItem.id}
+                      ref={questionVideoRef}
+                      autoPlay
+                      className={
+                        playbackState === "playing" ? "is-playing" : undefined
+                      }
+                      playsInline
+                      preload="auto"
+                      poster={examSet.interviewer.image_url ?? undefined}
+                      src={activeItem.video_url ?? undefined}
+                      onEnded={startResponseRecording}
+                      onCanPlay={() => {
+                        const video = questionVideoRef.current;
+                        if (video?.paused && video.currentTime === 0) {
+                          void playCurrentMedia();
+                        }
+                      }}
+                      onPlaying={() => setPlaybackState("playing")}
+                      onError={() => setPlaybackState("blocked")}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <div
+            className={`preview-response-panel ${isRecording ? "is-recording" : ""}`}
+          >
+            {isRecording ? (
+              <>
+                <p className="preview-response-label">Response time</p>
+                <div className="preview-response-readout">
+                  <span className="preview-response-dot is-recording" />
+                  <strong className="preview-countdown">
+                    {responseTime(secondsRemaining)}
+                  </strong>
+                </div>
+                <div
+                  className="preview-volume-meter"
+                  aria-label="Recording level"
+                  role="status"
+                >
+                  <span className="preview-volume-bars" aria-hidden="true">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <i
+                        className={
+                          inputLevel >= (index + 1) / 6
+                            ? "is-active"
+                            : undefined
+                        }
+                        key={index}
+                      />
+                    ))}
+                  </span>
+                  <span>Recording</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="preview-response-label">Response time</p>
+                <div className="preview-response-readout">
+                  <span className="preview-response-dot" />
+                  <strong>Waiting</strong>
+                </div>
+              </>
+            )}
+          </div>
+          {playbackState === "blocked" && (
+            <div className="preview-playback-help">
+              <p>This prompt needs browser permission before it can begin.</p>
+              <button
+                className="preview-secondary"
+                onClick={() => void playCurrentMedia()}
+              >
+                Enable audio to continue
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+      {stage === "complete" && (
+        <section className="preview-welcome">
+          <div className="preview-welcome-card preview-complete">
+            <p className="preview-kicker">PRACTICE COMPLETE</p>
+            <h1>Speaking section finished.</h1>
+            <p className="preview-lead">
+              You completed all 11 timed responses. Your recordings were
+              captured for this practice session.
+            </p>
+            <div className="preview-complete-actions">
+              <button
+                className="preview-primary"
+                onClick={() => void startExam()}
+              >
+                Run again
+              </button>
+              <Link
+                className="preview-secondary preview-link-button"
+                href={`/admin/test-center/exams/${examSetId}`}
+              >
+                Review media
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+    </main>
+  );
 }

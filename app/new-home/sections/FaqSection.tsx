@@ -2,10 +2,27 @@ import { useState } from "react";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { SectionTitle } from "../components/SectionHeading";
 
+const SUPPORT_EMAIL = "hello@1cupenglish.com";
+
+function renderFaqAnswer(answer: string) {
+  const emailIndex = answer.indexOf(SUPPORT_EMAIL);
+  if (emailIndex === -1) return answer;
+
+  const before = answer.slice(0, emailIndex);
+  const after = answer.slice(emailIndex + SUPPORT_EMAIL.length);
+  return (
+    <>
+      {before}
+      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+      {after}
+    </>
+  );
+}
+
 export default function FaqSection() {
   const { t } = useI18n();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const FAQ_ITEMS = t.home.faq.items.map(item => ({ question: item.q, answer: item.a }));
+  const FAQ_ITEMS = t.home.faq.items.map((item) => ({ question: item.q, answer: item.a }));
 
   const toggleFAQ = (index: number) => {
     setOpenFAQ(openFAQ === index ? null : index);
@@ -37,13 +54,13 @@ export default function FaqSection() {
                   </span>
                 </button>
                 <div
-                  className={`overflow-hidden [transition:max-height_0.3s_ease,padding_0.3s_ease] text-[0.95rem] text-[#6b7280] leading-[1.7] font-['Noto_Sans_KR',sans-serif] max-[768px]:text-[0.9rem] ${
+                  className={`overflow-hidden [transition:max-height_0.3s_ease,padding_0.3s_ease] text-[0.95rem] text-[#6b7280] leading-[1.7] font-['Noto_Sans_KR',sans-serif] [&_a]:text-inherit [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-2 max-[768px]:text-[0.9rem] ${
                     isOpen
                       ? "max-h-[500px] pt-0 px-6 pb-6 max-[768px]:px-[1.2rem] max-[768px]:pb-[1.2rem]"
                       : "max-h-0 py-0 px-6 max-[768px]:px-[1.2rem]"
                   }`}
                 >
-                  {faq.answer}
+                  {renderFaqAnswer(faq.answer)}
                 </div>
               </div>
             );

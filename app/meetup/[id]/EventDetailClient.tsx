@@ -10,8 +10,6 @@ import {
 } from "../../lib/features/meetup/types/meetup_types";
 import {
   subscribeToEvent,
-  joinEventAsRole,
-  cancelParticipation,
   fetchArticlesByIds,
   removeParticipant,
   changeUserRole,
@@ -25,7 +23,13 @@ import {
   formatEventTitleWithCountdown,
 } from "../../lib/features/meetup/utils/meetup_helpers";
 import { UserAvatar } from "../../lib/features/meetup/components/user_avatar";
-import { hasActiveSubscription } from "../../lib/features/meetup/services/user_service";
+import {
+  cancelMeetupRegistration,
+  getMeetupCancellationQuote,
+  getMeetupEntitlement,
+  MeetupEntitlement,
+  registerForMeetup,
+} from "../../lib/features/meetup/services/participation_service";
 import { useAuth } from "../../lib/contexts/auth_context";
 import AdminEventDialog from "../../lib/features/meetup/components/admin_event_dialog";
 import {
@@ -40,7 +44,9 @@ import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   closestCenter,
@@ -96,6 +102,40 @@ interface SavedSeatingArrangement {
   generatedAt: Date;
   generatedBy: string;
 }
+
+type SeatingDndTargetType = "participant" | "group";
+
+interface SeatingDndTarget {
+  type: SeatingDndTargetType;
+  sessionNumber: number;
+  uid: string;
+}
+
+const makeParticipantDndId = (sessionNumber: number, uid: string) =>
+  `participant:${sessionNumber}:${uid}`;
+
+const makeGroupDndId = (sessionNumber: number, leaderUid: string) =>
+  `group:${sessionNumber}:${leaderUid}`;
+
+const parseSeatingDndId = (id: string): SeatingDndTarget | null => {
+  const [type, sessionNumberRaw, ...uidParts] = id.split(":");
+  const sessionNumber = Number(sessionNumberRaw);
+  const uid = uidParts.join(":");
+
+  if (
+    (type !== "participant" && type !== "group") ||
+    !Number.isInteger(sessionNumber) ||
+    !uid
+  ) {
+    return null;
+  }
+
+  return {
+    type,
+    sessionNumber,
+    uid,
+  };
+};
 
 // Presentational components (Tailwind) - Day Mode Theme
 type DivProps = React.ComponentPropsWithRef<"div">;
@@ -596,6 +636,60 @@ const ParticipantItemWrapper: React.FC<DivProps> = ({
   <div {...rest}>{children}</div>
 );
 
+const ParticipantDragHandle: React.FC<ButtonProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <button
+    className={`inline-flex h-[32px] w-[32px] shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-[8px] border-0 bg-[#f3f4f6] text-[18px] font-bold leading-none text-[#6b7280] active:cursor-grabbing active:bg-[#e5e7eb] max-[768px]:h-[36px] max-[768px]:w-[36px] max-[768px]:text-[20px] ${className}`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
+
+const DragOverlayCard: React.FC<DivProps> = ({
+  className = "",
+  children,
+  ...rest
+}) => (
+  <div
+    className={`pointer-events-none min-w-[220px] rounded-[12px] border border-solid border-[#d1d5db] bg-white px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.18)] ${className}`}
+    {...rest}
+  >
+    {children}
+  </div>
+);
+
+const DroppableGroupCard: React.FC<{
+  assignment: SeatingAssignment;
+  children: React.ReactNode;
+  onClick: () => void;
+}> = ({ assignment, children, onClick }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: makeGroupDndId(assignment.sessionNumber, assignment.leaderUid),
+  });
+
+  return (
+    <GroupCard
+      ref={setNodeRef}
+      $hasTranscript={!!assignment.transcriptId}
+      onClick={onClick}
+      style={
+        isOver
+          ? {
+              outline: "3px solid #2563eb",
+              outlineOffset: "2px",
+            }
+          : undefined
+      }
+    >
+      {children}
+    </GroupCard>
+  );
+};
+
 // Draggable Participant Component
 const DraggableParticipant: React.FC<{
   participant: UserWithDetails;
@@ -610,7 +704,7 @@ const DraggableParticipant: React.FC<{
   isLeader = false,
   sessionNumber,
 }) => {
-  const uniqueId = `${sessionNumber}-${participant.uid}`;
+  const uniqueId = makeParticipantDndId(sessionNumber, participant.uid);
   const {
     attributes,
     listeners,
@@ -671,19 +765,27 @@ const DraggableParticipant: React.FC<{
         }
       />
       <UserName>{formatParticipantDisplay(participant)}</UserName>
-      {isLeader && <LeaderBadge>리더</LeaderBadge>}
+      {isLeader ? (
+        <LeaderBadge>리더</LeaderBadge>
+      ) : (
+        <ParticipantDragHandle
+          type="button"
+          aria-label={`${formatParticipantDisplay(participant)} 이동`}
+          title="드래그해서 좌석 이동"
+          {...attributes}
+          {...listeners}
+          onClick={(event) => event.stopPropagation()}
+        >
+          ⋮⋮
+        </ParticipantDragHandle>
+      )}
     </ParticipantItem>
   );
 
   return isLeader ? (
     <>{itemContent}</>
   ) : (
-    <ParticipantItemWrapper
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
+    <ParticipantItemWrapper ref={setNodeRef} style={style}>
       {itemContent}
     </ParticipantItemWrapper>
   );
@@ -921,7 +1023,7 @@ export function EventDetailClient() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, accountStatus, isGdgMember } = useAuth();
+  const { currentUser, accountStatus, isGdgMember, hasActiveSubscription } = useAuth();
   const [event, setEvent] = useState<MeetupEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -945,10 +1047,9 @@ export function EventDetailClient() {
   const [showParticipationSuccessDialog, setShowParticipationSuccessDialog] =
     useState(false);
   const [articleTopics, setArticleTopics] = useState<Article[]>([]);
-  const [userHasSubscription, setUserHasSubscription] = useState<
-    boolean | null
-  >(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [meetupEntitlement, setMeetupEntitlement] = useState<MeetupEntitlement | null>(null);
+  const [entitlementLoading, setEntitlementLoading] = useState(true);
+  const [latestCreditBalance, setLatestCreditBalance] = useState<number | null>(null);
 
   // Admin action dialogs state
   const [showAdminActionDialog, setShowAdminActionDialog] = useState(false);
@@ -974,6 +1075,7 @@ export function EventDetailClient() {
     return false;
   });
   const [seatingLoading, setSeatingLoading] = useState(false);
+  const [seatingShareLoading, setSeatingShareLoading] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const eventId = params?.id;
@@ -1235,39 +1337,416 @@ export function EventDetailClient() {
     return validName ? user.displayName! : "익명";
   };
 
+  const formatSeatingImageParticipant = (user: UserWithDetails): string => {
+    const validName = isValidDisplayName(user.displayName);
+    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
+    return `${maskName(user.displayName!)} (${user.phoneLast4 || "****"})`;
+  };
+
+  const createSeatingImageBlob = async (): Promise<Blob> => {
+    if (!event || seatingAssignments.length === 0) {
+      throw new Error("좌석 배치가 없습니다.");
+    }
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("이미지를 생성할 수 없습니다.");
+    }
+
+    const width = 1200;
+    const margin = 56;
+    const columnGap = 40;
+    const headerHeight = 172;
+    const columnWidth = (width - margin * 2 - columnGap) / 2;
+    const groupGap = 24;
+    const cardPadding = 28;
+    const leaderAvatarSize = 44;
+    const participantAvatarSize = 34;
+    const leaderRowHeight = 74;
+    const participantRowHeight = 54;
+    const sessionHeaderHeight = 62;
+
+    const sessionAssignments = [1, 2].map((sessionNumber) =>
+      seatingAssignments.filter(
+        (assignment) => assignment.sessionNumber === sessionNumber
+      )
+    );
+
+    const getGroupHeight = (assignment: SeatingAssignment) =>
+      cardPadding * 2 +
+      leaderRowHeight +
+      18 +
+      Math.max(assignment.participants.length, 1) * participantRowHeight;
+
+    const getSessionHeight = (assignments: SeatingAssignment[]) => {
+      const groupsHeight = assignments.reduce(
+        (sum, assignment) => sum + getGroupHeight(assignment),
+        0
+      );
+      return (
+        sessionHeaderHeight +
+        groupsHeight +
+        Math.max(assignments.length - 1, 0) * groupGap
+      );
+    };
+
+    const contentHeight = Math.max(
+      260,
+      ...sessionAssignments.map(getSessionHeight)
+    );
+    const height = headerHeight + contentHeight + 58;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const drawRoundedRect = (
+      x: number,
+      y: number,
+      rectWidth: number,
+      rectHeight: number,
+      radius: number
+    ) => {
+      const r = Math.min(radius, rectWidth / 2, rectHeight / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + rectWidth - r, y);
+      ctx.quadraticCurveTo(x + rectWidth, y, x + rectWidth, y + r);
+      ctx.lineTo(x + rectWidth, y + rectHeight - r);
+      ctx.quadraticCurveTo(
+        x + rectWidth,
+        y + rectHeight,
+        x + rectWidth - r,
+        y + rectHeight
+      );
+      ctx.lineTo(x + r, y + rectHeight);
+      ctx.quadraticCurveTo(x, y + rectHeight, x, y + rectHeight - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    const allUsers = new Map<string, UserWithDetails>();
+    seatingAssignments.forEach((assignment) => {
+      allUsers.set(assignment.leaderDetails.uid, assignment.leaderDetails);
+      assignment.participants.forEach((participant) =>
+        allUsers.set(participant.uid, participant)
+      );
+    });
+
+    const avatarImages = new Map<string, HTMLImageElement>();
+    await Promise.all(
+      Array.from(allUsers.values()).map(async (user) => {
+        if (!user.photoURL) return;
+        try {
+          const response = await fetch(user.photoURL, { mode: "cors" });
+          if (!response.ok) return;
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          try {
+            const image = new Image();
+            await new Promise<void>((resolve, reject) => {
+              image.onload = () => resolve();
+              image.onerror = () => reject(new Error("avatar load failed"));
+              image.src = objectUrl;
+            });
+            avatarImages.set(user.uid, image);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        } catch (error) {
+          console.warn("Could not load avatar for seating share image:", error);
+        }
+      })
+    );
+
+    const drawAvatar = (
+      user: UserWithDetails,
+      centerX: number,
+      centerY: number,
+      size: number
+    ) => {
+      const radius = size / 2;
+      const image = avatarImages.get(user.uid);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      if (image) {
+        const scale = Math.max(size / image.width, size / image.height);
+        const drawWidth = image.width * scale;
+        const drawHeight = image.height * scale;
+        ctx.drawImage(
+          image,
+          centerX - drawWidth / 2,
+          centerY - drawHeight / 2,
+          drawWidth,
+          drawHeight
+        );
+      } else {
+        ctx.fillStyle = "#8bc5df";
+        ctx.fillRect(centerX - radius, centerY - radius, size, size);
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        ctx.beginPath();
+        ctx.arc(centerX, centerY - size * 0.12, size * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY + size * 0.24, size * 0.27, Math.PI, 0);
+        ctx.lineTo(centerX + size * 0.27, centerY + size * 0.44);
+        ctx.lineTo(centerX - size * 0.27, centerY + size * 0.44);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+
+    const drawLeaderBadge = (x: number, y: number) => {
+      const badgeWidth = 58;
+      const badgeHeight = 30;
+      ctx.fillStyle = "#333333";
+      drawRoundedRect(x, y, badgeWidth, badgeHeight, 15);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("리더", x + badgeWidth / 2, y + badgeHeight / 2 + 1);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    };
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 40px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText("영어한잔 좌석 배치", margin, 66);
+
+    ctx.fillStyle = "#374151";
+    ctx.font = '600 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText(event.title, margin, 106);
+
+    const eventMeta = [event.date, event.location_name].filter(Boolean).join(" · ");
+    ctx.fillStyle = "#6b7280";
+    ctx.font = '400 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.fillText(eventMeta, margin, 140);
+
+    sessionAssignments.forEach((assignments, sessionIndex) => {
+      const x = margin + sessionIndex * (columnWidth + columnGap);
+      const sessionTop = headerHeight;
+
+      ctx.fillStyle = "#333333";
+      ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `세션 ${sessionIndex + 1}`,
+        x + columnWidth / 2,
+        sessionTop + 28
+      );
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, sessionTop + 48);
+      ctx.lineTo(x + columnWidth, sessionTop + 48);
+      ctx.stroke();
+      ctx.textAlign = "left";
+
+      let currentY = sessionTop + sessionHeaderHeight;
+
+      assignments.forEach((assignment) => {
+        const groupHeight = getGroupHeight(assignment);
+        const cardX = x;
+        const cardWidth = columnWidth;
+
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.08)";
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 3;
+        ctx.fillStyle = "#ffffff";
+        drawRoundedRect(cardX, currentY, cardWidth, groupHeight, 25);
+        ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.lineWidth = 2;
+        drawRoundedRect(cardX, currentY, cardWidth, groupHeight, 25);
+        ctx.stroke();
+
+        const contentX = cardX + cardPadding;
+        const leaderCenterY = currentY + cardPadding + leaderAvatarSize / 2;
+        drawAvatar(
+          assignment.leaderDetails,
+          contentX + leaderAvatarSize / 2,
+          leaderCenterY,
+          leaderAvatarSize
+        );
+
+        const leaderNameX = contentX + leaderAvatarSize + 16;
+        const leaderName = formatLeaderDisplay(assignment.leaderDetails);
+        ctx.fillStyle = "#333333";
+        ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textBaseline = "middle";
+        ctx.fillText(leaderName, leaderNameX, leaderCenterY + 1);
+        const leaderNameWidth = ctx.measureText(leaderName).width;
+        drawLeaderBadge(leaderNameX + leaderNameWidth + 14, leaderCenterY - 15);
+        ctx.textBaseline = "alphabetic";
+
+        const dividerY = currentY + cardPadding + leaderRowHeight;
+        ctx.strokeStyle = "#eeeeee";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(contentX, dividerY);
+        ctx.lineTo(cardX + cardWidth - cardPadding, dividerY);
+        ctx.stroke();
+
+        const participantStartY = dividerY + 18;
+        if (assignment.participants.length === 0) {
+          ctx.fillStyle = "#9ca3af";
+          ctx.font = '500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.fillText("참가자 없음", contentX, participantStartY + 31);
+        } else {
+          assignment.participants.forEach((participant, participantIndex) => {
+            const rowTop = participantStartY + participantIndex * participantRowHeight;
+            const centerY = rowTop + participantRowHeight / 2;
+            drawAvatar(
+              participant,
+              contentX + participantAvatarSize / 2,
+              centerY,
+              participantAvatarSize
+            );
+            ctx.fillStyle = "#333333";
+            ctx.font = '600 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            ctx.textBaseline = "middle";
+            ctx.fillText(
+              formatSeatingImageParticipant(participant),
+              contentX + participantAvatarSize + 14,
+              centerY + 1
+            );
+            ctx.textBaseline = "alphabetic";
+          });
+        }
+
+        currentY += groupHeight + groupGap;
+      });
+    });
+
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = '500 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = "right";
+    ctx.fillText("1Cup English", width - margin, height - 24);
+    ctx.textAlign = "left";
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("PNG 생성에 실패했습니다."));
+      }, "image/png");
+    });
+  };
+
+  const handleShareSeatingImage = async () => {
+    if (!event || seatingAssignments.length === 0) {
+      alert("공유할 좌석 배치가 없습니다.");
+      return;
+    }
+
+    setSeatingShareLoading(true);
+    try {
+      const blob = await createSeatingImageBlob();
+      const safeDate = event.date || new Date().toISOString().slice(0, 10);
+      const file = new File([blob], `1cup-seating-${safeDate}.png`, {
+        type: "image/png",
+      });
+      const shareData: ShareData = {
+        title: "영어한잔 좌석 배치",
+        text: `${event.title} 좌석 배치`,
+        files: [file],
+      };
+      const canShareFiles =
+        typeof navigator.share === "function" &&
+        (typeof navigator.canShare !== "function" || navigator.canShare(shareData));
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && canShareFiles) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          alert("좌석 이미지를 클립보드에 복사했습니다. 단체 채팅방에 바로 붙여넣을 수 있습니다.");
+          return;
+        } catch (clipboardError) {
+          console.warn("Could not copy seating image to clipboard:", clipboardError);
+        }
+      }
+
+      if (canShareFiles) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = file.name;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      alert("좌석 이미지를 PNG 파일로 저장했습니다.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      console.error("Error sharing seating image:", error);
+      alert(
+        "좌석 이미지 공유 중 오류가 발생했습니다: " +
+          (error instanceof Error ? error.message : String(error))
+      );
+    } finally {
+      setSeatingShareLoading(false);
+    }
+  };
+
   // useEffect hooks
   useEffect(() => {
-    const checkSubscriptionStatus = async () => {
+    const loadMeetupEntitlement = async () => {
       if (!currentUser) {
-        setUserHasSubscription(null);
-        setSubscriptionLoading(false);
+        setMeetupEntitlement(null);
+        setEntitlementLoading(false);
         return;
       }
-
-      // Exempt admin/leader/GDG users from needing a subscription
-      if (
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true
-      ) {
-        setUserHasSubscription(true);
-        setSubscriptionLoading(false);
-        return;
-      }
-
       try {
-        const hasSubscription = await hasActiveSubscription(currentUser.uid);
-        setUserHasSubscription(hasSubscription);
+        const entitlement = await getMeetupEntitlement({
+          // This flag remains a real recurring membership signal. Credits are
+          // evaluated independently and never leak into subscription-only UI.
+          hasActiveSubscription: hasActiveSubscription === true,
+          isComplimentary:
+            accountStatus === "admin" || accountStatus === "leader" || isGdgMember === true,
+        });
+        setMeetupEntitlement(entitlement);
       } catch (error) {
-        console.error("Error checking subscription status:", error);
-        setUserHasSubscription(false);
+        console.error("Error checking meetup entitlement:", error);
+        setMeetupEntitlement({ canJoin: false, source: "none", creditBalance: 0 });
       } finally {
-        setSubscriptionLoading(false);
+        setEntitlementLoading(false);
       }
     };
 
-    checkSubscriptionStatus();
-  }, [currentUser, accountStatus, isGdgMember]);
+    void loadMeetupEntitlement();
+  }, [currentUser, accountStatus, hasActiveSubscription, isGdgMember]);
 
   useEffect(() => {
     if (!eventId) {
@@ -1438,6 +1917,29 @@ export function EventDetailClient() {
     router.push("/meetup");
   };
 
+  const reflectRegistration = (role: "leader" | "participant") => {
+    if (!currentUser) return;
+    setEvent((previous) => {
+      if (!previous) return previous;
+      const participants = previous.participants.filter((uid) => uid !== currentUser.uid);
+      const leaders = previous.leaders.filter((uid) => uid !== currentUser.uid);
+      if (role === "leader") leaders.push(currentUser.uid);
+      else participants.push(currentUser.uid);
+      return { ...previous, participants, leaders };
+    });
+  };
+
+  const reflectCancellation = () => {
+    if (!currentUser) return;
+    setEvent((previous) => previous
+      ? {
+        ...previous,
+        participants: previous.participants.filter((uid) => uid !== currentUser.uid),
+        leaders: previous.leaders.filter((uid) => uid !== currentUser.uid),
+      }
+      : previous);
+  };
+
   const handleJoin = async () => {
     if (!currentUser) {
       localStorage.setItem("returnUrl", pathname);
@@ -1451,20 +1953,32 @@ export function EventDetailClient() {
     }
 
     if (isCurrentUserParticipant) {
-      // Check if event is locked down - prevent cancellation after lockdown
-      const lockStatus = isEventLocked(event);
-      if (lockStatus.isLocked && lockStatus.reason === "lockdown") {
-        alert("모집 마감 시간이 지나 더 이상 참가를 취소할 수 없습니다.");
-        return;
-      }
-      if (lockStatus.isLocked && lockStatus.reason === "started") {
-        alert("이미 시작된 모임의 참가를 취소할 수 없습니다.");
-        return;
-      }
-
       try {
-        await cancelParticipation(event.id, currentUser.uid);
-        alert("밋업 참가가 취소되었습니다.");
+        const quote = await getMeetupCancellationQuote(event.id);
+        if (!quote.cancellation_allowed) {
+          alert("모집 마감 시간이 지나 더 이상 참가를 취소할 수 없습니다.");
+          return;
+        }
+        const quoteText = quote.credit_will_be_refunded
+          ? "지금 취소하면 참여권 1회가 반환됩니다."
+          : quote.access_type === "credit"
+            ? "밋업 시작 24시간 이내이므로 참여권은 반환되지 않습니다."
+            : "참가 신청을 취소하시겠습니까?";
+        if (!window.confirm(quoteText)) return;
+        const result = await cancelMeetupRegistration(event.id);
+        setLatestCreditBalance(result.credit_balance);
+        setMeetupEntitlement((previous) => previous
+          ? {
+            ...previous,
+            creditBalance: result.credit_balance,
+            canJoin: previous.source !== "none" || result.credit_balance > 0,
+            source: previous.source === "none" && result.credit_balance > 0 ? "credit" : previous.source,
+          }
+          : previous);
+        reflectCancellation();
+        alert(result.credit_refunded
+          ? `밋업 참가가 취소되었고 참여권 1회가 반환되었습니다. 잔여 참여권: ${result.credit_balance}회`
+          : "밋업 참가가 취소되었습니다.");
       } catch (err) {
         const message =
           err instanceof Error
@@ -1473,33 +1987,18 @@ export function EventDetailClient() {
         alert(`오류: 참가 취소에 실패했습니다. (${message})`);
       }
     } else {
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-
-      if (!isExempt) {
-        try {
-          const userHasActiveSubscription = await hasActiveSubscription(
-            currentUser.uid
-          );
-          if (!userHasActiveSubscription) {
-            setShowSubscriptionDialog(true);
-            return;
-          }
-        } catch (err) {
-          alert(
-            "구독 상태를 확인하는 중 오류가 발생했습니다. 다시 시도해주세요."
-          );
-          return;
-        }
+      if (!meetupEntitlement?.canJoin) {
+        setShowSubscriptionDialog(true);
+        return;
       }
 
       if (accountStatus === "admin" || accountStatus === "leader") {
         setShowRoleChoiceDialog(true);
       } else {
         try {
-          await joinEventAsRole(event.id, currentUser.uid, "participant");
+          const result = await registerForMeetup(event.id, "participant");
+          setLatestCreditBalance(result.credit_balance);
+          reflectRegistration("participant");
           setShowParticipationSuccessDialog(true);
         } catch (err) {
           const message =
@@ -1519,27 +2018,15 @@ export function EventDetailClient() {
       return;
     }
 
-    try {
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-      if (!isExempt) {
-        const userHasActiveSubscription = await hasActiveSubscription(
-          currentUser.uid
-        );
-        if (!userHasActiveSubscription) {
-          setShowSubscriptionDialog(true);
-          return;
-        }
-      }
-    } catch (err) {
-      alert("구독 상태를 확인하는 중 오류가 발생했습니다. 다시 시도해주세요.");
+    if (!meetupEntitlement?.canJoin && role !== "leader") {
+      setShowSubscriptionDialog(true);
       return;
     }
 
     try {
-      await joinEventAsRole(event.id, currentUser.uid, role);
+      const result = await registerForMeetup(event.id, role);
+      setLatestCreditBalance(result.credit_balance);
+      reflectRegistration(role);
       setShowParticipationSuccessDialog(true);
     } catch (err) {
       const message =
@@ -1890,12 +2377,7 @@ export function EventDetailClient() {
       return;
     }
 
-    const isExempt =
-      accountStatus === "admin" ||
-      accountStatus === "leader" ||
-      isGdgMember === true;
-
-    if (userHasSubscription === false && !isExempt) {
+    if (!isCurrentUserParticipant && !meetupEntitlement?.canJoin) {
       setShowSubscriptionDialog(true);
       return;
     }
@@ -1912,8 +2394,8 @@ export function EventDetailClient() {
     })
   );
 
-  const handleDragStart = (event: DragEndEvent) => {
-    setActiveId(event.active.id as string);
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
   };
 
   // dnd-kit drag end handler
@@ -1925,35 +2407,33 @@ export function EventDetailClient() {
       return;
     }
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeTarget = parseSeatingDndId(activeId);
+    const overTarget = parseSeatingDndId(overId);
 
-    // Do nothing if dropped in the same place
-    if (activeId === overId) {
+    if (
+      !activeTarget ||
+      activeTarget.type !== "participant" ||
+      !overTarget ||
+      activeTarget.sessionNumber !== overTarget.sessionNumber ||
+      activeId === overId
+    ) {
       return;
     }
 
-    const [activeSessionStr, activeUid] = activeId.split("-");
-    const [overSessionStr, _] = overId.split("-");
-
-    const activeSession = parseInt(activeSessionStr, 10);
-    const overSession = parseInt(overSessionStr, 10);
-
-    // Prevent dragging between sessions
-    if (activeSession !== overSession) {
-      return;
-    }
+    const activeSession = activeTarget.sessionNumber;
+    const activeUid = activeTarget.uid;
 
     setSeatingAssignments((prevAssignments) => {
       let sourceGroupIndex = -1;
       let draggedItemIndex = -1;
       let draggedItem: UserWithDetails | undefined;
 
-      // Find the source group and the dragged participant within the correct session
       prevAssignments.forEach((group, groupIndex) => {
         if (group.sessionNumber === activeSession) {
           const itemIndex = group.participants.findIndex(
-            (p) => p.uid === activeUid
+            (participant) => participant.uid === activeUid
           );
           if (itemIndex !== -1) {
             sourceGroupIndex = groupIndex;
@@ -1963,24 +2443,23 @@ export function EventDetailClient() {
         }
       });
 
-      // If we didn't find the dragged item, something is wrong.
       if (sourceGroupIndex === -1 || !draggedItem) {
         return prevAssignments;
       }
 
-      // Find the destination group within the same session
       let destGroupIndex = -1;
-
-      // The `over.id` can be a participant's unique ID or a leader's unique ID
-      const [__, overUid] = overId.split("-");
       prevAssignments.forEach((group, groupIndex) => {
-        if (group.sessionNumber === overSession) {
-          if (
-            group.leaderUid === overUid ||
-            group.participants.some((p) => p.uid === overUid)
-          ) {
-            destGroupIndex = groupIndex;
-          }
+        if (group.sessionNumber !== overTarget.sessionNumber) return;
+
+        const isDestination =
+          overTarget.type === "group"
+            ? group.leaderUid === overTarget.uid
+            : group.participants.some(
+                (participant) => participant.uid === overTarget.uid
+              );
+
+        if (isDestination) {
+          destGroupIndex = groupIndex;
         }
       });
 
@@ -1990,62 +2469,58 @@ export function EventDetailClient() {
 
       const newAssignments = [...prevAssignments];
 
-      // Remove from source group
       const sourceGroup = { ...newAssignments[sourceGroupIndex] };
       sourceGroup.participants = [...sourceGroup.participants];
       sourceGroup.participants.splice(draggedItemIndex, 1);
       newAssignments[sourceGroupIndex] = sourceGroup;
 
-      // Add to destination group
       const destGroup = { ...newAssignments[destGroupIndex] };
       destGroup.participants = [...destGroup.participants];
 
-      // Find drop position
-      const overItemIndex = destGroup.participants.findIndex(
-        (p) => p.uid === overUid
-      );
+      const overUid =
+        overTarget.type === "participant" ? overTarget.uid : null;
+      const overItemIndex = overUid
+        ? destGroup.participants.findIndex(
+            (participant) => participant.uid === overUid
+          )
+        : -1;
 
       if (overItemIndex !== -1) {
-        // Insert before the "over" item
         destGroup.participants.splice(overItemIndex, 0, draggedItem);
       } else {
-        // Dropped on the group card (leader) or an empty list
         destGroup.participants.push(draggedItem);
       }
       newAssignments[destGroupIndex] = destGroup;
 
-      // Save the updated arrangement to Supabase
       saveSeatingArrangement(newAssignments);
-
       return newAssignments;
     });
   };
 
   const activeParticipantData = useMemo(() => {
     if (!activeId) return null;
-    const [sessionStr, uid] = activeId.split("-");
-    const session = parseInt(sessionStr, 10);
+    const activeTarget = parseSeatingDndId(activeId);
+    if (!activeTarget || activeTarget.type !== "participant") return null;
 
     for (const assignment of seatingAssignments) {
-      if (assignment.sessionNumber === session) {
-        if (assignment.leaderDetails.uid === uid) {
-          return {
-            participant: assignment.leaderDetails,
-            isLeader: true,
-            session,
-          };
-        }
-        const participant = assignment.participants.find((p) => p.uid === uid);
-        if (participant) {
-          return { participant, isLeader: false, session };
-        }
+      if (assignment.sessionNumber !== activeTarget.sessionNumber) continue;
+
+      const participant = assignment.participants.find(
+        (candidate) => candidate.uid === activeTarget.uid
+      );
+      if (participant) {
+        return {
+          participant,
+          isLeader: false,
+          session: activeTarget.sessionNumber,
+        };
       }
     }
     return null;
   }, [activeId, seatingAssignments]);
 
   // Loading state
-  if (loading || (currentUser && subscriptionLoading)) {
+  if (loading || (currentUser && entitlementLoading)) {
     return <GlobalLoadingScreen />;
   }
 
@@ -2120,12 +2595,8 @@ export function EventDetailClient() {
       if (!currentUser) {
         return "로그인하고 참가하기";
       }
-      const isExempt =
-        accountStatus === "admin" ||
-        accountStatus === "leader" ||
-        isGdgMember === true;
-      if (userHasSubscription === false && !isExempt) {
-        return "구독하고 참가하기";
+      if (!meetupEntitlement?.canJoin) {
+        return "멤버십/참여권 보기";
       }
       return isCurrentUserParticipant ? "취소" : "참가 신청하기";
     }
@@ -2303,7 +2774,6 @@ export function EventDetailClient() {
             </div>
           )}
         </ParticipantsGrid>
-
         <SectionTitle>운영진 및 리더</SectionTitle>
         <ParticipantsGrid>
           {Array.from(
@@ -2374,6 +2844,18 @@ export function EventDetailClient() {
           </div>
         )}
 
+        {currentUser && !isCurrentUserParticipant && (
+          <div style={{ margin: "0.75rem 0", fontSize: "0.9rem", fontWeight: 700, color: "#333" }}>
+            {meetupEntitlement?.source === "subscription"
+              ? "멤버십으로 참여할 수 있습니다."
+              : meetupEntitlement?.source === "credit"
+                ? `참여권 ${meetupEntitlement.creditBalance}회 보유 · 이번 신청에 1회가 사용됩니다.`
+                : meetupEntitlement?.source === "complimentary"
+                  ? "운영 권한으로 참여할 수 있습니다."
+                  : "이 밋업에 참여하려면 멤버십 또는 참여권이 필요합니다."}
+          </div>
+        )}
+
         <div
           ref={actionButtonRef}
           className="min-h-[58px] w-full max-[768px]:min-h-[54px]"
@@ -2436,6 +2918,17 @@ export function EventDetailClient() {
                   {seatingLoading ? "Generating..." : "Generate Seating"}
                 </span>
               </AdminButton>
+              <AdminButton
+                onClick={handleShareSeatingImage}
+                disabled={
+                  seatingShareLoading || seatingAssignments.length === 0
+                }
+              >
+                <PhotoIcon />
+                <span>
+                  {seatingShareLoading ? "Creating Image..." : "Share Seating Image"}
+                </span>
+              </AdminButton>
               <AdminButton onClick={handleSendReminderToParticipants}>
                 <MegaphoneIcon />
                 <span>Send Reminder</span>
@@ -2461,6 +2954,12 @@ export function EventDetailClient() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              autoScroll={{
+                layoutShiftCompensation: false,
+                threshold: { x: 0.08, y: 0.08 },
+                acceleration: 3,
+                interval: 10,
+              }}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -2513,14 +3012,13 @@ export function EventDetailClient() {
                           .map((assignment) => (
                             <SortableContext
                               key={`${sessionNumber}-${assignment.leaderUid}`}
-                              items={assignment.participants.map(
-                                (p) => `${sessionNumber}-${p.uid}`
+                              items={assignment.participants.map((p) =>
+                                makeParticipantDndId(sessionNumber, p.uid)
                               )}
                               strategy={verticalListSortingStrategy}
                             >
-                              <GroupCard
-                                key={`${sessionNumber}-${assignment.leaderUid}`}
-                                $hasTranscript={!!assignment.transcriptId}
+                              <DroppableGroupCard
+                                assignment={assignment}
                                 onClick={() =>
                                   handleSeatingGroupClick(assignment)
                                 }
@@ -2556,7 +3054,7 @@ export function EventDetailClient() {
                                     )
                                   )}
                                 </ParticipantsList>
-                              </GroupCard>
+                              </DroppableGroupCard>
                             </SortableContext>
                           ))}
                       </div>
@@ -2581,13 +3079,15 @@ export function EventDetailClient() {
               </div>
               <DragOverlay>
                 {activeId && activeParticipantData ? (
-                  <DraggableParticipant
-                    participant={activeParticipantData.participant}
-                    onAvatarClick={() => {}} // No action on overlay
-                    onAvatarLongPress={undefined}
-                    isLeader={activeParticipantData.isLeader}
-                    sessionNumber={activeParticipantData.session}
-                  />
+                  <DragOverlayCard>
+                    <ParticipantItem>
+                      <UserName>
+                        {formatParticipantDisplay(
+                          activeParticipantData.participant
+                        )}
+                      </UserName>
+                    </ParticipantItem>
+                  </DragOverlayCard>
                 ) : null}
               </DragOverlay>
             </DndContext>
@@ -2633,9 +3133,9 @@ export function EventDetailClient() {
       {showSubscriptionDialog && (
         <DialogOverlay onClick={() => setShowSubscriptionDialog(false)}>
           <DialogBox onClick={(e) => e.stopPropagation()}>
-            <h3>구독이 필요합니다</h3>
-            <p>밋업에 참가하시려면 활성화된 구독이 필요합니다.</p>
-            <p>결제 페이지에서 구독을 시작하시겠습니까?</p>
+            <h3>이용권이 필요합니다</h3>
+            <p>밋업에 참가하시려면 활성화된 멤버십 또는 참여권이 필요합니다.</p>
+            <p>결제 페이지에서 멤버십 또는 참여권을 선택하시겠습니까?</p>
             <DialogButton $primary onClick={handleGoToPayment}>
               결제 페이지로 이동
             </DialogButton>
@@ -2660,6 +3160,11 @@ export function EventDetailClient() {
             </h3>
             <div className="text-[1rem] leading-[1.6] text-[#555] max-[768px]:text-[0.9rem] max-[768px]:leading-[1.5]">
               <p>밋업 참가 신청이 성공적으로 완료되었습니다.</p>
+              {latestCreditBalance !== null && meetupEntitlement?.source === "credit" && (
+                <p style={{ color: "#2e7d32", fontWeight: 700 }}>
+                  잔여 참여권: {latestCreditBalance}회
+                </p>
+              )}
               <p>
                 궁금한 점이 있으시면 언제든지{" "}
                 <a

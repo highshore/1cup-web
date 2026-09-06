@@ -54,6 +54,16 @@ async function adminUid(req: Request): Promise<string | null> {
   return data?.account_status === "admin" ? uid : null;
 }
 
+async function validSchedulerRequest(req: Request, db: ReturnType<typeof admin>) {
+  const { data: schedulerSecret, error } = await db.rpc("shadow_processing_scheduler_secret");
+  return (
+    !error &&
+    typeof schedulerSecret === "string" &&
+    schedulerSecret.length > 0 &&
+    req.headers.get("x-shadow-processing-scheduler-secret") === schedulerSecret
+  );
+}
+
 async function updateProgress(lessonId: string, job: Record<string, unknown>, lesson: Record<string, unknown>) {
   const db = admin();
   const updatedAt = new Date().toISOString();
@@ -119,16 +129,82 @@ async function processLesson(lessonId: string) {
   );
 }
 
+async function processNextLesson() {
+  const db = admin();
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
+  const { error: requeueError } = await db
+    .from("shadow_processing_jobs")
+    .update({ status: "queued", stage: "queued", progress: 5, updated_at: now.toISOString() })
+    .eq("status", "processing")
+    .lt("updated_at", staleBefore);
+  if (requeueError) throw requeueError;
+
+  const { data: queued, error: queuedError } = await db
+    .from("shadow_processing_jobs")
+    .select("lesson_id")
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (queuedError) throw queuedError;
+  if (!queued?.lesson_id) return false;
+
+  const lessonId = queued.lesson_id as string;
+  const { data: claimed, error: claimError } = await db
+    .from("shadow_processing_jobs")
+    .update({ status: "processing", stage: "queued", progress: 5, updated_at: now.toISOString() })
+    .eq("lesson_id", lessonId)
+    .eq("status", "queued")
+    .select("lesson_id")
+    .maybeSingle();
+  if (claimError) throw claimError;
+  if (!claimed) return false;
+
+  try {
+    await processLesson(lessonId);
+  } catch (caught) {
+    console.error("[shadow-admin] processing failed", caught instanceof Error ? caught.message : "unknown");
+    await updateProgress(
+      lessonId,
+      { status: "failed", stage: "failed", progress: 100, error_message: "Caption processing failed. Try again." },
+      { publication_status: "failed", processing: { state: "failed", stage: "failed", progress: 100 } },
+    );
+  }
+  return true;
+}
+
+async function continueInBackground(work: Promise<unknown>) {
+  // EdgeRuntime is supplied by the Supabase Edge Runtime and is absent from Deno's
+  // globals, so a bare reference does not type-check. Fall back to awaiting the
+  // work in runtimes that do not expose waitUntil.
+  const runtime = (
+    globalThis as { EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void } }
+  ).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(work);
+    return;
+  }
+  await work;
+}
+
 Deno.serve(async (req): Promise<Response> => {
   const pre = preflight(req);
   if (pre) return pre;
   if (req.method !== "POST") return json(req, { error: "method_not_allowed" }, 405);
 
-  const uid = await adminUid(req);
-  if (!uid) return json(req, { error: "permission_denied" }, 403);
   const payload = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = typeof payload.action === "string" ? payload.action : "create";
   const db = admin();
+
+  if (action === "process-next") {
+    if (!(await validSchedulerRequest(req, db))) return json(req, { error: "permission_denied" }, 403);
+    await continueInBackground(processNextLesson());
+    return json(req, { accepted: true }, 202);
+  }
+
+  const uid = await adminUid(req);
+  if (!uid) return json(req, { error: "permission_denied" }, 403);
 
   if (action === "publish") {
     const lessonId = typeof payload.lessonId === "string" ? payload.lessonId : "";
@@ -178,22 +254,6 @@ Deno.serve(async (req): Promise<Response> => {
   }, { onConflict: "lesson_id" });
   if (jobError) return json(req, { error: "job_create_failed" }, 500);
 
-  const work = processLesson(lessonId).catch(async (caught) => {
-    console.error("[shadow-admin] processing failed", caught instanceof Error ? caught.message : "unknown");
-    await updateProgress(lessonId, { status: "failed", stage: "failed", progress: 100, error_message: "Caption processing failed. Try again." }, { publication_status: "failed", processing: { state: "failed", stage: "failed", progress: 100 } });
-  });
-  // EdgeRuntime is supplied by the Supabase Edge Runtime and is absent from Deno's
-  // globals, so a bare reference does not type-check — and neither the import of
-  // edge-runtime.d.ts above nor a triple-slash reference brings it in. Reach for it
-  // through globalThis, the way admin-article already does, and fall back to awaiting
-  // the work so a runtime without waitUntil finishes the job instead of dropping it.
-  const runtime = (
-    globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }
-  ).EdgeRuntime;
-  if (runtime?.waitUntil) {
-    runtime.waitUntil(work);
-  } else {
-    await work;
-  }
+  await continueInBackground(processNextLesson());
   return json(req, { lessonId, status: "queued" }, 202);
 });

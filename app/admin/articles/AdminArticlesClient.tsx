@@ -99,14 +99,6 @@ function Wrapper({ className = "", ...rest }: DivProps) {
   );
 }
 
-function Header({ className = "", ...rest }: DivProps) {
-  return <div {...rest} className={`mb-[-10px] ${className}`} />;
-}
-
-function Title({ className = "", ...rest }: HeadingProps) {
-  return <h1 {...rest} className={`m-0 text-[#050505] text-[28px] font-black ${className}`} />;
-}
-
 function ContentSection({ className = "", ...rest }: HTMLAttributes<HTMLElement>) {
   return (
     <section
@@ -497,7 +489,6 @@ export default function AdminArticlesClient() {
 
   return (
     <Wrapper>
-      <Header><Title>{copy.pageTitle}</Title></Header>
       <AdminArticleIngestForm onArticleQueued={handleQueued} />
 
       <ContentSection>

@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { getExamCenter, noStore, requireExamAdmin, updateExamWorkspace } from "../../../lib/features/exam/services/exam_admin_server";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

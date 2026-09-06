@@ -6,6 +6,7 @@
 //   getPaymentWindow        ->  POST { action: "window" }
 //   verifyPaymentResult     ->  POST { action: "verify" }
 //   cancelSubscription      ->  POST { action: "cancel" }
+//   refundParticipationPack ->  POST { action: "refund-participation-pack" }
 //   stopNextBilling         ->  POST { action: "stop" }
 //   checkReferralCode       ->  POST { action: "check-referral" }
 //   generateReferralCode    ->  POST { action: "generate-referral" }
@@ -25,6 +26,7 @@ import {
   recordSchedulerHeartbeat,
 } from "../_shared/db.ts";
 import { sendKakaoMessages, krPhone } from "../_shared/kakao.ts";
+import { PAYMENT_PRODUCTS, resolvePaymentProduct } from "../_shared/payment_products.ts";
 
 // -------------------------------------------------------------------
 // Payple configuration — credentials come from Edge Function secrets ONLY.
@@ -61,10 +63,7 @@ const PAYPLE_FRONTEND_URL = (
 ).replace(/\/+$/, "");
 const PAYPLE_REFUND_KEY = requiredEnv("PAYPLE_REFUND_KEY");
 
-// Subscription price in KRW. Only a fallback: the real amount comes from
-// payment_orders.amount. Must match BASE_PRICE in app/payment/PaymentClient.tsx
-// (it was 9900 here vs 9700 there, so an order-lookup miss overcharged by 200).
-const SUBSCRIPTION_PRICE = 9700;
+const SUBSCRIPTION_PRICE = PAYMENT_PRODUCTS.membership_30d.price;
 type MembershipLocation = "yeouido" | "anam";
 
 // How far back a renewal will reach. The window used to be a single calendar day, so a
@@ -322,16 +321,15 @@ async function getUserRow(uid: string) {
 // getPaymentWindow  ->  action "window"
 // -------------------------------------------------------------------
 async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
-  logInfo("getPaymentWindow called with data:", body);
-
   const userId = (body.userId as string) || uid;
   const userEmail = (body.userEmail as string) || "";
   const userName = (body.userName as string) || "";
   const userPhone = (body.userPhone as string) || "";
-  const pcd_amount = body.pcd_amount as number;
-  const pcd_good_name = (body.pcd_good_name as string) || "";
+  const product = resolvePaymentProduct(body.productId);
   const selected_categories = body.selected_categories ?? {};
-  const location = getSelectedLocation(selected_categories);
+  const location = product.id === "membership_30d"
+    ? getSelectedLocation(selected_categories)
+    : null;
   const referralCode = body.referralCode as string | undefined;
 
   if (!userId) throw new ApiError("User ID is required", 400, "invalid-argument");
@@ -346,7 +344,7 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
   const userData = await getUserRow(uid);
   if (!userData) throw new ApiError("User not found", 404, "not-found");
 
-  if (userData.has_active_subscription) {
+  if (product.recurring && userData.has_active_subscription) {
     throw new ApiError(
       "User already has an active subscription",
       409,
@@ -375,11 +373,12 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     logWarn(`No usable phone for user ${uid}; leaving PCD_PAYER_HP empty.`);
   }
 
-  // Validate referral code (amount comes from the frontend-calculated price).
-  const finalAmount = pcd_amount;
+  // Prices and credit quantities never come from the browser. A referral only
+  // applies to the existing recurring membership, and is calculated here too.
+  let finalAmount = product.price;
   let appliedReferralCode: string | null = null;
 
-  if (referralCode) {
+  if (product.id === "membership_30d" && referralCode) {
     try {
       const a = admin();
       const { data: refData } = await a
@@ -395,8 +394,16 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
             );
           } else {
             appliedReferralCode = referralCode;
+            const discount = Number(refData.discount || 0);
+            const rawDiscount = refData.type === "percent"
+              ? product.price * (discount / 100)
+              : discount;
+            const roundedDiscount = Math.floor(rawDiscount / 10) * 10;
+            finalAmount = Math.ceil(
+              Math.max(0, product.price - roundedDiscount) / 10,
+            ) * 10;
             logInfo(
-              `Referral code ${referralCode} validated. Using client-calculated amount: ${finalAmount}`,
+              `Referral code ${referralCode} validated for trusted membership price: ${finalAmount}`,
             );
           }
         } else {
@@ -424,9 +431,13 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     PCD_PAY_TYPE: "card",
     PCD_PAY_WORK: "CERT",
     PCD_CARD_VER: "01",
-    PCD_PAY_GOODS: pcd_good_name || "영어 한잔 멤버십",
+    PCD_PAY_GOODS: product.id === "membership_30d"
+      ? `${product.displayName} (${location === "yeouido" ? "여의도" : "안암"})`
+      : product.displayName,
     PCD_PAY_TOTAL: finalAmount,
-    PCD_REGULER_FLAG: "Y",
+    // A membership authorizes repeating billing; a participation pack is a
+    // one-time Payple payment and must never create a recurring instruction.
+    PCD_REGULER_FLAG: product.recurring ? "Y" : "N",
     PCD_SIMPLE_FLAG: "Y",
     PCD_PAY_OID: orderNumber,
     PCD_PAY_YEAR: orderDate.getFullYear().toString(),
@@ -444,7 +455,11 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     PCD_PAYER_AUTHTYPE: "sms",
     PCD_USER_DEFINE1: uid,
     PCD_SIMPLE_FNAME: "payment-result",
-    PCD_USER_DEFINE2: JSON.stringify({ ...(selected_categories as Record<string, unknown>), region: location }),
+    PCD_USER_DEFINE2: JSON.stringify({
+      ...(product.id === "membership_30d" ? selected_categories as Record<string, unknown> : {}),
+      product_id: product.id,
+      ...(location ? { region: location } : {}),
+    }),
   };
 
   const limitViolations = auditPaypleParams(paymentParams);
@@ -458,9 +473,18 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
     referral_code: appliedReferralCode,
     order_date: orderDate.toISOString(),
     status: "pending_auth",
-    type: "subscription_init",
+    type: product.id === "membership_30d" ? "subscription_init" : product.paymentType,
+    product_id: product.id,
+    credit_quantity: product.id === "participation_pack_5" ? product.credits : null,
+    credit_valid_until: product.id === "participation_pack_5"
+      ? new Date(orderDate.getTime() + product.validityDays * DAY_MS).toISOString()
+      : null,
     payple_params_attempted: paymentParams,
-    selected_categories: { ...(selected_categories as Record<string, unknown>), region: location },
+    selected_categories: {
+      ...(product.id === "membership_30d" ? selected_categories as Record<string, unknown> : {}),
+      product_id: product.id,
+      ...(location ? { region: location } : {}),
+    },
     // Recorded even though the window has not opened yet: if Payple rejects the
     // parameters there is no callback, so this is the only trace that would exist.
     error_code: limitViolations.length > 0 ? "param_limit_exceeded" : null,
@@ -470,7 +494,16 @@ async function getPaymentWindow(uid: string, body: Record<string, unknown>) {
   if (insErr) throw new ApiError(insErr.message, 500, "internal");
 
   logInfo(`Payment window parameters prepared for user ${uid}`);
-  return { success: true, paymentParams };
+  return {
+    success: true,
+    paymentParams,
+    product: {
+      id: product.id,
+      price: finalAmount,
+      credits: product.id === "participation_pack_5" ? product.credits : undefined,
+      validityDays: product.id === "participation_pack_5" ? product.validityDays : undefined,
+    },
+  };
 }
 
 // -------------------------------------------------------------------
@@ -574,50 +607,59 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
       paymentTime: paymentParams.PCD_PAY_TIME || "",
     });
 
-    // --- Fetch original order for dynamic amount/categories/referrer ---
-    let originalAmount = SUBSCRIPTION_PRICE;
+    // --- Fetch the server-created authorization order. ---
+    // Verification must never fall back to browser-supplied payment details.
+    let originalAmount: number = SUBSCRIPTION_PRICE;
     let selectedCategories: { [key: string]: boolean } = {};
     let location: MembershipLocation | null = null;
     let productName = "영어 한잔 멤버십 (정기결제)";
+    let productId = "membership_30d";
     let referrerUid: string | null = null;
 
     const a = admin();
-    if (paymentOrderId) {
+    if (!paymentOrderId) {
+      throw new ApiError("Payment order ID is missing", 400, "invalid-argument");
+    }
+    {
       try {
         const { data: orderData } = await a
           .from("payment_orders")
-          .select("amount, selected_categories, referral_code")
+          .select("amount, selected_categories, referral_code, product_id")
           .eq("order_number", paymentOrderId)
+          .eq("user_id", userId)
           .maybeSingle();
 
         if (!orderData) {
-          logError(
-            `Original payment order ${paymentOrderId} not found! Falling back to default amount/name.`,
-          );
+          throw new ApiError("Payment order was not found", 404, "not-found");
         } else {
           if (orderData.amount && Number(orderData.amount) > 0) {
             originalAmount = Number(orderData.amount);
           } else {
-            logWarn(
-              `Original order ${paymentOrderId} has invalid amount: ${orderData.amount}. Falling back to default.`,
-            );
+            throw new ApiError("Payment order has an invalid amount", 400, "invalid-argument");
           }
+          productId = orderData.product_id === "participation_pack_5"
+            ? "participation_pack_5"
+            : "membership_30d";
           if (orderData.selected_categories) {
             selectedCategories = orderData.selected_categories as {
               [key: string]: boolean;
             };
-            location = getSelectedLocation(orderData.selected_categories);
-            const nameParts: string[] = [];
-            if (selectedCategories.tech) nameParts.push("테크");
-            if (selectedCategories.business) nameParts.push("비즈니스");
-            if (selectedCategories.meetup) nameParts.push("밋업");
-            if (nameParts.length > 0) {
-              productName = `영어 한잔 멤버십 (${nameParts.join(" + ")})`;
+            if (productId === "membership_30d") {
+              location = getSelectedLocation(orderData.selected_categories);
+              const nameParts: string[] = [];
+              if (selectedCategories.tech) nameParts.push("테크");
+              if (selectedCategories.business) nameParts.push("비즈니스");
+              if (selectedCategories.meetup) nameParts.push("밋업");
+              if (nameParts.length > 0) {
+                productName = `영어 한잔 멤버십 (${nameParts.join(" + ")})`;
+              }
+            } else {
+              productName = PAYMENT_PRODUCTS.participation_pack_5.displayName;
             }
-          } else {
+          } else if (productId === "membership_30d") {
             logWarn(`Original order ${paymentOrderId} missing selectedCategories.`);
           }
-          if (orderData.referral_code) {
+          if (productId === "membership_30d" && orderData.referral_code) {
             const { data: refRow } = await a
               .from("referral_codes")
               .select("referrer")
@@ -627,16 +669,53 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
           }
         }
       } catch (fetchError) {
+        if (fetchError instanceof ApiError) throw fetchError;
         logError(`Error fetching original order ${paymentOrderId}:`, fetchError);
+        throw new ApiError("Unable to load payment order", 500, "internal");
       }
     }
 
-    if (!location) {
+    if (productId === "membership_30d" && !location) {
       throw new ApiError(
         "The payment order does not include a membership location",
         400,
         "invalid-argument",
       );
+    }
+
+    const isParticipationPack = productId === "participation_pack_5";
+
+    // The database claims the one-time order before Payple is contacted. A callback
+    // retry cannot obtain a second charge order, while a completed retry returns the
+    // already-granted balance instead of issuing more credits.
+    let claimedChargeOrderNumber: string | null = null;
+    if (isParticipationPack) {
+      const { data: claimRows, error: claimError } = await a.rpc(
+        "claim_participation_pack_payment",
+        { p_authorization_order_id: paymentOrderId, p_user_id: userId },
+      );
+      if (claimError) throw new ApiError(claimError.message, 409, "payment_claim_failed");
+      const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+      if (!claim) throw new ApiError("Unable to claim participation-pack payment", 409, "payment_claim_failed");
+      if (claim.state === "completed") {
+        const { data: balanceRow } = await a
+          .from("participation_credit_balances")
+          .select("balance")
+          .eq("user_id", userId)
+          .maybeSingle();
+        return {
+          success: true,
+          message: "참여권 구매가 이미 완료되었습니다.",
+          productType: "participation_pack_purchase",
+          creditBalance: Number(balanceRow?.balance ?? 0),
+          creditsGranted: PAYMENT_PRODUCTS.participation_pack_5.credits,
+          data: paymentParams,
+        };
+      }
+      if (claim.state !== "claimed" || !claim.charge_order_number) {
+        throw new ApiError("Participation-pack payment is already being processed", 409, "payment_processing");
+      }
+      claimedChargeOrderNumber = String(claim.charge_order_number);
     }
 
     // --- Make the actual first payment using the billing key ---
@@ -646,7 +725,7 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
       const orderDate = new Date();
       const orderMonth = (orderDate.getMonth() + 1).toString().padStart(2, "0");
       const orderDay = orderDate.getDate().toString().padStart(2, "0");
-      const orderNumber = `OCEPAY${orderDate.getFullYear()}${orderMonth}${orderDay}${Math.floor(
+      const orderNumber = claimedChargeOrderNumber || `OCEPAY${orderDate.getFullYear()}${orderMonth}${orderDay}${Math.floor(
         Math.random() * 1000000,
       )
         .toString()
@@ -689,6 +768,34 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
       logInfo("Initial payment response:", payData);
 
       if (payData.PCD_PAY_RST === "success") {
+        if (isParticipationPack) {
+          const { data: settlementRows, error: settlementError } = await a.rpc(
+            "complete_participation_pack_payment",
+            {
+              p_authorization_order_id: paymentOrderId,
+              p_user_id: userId,
+              p_payment_result: payData,
+              p_payment_method: "card",
+            },
+          );
+          if (settlementError) {
+            // The charge has completed, but the ledger has not been hidden: the same
+            // verification can safely retry settlement because the charge order and
+            // purchase transaction are idempotent database records.
+            throw new ApiError(settlementError.message, 500, "participation_pack_settlement_failed");
+          }
+          const settlement = Array.isArray(settlementRows) ? settlementRows[0] : settlementRows;
+          return {
+            success: true,
+            message: "5회 참여권 구매가 완료되었습니다.",
+            productType: "participation_pack_purchase",
+            creditBalance: Number(settlement?.credit_balance ?? 0),
+            creditsGranted: Number(settlement?.credit_quantity ?? PAYMENT_PRODUCTS.participation_pack_5.credits),
+            creditExpiresAt: settlement?.expires_at ?? null,
+            data: payData,
+          };
+        }
+
         // Log successful initial payment.
         await a.from("payment_orders").insert({
           order_number: orderNumber,
@@ -804,6 +911,25 @@ async function verifyPaymentResult(uid: string, body: Record<string, unknown>) {
           data: payData,
         };
       } else {
+        if (isParticipationPack) {
+          await a
+            .from("payment_orders")
+            .update({
+              status: "failed",
+              error_code: payData.PCD_PAY_CODE || "unknown",
+              error_message: payData.PCD_PAY_MSG || "알 수 없는 오류",
+              payment_result: payData,
+              payple_response: payData,
+              failed_at: new Date().toISOString(),
+            })
+            .eq("order_number", paymentOrderId)
+            .eq("user_id", userId);
+          throw new ApiError(
+            `결제 실패: ${payData.PCD_PAY_MSG || "알 수 없는 오류"} (코드: ${payData.PCD_PAY_CODE || "unknown"})`,
+            400,
+            "aborted",
+          );
+        }
         // Log failed initial payment.
         await a.from("payment_orders").insert({
           order_number: orderNumber,
@@ -1183,6 +1309,7 @@ async function cancelSubscription(uid: string, body: Record<string, unknown>) {
     .select("*")
     .eq("user_id", userId)
     .eq("status", "completed")
+    .in("type", ["subscription_initial_payment", "subscription_recurring"])
     .order("completed_at", { ascending: false })
     .limit(1);
 
@@ -1406,6 +1533,175 @@ async function cancelSubscription(uid: string, body: Record<string, unknown>) {
 }
 
 // -------------------------------------------------------------------
+// refundParticipationPack -> action "refund-participation-pack"
+// -------------------------------------------------------------------
+// A pack is never a subscription and never changes a member's recurring state.  The
+// automated path intentionally accepts only a completely unused, unexpired pack.  The
+// database function re-checks that invariant while holding the member row lock, after
+// Payple has accepted the reversal, and writes the compensating ledger transaction.
+async function refundParticipationPack(uid: string, body: Record<string, unknown>) {
+  const a = admin();
+  const originalOrderId = typeof body.orderNumber === "string"
+    ? body.orderNumber.trim()
+    : "";
+  const reason = typeof body.reason === "string" && body.reason.trim()
+    ? body.reason.trim()
+    : "User requested participation-pack refund";
+
+  if (!originalOrderId) {
+    throw new ApiError("환불할 참여권 구매 주문번호가 필요합니다.", 400, "invalid-argument");
+  }
+
+  const { data: order, error: orderError } = await a
+    .from("payment_orders")
+    .select("order_number, amount, completed_at, payment_result, product_id, type, status")
+    .eq("order_number", originalOrderId)
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (orderError) throw new ApiError(orderError.message, 500, "internal");
+  if (!order || order.status !== "completed" ||
+    order.product_id !== "participation_pack_5" ||
+    order.type !== "participation_pack_purchase") {
+    throw new ApiError("환불 가능한 참여권 구매 내역을 찾을 수 없습니다.", 404, "not-found");
+  }
+
+  const { data: cancellation, error: cancellationLookupError } = await a
+    .from("payment_cancellations")
+    .select("status")
+    .eq("user_id", uid)
+    .eq("original_order_id", originalOrderId)
+    .in("status", ["completed", "completed_pending_credit_reversal"])
+    .maybeSingle();
+  if (cancellationLookupError) {
+    throw new ApiError(cancellationLookupError.message, 500, "internal");
+  }
+  if (cancellation) {
+    if (cancellation.status === "completed_pending_credit_reversal") {
+      const { data: balance, error: recoveryError } = await a.rpc(
+        "reverse_unused_participation_pack",
+        { p_payment_order_id: originalOrderId, p_user_id: uid, p_reason: reason },
+      );
+      if (recoveryError) {
+        throw new ApiError("이미 취소된 결제의 참여권 정산을 완료하지 못했습니다. 고객지원으로 문의해주세요.", 500, "settlement-pending");
+      }
+      await a
+        .from("payment_cancellations")
+        .update({ status: "completed", payple_error_message: null })
+        .eq("user_id", uid)
+        .eq("original_order_id", originalOrderId)
+        .eq("status", "completed_pending_credit_reversal");
+      return { success: true, alreadyRefunded: true, creditBalance: Number(balance ?? 0) };
+    }
+    const { data: balanceRow } = await a
+      .from("participation_credit_balances")
+      .select("balance")
+      .eq("user_id", uid)
+      .maybeSingle();
+    return {
+      success: true,
+      alreadyRefunded: true,
+      creditBalance: Number(balanceRow?.balance ?? 0),
+    };
+  }
+
+  const completedAt = new Date(order.completed_at as string);
+  if (Number.isNaN(completedAt.getTime())) {
+    throw new ApiError("참여권 구매일을 확인할 수 없습니다.", 500, "internal");
+  }
+  const paymentResult = order.payment_result as Record<string, unknown> | null;
+  const paypleTime = paymentResult?.PCD_PAY_TIME;
+  const payDate = typeof paypleTime === "string" && paypleTime.length >= 8
+    ? paypleTime.slice(0, 8)
+    : formatYyyyMMdd(completedAt);
+  const refundAmount = Number(order.amount);
+  if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+    throw new ApiError("참여권 구매 금액을 확인할 수 없습니다.", 500, "internal");
+  }
+
+  const authResponse = await getPaypleAuthToken(true);
+  const cancelRes = await fetch(`${PAYPLE_HOST}/php/account/api/cPayCAct.php`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+      referer: PAYPLE_HOSTNAME,
+    },
+    body: JSON.stringify({
+      PCD_CST_ID: authResponse.cst_id,
+      PCD_CUST_KEY: authResponse.custKey,
+      PCD_AUTH_KEY: authResponse.AuthKey,
+      PCD_REFUND_KEY: PAYPLE_REFUND_KEY,
+      PCD_PAYCANCEL_FLAG: "Y",
+      PCD_PAY_OID: originalOrderId,
+      PCD_PAY_DATE: payDate,
+      PCD_REFUND_TOTAL: refundAmount.toString(),
+    }),
+  });
+  const cancelData = await cancelRes.json();
+  if (cancelData?.PCD_PAY_RST !== "success") {
+    const errorCode = cancelData?.PCD_PAY_CODE || "unknown";
+    const errorMessage = cancelData?.PCD_PAY_MSG || "참여권 환불 처리 중 페이플 오류 발생";
+    await a.from("payment_cancellations").insert({
+      id: crypto.randomUUID(),
+      user_id: uid,
+      original_order_id: originalOrderId,
+      requested_at: new Date().toISOString(),
+      status: "failed",
+      refund_amount_attempted: refundAmount,
+      reason,
+      payple_error_code: errorCode,
+      payple_error_message: errorMessage,
+      payple_response: cancelData,
+    });
+    throw new ApiError(`환불 실패: ${errorMessage} (코드: ${errorCode})`, 400, "aborted");
+  }
+
+  const { data: creditBalance, error: settlementError } = await a.rpc(
+    "reverse_unused_participation_pack",
+    { p_payment_order_id: originalOrderId, p_user_id: uid, p_reason: reason },
+  );
+  if (settlementError) {
+    // Payple has already reversed the charge. Keep a durable record so support can
+    // reconcile this exceptional state rather than making a second refund attempt.
+    await a.from("payment_cancellations").insert({
+      id: crypto.randomUUID(),
+      user_id: uid,
+      original_order_id: originalOrderId,
+      requested_at: new Date().toISOString(),
+      status: "completed_pending_credit_reversal",
+      refund_amount_processed: refundAmount,
+      reason,
+      payple_response: cancelData,
+      payple_error_message: settlementError.message,
+    });
+    throw new ApiError("결제는 취소되었지만 참여권 정산을 완료하지 못했습니다. 고객지원으로 문의해주세요.", 500, "settlement-pending");
+  }
+
+  const { error: cancellationError } = await a.from("payment_cancellations").insert({
+    id: crypto.randomUUID(),
+    user_id: uid,
+    original_order_id: originalOrderId,
+    requested_at: new Date().toISOString(),
+    status: "completed",
+    refund_amount_processed: refundAmount,
+    reason,
+    payple_response: cancelData,
+  });
+  if (cancellationError) {
+    logError("Participation-pack cancellation record could not be saved", {
+      originalOrderId,
+      error: cancellationError.message,
+    });
+  }
+
+  return {
+    success: true,
+    refundAmount,
+    creditBalance: Number(creditBalance ?? 0),
+  };
+}
+
+// -------------------------------------------------------------------
 // stopNextBilling  ->  action "stop"
 // -------------------------------------------------------------------
 async function stopNextBilling(uid: string, body: Record<string, unknown>) {
@@ -1593,6 +1889,24 @@ function logCredentials() {
   };
 }
 
+function paymentProducts() {
+  const membership = PAYMENT_PRODUCTS.membership_30d;
+  const pack = PAYMENT_PRODUCTS.participation_pack_5;
+  return {
+    success: true,
+    products: [
+      { id: membership.id, price: membership.price, recurring: membership.recurring },
+      {
+        id: pack.id,
+        price: pack.price,
+        credits: pack.credits,
+        validityDays: pack.validityDays,
+        recurring: pack.recurring,
+      },
+    ],
+  };
+}
+
 // -------------------------------------------------------------------
 // paymentCallback  ->  <url>/callback  (public Payple webhook -> redirect)
 // -------------------------------------------------------------------
@@ -1622,7 +1936,14 @@ async function paymentCallback(req: Request): Promise<Response> {
       return new Response("No payment data received", { status: 400 });
     }
 
-    logInfo("Payment data received:", paymentData);
+    // The callback includes payment identifiers and, depending on gateway settings,
+    // payer information. Log only the safe routing/status fields.
+    logInfo("Payment callback received", {
+      orderNumber: paymentData.PCD_PAY_OID,
+      result: paymentData.PCD_PAY_RST,
+      code: paymentData.PCD_PAY_CODE,
+      work: paymentData.PCD_PAY_WORK,
+    });
 
     const userId = paymentData.PCD_USER_DEFINE1 || "unknown_user";
     const paymentId = paymentData.PCD_PAY_OID || `payment_${Date.now()}`;
@@ -1632,11 +1953,19 @@ async function paymentCallback(req: Request): Promise<Response> {
         const billingKey = paymentData.PCD_PAYER_ID;
         if (billingKey && userId !== "unknown_user") {
           const a = admin();
-          await a
-            .from("users")
-            .update({ billing_key: billingKey, payment_method: "card" })
-            .eq("uid", userId);
-          logInfo(`Updated user ${userId} with billing key ${billingKey}`);
+          const { data: authorizationOrder } = await a
+            .from("payment_orders")
+            .select("product_id")
+            .eq("order_number", paymentData.PCD_PAY_OID || "")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (authorizationOrder?.product_id !== "participation_pack_5") {
+            await a
+              .from("users")
+              .update({ billing_key: billingKey, payment_method: "card" })
+              .eq("uid", userId);
+            logInfo(`Updated user ${userId} with recurring billing key`);
+          }
 
           if (paymentData.PCD_PAY_WORK === "CERT") {
             // Matches original: initial payment is completed by verifyPaymentResult.
@@ -1694,6 +2023,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   try {
     switch (action) {
+      case "products":
+        return json(req, paymentProducts());
+
       case "check-referral":
         return json(req, await checkReferralCode(body));
 
@@ -1723,6 +2055,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case "verify":
       case "report-failure":
       case "cancel":
+      case "refund-participation-pack":
       case "stop":
       case "generate-referral": {
         const uid = await callerUid(req);
@@ -1742,6 +2075,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
             return json(req, await reportPaymentFailure(uid, body));
           case "cancel":
             return json(req, await cancelSubscription(uid, body));
+          case "refund-participation-pack":
+            return json(req, await refundParticipationPack(uid, body));
           case "stop":
             return json(req, await stopNextBilling(uid, body));
           case "generate-referral":

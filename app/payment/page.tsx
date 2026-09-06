@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
-import CompactPaymentClient from "./CompactPaymentClient";
+import RegionalPaymentClient from "./RegionalPaymentClient";
 
 export const metadata: Metadata = {
-  title: "영어 한잔 멤버십 | OneCup English",
+  title: "영어 한잔 이용권 | OneCup English",
   description:
-    "여의도 또는 안암 지역을 선택하고 영어 한잔 멤버십을 시작하세요.",
+    "안암 또는 여의도 지역을 선택하고 30일 이용권이나 5회 이용권을 구매하세요.",
 };
 
 // Kill-switch for the payment feature during the Supabase migration/cutover.
@@ -28,7 +28,7 @@ export default function PaymentPage() {
 
   return (
     <Suspense fallback={null}>
-      <CompactPaymentClient />
+      <RegionalPaymentClient />
     </Suspense>
   );
 }
