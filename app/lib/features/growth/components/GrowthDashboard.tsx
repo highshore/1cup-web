@@ -757,14 +757,38 @@ export default function GrowthDashboard() {
     setMessage(null);
     try {
       if (!draft.templateId) throw new Error("Select a template first.");
+      await updateMarketingTemplate(draft.templateId, {
+        destinationUrl: draft.destinationUrl,
+        title: draft.title,
+        copy: draft.copy,
+        callToAction: draft.callToAction,
+        photos: draft.photos,
+      });
       await saveMarketingTemplateSchedule({
         templateId: draft.templateId,
         schedule: draft.schedule,
       });
-      setMessage({ text: marketing.settingsSaved });
+      const nextTemplates = await fetchMarketingTemplates();
+      setTemplates(nextTemplates);
+      const saved = nextTemplates.find((template) => template.id === draft.templateId);
+      if (saved) {
+        setDraft((current) => ({
+          ...current,
+          destinationUrl: saved.destinationUrl,
+          title: saved.title,
+          copy: saved.copy,
+          callToAction: saved.callToAction,
+          photos: saved.photos,
+          schedule: saved.schedule,
+        }));
+      }
+      setMessage({ text: locale === "ko" ? "변경 사항을 저장했습니다." : "Changes saved." });
     } catch (error) {
-      console.error("Unable to save marketing cron settings:", error);
-      setMessage({ text: marketing.settingsError, error: true });
+      console.error("Unable to save marketing changes:", error);
+      setMessage({
+        text: locale === "ko" ? "변경 사항을 저장하지 못했습니다." : "Changes could not be saved.",
+        error: true,
+      });
     } finally {
       setSaving(false);
     }
@@ -803,40 +827,6 @@ export default function GrowthDashboard() {
       setMessage({ text: marketing.templateSaved });
     } catch (error) {
       console.error("Unable to create marketing template:", error);
-      setMessage({ text: marketing.templateError, error: true });
-    } finally {
-      setSavingTemplate(false);
-    }
-  };
-
-  const handleUpdateTemplate = async () => {
-    if (!draft.templateId) return;
-    setSavingTemplate(true);
-    setMessage(null);
-    try {
-      await updateMarketingTemplate(draft.templateId, {
-        destinationUrl: draft.destinationUrl,
-        title: draft.title,
-        copy: draft.copy,
-        callToAction: draft.callToAction,
-        photos: draft.photos,
-      });
-      const nextTemplates = await fetchMarketingTemplates();
-      setTemplates(nextTemplates);
-      const saved = nextTemplates.find((template) => template.id === draft.templateId);
-      if (saved) {
-        setDraft((current) => ({
-          ...current,
-          destinationUrl: saved.destinationUrl,
-          title: saved.title,
-          copy: saved.copy,
-          callToAction: saved.callToAction,
-          photos: saved.photos,
-        }));
-      }
-      setMessage({ text: marketing.templateSaved });
-    } catch (error) {
-      console.error("Unable to update marketing template:", error);
       setMessage({ text: marketing.templateError, error: true });
     } finally {
       setSavingTemplate(false);
@@ -952,22 +942,14 @@ export default function GrowthDashboard() {
     marketing.friday,
     marketing.saturday,
   ];
-  const selectedTemplate = templates.find((template) => template.id === draft.templateId);
   const hasTemplateContent = Boolean(
     draft.destinationUrl.trim() &&
       draft.title.trim() &&
       draft.copy.trim() &&
       draft.callToAction.trim()
   );
-  const isTemplateDirty = selectedTemplate
-    ? selectedTemplate.destinationUrl !== draft.destinationUrl ||
-      selectedTemplate.title !== draft.title ||
-      selectedTemplate.copy !== draft.copy ||
-      selectedTemplate.callToAction !== draft.callToAction ||
-      JSON.stringify(selectedTemplate.photos) !== JSON.stringify(draft.photos)
-    : hasTemplateContent;
   const scheduleHasDays = draft.schedule.daysOfWeek.length > 0;
-  const canSaveSchedule = Boolean(draft.templateId) && !isTemplateDirty;
+  const canSaveChanges = Boolean(draft.templateId) && hasTemplateContent;
 
   return (
     <>
@@ -1265,26 +1247,17 @@ export default function GrowthDashboard() {
               )}
             </div>
             <div className="col-span-full flex flex-wrap items-center gap-[9px]">
-              {isTemplateDirty && hasTemplateContent && (
-                <SmallButton
-                  type="button"
-                  disabled={savingTemplate}
-                  onClick={() =>
-                    draft.templateId
-                      ? void handleUpdateTemplate()
-                      : setTemplateDialogOpen(true)
-                  }
-                >
-                  {savingTemplate ? <ArrowPathIcon width={14} /> : <CheckIcon width={14} />}
-                  {savingTemplate
-                    ? marketing.savingTemplate
-                    : draft.templateId
-                      ? locale === "ko"
-                        ? "템플릿 변경 저장"
-                        : "Save template changes"
-                      : marketing.saveTemplate}
-                </SmallButton>
-              )}
+              <SmallButton
+                type="button"
+                disabled={savingTemplate || !hasTemplateContent}
+                onClick={() => {
+                  setTemplateName("");
+                  setTemplateDialogOpen(true);
+                }}
+              >
+                <PlusIcon width={14} />
+                {locale === "ko" ? "새로운 템플릿으로 저장" : "Save as new template"}
+              </SmallButton>
               {draft.templateId && (
                 <SmallButton
                   type="button"
@@ -1298,9 +1271,9 @@ export default function GrowthDashboard() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
-            <Button type="submit" disabled={saving || !canSaveSchedule}>
+            <Button type="submit" disabled={saving || !canSaveChanges}>
               {saving ? <ArrowPathIcon width={16} /> : <CheckIcon width={16} />}
-              {saving ? marketing.savingSettings : marketing.saveSettings}
+              {saving ? marketing.savingSettings : locale === "ko" ? "변경 사항 저장" : "Save changes"}
             </Button>
             <Button
               type="button"
