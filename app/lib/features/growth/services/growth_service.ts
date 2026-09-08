@@ -249,6 +249,23 @@ export const createMarketingTemplate = async (template: {
   return result.templateId;
 };
 
+export const updateMarketingTemplate = async (
+  templateId: string,
+  template: {
+    destinationUrl: string;
+    title: string;
+    copy: string;
+    callToAction: string;
+    photos: MarketingTemplatePhoto[];
+  },
+): Promise<void> => {
+  await invokeFunction("marketing", {
+    action: "update-template",
+    templateId,
+    template,
+  });
+};
+
 export const ensureDefaultMarketingTemplate = async (): Promise<string> => {
   const result = await invokeFunction<{ templateId: string }>("marketing", {
     action: "ensure-default-template",
