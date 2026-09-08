@@ -43,6 +43,7 @@ import {
   saveMarketingTemplateSchedule,
   subscribeToMarketingCronRuns,
   subscribeToMarketingTemplates,
+  updateMarketingTemplate,
 } from "../services/growth_service";
 import { uploadMarketingImage } from "../services/growth_image_service";
 import {
@@ -232,7 +233,7 @@ const Button = ({
   ...rest
 }: { $secondary?: boolean } & ComponentPropsWithoutRef<"button">) => (
   <button
-    className={`inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-[7px] rounded-full border-2 border-[#050505] px-[13px] py-[7px] text-[#050505] shadow-[3px_3px_0_#050505] ${fontInheritClass} text-[13px] font-black transition-[transform,box-shadow] duration-[140ms] ease-[ease] enabled:hover:-translate-x-px enabled:hover:-translate-y-px enabled:hover:shadow-[4px_4px_0_#050505] disabled:cursor-wait disabled:opacity-[0.58] disabled:shadow-none ${
+    className={`inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-[7px] rounded-full border-2 border-[#050505] px-[13px] py-[7px] text-[#050505] shadow-[3px_3px_0_#050505] ${fontInheritClass} text-[13px] font-black transition-[transform,box-shadow] duration-[140ms] ease-[ease] enabled:hover:-translate-x-px enabled:hover:-translate-y-px enabled:hover:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.58] disabled:shadow-none ${
       $secondary ? "bg-white" : "bg-[#f47a4a]"
     } ${className}`}
     {...rest}
@@ -808,6 +809,40 @@ export default function GrowthDashboard() {
     }
   };
 
+  const handleUpdateTemplate = async () => {
+    if (!draft.templateId) return;
+    setSavingTemplate(true);
+    setMessage(null);
+    try {
+      await updateMarketingTemplate(draft.templateId, {
+        destinationUrl: draft.destinationUrl,
+        title: draft.title,
+        copy: draft.copy,
+        callToAction: draft.callToAction,
+        photos: draft.photos,
+      });
+      const nextTemplates = await fetchMarketingTemplates();
+      setTemplates(nextTemplates);
+      const saved = nextTemplates.find((template) => template.id === draft.templateId);
+      if (saved) {
+        setDraft((current) => ({
+          ...current,
+          destinationUrl: saved.destinationUrl,
+          title: saved.title,
+          copy: saved.copy,
+          callToAction: saved.callToAction,
+          photos: saved.photos,
+        }));
+      }
+      setMessage({ text: marketing.templateSaved });
+    } catch (error) {
+      console.error("Unable to update marketing template:", error);
+      setMessage({ text: marketing.templateError, error: true });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const handleGenerateTemplate = async () => {
     if (!aiBrief.trim() || !draft.destinationUrl.trim()) {
       setMessage({ text: marketing.aiTemplateError, error: true });
@@ -1234,10 +1269,20 @@ export default function GrowthDashboard() {
                 <SmallButton
                   type="button"
                   disabled={savingTemplate}
-                  onClick={() => setTemplateDialogOpen(true)}
+                  onClick={() =>
+                    draft.templateId
+                      ? void handleUpdateTemplate()
+                      : setTemplateDialogOpen(true)
+                  }
                 >
-                  <CheckIcon width={14} />
-                  {draft.templateId ? marketing.saveTemplateChanges : marketing.saveTemplate}
+                  {savingTemplate ? <ArrowPathIcon width={14} /> : <CheckIcon width={14} />}
+                  {savingTemplate
+                    ? marketing.savingTemplate
+                    : draft.templateId
+                      ? locale === "ko"
+                        ? "템플릿 변경 저장"
+                        : "Save template changes"
+                      : marketing.saveTemplate}
                 </SmallButton>
               )}
               {draft.templateId && (

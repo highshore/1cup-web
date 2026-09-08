@@ -1,6 +1,6 @@
 // Marketing cron settings, templates and run history — Supabase port of the Firestore
-// version. Reads go straight to Postgres; writes go through the `marketing` edge
-// function so the admin check and the cron's own bookkeeping stay server-side.
+// version. Reads go straight to Postgres. Cron-sensitive writes go through the
+// `marketing` edge function; simple template-content edits use the table's admin-only RLS.
 import { supabase, invokeFunction } from "../../../supabase/client";
 import {
   DEFAULT_MARKETING_CRON_SETTINGS,
@@ -224,7 +224,7 @@ export const subscribeToMarketingTemplates = (
   onChange: (templates: MarketingTemplate[]) => void,
 ): (() => void) => subscribeToTable(TEMPLATES, fetchMarketingTemplates, onChange);
 
-// ---- writes: all through the edge function, which re-checks admin server-side ----
+// ---- writes ----
 
 export const saveMarketingTemplateSchedule = async (settings: {
   templateId: string;
@@ -247,6 +247,33 @@ export const createMarketingTemplate = async (template: {
     template,
   });
   return result.templateId;
+};
+
+export const updateMarketingTemplate = async (
+  templateId: string,
+  template: {
+    destinationUrl: string;
+    title: string;
+    copy: string;
+    callToAction: string;
+    photos: MarketingTemplatePhoto[];
+  },
+): Promise<void> => {
+  const { data, error } = await supabase
+    .from(TEMPLATES)
+    .update({
+      destination_url: template.destinationUrl,
+      title: template.title,
+      copy: template.copy,
+      call_to_action: template.callToAction,
+      photos: template.photos,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", templateId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Marketing template not found or not editable.");
 };
 
 export const ensureDefaultMarketingTemplate = async (): Promise<string> => {
