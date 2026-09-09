@@ -28,6 +28,7 @@ const nextConfig = {
       "/kakao_callback",
       "/payment/:path*",
       "/profile/:path*",
+      "/messages/:path*",
       "/notifications/:path*",
       "/feedback/:path*",
       "/vocabulary/:path*",

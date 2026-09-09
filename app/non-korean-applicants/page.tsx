@@ -9,11 +9,14 @@ export const metadata: Metadata = {
   title: "For Non-Korean Applicants | 1 Cup English",
   description:
     "Application guide for long-term international inhabitants building a professional life and quality network in Korea.",
+  alternates: {
+    canonical: "/non-korean-applicants",
+  },
   openGraph: {
     title: "For Non-Korean Applicants | 1 Cup English",
     description:
       "Build a quality network in Korea through meaningful conversations with Korean professionals and students.",
-    url: "https://1cupenglish.com/non-korean-applicants",
+    url: "/non-korean-applicants",
     type: "website",
     images: [
       {

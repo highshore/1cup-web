@@ -9,6 +9,8 @@ interface ArticlePageProps {
   }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { articleId } = await params;
   const normalizedArticleId = articleId.trim();
