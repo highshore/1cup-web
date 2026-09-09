@@ -6,16 +6,23 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import AuthProvider from "./lib/contexts/auth_context";
 import ConditionalLayoutWrapper from "./lib/components/ConditionalLayoutWrapper";
 import ServiceErrorProvider from "./lib/components/ServiceErrorProvider";
+import JsonLd from "./lib/seo/json_ld";
+import {
+  absoluteUrl,
+  ORGANIZATION_ID,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_NAME_EN,
+  SITE_URL,
+} from "./lib/seo/site";
 
-const siteUrl = "https://1cupenglish.com";
-const siteTitle = "영어 한잔 | 1 Cup English";
-const siteDescription = "Business English Community hosted in Seoul";
+const siteTitle = `${SITE_NAME} | ${SITE_NAME_EN}`;
 const socialImage = "/images/url-share-thumbnail.jpg";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "영어 한잔 | 1 Cup English",
-  description: siteDescription,
+  metadataBase: new URL(SITE_URL),
+  title: siteTitle,
+  description: SITE_DESCRIPTION,
   icons: {
     icon: [
       { url: "/images/logos/1cup_logo.jpg", sizes: "32x32", type: "image/jpeg" },
@@ -27,18 +34,44 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: siteTitle,
-    description: siteDescription,
-    url: siteUrl,
-    siteName: "영어 한잔",
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     locale: "ko_KR",
     type: "website",
-    images: [{ url: socialImage, width: 1200, height: 630, alt: "영어 한잔 - 1 Cup English" }],
+    images: [{ url: socialImage, width: 1200, height: 630, alt: siteTitle }],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
-    description: siteDescription,
+    description: SITE_DESCRIPTION,
     images: [socialImage],
+  },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": ORGANIZATION_ID,
+  name: SITE_NAME,
+  alternateName: SITE_NAME_EN,
+  legalName: "네이티브피티",
+  url: SITE_URL,
+  logo: absoluteUrl("/images/logos/1cup_logo_new.svg"),
+  description: SITE_DESCRIPTION,
+  email: "hello@1cupenglish.com",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "안암로9가길 9-8, 303호",
+    addressLocality: "성북구",
+    addressRegion: "서울특별시",
+    addressCountry: "KR",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    email: "hello@1cupenglish.com",
+    availableLanguage: ["ko", "en"],
   },
 };
 
@@ -56,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body suppressHydrationWarning={true}>
+        <JsonLd data={organizationJsonLd} />
         <ServiceErrorProvider>
           <AuthProvider>
             <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
