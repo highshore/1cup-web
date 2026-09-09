@@ -86,3 +86,18 @@ export async function fetchMeetupSitemapRecordsServer(): Promise<
     return [];
   }
 }
+
+export const publishedArticleExistsServer = cache(async (id: string) => {
+  const articleId = id.trim();
+  if (!articleId) return false;
+
+  const { data, error } = await admin()
+    .from("articles")
+    .select("id")
+    .eq("id", articleId)
+    .eq("publication_status", "published")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+});
