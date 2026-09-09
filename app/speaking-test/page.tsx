@@ -4,7 +4,18 @@ import SpeakingTestClient from "./SpeakingTestClient";
 
 export const metadata: Metadata = {
   title: "Speaking Tests | 1 Cup English",
-  description: "Choose a deployed speaking test, record each response, and receive an evidence-based TOEFL practice score.",
+  description:
+    "Choose a deployed speaking test, record each response, and receive an evidence-based TOEFL practice score.",
+  alternates: {
+    canonical: "/speaking-test",
+  },
+  openGraph: {
+    title: "Speaking Tests | 1 Cup English",
+    description:
+      "Choose a deployed speaking test, record each response, and receive an evidence-based TOEFL practice score.",
+    url: "/speaking-test",
+    type: "website",
+  },
 };
 
 export const dynamic = "force-dynamic";

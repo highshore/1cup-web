@@ -1,4 +1,7 @@
+import { notFound } from "next/navigation";
+
 import ArticleClient from "./ArticleClient";
+import { publishedArticleExistsServer } from "../../lib/seo/content_server";
 
 interface ArticlePageProps {
   params: Promise<{
@@ -6,16 +9,16 @@ interface ArticlePageProps {
   }>;
 }
 
-// Generate static paths for articles
-export async function generateStaticParams(): Promise<
-  Array<{ articleId: string }>
-> {
-  // Return empty array for now since articles are dynamic
-  // Articles will be loaded client-side
-  return [];
-}
+export const dynamic = "force-dynamic";
 
-export default function ArticlePage({ params }: ArticlePageProps) {
+export default async function ArticlePage({ params }: ArticlePageProps) {
+  const { articleId } = await params;
+  const normalizedArticleId = articleId.trim();
+
+  if (!normalizedArticleId || !(await publishedArticleExistsServer(normalizedArticleId))) {
+    notFound();
+  }
+
   return (
     <div className="article-section-row-fix">
       <ArticleClient />

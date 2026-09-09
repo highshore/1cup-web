@@ -21,6 +21,33 @@ const nextConfig = {
       { source: "/new-home", destination: "/", permanent: true },
     ];
   },
+  async headers() {
+    const noIndexSources = [
+      "/admin/:path*",
+      "/auth/:path*",
+      "/kakao_callback",
+      "/payment/:path*",
+      "/profile/:path*",
+      "/messages/:path*",
+      "/notifications/:path*",
+      "/feedback/:path*",
+      "/vocabulary/:path*",
+      "/transcript/:path*",
+      "/report/:path*",
+      "/article/:path*",
+      "/ai-tutor-demo",
+    ];
+
+    return noIndexSources.map((source) => ({
+      source,
+      headers: [
+        {
+          key: "X-Robots-Tag",
+          value: "noindex, nofollow",
+        },
+      ],
+    }));
+  },
   // Tree-shake large barrel packages so only used icons/utils are bundled.
   experimental: {
     optimizePackageImports: [
