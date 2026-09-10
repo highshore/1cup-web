@@ -56,29 +56,52 @@ const formNoticeClass = (success: boolean) =>
     success ? "text-[#176b3a]" : "text-[#b42318]"
   }`;
 
-const copy = {
-  heroEyebrow: "For Non-Korean Members",
-  heroTitle: "Build a Quality Korean Network.",
-  heroSubtitle:
-    "Are you staying in Korea long-term? Are you tired of fleeting exchanges and looking to build a more meaningful network? At our meetups, you can connect with English-speaking Korean professionals and students through interesting conversations.",
-  networkAnimationLabel: "Animated illustration of people building a professional network",
-  statsTitle: "A meetup with a steady flow of trusted members",
-  eligibilityDescription:
-    "We are looking for native English speakers who can add value to our meetup community. You may still apply even if you do not meet all of the criteria below, but approval is not guaranteed.",
-  nativeSpeakerDescription:
-    "You are a native English speaker from one of the following core English-speaking countries.",
-  professionalDescription:
-    "You are currently working at a company, institution, or professional organization. The meetup is not designed for stays mainly based on short-term teaching, military service, exchange study, tourism, or temporary travel.",
-  firstBenefit:
-    "Network with intelligent, kind, and hard-working Koreans in a relaxed English-speaking environment.",
-  credentialLabel: "LinkedIn Profile URL or any link that can prove your credentials",
-  credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
-  invalidCredential: "Enter a valid HTTPS URL.",
-  processCredentialDescription:
-    "Please submit your email address, nationality, and a LinkedIn profile or another link that can verify your credentials. We use these to contact you and review your fit with our meetup.",
+const pageCopy = {
+  en: {
+    heroEyebrow: "For Non-Korean Members",
+    heroTitle: "Build a Quality Korean Network.",
+    heroSubtitle:
+      "Are you staying in Korea long-term? Are you tired of fleeting exchanges and looking to build a more meaningful network? At our meetups, you can connect with English-speaking Korean professionals and students through interesting conversations.",
+    networkAnimationLabel: "Animated illustration of people building a professional network",
+    statsTitle: "A meetup with a steady flow of trusted members",
+    eligibilityDescription:
+      "We are looking for native English speakers who can add value to our meetup community. You may still apply even if you do not meet all of the criteria below, but approval is not guaranteed.",
+    nativeSpeakerDescription:
+      "You are a native English speaker from one of the following core English-speaking countries.",
+    professionalDescription:
+      "You are currently working at a company, institution, or professional organization. The meetup is not designed for stays mainly based on short-term teaching, military service, exchange study, tourism, or temporary travel.",
+    firstBenefit:
+      "Network with intelligent, kind, and hard-working Koreans in a relaxed English-speaking environment.",
+    credentialLabel: "LinkedIn Profile URL or any link that can prove your credentials",
+    credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
+    invalidCredential: "Enter a valid HTTPS URL.",
+    processCredentialDescription:
+      "Please submit your email address, nationality, and a LinkedIn profile or another link that can verify your credentials. We use these to contact you and review your fit with our meetup.",
+  },
+  ko: {
+    heroEyebrow: "외국인 멤버 안내",
+    heroTitle: "한국에서 좋은 네트워크를 만들어보세요.",
+    heroSubtitle:
+      "한국에 장기 체류할 예정인가요? 일회성 만남에 지쳤고 더 진지한 네트워크를 만들고 싶나요? 영어 한잔에서는 흥미로운 대화를 통해 영어로 소통할 수 있는 한국의 직장인과 학생들을 만날 수 있습니다.",
+    networkAnimationLabel: "사람들이 전문적인 네트워크를 만들어가는 애니메이션",
+    statsTitle: "신뢰할 수 있는 멤버들이 꾸준히 참여하는 모임",
+    eligibilityDescription:
+      "밋업에 가치를 더할 수 있는 영어 원어민을 찾고 있습니다. 아래 조건을 모두 충족하지 않더라도 지원할 수 있지만, 승인이 보장되지는 않습니다.",
+    nativeSpeakerDescription:
+      "아래 주요 영어권 국가 출신의 영어 원어민을 찾고 있습니다.",
+    professionalDescription:
+      "현재 기업, 기관 또는 전문 조직에서 근무하고 있어야 합니다. 본 밋업은 단기 영어 교육, 군 복무, 교환학생, 관광 또는 임시 여행을 주된 체류 목적으로 하는 분들을 위한 모임은 아닙니다.",
+    firstBenefit:
+      "지적이고 친절하며 성실한 한국인들과 편안한 영어 환경에서 네트워킹할 수 있습니다.",
+    credentialLabel: "LinkedIn 프로필 URL 또는 경력을 확인할 수 있는 기타 링크",
+    credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
+    invalidCredential: "유효한 HTTPS URL을 입력해 주세요.",
+    processCredentialDescription:
+      "이메일 주소, 국적, LinkedIn 프로필 또는 경력을 확인할 수 있는 다른 링크를 제출해 주세요. 연락 및 밋업 적합성 검토를 위해 사용합니다.",
+  },
 } as const;
 
-function NetworkingAnimation() {
+function NetworkingAnimation({ label }: { label: string }) {
   const nodeClass =
     "absolute grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border-2 border-[#050505] bg-[#fff8dc] shadow-[4px_4px_0_#050505] max-[520px]:h-[3.7rem] max-[520px]:w-[3.7rem]";
   const iconClass = "h-8 w-8 text-[#050505] max-[520px]:h-7 max-[520px]:w-7";
@@ -86,9 +109,9 @@ function NetworkingAnimation() {
   return (
     <aside
       className="relative overflow-hidden rounded-[16px] border-2 border-[#050505] bg-[#f47a4a] p-[clamp(1rem,2.5vw,1.5rem)] shadow-[7px_7px_0_#050505] max-[860px]:mx-auto max-[860px]:w-full max-[860px]:max-w-lg"
-      aria-label={copy.networkAnimationLabel}
+      aria-label={label}
     >
-      <div className="relative mx-auto aspect-[4/3] w-full max-w-[30rem]" role="img" aria-label={copy.networkAnimationLabel}>
+      <div className="relative mx-auto aspect-[4/3] w-full max-w-[30rem]" role="img" aria-label={label}>
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 400 300"
@@ -131,7 +154,7 @@ interface NonKoreanApplicantsClientProps {
 export default function NonKoreanApplicantsClient({
   stats,
 }: NonKoreanApplicantsClientProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { currentUser, isLoading: authLoading } = useAuth();
   const applicationRef = useRef<HTMLElement | null>(null);
   const [email, setEmail] = useState("");
@@ -146,6 +169,7 @@ export default function NonKoreanApplicantsClient({
   } | null>(null);
   const page = t.nonKoreanApplicants;
   const application = page.application;
+  const copy = locale === "ko" ? pageCopy.ko : pageCopy.en;
   const authHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
 
   const eligibilityItems = page.eligibility.items.map((item, index) => ({
@@ -287,7 +311,7 @@ export default function NonKoreanApplicantsClient({
             </div>
           </div>
 
-          <NetworkingAnimation />
+          <NetworkingAnimation label={copy.networkAnimationLabel} />
         </section>
       </div>
 
