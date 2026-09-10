@@ -2,6 +2,12 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {
+  AcademicCapIcon,
+  BriefcaseIcon,
+  ChatBubbleLeftRightIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import StatsSection from "../lib/features/home/components/StatsSection";
 import { HomeStats } from "../lib/features/home/services/stats_service";
 import { useI18n } from "../lib/i18n/I18nProvider";
@@ -50,6 +56,74 @@ const formNoticeClass = (success: boolean) =>
     success ? "text-[#176b3a]" : "text-[#b42318]"
   }`;
 
+const copy = {
+  heroEyebrow: "For Non-Korean Members",
+  heroTitle: "Build a Quality Korean Network.",
+  heroSubtitle:
+    "Are you staying in Korea long-term? Are you tired of fleeting exchanges and looking to build a more meaningful network? At our meetups, you can connect with English-speaking Korean professionals and students through interesting conversations.",
+  networkAnimationLabel: "Animated illustration of people building a professional network",
+  statsTitle: "A meetup with a steady flow of trusted members",
+  eligibilityDescription:
+    "We are looking for native English speakers who can add value to our meetup community. You may still apply even if you do not meet all of the criteria below, but approval is not guaranteed.",
+  nativeSpeakerDescription:
+    "You are a native English speaker from one of the following core English-speaking countries.",
+  professionalDescription:
+    "You are currently working at a company, institution, or professional organization. The meetup is not designed for stays mainly based on short-term teaching, military service, exchange study, tourism, or temporary travel.",
+  firstBenefit:
+    "Network with intelligent, kind, and hard-working Koreans in a relaxed English-speaking environment.",
+  credentialLabel: "LinkedIn Profile URL or any link that can prove your credentials",
+  credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
+  invalidCredential: "Enter a valid HTTPS URL.",
+  processCredentialDescription:
+    "Please submit your email address, nationality, and a LinkedIn profile or another link that can verify your credentials. We use these to contact you and review your fit with our meetup.",
+} as const;
+
+function NetworkingAnimation() {
+  const nodeClass =
+    "absolute grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border-2 border-[#050505] bg-[#fff8dc] shadow-[4px_4px_0_#050505] max-[520px]:h-[3.7rem] max-[520px]:w-[3.7rem]";
+  const iconClass = "h-8 w-8 text-[#050505] max-[520px]:h-7 max-[520px]:w-7";
+
+  return (
+    <aside
+      className="relative overflow-hidden rounded-[16px] border-2 border-[#050505] bg-[#f47a4a] p-[clamp(1rem,2.5vw,1.5rem)] shadow-[7px_7px_0_#050505] max-[860px]:mx-auto max-[860px]:w-full max-[860px]:max-w-lg"
+      aria-label={copy.networkAnimationLabel}
+    >
+      <div className="relative mx-auto aspect-[4/3] w-full max-w-[30rem]" role="img" aria-label={copy.networkAnimationLabel}>
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 400 300"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path d="M200 150L95 72" stroke="#050505" strokeWidth="3" strokeDasharray="8 8" />
+          <path d="M200 150L305 72" stroke="#050505" strokeWidth="3" strokeDasharray="8 8" />
+          <path d="M200 150L200 245" stroke="#050505" strokeWidth="3" strokeDasharray="8 8" />
+          <circle cx="200" cy="150" r="62" stroke="#050505" strokeWidth="2" opacity="0.18" />
+          <circle cx="200" cy="150" r="88" stroke="#050505" strokeWidth="2" opacity="0.1" />
+        </svg>
+
+        <div className="absolute left-1/2 top-1/2 grid h-[5.4rem] w-[5.4rem] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-[#050505] bg-white shadow-[5px_5px_0_#050505] motion-safe:animate-pulse max-[520px]:h-[4.7rem] max-[520px]:w-[4.7rem]">
+          <UserGroupIcon className="h-10 w-10 text-[#050505] max-[520px]:h-9 max-[520px]:w-9" />
+        </div>
+
+        <div className={`${nodeClass} left-[12%] top-[10%] motion-safe:animate-pulse`}>
+          <BriefcaseIcon className={iconClass} />
+        </div>
+        <div className={`${nodeClass} right-[12%] top-[10%] motion-safe:animate-pulse`}>
+          <AcademicCapIcon className={iconClass} />
+        </div>
+        <div className={`${nodeClass} bottom-[5%] left-1/2 -translate-x-1/2 motion-safe:animate-pulse`}>
+          <ChatBubbleLeftRightIcon className={iconClass} />
+        </div>
+
+        <span className="absolute left-[37%] top-[35%] h-3 w-3 rounded-full border-2 border-[#050505] bg-white motion-safe:animate-bounce" aria-hidden="true" />
+        <span className="absolute right-[37%] top-[35%] h-3 w-3 rounded-full border-2 border-[#050505] bg-white motion-safe:animate-bounce" aria-hidden="true" />
+        <span className="absolute bottom-[28%] left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#050505] bg-white motion-safe:animate-bounce" aria-hidden="true" />
+      </div>
+    </aside>
+  );
+}
+
 interface NonKoreanApplicantsClientProps {
   stats?: HomeStats;
 }
@@ -62,7 +136,7 @@ export default function NonKoreanApplicantsClient({
   const applicationRef = useRef<HTMLElement | null>(null);
   const [email, setEmail] = useState("");
   const [nationality, setNationality] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [credentialUrl, setCredentialUrl] = useState("");
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +147,22 @@ export default function NonKoreanApplicantsClient({
   const page = t.nonKoreanApplicants;
   const application = page.application;
   const authHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
+
+  const eligibilityItems = page.eligibility.items.map((item, index) => ({
+    ...item,
+    description:
+      index === 0
+        ? copy.nativeSpeakerDescription
+        : index === 1
+          ? copy.professionalDescription
+          : item.description,
+  }));
+
+  const benefits = [copy.firstBenefit, ...page.benefits.items.slice(1, 3)];
+  const processSteps = page.process.steps.map((step, index) => ({
+    ...step,
+    description: index === 1 ? copy.processCredentialDescription : step.description,
+  }));
 
   useEffect(() => {
     if (authLoading || !currentUser) {
@@ -99,7 +189,7 @@ export default function NonKoreanApplicantsClient({
 
         setEmail(data?.email ?? currentUser.email ?? "");
         setNationality(data?.nationality ?? "");
-        setLinkedinUrl(data?.linkedin_url ?? "");
+        setCredentialUrl(data?.linkedin_url ?? "");
         setApplicationStatus(data?.status ?? null);
       } finally {
         if (active) setLoadingApplication(false);
@@ -121,20 +211,18 @@ export default function NonKoreanApplicantsClient({
 
     const normalizedEmail = email.trim();
     const normalizedNationality = nationality.trim();
-    const normalizedLinkedinUrl = linkedinUrl.trim();
+    const normalizedCredentialUrl = credentialUrl.trim();
 
-    let isLinkedInProfile = false;
+    let isCredentialUrl = false;
     try {
-      const parsedUrl = new URL(normalizedLinkedinUrl);
-      isLinkedInProfile =
-        parsedUrl.protocol === "https:" &&
-        (parsedUrl.hostname === "linkedin.com" || parsedUrl.hostname.endsWith(".linkedin.com"));
+      const parsedUrl = new URL(normalizedCredentialUrl);
+      isCredentialUrl = parsedUrl.protocol === "https:" && Boolean(parsedUrl.hostname);
     } catch {
-      isLinkedInProfile = false;
+      isCredentialUrl = false;
     }
 
-    if (!isLinkedInProfile) {
-      setFormMessage({ tone: "error", text: application.form.invalidLinkedIn });
+    if (!isCredentialUrl) {
+      setFormMessage({ tone: "error", text: copy.invalidCredential });
       return;
     }
 
@@ -148,7 +236,7 @@ export default function NonKoreanApplicantsClient({
             user_id: currentUser.uid,
             email: normalizedEmail,
             nationality: normalizedNationality,
-            linkedin_url: normalizedLinkedinUrl,
+            linkedin_url: normalizedCredentialUrl,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id" },
@@ -172,12 +260,12 @@ export default function NonKoreanApplicantsClient({
       <div className={containerClass}>
         <section className="relative grid grid-cols-[minmax(0,1.05fr)_minmax(280px,0.75fr)] items-center gap-[clamp(1.5rem,4vw,2.5rem)] pt-[clamp(3rem,6vw,4.75rem)] pb-[clamp(2.5rem,5vw,3.75rem)] max-[860px]:grid-cols-1 max-[860px]:pt-11 max-[860px]:text-center">
           <div>
-            <p className={eyebrowClass}>{page.hero.eyebrow}</p>
+            <p className={eyebrowClass}>{copy.heroEyebrow}</p>
             <h1 className="m-0 max-w-3xl text-[clamp(2rem,4.4vw,3.7rem)] font-[950] leading-[1.05] tracking-normal text-[#050505] max-[860px]:max-w-full">
-              {page.hero.title}
+              {copy.heroTitle}
             </h1>
             <p className="mt-4 mb-0 max-w-[40rem] text-[clamp(0.98rem,1.5vw,1.08rem)] font-[590] leading-[1.65] text-[rgba(5,5,5,0.72)] max-[860px]:mx-auto">
-              {page.hero.subtitle}
+              {copy.heroSubtitle}
             </p>
             <div className={heroActionsClass}>
               {currentUser ? (
@@ -199,42 +287,26 @@ export default function NonKoreanApplicantsClient({
             </div>
           </div>
 
-          <aside
-            className="relative rounded-[14px] border-2 border-[#050505] bg-[#f47a4a] p-[clamp(1.05rem,2.5vw,1.4rem)] text-left shadow-[7px_7px_0_#050505] max-[860px]:mx-auto max-[860px]:max-w-lg"
-            aria-label={page.hero.cardTitle}
-          >
-            <h2 className="mb-4 text-base font-[950] leading-[1.25] text-[#050505]">
-              {page.hero.cardTitle}
-            </h2>
-            <ul className="m-0 grid list-none gap-[0.58rem] p-0">
-              {page.hero.points.map((point) => (
-                <li
-                  className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-[0.55rem] text-[0.9rem] font-[690] leading-[1.45] text-[rgba(5,5,5,0.82)]"
-                  key={point}
-                >
-                  <span
-                    className="mt-[0.42rem] h-[0.58rem] w-[0.58rem] rounded-full border-2 border-[#050505] bg-[#fff8dc]"
-                    aria-hidden="true"
-                  />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
+          <NetworkingAnimation />
         </section>
       </div>
 
-      <StatsSection stats={stats} />
+      <StatsSection
+        stats={stats}
+        title={copy.statsTitle}
+        ctaHref="#application"
+        onCtaClick={scrollToApplication}
+      />
 
       <div className={containerClass}>
         <section className={sectionClass}>
           <div className={sectionHeaderClass}>
             <p className={eyebrowClass}>{page.eligibility.eyebrow}</p>
             <h2 className={sectionTitleClass}>{page.eligibility.title}</h2>
-            <p className={sectionDescriptionClass}>{page.eligibility.description}</p>
+            <p className={sectionDescriptionClass}>{copy.eligibilityDescription}</p>
           </div>
           <div className="grid grid-cols-2 gap-[0.85rem] max-[760px]:grid-cols-1">
-            {page.eligibility.items.map((item, index) => (
+            {eligibilityItems.map((item, index) => (
               <article
                 className="rounded-xl border-2 border-[#050505] bg-white p-[clamp(1rem,2.5vw,1.25rem)] shadow-[4px_4px_0_rgba(5,5,5,0.92)]"
                 key={item.title}
@@ -265,16 +337,14 @@ export default function NonKoreanApplicantsClient({
             ))}
           </div>
         </section>
-      </div>
 
-      <section className="my-[clamp(1.25rem,3vw,2rem)] border-y-2 border-[#050505] bg-[#f47a4a] py-[clamp(2.5rem,5vw,3.5rem)]">
-        <div className={containerClass}>
+        <section className="my-[clamp(1.25rem,3vw,2rem)] rounded-2xl border-2 border-[#050505] bg-[#f47a4a] px-[clamp(1.25rem,3vw,2rem)] py-[clamp(2.5rem,5vw,3.5rem)] shadow-[6px_6px_0_#050505]">
           <div className={sectionHeaderClass}>
             <p className={eyebrowClass}>{page.benefits.eyebrow}</p>
             <h2 className={sectionTitleClass}>{page.benefits.title}</h2>
           </div>
-          <div className="grid grid-cols-4 gap-[0.7rem] max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
-            {page.benefits.items.map((benefit) => (
+          <div className="grid grid-cols-3 gap-[0.7rem] max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+            {benefits.map((benefit) => (
               <div
                 className="rounded-[10px] border-2 border-[#050505] bg-[#fff8dc] p-[0.9rem] text-[0.88rem] font-[720] leading-[1.5] text-[#050505]"
                 key={benefit}
@@ -286,10 +356,8 @@ export default function NonKoreanApplicantsClient({
           <p className="mt-4 mb-0 rounded-xl border-2 border-[#050505] bg-white px-4 py-[0.95rem] text-[0.9rem] font-[820] leading-[1.55] text-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.92)]">
             {page.benefits.note}
           </p>
-        </div>
-      </section>
+        </section>
 
-      <div className={containerClass}>
         <section className={sectionClass}>
           <div className={sectionHeaderClass}>
             <p className={eyebrowClass}>{page.process.eyebrow}</p>
@@ -297,7 +365,7 @@ export default function NonKoreanApplicantsClient({
             <p className={sectionDescriptionClass}>{page.process.description}</p>
           </div>
           <div className="grid gap-[0.7rem]">
-            {page.process.steps.map((step, index) => (
+            {processSteps.map((step, index) => (
               <article
                 className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-[0.85rem] rounded-xl border border-[rgba(5,5,5,0.1)] bg-[rgba(255,255,255,0.78)] p-[0.9rem] max-[560px]:grid-cols-1 max-[560px]:text-center"
                 key={step.title}
@@ -357,14 +425,14 @@ export default function NonKoreanApplicantsClient({
                   </label>
                 </div>
                 <label className={formFieldClass}>
-                  {application.form.linkedinLabel}
+                  {copy.credentialLabel}
                   <input
                     className={formInputClass}
                     type="url"
                     autoComplete="url"
-                    value={linkedinUrl}
-                    onChange={(event) => setLinkedinUrl(event.target.value)}
-                    placeholder={application.form.linkedinPlaceholder}
+                    value={credentialUrl}
+                    onChange={(event) => setCredentialUrl(event.target.value)}
+                    placeholder={copy.credentialPlaceholder}
                     maxLength={500}
                     required
                   />
