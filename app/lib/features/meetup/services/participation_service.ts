@@ -30,12 +30,7 @@ function firstRow<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-export async function getParticipationCreditBalance(
-  _userId?: string,
-): Promise<number> {
-  // The database view/RLS resolves the signed-in member. The optional uid is accepted
-  // for profile/account call sites where carrying the current member identity makes
-  // the caller clearer, but it is intentionally not trusted for authorization.
+export async function getParticipationCreditBalance(): Promise<number> {
   const { data, error } = await supabase
     .from("participation_credit_balances")
     .select("balance")
