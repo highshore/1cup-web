@@ -1,11 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { TrophyIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { HomeStats } from "../services/stats_service";
 
 interface StatsSectionProps {
   stats?: HomeStats;
+  title?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  onCtaClick?: () => void;
 }
 
 const metricItemClass =
@@ -17,10 +22,21 @@ const metricValueClass =
 const metricLabelClass =
   "text-[rgba(5,5,5,0.72)] text-[0.9rem] font-medium leading-[1.25]";
 
-export default function StatsSection({ stats }: StatsSectionProps) {
+const ctaClass =
+  "inline-flex cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] bg-[#fff8dc] px-6 py-3 font-bold text-[#050505] no-underline shadow-[4px_4px_0_rgba(5,5,5,0.92)] transition-[background-color,box-shadow,transform] duration-200 ease-[ease] hover:-translate-x-px hover:-translate-y-px hover:bg-white hover:text-[#050505] hover:no-underline hover:shadow-[5px_5px_0_rgba(5,5,5,0.92)] max-[768px]:mt-4 max-[768px]:w-full";
+
+export default function StatsSection({
+  stats,
+  title,
+  ctaLabel,
+  ctaHref,
+  onCtaClick,
+}: StatsSectionProps) {
   const { t } = useI18n();
   const meetupCount = stats?.totalMeetups ?? 0;
   const memberCount = stats?.totalMembers ?? 0;
+  const resolvedTitle = title ?? t.home.stats.growth.title;
+  const resolvedCtaLabel = ctaLabel ?? t.home.stats.growth.cta;
 
   return (
     <section className="relative z-[2] bg-transparent pt-6 pb-[clamp(4.5rem,8vw,6rem)]">
@@ -31,7 +47,7 @@ export default function StatsSection({ stats }: StatsSectionProps) {
           </div>
           <div className="flex flex-1 flex-col gap-2">
             <h3 className="m-0 text-[1.5rem] font-bold leading-[1.3] text-[#050505]">
-              {t.home.stats.growth.title}
+              {resolvedTitle}
             </h3>
             <div className="mt-2 grid w-full grid-cols-[repeat(3,minmax(0,1fr))] items-start gap-[clamp(1rem,3vw,2rem)] max-[860px]:grid-cols-1 max-[860px]:gap-3 max-[860px]:text-center">
               <div className={metricItemClass}>
@@ -55,9 +71,15 @@ export default function StatsSection({ stats }: StatsSectionProps) {
             </div>
           </div>
           <div className="mt-4">
-            <button className="cursor-pointer rounded-full border-2 border-[#050505] bg-[#fff8dc] px-6 py-3 font-bold text-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.92)] transition-[background-color,box-shadow,transform] duration-200 ease-[ease] hover:-translate-x-px hover:-translate-y-px hover:bg-white hover:shadow-[5px_5px_0_rgba(5,5,5,0.92)] max-[768px]:mt-4 max-[768px]:w-full">
-              {t.home.stats.growth.cta}
-            </button>
+            {ctaHref ? (
+              <Link className={ctaClass} href={ctaHref} onClick={onCtaClick}>
+                {resolvedCtaLabel}
+              </Link>
+            ) : (
+              <button className={ctaClass} type="button" onClick={onCtaClick}>
+                {resolvedCtaLabel}
+              </button>
+            )}
           </div>
         </div>
       </div>
