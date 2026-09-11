@@ -22,21 +22,15 @@ export default function MainLayoutWrapper({
   return (
     <div
       className={`flex min-h-screen flex-col ${
-        isHomePage
-          ? "bg-[#ffffff]"
-          : isPrivateProfilePage
-            ? "bg-[#f3f3f1]"
-            : "bg-[#f5f5f5]"
+        isHomePage ? "bg-white" : "bg-[#f5f5f5]"
       }`}
     >
       <NewNavbar />
       <div
         className={`mx-auto min-h-screen w-full flex-1 pb-8 [font-family:'Noto_Sans_KR',sans-serif] ${
           isHomePage ? "pt-0" : "pt-[74px] max-[768px]:pt-[68px]"
-        } ${
-          isFullWidth
-            ? "max-w-full"
-            : "max-w-[960px] max-[768px]:px-2"
+        } ${isFullWidth ? "max-w-full" : "max-w-[960px] max-[768px]:px-2"} ${
+          isPrivateProfilePage ? "profile-workspace" : ""
         }`}
       >
         {children}

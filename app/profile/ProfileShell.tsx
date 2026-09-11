@@ -302,24 +302,24 @@ function ProfileAvatar({
       .join("") || "M";
 
   return (
-    <div className="relative mx-auto h-32 w-32">
+    <div className="relative mx-auto h-[124px] w-[124px]">
       <div
-        className="absolute inset-0 rounded-full p-[7px]"
+        className="absolute inset-0 rounded-full p-[6px]"
         style={{
-          background: `conic-gradient(#f47a4a 0deg ${completion * 3.6}deg, #e6e6e6 ${completion * 3.6}deg 360deg)`,
+          background: `conic-gradient(#f47a4a 0deg ${completion * 3.6}deg, #e5e5e5 ${completion * 3.6}deg 360deg)`,
         }}
       >
         <div className="h-full w-full overflow-hidden rounded-full bg-[#d1d1d1] ring-[3px] ring-white">
           {src ? (
             <img src={src} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[28px] font-bold text-white">
+            <div className="flex h-full w-full items-center justify-center text-[28px] font-extrabold text-white">
               {initials}
             </div>
           )}
         </div>
       </div>
-      <span className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 rounded-full bg-[#171717] px-3 py-1 text-[11px] font-bold text-white">
+      <span className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 rounded-full bg-[#050505] px-3 py-1 text-[11px] font-extrabold leading-none text-white">
         {completion}%
       </span>
     </div>
@@ -339,12 +339,14 @@ function SidebarNavItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-11 w-full items-center justify-between rounded-[14px] border-0 px-2 text-left text-[15px] text-[#171717] transition-colors ${
-        active ? "bg-[#ffebe0] font-bold" : "bg-transparent font-semibold hover:bg-[#faf7f4]"
+      className={`flex min-h-11 w-full items-center justify-between rounded-[14px] border-0 px-3 py-2 text-left text-[14px] text-[#050505] transition-colors ${
+        active
+          ? "bg-[#fff0e8] font-extrabold"
+          : "bg-transparent font-semibold hover:bg-[#f8f8f8]"
       }`}
     >
       <span>{children}</span>
-      <span className="text-[24px] font-normal leading-none text-[#6b6b6b]">›</span>
+      <span className="text-[22px] font-normal leading-none text-[#6c757d]">›</span>
     </button>
   );
 }
@@ -372,8 +374,8 @@ export function DesktopProfileShell({
       {(data.notice || data.error) && (
         <div className="fixed left-1/2 top-[86px] z-[100] w-[min(92vw,520px)] -translate-x-1/2">
           <div
-            className={`rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold shadow-lg ${
-              data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#171717]"
+            className={`rounded-[14px] border border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold shadow-[0_6px_20px_rgba(5,5,5,0.08)] ${
+              data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"
             }`}
           >
             {data.error || data.notice}
@@ -381,18 +383,18 @@ export function DesktopProfileShell({
         </div>
       )}
 
-      <div className="hidden min-h-[1136px] grid-cols-[320px_650px] justify-center gap-[30px] px-6 pb-14 pt-9 text-[#171717] min-[900px]:grid">
-        <aside className="h-[840px] rounded-[24px] border border-[#e6e6e6] bg-white px-[26px] py-9">
+      <div className="mx-auto hidden w-full max-w-page grid-cols-[288px_minmax(0,1fr)] items-start gap-6 px-gutter pb-16 pt-8 text-[#050505] lg:grid">
+        <aside className="sticky top-[92px] self-start rounded-[20px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-6 shadow-[0_2px_10px_rgba(5,5,5,0.035)]">
           <ProfileAvatar src={avatar} name={name} completion={data.completion} />
 
-          <div className="mt-8 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <h1 className="m-0 text-[22px] font-bold leading-tight">{name}</h1>
-              <span className="rounded-full bg-[#171717] px-[10px] py-[5px] text-[10px] font-bold text-white">
+          <div className="mt-7 text-center">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <h1 className="m-0 text-[20px]! font-extrabold! leading-tight!">{name}</h1>
+              <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[11px] font-extrabold leading-none text-white">
                 {data.roleLabel}
               </span>
             </div>
-            <p className="mt-2 text-[13px] text-[#6b6b6b]">
+            <p className="mt-2 text-[13px] text-[#6c757d]">
               {data.membershipYear ? `Member since ${data.membershipYear}` : "1 Cup member"}
             </p>
           </div>
@@ -400,16 +402,16 @@ export function DesktopProfileShell({
           <button
             type="button"
             onClick={() => onSectionChange("edit")}
-            className="mt-9 flex h-[72px] w-full items-center justify-between rounded-[18px] border-0 bg-[#ffebe0] px-4 text-left"
+            className="mt-8 flex min-h-[68px] w-full items-center justify-between rounded-[16px] border-0 bg-[#fff0e8] px-4 py-3 text-left"
           >
             <span>
-              <span className="block text-[12px] font-semibold text-[#6b6b6b]">Profile strength</span>
-              <strong className="mt-1 block text-[18px]">{data.completion}% complete</strong>
+              <span className="block text-[12px] font-semibold text-[#6c757d]">Profile strength</span>
+              <strong className="mt-1 block text-[17px] font-extrabold text-[#050505]">{data.completion}% complete</strong>
             </span>
-            <span className="text-[24px] text-[#6b6b6b]">›</span>
+            <span className="text-[22px] text-[#6c757d]">›</span>
           </button>
 
-          <div className="mt-2 grid gap-[10px]">
+          <div className="mt-2 grid gap-1">
             <SidebarNavItem active={active === "edit"} onClick={() => onSectionChange("edit")}>Edit profile</SidebarNavItem>
             <SidebarNavItem active={active === "connections"} onClick={() => onSectionChange("connections")}>Connections</SidebarNavItem>
             <SidebarNavItem active={active === "account"} onClick={() => onSectionChange("account")}>Account & Membership</SidebarNavItem>
@@ -419,33 +421,33 @@ export function DesktopProfileShell({
             type="button"
             onClick={() => void data.shareReferral()}
             disabled={data.referralBusy}
-            className="mt-8 flex h-[78px] w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-left transition-colors hover:bg-[#fffbf7] disabled:opacity-60"
+            className="mt-6 flex min-h-[72px] w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-left transition-[background-color,border-color] hover:border-[rgba(5,5,5,0.22)] hover:bg-[#fffaf6] disabled:opacity-60"
           >
             <span>
-              <strong className="block text-[14px]">Share referral code</strong>
-              <span className="mt-1 block text-[12px] text-[#6b6b6b]">Invite a friend to 1 Cup</span>
+              <strong className="block text-[14px] font-extrabold text-[#050505]">Share referral code</strong>
+              <span className="mt-1 block text-[12px] text-[#6c757d]">Invite a friend to 1 Cup</span>
             </span>
-            <span className="text-[24px] text-[#6b6b6b]">›</span>
+            <span className="text-[22px] text-[#6c757d]">›</span>
           </button>
 
-          <div className="mt-5 h-[112px] rounded-[18px] border border-[#e6e6e6] bg-[#fffbf7] p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="block text-[12px] font-semibold text-[#6b6b6b]">Membership</span>
-                <strong className="mt-2 block text-[16px]">1 Cup Member</strong>
+          <div className="mt-4 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-[#fffaf6] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[12px] font-semibold text-[#6c757d]">Membership</span>
+                <strong className="mt-1.5 block text-[16px] font-extrabold text-[#050505]">1 Cup Member</strong>
               </div>
-              <span className="rounded-full bg-[#f47a4a] px-[14px] py-[6px] text-[11px] font-bold text-[#171717]">
+              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">
                 {data.membershipActive ? "Active" : "Inactive"}
               </span>
             </div>
-            <p className="mt-2 text-[13px] text-[#6b6b6b]">{data.creditBalance} meetup credits left</p>
+            <p className="mt-2.5 text-[13px] text-[#6c757d]">{data.creditBalance} meetup credits left</p>
             {data.membershipYear && (
-              <p className="mt-1 text-[11px] text-[#6b6b6b]">Member since {data.membershipYear}</p>
+              <p className="mt-1 text-[12px] text-[#6c757d]">Member since {data.membershipYear}</p>
             )}
           </div>
         </aside>
 
-        <section className="min-h-[1080px] overflow-hidden rounded-[24px] border border-[#e6e6e6] bg-white">
+        <section className="self-start overflow-hidden rounded-[20px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white shadow-[0_2px_10px_rgba(5,5,5,0.035)]">
           {children}
         </section>
       </div>
@@ -470,64 +472,81 @@ export function MobileProfileHub({
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
 
   return (
-    <main className="mx-auto w-full max-w-[430px] px-4 pb-12 pt-4 text-[#171717] min-[900px]:hidden">
-      <h1 className="mb-6 text-[27px] font-bold">Profile</h1>
-      <div className="flex items-center gap-5">
-        <div className="origin-left scale-[0.78]">
+    <main className="mx-auto w-full max-w-[640px] px-4 pb-12 pt-5 text-[#050505] sm:px-6 lg:hidden">
+      <h1 className="mb-6">Profile</h1>
+
+      <div className="flex items-center gap-4">
+        <div className="origin-left scale-[0.76]">
           <ProfileAvatar src={avatar} name={name} completion={data.completion} />
         </div>
-        <div className="ml-[-24px] min-w-0">
-          <h2 className="truncate text-[24px] font-bold">{name}</h2>
-          <p className="mt-1 text-[13px] text-[#6b6b6b]">
+        <div className="ml-[-28px] min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="m-0 truncate text-[22px]! font-extrabold!">{name}</h2>
+            <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[10px] font-extrabold leading-none text-white">
+              {data.roleLabel}
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] text-[#6c757d]">
             {data.membershipYear ? `Member since ${data.membershipYear}` : "1 Cup member"}
           </p>
-          <button type="button" onClick={onEdit} className="mt-3 rounded-full bg-[#f47a4a] px-4 py-2 text-[13px] font-bold text-[#171717]">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-3 min-h-10 rounded-full bg-[#f47a4a] px-4 py-2 text-[13px] font-extrabold text-[#050505]"
+          >
             Complete profile
           </button>
         </div>
       </div>
 
-      <button type="button" onClick={onEdit} className="mt-7 w-full rounded-[18px] border border-[#e6e6e6] bg-white p-4 text-left">
-        <span className="text-[13px] font-semibold text-[#6b6b6b]">Profile strength</span>
-        <div className="mt-2 flex items-center justify-between">
-          <strong className="text-[26px]">{data.completion}% complete</strong>
-          <span className="text-[26px] text-[#6b6b6b]">›</span>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="mt-6 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left shadow-[0_1px_0_rgba(5,5,5,0.03)]"
+      >
+        <span className="text-[12px] font-semibold text-[#6c757d]">Profile strength</span>
+        <div className="mt-1.5 flex items-center justify-between gap-3">
+          <strong className="text-[22px] font-extrabold text-[#050505]">{data.completion}% complete</strong>
+          <span className="text-[24px] text-[#6c757d]">›</span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#ececec]">
           <div className="h-full rounded-full bg-[#f47a4a]" style={{ width: `${data.completion}%` }} />
         </div>
       </button>
 
-      <div className="mt-4 overflow-hidden rounded-[18px] border border-[#e6e6e6] bg-white">
-        <button type="button" onClick={onEdit} className="flex h-14 w-full items-center justify-between border-0 bg-white px-4 text-[15px] font-semibold">
-          Edit profile <span className="text-[24px] text-[#6b6b6b]">›</span>
+      <div className="mt-4 overflow-hidden rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white">
+        <button type="button" onClick={onEdit} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
+          Edit profile <span className="text-[22px] text-[#6c757d]">›</span>
         </button>
-        <div className="mx-4 h-px bg-[#ececec]" />
-        <button type="button" onClick={() => onSectionChange("connections")} className="flex h-14 w-full items-center justify-between border-0 bg-white px-4 text-[15px] font-semibold">
-          Connections <span className="text-[24px] text-[#6b6b6b]">›</span>
+        <div className="mx-4 h-px bg-[rgba(5,5,5,0.1)]" />
+        <button type="button" onClick={() => onSectionChange("connections")} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
+          Connections <span className="text-[22px] text-[#6c757d]">›</span>
         </button>
       </div>
 
-      <h2 className="mb-3 mt-8 text-[22px] font-bold">Membership</h2>
-      <div className="rounded-[18px] border border-[#e6e6e6] bg-[#fffbf7] p-4">
-        <div className="flex items-center justify-between">
-          <strong className="text-[18px]">1 Cup Member</strong>
-          <span className="rounded-full bg-[#f47a4a] px-4 py-2 text-[12px] font-bold">
+      <h2 className="mb-3 mt-8">Membership</h2>
+      <div className="rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-[#fffaf6] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <strong className="text-[16px] font-extrabold text-[#050505]">1 Cup Member</strong>
+          <span className="rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold text-[#050505]">
             {data.membershipActive ? "Active" : "Inactive"}
           </span>
         </div>
-        <div className="mt-4 flex justify-between text-[14px] text-[#6b6b6b]"><span>Meetup credits</span><strong className="text-[#171717]">{data.creditBalance} left</strong></div>
+        <div className="mt-3 flex justify-between gap-3 text-[13px] text-[#6c757d]">
+          <span>Meetup credits</span>
+          <strong className="text-[#050505]">{data.creditBalance} left</strong>
+        </div>
       </div>
 
-      <button type="button" onClick={() => void data.shareReferral()} disabled={data.referralBusy} className="mt-5 flex h-16 w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-[15px] font-semibold">
-        Share referral code <span className="text-[24px] text-[#6b6b6b]">›</span>
+      <button type="button" onClick={() => void data.shareReferral()} disabled={data.referralBusy} className="mt-4 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
+        Share referral code <span className="text-[22px] text-[#6c757d]">›</span>
       </button>
-      <button type="button" onClick={() => onSectionChange("account")} className="mt-3 flex h-16 w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-[15px] font-semibold">
-        Account & Membership <span className="text-[24px] text-[#6b6b6b]">›</span>
+      <button type="button" onClick={() => onSectionChange("account")} className="mt-3 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
+        Account & Membership <span className="text-[22px] text-[#6c757d]">›</span>
       </button>
 
       {(data.notice || data.error) && (
-        <div className={`mt-4 rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold ${data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white"}`}>
+        <div className={`mt-4 rounded-[14px] border border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold ${data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"}`}>
           {data.error || data.notice}
         </div>
       )}

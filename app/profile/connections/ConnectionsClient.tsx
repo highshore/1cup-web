@@ -64,47 +64,47 @@ export function ConnectionsPanel({
   }, [locale, shell.currentUser?.uid]);
 
   return (
-    <div className={mobile ? "px-4 pb-12 pt-4" : "p-8"}>
+    <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
       <div className="flex items-start gap-3">
         {mobile && onBack && (
           <button
             type="button"
             onClick={onBack}
-            className="border-0 bg-transparent p-0 text-[30px] text-[#171717]"
+            className="mt-[-3px] border-0 bg-transparent p-0 text-[28px] leading-none text-[#050505]"
             aria-label="Back to profile"
           >
             ‹
           </button>
         )}
-        <div>
-          <h1 className="m-0 text-[26px] font-bold text-[#171717]">Connections</h1>
-          <p className="mt-1 text-[13px] text-[#6b6b6b]">
+        <div className="min-w-0">
+          <h1 className="m-0">Connections</h1>
+          <p className="mt-1.5 text-[13px] text-[#6c757d]">
             Members you’ve connected with through 1 Cup.
           </p>
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-6 rounded-[16px] border border-[#e6e6e6] bg-white p-5 text-[13px] font-medium text-[#6b6b6b]">
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-5 text-[13px] font-medium text-[#6c757d]">
           Loading connections…
         </div>
       ) : error ? (
-        <div className="mt-6 rounded-[16px] border border-[#f2c7cc] bg-[#fff1f2] p-5 text-[13px] font-semibold text-[#b42331]">
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[#f2c7cc] bg-[#fff1f2] p-5 text-[13px] font-semibold text-[#b42331]">
           {error}
         </div>
       ) : friends.length === 0 ? (
-        <div className="mt-6 rounded-[16px] border border-[#e6e6e6] bg-white p-5 text-[13px] leading-[1.6] text-[#6b6b6b]">
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-5 text-[13px] text-[#6c757d]">
           No mutual connections yet. When you and another member both connect, they’ll appear here.
         </div>
       ) : (
-        <div className="mt-7 grid gap-[18px]">
+        <div className="mt-6 grid gap-3">
           {friends.map((friend) => (
             <Link
               key={friend.uid}
               href={`/profile/${encodeURIComponent(friend.uid)}`}
-              className="flex min-h-[96px] items-center gap-4 rounded-[16px] border border-[#e6e6e6] bg-white px-4 py-3 text-[#171717] no-underline transition-[border-color,background-color] hover:border-[#f2b59d] hover:bg-[#fffbf7]"
+              className="flex min-h-[88px] items-center gap-4 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[#050505] no-underline transition-[border-color,background-color,transform] hover:-translate-y-px hover:border-[rgba(5,5,5,0.24)] hover:bg-[#fffaf6] hover:no-underline"
             >
-              <div className="flex h-[68px] w-[68px] flex-none items-center justify-center overflow-hidden rounded-full bg-[#fff0e9] text-[20px] font-bold text-[#f47a4a]">
+              <div className="flex h-[60px] w-[60px] flex-none items-center justify-center overflow-hidden rounded-full bg-[#fff0e8] text-[18px] font-extrabold text-[#f47a4a]">
                 {friend.photoURL ? (
                   <img src={friend.photoURL} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -112,8 +112,8 @@ export function ConnectionsPanel({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-bold">{friend.displayName}</div>
-                <div className="mt-1 text-[12px] text-[#6b6b6b]">
+                <div className="truncate text-[14px] font-extrabold text-[#050505]">{friend.displayName}</div>
+                <div className="mt-1 text-[13px] text-[#6c757d]">
                   {friend.connectedAt
                     ? `Connected ${new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
                         month: "short",
@@ -122,7 +122,7 @@ export function ConnectionsPanel({
                     : "1 Cup member"}
                 </div>
               </div>
-              <span className="whitespace-nowrap text-[12px] font-semibold text-[#f47a4a]">
+              <span className="whitespace-nowrap text-[13px] font-semibold text-[#f47a4a]">
                 View profile
               </span>
             </Link>
