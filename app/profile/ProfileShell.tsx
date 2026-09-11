@@ -75,8 +75,7 @@ function parseDate(value: unknown): Date | null {
 }
 
 async function loadKakaoSdk(): Promise<void> {
-  if (typeof window === "undefined") return;
-  if ((window as any).Kakao) return;
+  if (typeof window === "undefined" || (window as any).Kakao) return;
   await new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://developers.kakao.com/sdk/js/kakao.js";
@@ -171,8 +170,7 @@ export function useProfileShellData() {
       summary.profileDetails.languages?.length ? "languages" : "",
       summary.profileDetails.english_level,
     ];
-    const completed = values.filter((value) => Boolean(value)).length;
-    return Math.round((completed / values.length) * 100);
+    return Math.round((values.filter(Boolean).length / values.length) * 100);
   }, [currentUser, summary]);
 
   const membershipYear = summary.createdAt?.getFullYear() ?? null;
@@ -248,7 +246,7 @@ export function useProfileShellData() {
           setNotice("추천 코드를 공유했습니다.");
           return;
         } catch {
-          // The native share sheet can be intentionally dismissed. Fall through to copy.
+          // Intentional dismissal falls back to clipboard.
         }
       }
 
@@ -284,6 +282,8 @@ export function useProfileShellData() {
   };
 }
 
+export type ProfileShellData = ReturnType<typeof useProfileShellData>;
+
 function ProfileAvatar({
   src,
   name,
@@ -293,12 +293,13 @@ function ProfileAvatar({
   name?: string | null;
   completion: number;
 }) {
-  const initials = (name || "Member")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "M";
+  const initials =
+    (name || "Member")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "M";
 
   return (
     <div className="relative mx-auto h-32 w-32">
@@ -351,17 +352,18 @@ function SidebarNavItem({
 export function DesktopProfileShell({
   active,
   data,
+  onSectionChange,
   avatarOverride,
   displayNameOverride,
   children,
 }: {
   active: ProfileSection;
-  data: ReturnType<typeof useProfileShellData>;
+  data: ProfileShellData;
+  onSectionChange: (section: ProfileSection) => void;
   avatarOverride?: string | null;
   displayNameOverride?: string | null;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const name = displayNameOverride ?? data.currentUser?.displayName ?? "Member";
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
 
@@ -379,7 +381,7 @@ export function DesktopProfileShell({
         </div>
       )}
 
-      <div className="hidden min-[900px]:grid min-h-[1136px] grid-cols-[320px_650px] justify-center gap-[30px] px-6 pb-14 pt-9 text-[#171717]">
+      <div className="hidden min-h-[1136px] grid-cols-[320px_650px] justify-center gap-[30px] px-6 pb-14 pt-9 text-[#171717] min-[900px]:grid">
         <aside className="h-[840px] rounded-[24px] border border-[#e6e6e6] bg-white px-[26px] py-9">
           <ProfileAvatar src={avatar} name={name} completion={data.completion} />
 
@@ -397,7 +399,7 @@ export function DesktopProfileShell({
 
           <button
             type="button"
-            onClick={() => router.push("/profile")}
+            onClick={() => onSectionChange("edit")}
             className="mt-9 flex h-[72px] w-full items-center justify-between rounded-[18px] border-0 bg-[#ffebe0] px-4 text-left"
           >
             <span>
@@ -408,9 +410,9 @@ export function DesktopProfileShell({
           </button>
 
           <div className="mt-2 grid gap-[10px]">
-            <SidebarNavItem active={active === "edit"} onClick={() => router.push("/profile")}>Edit profile</SidebarNavItem>
-            <SidebarNavItem active={active === "connections"} onClick={() => router.push("/profile/connections")}>Connections</SidebarNavItem>
-            <SidebarNavItem active={active === "account"} onClick={() => router.push("/profile/account")}>Account & Membership</SidebarNavItem>
+            <SidebarNavItem active={active === "edit"} onClick={() => onSectionChange("edit")}>Edit profile</SidebarNavItem>
+            <SidebarNavItem active={active === "connections"} onClick={() => onSectionChange("connections")}>Connections</SidebarNavItem>
+            <SidebarNavItem active={active === "account"} onClick={() => onSectionChange("account")}>Account & Membership</SidebarNavItem>
           </div>
 
           <button
@@ -454,15 +456,16 @@ export function DesktopProfileShell({
 export function MobileProfileHub({
   data,
   onEdit,
+  onSectionChange,
   avatarOverride,
   displayNameOverride,
 }: {
-  data: ReturnType<typeof useProfileShellData>;
+  data: ProfileShellData;
   onEdit: () => void;
+  onSectionChange: (section: ProfileSection) => void;
   avatarOverride?: string | null;
   displayNameOverride?: string | null;
 }) {
-  const router = useRouter();
   const name = displayNameOverride ?? data.currentUser?.displayName ?? "Member";
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
 
@@ -470,7 +473,7 @@ export function MobileProfileHub({
     <main className="mx-auto w-full max-w-[430px] px-4 pb-12 pt-4 text-[#171717] min-[900px]:hidden">
       <h1 className="mb-6 text-[27px] font-bold">Profile</h1>
       <div className="flex items-center gap-5">
-        <div className="scale-[0.78] origin-left">
+        <div className="origin-left scale-[0.78]">
           <ProfileAvatar src={avatar} name={name} completion={data.completion} />
         </div>
         <div className="ml-[-24px] min-w-0">
@@ -500,7 +503,7 @@ export function MobileProfileHub({
           Edit profile <span className="text-[24px] text-[#6b6b6b]">›</span>
         </button>
         <div className="mx-4 h-px bg-[#ececec]" />
-        <button type="button" onClick={() => router.push("/profile/connections")} className="flex h-14 w-full items-center justify-between border-0 bg-white px-4 text-[15px] font-semibold">
+        <button type="button" onClick={() => onSectionChange("connections")} className="flex h-14 w-full items-center justify-between border-0 bg-white px-4 text-[15px] font-semibold">
           Connections <span className="text-[24px] text-[#6b6b6b]">›</span>
         </button>
       </div>
@@ -519,7 +522,7 @@ export function MobileProfileHub({
       <button type="button" onClick={() => void data.shareReferral()} disabled={data.referralBusy} className="mt-5 flex h-16 w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-[15px] font-semibold">
         Share referral code <span className="text-[24px] text-[#6b6b6b]">›</span>
       </button>
-      <button type="button" onClick={() => router.push("/profile/account")} className="mt-3 flex h-16 w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-[15px] font-semibold">
+      <button type="button" onClick={() => onSectionChange("account")} className="mt-3 flex h-16 w-full items-center justify-between rounded-[18px] border border-[#e6e6e6] bg-white px-4 text-[15px] font-semibold">
         Account & Membership <span className="text-[24px] text-[#6b6b6b]">›</span>
       </button>
 

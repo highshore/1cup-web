@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { supabase } from "../lib/supabase/client";
+import { AccountMembershipPanel } from "./account/AccountMembershipClient";
+import { ConnectionsPanel } from "./connections/ConnectionsClient";
 import {
   DesktopProfileShell,
   MobileProfileHub,
   type ProfileDetailsJson,
+  type ProfileSection,
   useProfileShellData,
 } from "./ProfileShell";
 
@@ -27,15 +30,24 @@ const INTEREST_OPTIONS = [
   "Media",
 ];
 
-const ENGLISH_LEVELS = ["Beginner", "Intermediate", "Upper-intermediate", "Advanced", "C1 Advanced", "Near-native"];
+const ENGLISH_LEVELS = [
+  "Beginner",
+  "Intermediate",
+  "Upper-intermediate",
+  "Advanced",
+  "C1 Advanced",
+  "Near-native",
+];
 
 function initials(name?: string | null) {
-  return (name || "Member")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "M";
+  return (
+    (name || "Member")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "M"
+  );
 }
 
 function FieldRow({
@@ -82,7 +94,10 @@ function EditDialog({
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/40 p-0 min-[600px]:items-center min-[600px]:p-5" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/40 p-0 min-[600px]:items-center min-[600px]:p-5"
+      onMouseDown={onClose}
+    >
       <div
         className="w-full max-w-[520px] rounded-t-[24px] bg-white p-5 shadow-2xl min-[600px]:rounded-[24px] min-[600px]:p-6"
         onMouseDown={(event) => event.stopPropagation()}
@@ -222,6 +237,10 @@ function InterestsDialog({
 
 type EditKey = "name" | "bio" | "work" | "school" | "nationality" | "languages" | "location" | "english_level";
 
+function sectionFromParam(value: string | null): ProfileSection {
+  return value === "connections" || value === "account" ? value : "edit";
+}
+
 export default function ProfileDashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -231,6 +250,18 @@ export default function ProfileDashboardClient() {
   const [showInterests, setShowInterests] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const sectionParam = searchParams.get("section");
+  const activeSection = sectionFromParam(sectionParam);
+  const hasExplicitSection = sectionParam === "edit" || sectionParam === "connections" || sectionParam === "account";
+
+  const navigateSection = (section: ProfileSection) => {
+    router.replace(`/profile?section=${section}`, { scroll: false });
+  };
+
+  const closeMobilePanel = () => {
+    router.replace("/profile", { scroll: false });
+  };
 
   useEffect(() => {
     setAvatar(shell.currentUser?.photoURL ?? null);
@@ -348,7 +379,7 @@ export default function ProfileDashboardClient() {
   const toggleVisibility = async () => {
     try {
       await updateBase({ profile_public: !shell.summary.profilePublic });
-    } catch (saveError) {
+    } catch {
       shell.setError("Unable to update profile visibility.");
     }
   };
@@ -381,7 +412,7 @@ export default function ProfileDashboardClient() {
     <div className={mobile ? "px-4 pb-12 pt-4" : "p-8"}>
       <div className="flex items-center justify-between gap-4">
         {mobile ? (
-          <button type="button" onClick={() => router.replace("/profile")} className="border-0 bg-transparent p-0 text-[30px] text-[#171717]">‹</button>
+          <button type="button" onClick={closeMobilePanel} className="border-0 bg-transparent p-0 text-[30px] text-[#171717]" aria-label="Back to profile">‹</button>
         ) : null}
         <h1 className={`${mobile ? "mr-auto text-[27px]" : "text-[26px]"} m-0 font-bold text-[#171717]`}>Edit profile</h1>
         <button
@@ -394,7 +425,7 @@ export default function ProfileDashboardClient() {
       </div>
 
       {mobile && (
-        <button type="button" onClick={() => router.replace("/profile")} className="mt-4 flex h-[54px] w-full items-center justify-between rounded-[16px] border border-[#e6e6e6] bg-white px-4 text-[13px] font-semibold">
+        <button type="button" onClick={closeMobilePanel} className="mt-4 flex h-[54px] w-full items-center justify-between rounded-[16px] border border-[#e6e6e6] bg-white px-4 text-[13px] font-semibold">
           Profile strength <span className="text-[#f47a4a]">{shell.completion}% complete ›</span>
         </button>
       )}
@@ -459,23 +490,40 @@ export default function ProfileDashboardClient() {
     </div>
   );
 
-  const mobileEditing = searchParams.get("edit") === "1";
+  const desktopContent =
+    activeSection === "connections" ? (
+      <ConnectionsPanel shell={shell} />
+    ) : activeSection === "account" ? (
+      <AccountMembershipPanel shell={shell} />
+    ) : (
+      <EditContent />
+    );
+
+  const mobileContent =
+    activeSection === "connections" ? (
+      <ConnectionsPanel shell={shell} mobile onBack={closeMobilePanel} />
+    ) : activeSection === "account" ? (
+      <AccountMembershipPanel shell={shell} mobile onBack={closeMobilePanel} />
+    ) : (
+      <EditContent mobile />
+    );
 
   return (
     <>
       <DesktopProfileShell
-        active="edit"
+        active={activeSection}
         data={shell}
+        onSectionChange={navigateSection}
         avatarOverride={avatar}
         displayNameOverride={shell.currentUser.displayName}
       >
-        <EditContent />
+        {desktopContent}
       </DesktopProfileShell>
 
-      {mobileEditing ? (
+      {hasExplicitSection ? (
         <main className="mx-auto min-h-[calc(100vh-68px)] w-full max-w-[430px] bg-[#f3f3f1] text-[#171717] min-[900px]:hidden">
-          <EditContent mobile />
-          {(shell.notice || shell.error) && (
+          {mobileContent}
+          {(shell.notice || shell.error) && activeSection !== "account" && (
             <div className={`mx-4 mb-6 rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white"}`}>
               {shell.error || shell.notice}
             </div>
@@ -486,7 +534,8 @@ export default function ProfileDashboardClient() {
           data={shell}
           avatarOverride={avatar}
           displayNameOverride={shell.currentUser.displayName}
-          onEdit={() => router.replace("/profile?edit=1")}
+          onEdit={() => navigateSection("edit")}
+          onSectionChange={navigateSection}
         />
       )}
 
@@ -502,7 +551,11 @@ export default function ProfileDashboardClient() {
       )}
 
       {showInterests && (
-        <InterestsDialog selected={selectedInterests} onClose={() => setShowInterests(false)} onSave={saveInterests} />
+        <InterestsDialog
+          selected={selectedInterests}
+          onClose={() => setShowInterests(false)}
+          onSave={saveInterests}
+        />
       )}
     </>
   );

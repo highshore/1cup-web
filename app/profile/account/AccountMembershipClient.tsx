@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import GlobalLoadingScreen from "../../lib/components/GlobalLoadingScreen";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { saveFeedback } from "../../lib/services/feedback_service";
@@ -12,7 +11,7 @@ import {
   getParticipationCreditBalance,
   getParticipationCreditHistory,
 } from "../../lib/features/meetup/services/participation_service";
-import { DesktopProfileShell, useProfileShellData } from "../ProfileShell";
+import type { ProfileShellData } from "../ProfileShell";
 
 interface CreditHistoryItem {
   id: string;
@@ -220,7 +219,11 @@ function DeleteAccountModal({
               disabled={working || value !== phrase}
               onClick={async () => {
                 setWorking(true);
-                try { await onConfirm(); } finally { setWorking(false); }
+                try {
+                  await onConfirm();
+                } finally {
+                  setWorking(false);
+                }
               }}
               className="h-10 rounded-full border-0 bg-[#b42331] px-5 text-[13px] font-semibold text-white disabled:opacity-35"
             >
@@ -233,11 +236,18 @@ function DeleteAccountModal({
   );
 }
 
-export default function AccountMembershipClient() {
+export function AccountMembershipPanel({
+  shell,
+  mobile = false,
+  onBack,
+}: {
+  shell: ProfileShellData;
+  mobile?: boolean;
+  onBack?: () => void;
+}) {
   const router = useRouter();
   const { logout } = useAuth();
   const { locale, t } = useI18n();
-  const shell = useProfileShellData();
   const [identities, setIdentities] = useState<{ id: string; provider: string }[]>([]);
   const [history, setHistory] = useState<CreditHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -246,45 +256,49 @@ export default function AccountMembershipClient() {
   const [survey, setSurvey] = useState<"stop" | "refund" | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const refreshCredits = async () => {
-    try {
-      const [balance, rows] = await Promise.all([
-        getParticipationCreditBalance(),
-        getParticipationCreditHistory(6),
-      ]);
-      shell.setCreditBalance(balance);
-      setHistory(rows as CreditHistoryItem[]);
-    } catch (creditError) {
-      console.error("Unable to load credit history:", creditError);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
   useEffect(() => {
     if (!shell.currentUser) return;
     void supabase.auth.getUserIdentities().then(({ data }) => {
-      setIdentities((data?.identities ?? []).map((identity) => ({
-        id: identity.identity_id ?? identity.id,
-        provider: identity.provider,
-      })));
+      setIdentities(
+        (data?.identities ?? []).map((identity) => ({
+          id: identity.identity_id ?? identity.id,
+          provider: identity.provider,
+        })),
+      );
     });
-    void refreshCredits();
+
+    let active = true;
+    setLoadingHistory(true);
+    void Promise.all([
+      getParticipationCreditBalance(),
+      getParticipationCreditHistory(6),
+    ])
+      .then(([balance, rows]) => {
+        if (!active) return;
+        shell.setCreditBalance(balance);
+        setHistory(rows as CreditHistoryItem[]);
+      })
+      .catch((creditError) => {
+        console.error("Unable to load credit history:", creditError);
+      })
+      .finally(() => {
+        if (active) setLoadingHistory(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [shell.currentUser?.uid]);
 
   const nextBilling = useMemo(
     () => nextBillingDate(shell.summary.subscriptionStartDate, shell.summary.billingCancelled),
     [shell.summary.subscriptionStartDate, shell.summary.billingCancelled],
   );
-
   const daysLeft = nextBilling
     ? Math.max(0, Math.ceil((nextBilling.getTime() - Date.now()) / 86400000))
     : null;
   const managedMembership = shell.summary.gdgMember || shell.summary.accountStatus === "leader";
   const membershipStatus = shell.membershipActive ? "Active" : "Inactive";
-
-  if (shell.authLoading || shell.loading) return <GlobalLoadingScreen />;
-  if (!shell.currentUser) return null;
 
   const handleIdentity = async (provider: string) => {
     if (provider !== "kakao" || identities.some((item) => item.provider === "kakao")) return;
@@ -293,7 +307,7 @@ export default function AccountMembershipClient() {
     try {
       const { error } = await supabase.auth.linkIdentity({
         provider: "kakao",
-        options: { redirectTo: `${window.location.origin}/profile/account` },
+        options: { redirectTo: `${window.location.origin}/profile?section=account` },
       });
       if (error) throw error;
     } catch (linkError) {
@@ -335,10 +349,12 @@ export default function AccountMembershipClient() {
         billingKey: shell.summary.billingKey,
       });
       if (!(result as any)?.success) throw new Error((result as any)?.message || "Cancellation failed");
-      const ended = new Date().toISOString();
       await supabase
         .from("users")
-        .update({ has_active_subscription: false, subscription_end_date: ended })
+        .update({
+          has_active_subscription: false,
+          subscription_end_date: new Date().toISOString(),
+        })
         .eq("uid", shell.currentUser!.uid);
       await shell.refresh();
       shell.setNotice("Membership was canceled and the refund request was submitted.");
@@ -351,7 +367,10 @@ export default function AccountMembershipClient() {
 
   const reactivateBilling = async () => {
     try {
-      const { error } = await supabase.from("users").update({ billing_cancelled: false }).eq("uid", shell.currentUser!.uid);
+      const { error } = await supabase
+        .from("users")
+        .update({ billing_cancelled: false })
+        .eq("uid", shell.currentUser!.uid);
       if (error) throw error;
       await shell.refresh();
       shell.setNotice("Recurring billing has been reactivated.");
@@ -387,97 +406,91 @@ export default function AccountMembershipClient() {
     }
   };
 
-  const AccountContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={mobile ? "px-4 pb-12 pt-4" : "p-8"}>
-      <div className="flex items-start gap-3">
-        {mobile && <button type="button" onClick={() => router.push("/profile")} className="border-0 bg-transparent p-0 text-[30px]">‹</button>}
-        <div>
-          <h1 className="m-0 text-[26px] font-bold text-[#171717]">Account & Membership</h1>
-          <p className="mt-1 text-[13px] text-[#6b6b6b]">Login, membership, credits and account actions.</p>
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-4">
-        <Card>
-          <h2 className="mb-1 mt-0 text-[18px] font-bold">Login Methods</h2>
-          {(["kakao", "email"] as const).map((provider) => {
-            const connected = identities.some((identity) => identity.provider === provider) || (provider === "email" && Boolean(shell.currentUser?.email));
-            return (
-              <Row
-                key={provider}
-                label={provider === "kakao" ? "Kakao" : "Email"}
-                value={connected ? "Connected" : linkingIdentity && provider === "kakao" ? "Connecting…" : "Not connected"}
-                onClick={provider === "kakao" && !connected ? () => void handleIdentity("kakao") : undefined}
-              />
-            );
-          })}
-        </Card>
-
-        <Card>
-          <div className="mb-1 flex items-center justify-between gap-3">
-            <h2 className="m-0 text-[18px] font-bold">Membership</h2>
-            <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">
-              {managedMembership ? "Managed" : daysLeft !== null ? `${daysLeft} Days Left` : membershipStatus}
-            </span>
-          </div>
-          <Row label="Member status" value={membershipStatus} />
-          <Row label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
-          <Row label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
-          {!managedMembership && (
-            <button type="button" onClick={manageMembership} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">
-              {!shell.summary.hasActiveSubscription ? "Start membership" : shell.summary.billingCancelled ? "Reactivate billing" : "Manage membership"}
-            </button>
-          )}
-        </Card>
-
-        <Card>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="m-0 text-[18px] font-bold">Participation Credits</h2>
-            <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">{shell.creditBalance} Credits Left</span>
-          </div>
-          {loadingHistory ? (
-            <p className="text-[13px] text-[#6b6b6b]">Loading credit history…</p>
-          ) : history.length ? (
-            history.slice(0, 3).map((entry) => (
-              <Row
-                key={entry.id}
-                label={`${entry.amount > 0 ? `+${entry.amount}` : entry.amount} · ${historyLabel(entry)}`}
-                value={new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { month: "short", day: "numeric" }).format(new Date(entry.created_at))}
-              />
-            ))
-          ) : (
-            <p className="py-2 text-[13px] text-[#6b6b6b]">No participation-credit history yet.</p>
-          )}
-          <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">Buy 5-credit pack</button>
-        </Card>
-
-        <Card>
-          <h2 className="m-0 text-[18px] font-bold">Account Actions</h2>
-          <p className="mb-4 mt-1 text-[12px] font-semibold text-[#b42331]">Danger Zone</p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={async () => { await logout(); router.push("/"); }} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold">Log out</button>
-            <button type="button" onClick={() => setDeleteOpen(true)} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold text-[#b42331]">Delete Account</button>
-          </div>
-        </Card>
-      </div>
-
-      {(shell.notice || shell.error) && mobile && (
-        <div className={`mt-4 rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white"}`}>
-          {shell.error || shell.notice}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <>
-      <DesktopProfileShell active="account" data={shell}>
-        <AccountContent />
-      </DesktopProfileShell>
+      <div className={mobile ? "px-4 pb-12 pt-4" : "p-8"}>
+        <div className="flex items-start gap-3">
+          {mobile && onBack && (
+            <button type="button" onClick={onBack} className="border-0 bg-transparent p-0 text-[30px]" aria-label="Back to profile">
+              ‹
+            </button>
+          )}
+          <div>
+            <h1 className="m-0 text-[26px] font-bold text-[#171717]">Account & Membership</h1>
+            <p className="mt-1 text-[13px] text-[#6b6b6b]">Login, membership, credits and account actions.</p>
+          </div>
+        </div>
 
-      <main className="mx-auto min-h-[calc(100vh-68px)] w-full max-w-[430px] bg-[#f3f3f1] text-[#171717] min-[900px]:hidden">
-        <AccountContent mobile />
-      </main>
+        <div className="mt-6 grid gap-4">
+          <Card>
+            <h2 className="mb-1 mt-0 text-[18px] font-bold">Login Methods</h2>
+            {(["kakao", "email"] as const).map((provider) => {
+              const connected = identities.some((identity) => identity.provider === provider) || (provider === "email" && Boolean(shell.currentUser?.email));
+              return (
+                <Row
+                  key={provider}
+                  label={provider === "kakao" ? "Kakao" : "Email"}
+                  value={connected ? "Connected" : linkingIdentity && provider === "kakao" ? "Connecting…" : "Not connected"}
+                  onClick={provider === "kakao" && !connected ? () => void handleIdentity("kakao") : undefined}
+                />
+              );
+            })}
+          </Card>
+
+          <Card>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <h2 className="m-0 text-[18px] font-bold">Membership</h2>
+              <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">
+                {managedMembership ? "Managed" : daysLeft !== null ? `${daysLeft} Days Left` : membershipStatus}
+              </span>
+            </div>
+            <Row label="Member status" value={membershipStatus} />
+            <Row label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
+            <Row label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
+            {!managedMembership && (
+              <button type="button" onClick={manageMembership} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">
+                {!shell.summary.hasActiveSubscription ? "Start membership" : shell.summary.billingCancelled ? "Reactivate billing" : "Manage membership"}
+              </button>
+            )}
+          </Card>
+
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="m-0 text-[18px] font-bold">Participation Credits</h2>
+              <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">{shell.creditBalance} Credits Left</span>
+            </div>
+            {loadingHistory ? (
+              <p className="text-[13px] text-[#6b6b6b]">Loading credit history…</p>
+            ) : history.length ? (
+              history.slice(0, 3).map((entry) => (
+                <Row
+                  key={entry.id}
+                  label={`${entry.amount > 0 ? `+${entry.amount}` : entry.amount} · ${historyLabel(entry)}`}
+                  value={new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { month: "short", day: "numeric" }).format(new Date(entry.created_at))}
+                />
+              ))
+            ) : (
+              <p className="py-2 text-[13px] text-[#6b6b6b]">No participation-credit history yet.</p>
+            )}
+            <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">Buy 5-credit pack</button>
+          </Card>
+
+          <Card>
+            <h2 className="m-0 text-[18px] font-bold">Account Actions</h2>
+            <p className="mb-4 mt-1 text-[12px] font-semibold text-[#b42331]">Danger Zone</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={async () => { await logout(); router.push("/"); }} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold">Log out</button>
+              <button type="button" onClick={() => setDeleteOpen(true)} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold text-[#b42331]">Delete Account</button>
+            </div>
+          </Card>
+        </div>
+
+        {(shell.notice || shell.error) && mobile && (
+          <div className={`mt-4 rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white"}`}>
+            {shell.error || shell.notice}
+          </div>
+        )}
+      </div>
 
       {manageOpen && (
         <ManageMembershipModal
@@ -495,7 +508,6 @@ export default function AccountMembershipClient() {
       {survey === "refund" && (
         <SurveyModal title="Cancel now & request refund" reasons={refundReasons} submitLabel="Cancel & request refund" danger onClose={() => setSurvey(null)} onSubmit={cancelAndRefund} />
       )}
-
       {deleteOpen && (
         <DeleteAccountModal
           phrase={t.profile.deleteAccountPhrase}
@@ -507,3 +519,5 @@ export default function AccountMembershipClient() {
     </>
   );
 }
+
+export default AccountMembershipPanel;
