@@ -13,12 +13,20 @@ export default function MainLayoutWrapper({
   const pathname = usePathname();
   const isHomePage = pathname === "/";
   const isArticlePage = pathname.startsWith("/article/");
-  const isFullWidth = isHomePage || isArticlePage;
+  const isPrivateProfilePage =
+    pathname === "/profile" ||
+    pathname === "/profile/connections" ||
+    pathname === "/profile/account";
+  const isFullWidth = isHomePage || isArticlePage || isPrivateProfilePage;
 
   return (
     <div
       className={`flex min-h-screen flex-col ${
-        isHomePage ? "bg-[#ffffff]" : "bg-[#f5f5f5]"
+        isHomePage
+          ? "bg-[#ffffff]"
+          : isPrivateProfilePage
+            ? "bg-[#f3f3f1]"
+            : "bg-[#f5f5f5]"
       }`}
     >
       <NewNavbar />

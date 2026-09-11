@@ -1,12 +1,11 @@
 import { Metadata } from "next";
-import ProfileClient from "./ProfileClient";
+import ProfileDashboardClient from "./ProfileDashboardClient";
 
 export const metadata: Metadata = {
-  title: "프로필 | OneCup English",
-  description:
-    "사용자 프로필 정보, 구독 상태, 저장한 단어 및 영어 한잔 기록을 확인하세요.",
+  title: "Profile | OneCup English",
+  description: "Manage your member profile, interests, languages and 1 Cup English community details.",
 };
 
 export default function ProfilePage() {
-  return <ProfileClient />;
+  return <ProfileDashboardClient />;
 }
