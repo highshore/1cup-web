@@ -85,7 +85,7 @@ const vertexAccessToken = async (): Promise<string> => {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      grant_type: "urn:ietf:params:oauth-type:jwt-bearer",
       assertion,
     }),
   });
@@ -355,34 +355,66 @@ type VertexGenerateContentResponse = {
   candidates?: Array<{ content?: { parts?: VertexPart[] } }>;
 };
 
+const MAX_VERTEX_ATTEMPTS = 5;
+const RETRYABLE_VERTEX_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+const sleep = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const vertexRetryDelayMs = (
+  attempt: number,
+  retryAfter: string | null,
+): number => {
+  const exponentialDelay = Math.min(1_000 * 2 ** (attempt - 1), 8_000);
+  let retryAfterDelay = 0;
+
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      retryAfterDelay = seconds * 1_000;
+    } else {
+      const retryAt = Date.parse(retryAfter);
+      if (Number.isFinite(retryAt)) {
+        retryAfterDelay = Math.max(0, retryAt - Date.now());
+      }
+    }
+  }
+
+  const jitter = Math.random() * 500;
+  return Math.min(Math.max(exponentialDelay, retryAfterDelay) + jitter, 30_000);
+};
+
 const vertexGenerateContent = async (
   model: string,
   body: Record<string, unknown>,
 ): Promise<VertexGenerateContentResponse> => {
   const accessToken = await vertexAccessToken();
-  const response = await fetch(
+  const url =
     "https://aiplatform.googleapis.com/v1/projects/" +
-      GOOGLE_CLOUD_PROJECT +
-      "/locations/" +
-      VERTEX_LOCATION +
-      "/publishers/google/models/" +
-      model +
-      ":generateContent",
-    {
+    GOOGLE_CLOUD_PROJECT +
+    "/locations/" +
+    VERTEX_LOCATION +
+    "/publishers/google/models/" +
+    model +
+    ":generateContent";
+  const requestBody = JSON.stringify(body);
+
+  for (let attempt = 1; attempt <= MAX_VERTEX_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + accessToken,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
-    },
-  );
+      body: requestBody,
+    });
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    error?: { message?: string; status?: string };
-  } & VertexGenerateContentResponse;
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string; status?: string };
+    } & VertexGenerateContentResponse;
 
-  if (!response.ok) {
+    if (response.ok) return payload;
+
     const error = new Error(
       "Vertex AI " +
         response.status +
@@ -391,10 +423,23 @@ const vertexGenerateContent = async (
     ) as Error & { status?: number; code?: string };
     error.status = response.status;
     error.code = "vertex-ai";
-    throw error;
+
+    const canRetry =
+      RETRYABLE_VERTEX_STATUSES.has(response.status) &&
+      attempt < MAX_VERTEX_ATTEMPTS;
+    if (!canRetry) throw error;
+
+    const delayMs = vertexRetryDelayMs(
+      attempt,
+      response.headers.get("retry-after"),
+    );
+    console.warn(
+      `Vertex AI ${response.status}; retrying attempt ${attempt + 1}/${MAX_VERTEX_ATTEMPTS} in ${Math.round(delayMs)}ms.`,
+    );
+    await sleep(delayMs);
   }
 
-  return payload;
+  throw new Error("Vertex AI request exhausted retry attempts.");
 };
 
 const geminiText = (response: VertexGenerateContentResponse): string =>
