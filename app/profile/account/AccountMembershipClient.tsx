@@ -63,7 +63,11 @@ function historyLabel(entry: CreditHistoryItem) {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <section className="rounded-[16px] border border-[#e6e6e6] bg-white p-4">{children}</section>;
+  return (
+    <section className="rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 sm:p-5">
+      {children}
+    </section>
+  );
 }
 
 function Row({ label, value, onClick }: { label: string; value?: string; onClick?: () => void }) {
@@ -71,11 +75,11 @@ function Row({ label, value, onClick }: { label: string; value?: string; onClick
   return (
     <Tag
       {...(onClick ? { type: "button" as const, onClick } : {})}
-      className="grid min-h-[43px] w-full grid-cols-[1fr_minmax(110px,160px)_18px] items-center border-0 border-b border-[#ececec] bg-transparent px-0 text-left last:border-b-0"
+      className="grid min-h-[46px] w-full grid-cols-[1fr_minmax(110px,180px)_18px] items-center gap-2 border-0 border-b border-[rgba(5,5,5,0.1)] bg-transparent px-0 text-left last:border-b-0"
     >
-      <span className="text-[13px] font-medium text-[#171717]">{label}</span>
-      <span className="truncate text-right text-[12px] text-[#6b6b6b]">{value || ""}</span>
-      <span className={`text-right text-[22px] leading-none text-[#6b6b6b] ${onClick ? "" : "opacity-0"}`}>›</span>
+      <span className="text-[14px] font-semibold text-[#050505]">{label}</span>
+      <span className="truncate text-right text-[13px] text-[#6c757d]">{value || ""}</span>
+      <span className={`text-right text-[22px] leading-none text-[#6c757d] ${onClick ? "" : "opacity-0"}`}>›</span>
     </Tag>
   );
 }
@@ -101,17 +105,17 @@ function SurveyModal({
 
   return (
     <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/40 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
-      <div className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-t-[24px] bg-white p-5 min-[640px]:rounded-[24px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-t-[20px] bg-white p-5 shadow-[0_16px_48px_rgba(5,5,5,0.18)] min-[640px]:rounded-[20px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="m-0 text-[20px] font-bold text-[#171717]">{title}</h2>
-          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-[#f5f5f5] text-[22px] text-[#6b6b6b]">×</button>
+          <h2 className="m-0">{title}</h2>
+          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-[#f5f5f5] text-[22px] text-[#6c757d]">×</button>
         </div>
-        <p className="mt-2 text-[13px] leading-[1.55] text-[#6b6b6b]">Tell us what influenced your decision. You can select more than one.</p>
+        <p className="mt-2 text-[13px] text-[#6c757d]">Tell us what influenced your decision. You can select more than one.</p>
         <div className="mt-5 grid gap-2">
           {reasons.map((reason) => {
             const active = selected.includes(reason);
             return (
-              <label key={reason} className={`flex cursor-pointer items-start gap-3 rounded-[14px] border p-3 text-[13px] leading-[1.45] ${active ? "border-[#f47a4a] bg-[#ffebe0]" : "border-[#e6e6e6] bg-white"}`}>
+              <label key={reason} className={`flex cursor-pointer items-start gap-3 rounded-[14px] border-[1.5px] p-3 text-[13px] leading-[1.45] ${active ? "border-[#f47a4a] bg-[#fff0e8]" : "border-[rgba(5,5,5,0.12)] bg-white"}`}>
                 <input
                   type="checkbox"
                   checked={active}
@@ -123,9 +127,9 @@ function SurveyModal({
             );
           })}
         </div>
-        <textarea value={other} onChange={(event) => setOther(event.target.value)} placeholder="Anything else?" className="mt-4 min-h-[90px] w-full rounded-[14px] border border-[#e6e6e6] p-3 text-[13px] outline-none focus:border-[#f47a4a]" />
+        <textarea value={other} onChange={(event) => setOther(event.target.value)} placeholder="Anything else?" className="mt-4 min-h-[90px] w-full rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] p-3 text-[13px] outline-none focus:border-[#f47a4a]" />
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-full border border-[#e6e6e6] bg-white px-5 text-[13px] font-semibold">Cancel</button>
+          <button type="button" onClick={onClose} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-5 text-[13px] font-semibold">Cancel</button>
           <button
             type="button"
             disabled={saving || (selected.length === 0 && !other.trim())}
@@ -138,7 +142,7 @@ function SurveyModal({
                 setSaving(false);
               }
             }}
-            className={`h-10 rounded-full border-0 px-5 text-[13px] font-semibold text-white disabled:opacity-40 ${danger ? "bg-[#b42331]" : "bg-[#171717]"}`}
+            className={`min-h-10 rounded-full border-0 px-5 text-[13px] font-semibold text-white disabled:opacity-40 ${danger ? "bg-[#b42331]" : "bg-[#050505]"}`}
           >
             {saving ? "Working…" : submitLabel}
           </button>
@@ -163,22 +167,22 @@ function ManageMembershipModal({
 }) {
   return (
     <div className="fixed inset-0 z-[1250] flex items-end justify-center bg-black/40 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
-      <div className="w-full max-w-[520px] rounded-t-[24px] bg-[#f3f3f1] p-5 min-[640px]:rounded-[24px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="w-full max-w-[520px] rounded-t-[20px] bg-[#f5f5f5] p-5 shadow-[0_16px_48px_rgba(5,5,5,0.18)] min-[640px]:rounded-[20px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="m-0 text-[22px] font-bold">Manage membership</h2>
-          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-white text-[22px] text-[#6b6b6b]">×</button>
+          <h2 className="m-0">Manage membership</h2>
+          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-white text-[22px] text-[#6c757d]">×</button>
         </div>
-        <p className="mt-2 text-[13px] text-[#6b6b6b]">Current status: {status} · Next billing: {nextBilling}</p>
+        <p className="mt-2 text-[13px] text-[#6c757d]">Current status: {status} · Next billing: {nextBilling}</p>
 
-        <button type="button" onClick={onStop} className="mt-6 w-full rounded-[18px] border border-[#e6e6e6] bg-white p-4 text-left">
-          <strong className="block text-[16px]">Stop next billing</strong>
-          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6b6b6b]">Keep access until the end of your current paid period.</span>
-          <span className="mt-3 inline-flex rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-bold text-[#171717]">Recommended</span>
+        <button type="button" onClick={onStop} className="mt-6 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left">
+          <strong className="block text-[16px] font-extrabold text-[#050505]">Stop next billing</strong>
+          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6c757d]">Keep access until the end of your current paid period.</span>
+          <span className="mt-3 inline-flex rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold text-[#050505]">Recommended</span>
         </button>
 
-        <button type="button" onClick={onRefund} className="mt-3 w-full rounded-[18px] border border-[#e6e6e6] bg-white p-4 text-left">
-          <strong className="block text-[16px] text-[#b42331]">Cancel now & request refund</strong>
-          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6b6b6b]">Service ends immediately. Refund eligibility depends on usage period.</span>
+        <button type="button" onClick={onRefund} className="mt-3 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left">
+          <strong className="block text-[16px] font-extrabold text-[#b42331]">Cancel now & request refund</strong>
+          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6c757d]">Service ends immediately. Refund eligibility depends on usage period.</span>
         </button>
       </div>
     </div>
@@ -201,18 +205,18 @@ function DeleteAccountModal({
 
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/45 p-5" onMouseDown={onClose}>
-      <div className="w-full max-w-[500px] rounded-[24px] bg-white p-6" onMouseDown={(event) => event.stopPropagation()}>
-        <h2 className="m-0 text-[20px] font-bold text-[#b42331]">Delete account</h2>
+      <div className="w-full max-w-[500px] rounded-[20px] bg-white p-6 shadow-[0_16px_48px_rgba(5,5,5,0.18)]" onMouseDown={(event) => event.stopPropagation()}>
+        <h2 className="m-0 text-[#b42331]!">Delete account</h2>
         {requiresBillingStop ? (
-          <p className="mt-4 text-[13px] leading-[1.6] text-[#6b6b6b]">Stop your active billing first. This prevents deleting an account that still has an active recurring payment.</p>
+          <p className="mt-4 text-[13px] text-[#6c757d]">Stop your active billing first. This prevents deleting an account that still has an active recurring payment.</p>
         ) : (
           <>
-            <p className="mt-4 text-[13px] leading-[1.6] text-[#6b6b6b]">This permanently deletes your account and cannot be undone. Type <strong>{phrase}</strong> to confirm.</p>
-            <input value={value} onChange={(event) => setValue(event.target.value)} autoComplete="off" className="mt-3 h-12 w-full rounded-[14px] border border-[#d9d9d9] px-4 text-[14px] outline-none focus:border-[#b42331]" />
+            <p className="mt-4 text-[13px] text-[#6c757d]">This permanently deletes your account and cannot be undone. Type <strong>{phrase}</strong> to confirm.</p>
+            <input value={value} onChange={(event) => setValue(event.target.value)} autoComplete="off" className="mt-3 h-12 w-full rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] px-4 text-[14px] outline-none focus:border-[#b42331]" />
           </>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-full border border-[#e6e6e6] bg-white px-5 text-[13px] font-semibold">Cancel</button>
+          <button type="button" onClick={onClose} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-5 text-[13px] font-semibold">Cancel</button>
           {!requiresBillingStop && (
             <button
               type="button"
@@ -225,7 +229,7 @@ function DeleteAccountModal({
                   setWorking(false);
                 }
               }}
-              className="h-10 rounded-full border-0 bg-[#b42331] px-5 text-[13px] font-semibold text-white disabled:opacity-35"
+              className="min-h-10 rounded-full border-0 bg-[#b42331] px-5 text-[13px] font-semibold text-white disabled:opacity-35"
             >
               {working ? "Deleting…" : "Delete account"}
             </button>
@@ -408,22 +412,22 @@ export function AccountMembershipPanel({
 
   return (
     <>
-      <div className={mobile ? "px-4 pb-12 pt-4" : "p-8"}>
+      <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
         <div className="flex items-start gap-3">
           {mobile && onBack && (
-            <button type="button" onClick={onBack} className="border-0 bg-transparent p-0 text-[30px]" aria-label="Back to profile">
+            <button type="button" onClick={onBack} className="mt-[-3px] border-0 bg-transparent p-0 text-[28px] leading-none text-[#050505]" aria-label="Back to profile">
               ‹
             </button>
           )}
-          <div>
-            <h1 className="m-0 text-[26px] font-bold text-[#171717]">Account & Membership</h1>
-            <p className="mt-1 text-[13px] text-[#6b6b6b]">Login, membership, credits and account actions.</p>
+          <div className="min-w-0">
+            <h1 className="m-0">Account & Membership</h1>
+            <p className="mt-1.5 text-[13px] text-[#6c757d]">Login, membership, credits and account actions.</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4">
           <Card>
-            <h2 className="mb-1 mt-0 text-[18px] font-bold">Login Methods</h2>
+            <h2 className="mb-1 mt-0">Login Methods</h2>
             {(["kakao", "email"] as const).map((provider) => {
               const connected = identities.some((identity) => identity.provider === provider) || (provider === "email" && Boolean(shell.currentUser?.email));
               return (
@@ -439,8 +443,8 @@ export function AccountMembershipPanel({
 
           <Card>
             <div className="mb-1 flex items-center justify-between gap-3">
-              <h2 className="m-0 text-[18px] font-bold">Membership</h2>
-              <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">
+              <h2 className="m-0">Membership</h2>
+              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">
                 {managedMembership ? "Managed" : daysLeft !== null ? `${daysLeft} Days Left` : membershipStatus}
               </span>
             </div>
@@ -448,7 +452,7 @@ export function AccountMembershipPanel({
             <Row label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
             <Row label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
             {!managedMembership && (
-              <button type="button" onClick={manageMembership} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">
+              <button type="button" onClick={manageMembership} className="mt-3 min-h-10 rounded-full border-0 bg-[#050505] px-4 text-[13px] font-semibold text-white">
                 {!shell.summary.hasActiveSubscription ? "Start membership" : shell.summary.billingCancelled ? "Reactivate billing" : "Manage membership"}
               </button>
             )}
@@ -456,11 +460,11 @@ export function AccountMembershipPanel({
 
           <Card>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="m-0 text-[18px] font-bold">Participation Credits</h2>
-              <span className="rounded-full bg-[#f47a4a] px-4 py-1.5 text-[11px] font-bold text-[#171717]">{shell.creditBalance} Credits Left</span>
+              <h2 className="m-0">Participation Credits</h2>
+              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">{shell.creditBalance} Credits Left</span>
             </div>
             {loadingHistory ? (
-              <p className="text-[13px] text-[#6b6b6b]">Loading credit history…</p>
+              <p className="text-[13px] text-[#6c757d]">Loading credit history…</p>
             ) : history.length ? (
               history.slice(0, 3).map((entry) => (
                 <Row
@@ -470,23 +474,23 @@ export function AccountMembershipPanel({
                 />
               ))
             ) : (
-              <p className="py-2 text-[13px] text-[#6b6b6b]">No participation-credit history yet.</p>
+              <p className="py-2 text-[13px] text-[#6c757d]">No participation-credit history yet.</p>
             )}
-            <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className="mt-3 h-9 rounded-full border-0 bg-[#171717] px-4 text-[11px] font-semibold text-white">Buy 5-credit pack</button>
+            <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className="mt-3 min-h-10 rounded-full border-0 bg-[#050505] px-4 text-[13px] font-semibold text-white">Buy 5-credit pack</button>
           </Card>
 
           <Card>
-            <h2 className="m-0 text-[18px] font-bold">Account Actions</h2>
+            <h2 className="m-0">Account Actions</h2>
             <p className="mb-4 mt-1 text-[12px] font-semibold text-[#b42331]">Danger Zone</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={async () => { await logout(); router.push("/"); }} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold">Log out</button>
-              <button type="button" onClick={() => setDeleteOpen(true)} className="h-9 rounded-full border border-[#e6e6e6] bg-white px-4 text-[11px] font-semibold text-[#b42331]">Delete Account</button>
+              <button type="button" onClick={async () => { await logout(); router.push("/"); }} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-4 text-[13px] font-semibold text-[#050505]">Log out</button>
+              <button type="button" onClick={() => setDeleteOpen(true)} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-4 text-[13px] font-semibold text-[#b42331]">Delete Account</button>
             </div>
           </Card>
         </div>
 
         {(shell.notice || shell.error) && mobile && (
-          <div className={`mt-4 rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white"}`}>
+          <div className={`mt-4 rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"}`}>
             {shell.error || shell.notice}
           </div>
         )}
