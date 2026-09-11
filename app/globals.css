@@ -152,4 +152,57 @@
       padding: 0 var(--spacing-gutter-mobile);
     }
   }
+
+  /* Private profile workspace: one compact type and interaction scale. */
+  .profile-workspace {
+    --profile-ink: #050505;
+    --profile-muted: #6c757d;
+    --profile-line: rgba(5, 5, 5, 0.14);
+    --profile-orange: #f47a4a;
+    --profile-orange-pale: #fff0e8;
+    color: var(--profile-ink);
+  }
+
+  .profile-workspace h1 {
+    color: var(--profile-ink);
+    font-family: inherit;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+
+  .profile-workspace h2 {
+    color: var(--profile-ink);
+    font-family: inherit;
+    font-size: 1.125rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+  }
+
+  .profile-workspace p {
+    line-height: 1.55;
+  }
+
+  .profile-workspace button,
+  .profile-workspace input,
+  .profile-workspace textarea,
+  .profile-workspace a {
+    font-family: inherit;
+  }
+
+  .profile-workspace button:focus-visible,
+  .profile-workspace input:focus-visible,
+  .profile-workspace textarea:focus-visible,
+  .profile-workspace a:focus-visible {
+    outline: 2px solid var(--profile-orange);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 1023px) {
+    .profile-workspace h1 {
+      font-size: 1.625rem;
+    }
+  }
 }
