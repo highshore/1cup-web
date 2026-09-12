@@ -209,7 +209,7 @@ function EditDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="m-0">{title}</h2>
+          <h2 className="m-0 capitalize">{title}</h2>
           <button type="button" onClick={onClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#050505] bg-white hover:bg-[#fff8dc]" aria-label={t.profile.close}>
             <XMarkIcon className="h-5 w-5" />
           </button>
@@ -308,7 +308,7 @@ function InterestsDialog({
       <div className="flex max-h-[88vh] w-full max-w-[600px] flex-col rounded-t-[18px] border-2 border-[#050505] bg-white shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[600px]:rounded-[18px]" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4 border-b border-[rgba(5,5,5,0.12)] p-5 min-[600px]:p-6">
           <div>
-            <h2 className="m-0">{t.profile.interests}</h2>
+            <h2 className="m-0 capitalize">{t.profile.interests}</h2>
             <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.interestsHelp}</p>
           </div>
           <button type="button" onClick={onClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#050505] bg-white hover:bg-[#fff8dc]" aria-label={t.profile.close}>
@@ -526,14 +526,6 @@ export default function ProfileDashboardClient() {
     }
   };
 
-  const toggleVisibility = async () => {
-    try {
-      await updateBase({ profile_public: !shell.summary.profilePublic });
-    } catch {
-      shell.setError(t.profile.visibilityFailed);
-    }
-  };
-
   const fieldValue = (key: EditKey) => {
     switch (key) {
       case "name": return displayName;
@@ -572,7 +564,7 @@ export default function ProfileDashboardClient() {
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
         ) : null}
-        <h1 className={`${mobile ? "mr-auto" : ""} m-0`}>{t.profile.editProfile}</h1>
+        <h1 className={`${mobile ? "mr-auto" : ""} m-0 capitalize`}>{t.profile.editProfile}</h1>
         <button
           type="button"
           onClick={() => router.push(`/profile/${encodeURIComponent(shell.currentUser!.uid)}`)}
@@ -591,14 +583,12 @@ export default function ProfileDashboardClient() {
       )}
 
       <section className="mt-7">
-        <h2 className="m-0">{t.profile.profilePhoto}</h2>
-        <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.profilePhotoHint}</p>
+        <h2 className="m-0 capitalize">{t.profile.profilePhoto}</h2>
         <div className="mt-4 flex items-center gap-6 max-[520px]:gap-4">
           <div className="flex h-[132px] w-[132px] flex-none items-center justify-center overflow-hidden rounded-full border-2 border-[#050505] bg-[#d1d1d1] text-[42px] font-extrabold text-white shadow-[4px_4px_0_#f47a4a] max-[520px]:h-[116px] max-[520px]:w-[116px] max-[520px]:text-[32px]">
             {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : initials(displayName)}
           </div>
           <div className="min-w-0">
-            <p className="mb-4 text-[13px] text-[#64748b] max-[520px]:hidden">{t.profile.profilePhotoUsedAcross}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className={primaryButtonClass}>
                 <CameraIcon />
@@ -619,7 +609,7 @@ export default function ProfileDashboardClient() {
       </section>
 
       <section className="mt-8">
-        <h2 className="m-0">{t.profile.interests}</h2>
+        <h2 className="m-0 capitalize">{t.profile.interests}</h2>
         <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.interestsHelp}</p>
         <button type="button" onClick={() => setShowInterests(true)} className={`${brandPanelClass} mt-4 flex min-h-[92px] w-full items-center justify-between px-4 py-4 text-left transition-transform hover:-translate-y-px`}>
           <div className="flex max-w-[500px] flex-wrap gap-2">
@@ -634,7 +624,7 @@ export default function ProfileDashboardClient() {
       </section>
 
       <section className="mt-8">
-        <h2 className="m-0">{t.profile.aboutYou}</h2>
+        <h2 className="m-0 capitalize">{t.profile.aboutYou}</h2>
         <div className={`${brandPanelClass} mt-4 overflow-hidden px-4`}>
           <FieldRow icon={UserIcon} label={t.profile.name} value={displayName} onClick={() => setDialog("name")} />
           <FieldRow icon={PencilSquareIcon} label={t.profile.bio} value={shell.summary.bio} onClick={() => setDialog("bio")} />
@@ -645,13 +635,12 @@ export default function ProfileDashboardClient() {
       </section>
 
       <section className="mt-8">
-        <h2 className="m-0">{t.profile.languageMeetup}</h2>
+        <h2 className="m-0 capitalize">{t.profile.languageMeetup}</h2>
         <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.languageMeetupHelp}</p>
         <div className={`${brandPanelClass} mt-4 overflow-hidden px-4`}>
           <FieldRow icon={LanguageIcon} label={t.profile.languages} value={shell.summary.profileDetails.languages?.join(", ") || ""} onClick={() => setDialog("languages")} />
           <FieldRow icon={MapPinIcon} label={t.profile.location} value={shell.summary.location} onClick={() => setDialog("location")} />
           <FieldRow icon={ChatBubbleLeftRightIcon} label={t.profile.englishLevel} value={englishLevelValue} onClick={() => setDialog("english_level")} />
-          <FieldRow icon={EyeIcon} label={t.profile.profileVisibility} value={shell.summary.profilePublic ? t.profile.visibleToMembers : t.profile.hidden} onClick={() => void toggleVisibility()} />
         </div>
       </section>
     </div>

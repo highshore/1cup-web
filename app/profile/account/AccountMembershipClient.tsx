@@ -175,7 +175,7 @@ function SurveyModal({
     <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/45 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
       <div className={`${modalClass} max-h-[88vh] overflow-y-auto rounded-t-[18px]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="m-0">{title}</h2>
+          <h2 className="m-0 capitalize">{title}</h2>
           <ModalClose onClick={onClose} />
         </div>
         <p className="mt-2 text-[13px] text-[#64748b]">{t.profile.surveyPrompt}</p>
@@ -248,7 +248,7 @@ function ManageMembershipModal({
       <div className={`${modalClass} rounded-t-[18px] bg-[#fffdf8]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="m-0">{t.profile.manageMembership}</h2>
+            <h2 className="m-0 capitalize">{t.profile.manageMembership}</h2>
             <p className="mt-1.5 text-[13px] text-[#64748b]">{interpolate(t.profile.currentStatus, { status, date: nextBilling })}</p>
           </div>
           <ModalClose onClick={onClose} />
@@ -305,7 +305,7 @@ function DeleteAccountModal({
       <div className={`${modalClass} rounded-[18px]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="m-0 text-[#b42331]!">{t.profile.deleteAccountTitle}</h2>
+            <h2 className="m-0 capitalize text-[#b42331]!">{t.profile.deleteAccountTitle}</h2>
             <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.deleteAccountLead}</p>
           </div>
           <ModalClose onClick={onClose} />
@@ -407,8 +407,10 @@ export function AccountMembershipPanel({
   }, [shell.currentUser?.uid]);
 
   const nextBilling = useMemo(
-    () => nextBillingDate(shell.summary.subscriptionStartDate, shell.summary.billingCancelled),
-    [shell.summary.subscriptionStartDate, shell.summary.billingCancelled],
+    () => shell.summary.hasActiveSubscription
+      ? nextBillingDate(shell.summary.subscriptionStartDate, shell.summary.billingCancelled)
+      : null,
+    [shell.summary.hasActiveSubscription, shell.summary.subscriptionStartDate, shell.summary.billingCancelled],
   );
   const daysLeft = nextBilling
     ? Math.max(0, Math.ceil((nextBilling.getTime() - Date.now()) / 86400000))
@@ -419,11 +421,13 @@ export function AccountMembershipPanel({
   const membershipStatus = shell.membershipActive ? t.profile.active : t.profile.inactive;
   const membershipBadge = managedMembership
     ? t.profile.managed
-    : shell.summary.billingCancelled
-      ? t.profile.billingStopped
-      : daysLeft !== null
-        ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
-        : membershipStatus;
+    : !shell.summary.hasActiveSubscription
+      ? t.profile.inactive
+      : shell.summary.billingCancelled
+        ? t.profile.billingStopped
+        : daysLeft !== null
+          ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
+          : membershipStatus;
   const membershipNote = managedMembership
     ? t.profile.leaderManagedNote
     : !shell.summary.hasActiveSubscription
@@ -563,14 +567,14 @@ export function AccountMembershipPanel({
             </button>
           )}
           <div className="min-w-0">
-            <h1 className="m-0">{t.profile.accountMembership}</h1>
+            <h1 className="m-0 capitalize">{t.profile.accountMembership}</h1>
             <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.accountHelp}</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5">
           <Card>
-            <h2 className="mb-2 mt-0">{t.profile.loginMethods}</h2>
+            <h2 className="mb-2 mt-0 capitalize">{t.profile.loginMethods}</h2>
             {loginMethods.map(({ provider, label, icon }) => {
               const connected =
                 identities.some((identity) => identity.provider === provider) ||
@@ -590,16 +594,20 @@ export function AccountMembershipPanel({
 
           <Card>
             <div className="mb-2 flex items-center justify-between gap-3">
-              <h2 className="m-0">{t.profile.membership}</h2>
+              <h2 className="m-0 capitalize">{t.profile.membership}</h2>
               <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">
                 {membershipBadge}
               </span>
             </div>
             <Row icon={CheckCircleIcon} label={t.profile.memberStatus} value={membershipStatus} />
-            <Row icon={CreditCardIcon} label={t.profile.lastPayment} value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
-            <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={managedMembership ? t.profile.notApplicable : shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)} />
+            {shell.summary.hasActiveSubscription && (
+              <>
+                <Row icon={CreditCardIcon} label={t.profile.lastPayment} value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
+                <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)} />
+              </>
+            )}
 
-            <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
+            <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled && shell.summary.hasActiveSubscription ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
               {membershipNote}
             </div>
 
@@ -613,7 +621,7 @@ export function AccountMembershipPanel({
 
           <Card>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="m-0">{t.profile.participationCredits}</h2>
+              <h2 className="m-0 capitalize">{t.profile.participationCredits}</h2>
               <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">{interpolate(t.profile.creditsLeft, { count: shell.creditBalance })}</span>
             </div>
             {loadingHistory ? (
@@ -637,7 +645,7 @@ export function AccountMembershipPanel({
           </Card>
 
           <Card>
-            <h2 className="m-0">{t.profile.accountActions}</h2>
+            <h2 className="m-0 capitalize">{t.profile.accountActions}</h2>
             <p className="mb-4 mt-1 text-[12px] font-bold text-[#b42331]">{t.profile.dangerZone}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={async () => { await logout(); router.push("/"); }} className={secondaryButtonClass}>
@@ -662,7 +670,7 @@ export function AccountMembershipPanel({
       {manageOpen && (
         <ManageMembershipModal
           status={membershipStatus}
-          nextBilling={managedMembership ? t.profile.notApplicable : shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)}
+          nextBilling={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)}
           billingCancelled={shell.summary.billingCancelled}
           onClose={() => setManageOpen(false)}
           onStop={() => { setManageOpen(false); setSurvey("stop"); }}
