@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AcademicCapIcon,
-  ArrowLeftIcon,
   BriefcaseIcon,
   CameraIcon,
   ChatBubbleLeftRightIcon,
+  CheckIcon,
   ChevronRightIcon,
   EyeIcon,
   IdentificationIcon,
@@ -27,7 +27,7 @@ import { AccountMembershipPanel } from "./account/AccountMembershipClient";
 import { ConnectionsPanel } from "./connections/ConnectionsClient";
 import {
   DesktopProfileShell,
-  MobileProfileHub,
+  MobileProfileShell,
   type ProfileDetailsJson,
   type ProfileSection,
   useProfileShellData,
@@ -99,33 +99,119 @@ const INTEREST_CATEGORIES = [
   },
 ] as const;
 
-const ENGLISH_LEVELS = [
-  "Beginner",
-  "Intermediate",
-  "Upper-intermediate",
-  "Advanced",
-  "C1 Advanced",
-  "Near-native",
-] as const;
+const INTEREST_EMOJIS: Record<string, string> = {
+  Technology: "💻",
+  AI: "🤖",
+  Startups: "🚀",
+  Career: "💼",
+  "Marketing & Sales": "🛒",
+  "Human Resources": "🧑‍🤝‍🧑",
+  "Product & Design": "📐",
+  Strategy: "♟️",
+  "Leadership & Management": "👑",
+  Teamwork: "🧩",
+  "Remote Work": "🏝️",
+  "Corporate Culture": "🏢",
+  Business: "📊",
+  Finance: "💰",
+  Entrepreneurship: "💡",
+  "Current affairs": "📰",
+  Science: "🔬",
+  Society: "🌐",
+  Culture: "🎭",
+  Media: "📺",
+  Economics: "📈",
+  "Politics & Policy": "🏛️",
+  Environment: "🌱",
+  History: "🏺",
+  Philosophy: "💭",
+  Health: "🌿",
+  Food: "🍏",
+  "Exercise & Fitness": "👟",
+  Longevity: "🧬",
+  "Mental Health": "⭐",
+  Mindfulness: "🧘",
+  Meditation: "🌀",
+  "Religion & Spirituality": "🕯️",
+  Entertainment: "🎬",
+  Sports: "🏀",
+  Music: "🎵",
+  "Movies & TV": "🍿",
+  Books: "📚",
+  Gaming: "🎮",
+  Travel: "✈️",
+  "Art & Photography": "📸",
+  Fashion: "👗",
+  Cooking: "🍳",
+};
 
-const ENGLISH_LEVEL_LABELS: Record<"en" | "ko", Record<(typeof ENGLISH_LEVELS)[number], string>> = {
+const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+type CefrLevel = (typeof CEFR_LEVELS)[number];
+
+const CEFR_LEVEL_LABELS: Record<"en" | "ko", Record<CefrLevel, string>> = {
   en: {
-    Beginner: "Beginner",
-    Intermediate: "Intermediate",
-    "Upper-intermediate": "Upper-intermediate",
-    Advanced: "Advanced",
-    "C1 Advanced": "C1 Advanced",
-    "Near-native": "Near-native",
+    A1: "A1 — Novice",
+    A2: "A2 — Beginner",
+    B1: "B1 — Intermediate",
+    B2: "B2 — Upper Intermediate",
+    C1: "C1 — Advanced",
+    C2: "C2 — Native",
   },
   ko: {
-    Beginner: "초급",
-    Intermediate: "중급",
-    "Upper-intermediate": "중상급",
-    Advanced: "고급",
-    "C1 Advanced": "C1 고급",
-    "Near-native": "원어민 수준",
+    A1: "A1 — 입문",
+    A2: "A2 — 초급",
+    B1: "B1 — 중급",
+    B2: "B2 — 중상급",
+    C1: "C1 — 고급",
+    C2: "C2 — 원어민 수준",
   },
 };
+
+const LEGACY_LEVEL_MAP: Record<string, CefrLevel> = {
+  Beginner: "A2",
+  Intermediate: "B1",
+  "Upper-intermediate": "B2",
+  Advanced: "C1",
+  "C1 Advanced": "C1",
+  "Near-native": "C2",
+};
+
+const LANGUAGE_OPTIONS = [
+  { value: "English", en: "English", ko: "영어" },
+  { value: "Korean", en: "Korean", ko: "한국어" },
+] as const;
+
+const NATIONALITY_OPTIONS = [
+  ["South Korea", "South Korean", "대한민국"],
+  ["United States", "American", "미국"],
+  ["Canada", "Canadian", "캐나다"],
+  ["United Kingdom", "British", "영국"],
+  ["Australia", "Australian", "호주"],
+  ["New Zealand", "New Zealander", "뉴질랜드"],
+  ["Japan", "Japanese", "일본"],
+  ["China", "Chinese", "중국"],
+  ["Taiwan", "Taiwanese", "대만"],
+  ["Hong Kong", "Hong Konger", "홍콩"],
+  ["Singapore", "Singaporean", "싱가포르"],
+  ["India", "Indian", "인도"],
+  ["Philippines", "Filipino", "필리핀"],
+  ["Vietnam", "Vietnamese", "베트남"],
+  ["Thailand", "Thai", "태국"],
+  ["Indonesia", "Indonesian", "인도네시아"],
+  ["Malaysia", "Malaysian", "말레이시아"],
+  ["Germany", "German", "독일"],
+  ["France", "French", "프랑스"],
+  ["Italy", "Italian", "이탈리아"],
+  ["Spain", "Spanish", "스페인"],
+  ["Netherlands", "Dutch", "네덜란드"],
+  ["Sweden", "Swedish", "스웨덴"],
+  ["Switzerland", "Swiss", "스위스"],
+  ["Poland", "Polish", "폴란드"],
+  ["Russia", "Russian", "러시아"],
+  ["Brazil", "Brazilian", "브라질"],
+  ["Mexico", "Mexican", "멕시코"],
+  ["Other", "Other", "기타"],
+] as const;
 
 const primaryButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-[#050505] bg-[#050505] px-4 text-[13px] font-extrabold text-white shadow-[3px_3px_0_#f47a4a] transition-[transform,box-shadow] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#f47a4a] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4";
@@ -205,7 +291,7 @@ function EditDialog({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-[520px] rounded-t-[18px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[600px]:rounded-[18px] min-[600px]:p-6"
+        className="max-h-[88vh] w-full max-w-[560px] overflow-y-auto rounded-t-[18px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[600px]:rounded-[18px] min-[600px]:p-6"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
@@ -216,7 +302,7 @@ function EditDialog({
         </div>
 
         {options ? (
-          <div className="grid gap-2">
+          <div className={`grid gap-2 ${options.length > 8 ? "grid-cols-2 max-[520px]:grid-cols-1" : ""}`}>
             {options.map((option) => (
               <button
                 key={option.value}
@@ -257,6 +343,73 @@ function EditDialog({
               setSaving(true);
               try {
                 await onSave(draft.trim());
+                onClose();
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className={primaryButtonClass}
+          >
+            {saving ? t.profile.saving : t.profile.save}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LanguagesDialog({
+  selected,
+  locale,
+  onClose,
+  onSave,
+}: {
+  selected: string[];
+  locale: "en" | "ko";
+  onClose: () => void;
+  onSave: (items: string[]) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const allowed = LANGUAGE_OPTIONS.map((option) => option.value);
+  const [draft, setDraft] = useState(selected.filter((item) => allowed.includes(item as (typeof allowed)[number])));
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/45 min-[600px]:items-center min-[600px]:p-5" onMouseDown={onClose}>
+      <div className="w-full max-w-[480px] rounded-t-[18px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[600px]:rounded-[18px] min-[600px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="m-0">{t.profile.languages}</h2>
+          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#050505] bg-white hover:bg-[#fff8dc]" aria-label={t.profile.close}>
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {LANGUAGE_OPTIONS.map((option) => {
+            const active = draft.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setDraft((current) => current.includes(option.value) ? current.filter((item) => item !== option.value) : [...current, option.value])}
+                className={`flex min-h-[72px] items-center justify-between rounded-[14px] border-2 px-4 py-3 text-left text-[15px] font-extrabold ${active ? "border-[#050505] bg-[#fff0e8] shadow-[3px_3px_0_#f47a4a]" : "border-[rgba(5,5,5,0.16)] bg-white"}`}
+              >
+                <span>{option[locale]}</span>
+                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border-2 ${active ? "border-[#050505] bg-[#f47a4a]" : "border-[#cbd5e1] bg-white"}`}>
+                  {active ? <CheckIcon className="h-4 w-4" /> : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>{t.profile.cancel}</button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(draft);
                 onClose();
               } finally {
                 setSaving(false);
@@ -347,6 +500,7 @@ function InterestsDialog({
                             : "border-[rgba(5,5,5,0.08)] bg-[#f3f3f1] text-[#2f2f2f] hover:border-[rgba(5,5,5,0.25)] hover:bg-[#fff8dc]"
                         }`}
                       >
+                        <span className="mr-1.5" aria-hidden="true">{INTEREST_EMOJIS[item]}</span>
                         {labels[item] || item}
                       </button>
                     );
@@ -381,7 +535,7 @@ function InterestsDialog({
   );
 }
 
-type EditKey = "name" | "bio" | "work" | "school" | "nationality" | "languages" | "location" | "english_level";
+type EditKey = "name" | "bio" | "work" | "school" | "nationality" | "location" | "english_level";
 
 function sectionFromParam(value: string | null): ProfileSection {
   return value === "connections" || value === "account" ? value : "edit";
@@ -396,19 +550,15 @@ export default function ProfileDashboardClient() {
   const [displayName, setDisplayName] = useState("");
   const [dialog, setDialog] = useState<EditKey | null>(null);
   const [showInterests, setShowInterests] = useState(false);
+  const [showLanguages, setShowLanguages] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sectionParam = searchParams.get("section");
   const activeSection = sectionFromParam(sectionParam);
-  const hasExplicitSection = sectionParam === "edit" || sectionParam === "connections" || sectionParam === "account";
 
   const navigateSection = (section: ProfileSection) => {
-    router.replace(`/profile?section=${section}`, { scroll: false });
-  };
-
-  const closeMobilePanel = () => {
-    router.replace("/profile", { scroll: false });
+    router.replace(section === "edit" ? "/profile" : `/profile?section=${section}`, { scroll: false });
   };
 
   useEffect(() => {
@@ -450,14 +600,21 @@ export default function ProfileDashboardClient() {
         return;
       }
       if (key === "nationality") return updateDetails({ nationality: value });
-      if (key === "languages") {
-        const languages = value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6);
-        return updateDetails({ languages });
-      }
       if (key === "english_level") return updateDetails({ english_level: value });
       await updateBase({ [key]: value });
     } catch (saveError) {
       console.error("Profile update failed:", saveError);
+      shell.setError(t.profile.saveFieldFailed);
+      throw saveError;
+    }
+  };
+
+  const saveLanguages = async (items: string[]) => {
+    try {
+      shell.setError(null);
+      await updateDetails({ languages: items.filter((item) => item === "English" || item === "Korean") });
+    } catch (saveError) {
+      console.error("Language update failed:", saveError);
       shell.setError(t.profile.saveFieldFailed);
       throw saveError;
     }
@@ -533,7 +690,6 @@ export default function ProfileDashboardClient() {
       case "work": return shell.summary.work;
       case "school": return shell.summary.school;
       case "nationality": return shell.summary.profileDetails.nationality || "";
-      case "languages": return shell.summary.profileDetails.languages?.join(", ") || "";
       case "location": return shell.summary.location;
       case "english_level": return shell.summary.profileDetails.english_level || "";
     }
@@ -545,26 +701,25 @@ export default function ProfileDashboardClient() {
     work: t.profile.work,
     school: t.profile.education,
     nationality: t.profile.nationality,
-    languages: t.profile.languages,
     location: t.profile.location,
     english_level: t.profile.englishLevel,
   };
 
   const labels = t.profile.interestLabels as Record<string, string>;
-  const englishLevelOptions = ENGLISH_LEVELS.map((value) => ({ value, label: ENGLISH_LEVEL_LABELS[locale][value] }));
-  const englishLevelValue = shell.summary.profileDetails.english_level
-    ? (ENGLISH_LEVEL_LABELS[locale][shell.summary.profileDetails.english_level as (typeof ENGLISH_LEVELS)[number]] || shell.summary.profileDetails.english_level)
-    : "";
+  const englishLevelOptions = CEFR_LEVELS.map((value) => ({ value, label: CEFR_LEVEL_LABELS[locale][value] }));
+  const nationalityOptions = NATIONALITY_OPTIONS.map(([value, en, ko]) => ({ value, label: locale === "ko" ? ko : en }));
+  const currentNationality = shell.summary.profileDetails.nationality || "";
+  const nationalityLabel = NATIONALITY_OPTIONS.find(([value]) => value === currentNationality)?.[locale === "ko" ? 2 : 1] || currentNationality;
+  const currentEnglishLevel = shell.summary.profileDetails.english_level || "";
+  const normalizedEnglishLevel = LEGACY_LEVEL_MAP[currentEnglishLevel] || currentEnglishLevel;
+  const englishLevelValue = (CEFR_LEVEL_LABELS[locale] as Record<string, string>)[normalizedEnglishLevel] || currentEnglishLevel;
+  const selectedLanguages = (shell.summary.profileDetails.languages || []).filter((item) => item === "English" || item === "Korean");
+  const languageValue = selectedLanguages.map((item) => LANGUAGE_OPTIONS.find((option) => option.value === item)?.[locale] || item).join(", ");
 
   const EditContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
+    <div className={mobile ? "px-4 pb-8 pt-5 sm:px-6" : "p-8"}>
       <div className="flex items-center justify-between gap-4">
-        {mobile ? (
-          <button type="button" onClick={closeMobilePanel} className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border-2 border-[#050505] bg-white" aria-label={t.profile.backToProfile}>
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
-        ) : null}
-        <h1 className={`${mobile ? "mr-auto" : ""} m-0 capitalize`}>{t.profile.editProfile}</h1>
+        <h1 className="m-0 capitalize">{t.profile.editProfile}</h1>
         <button
           type="button"
           onClick={() => router.push(`/profile/${encodeURIComponent(shell.currentUser!.uid)}`)}
@@ -574,13 +729,6 @@ export default function ProfileDashboardClient() {
           {t.profile.viewPublicProfile}
         </button>
       </div>
-
-      {mobile && (
-        <button type="button" onClick={closeMobilePanel} className="mt-4 flex min-h-[52px] w-full items-center justify-between rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] px-4 py-3 text-[13px] font-bold shadow-[2px_2px_0_#f47a4a]">
-          <span>{t.profile.profileStrength}</span>
-          <span className="flex items-center gap-1 font-extrabold">{shell.completion}% {t.profile.complete} <ChevronRightIcon className="h-4 w-4" /></span>
-        </button>
-      )}
 
       <section className="mt-7">
         <h2 className="m-0 capitalize">{t.profile.profilePhoto}</h2>
@@ -615,7 +763,7 @@ export default function ProfileDashboardClient() {
           <div className="flex max-w-[500px] flex-wrap gap-2">
             {(selectedInterests.length ? selectedInterests : [t.profile.addInterests]).map((interest) => (
               <span key={interest} className={`rounded-full border-2 border-[#050505] px-3.5 py-2 text-[13px] font-bold ${selectedInterests.length ? "bg-[#f47a4a]" : "bg-white"}`}>
-                {selectedInterests.length ? (labels[interest] || interest) : interest}
+                {selectedInterests.length ? <><span className="mr-1.5" aria-hidden="true">{INTEREST_EMOJIS[interest]}</span>{labels[interest] || interest}</> : interest}
               </span>
             ))}
           </div>
@@ -630,7 +778,7 @@ export default function ProfileDashboardClient() {
           <FieldRow icon={PencilSquareIcon} label={t.profile.bio} value={shell.summary.bio} onClick={() => setDialog("bio")} />
           <FieldRow icon={BriefcaseIcon} label={t.profile.work} value={shell.summary.work} onClick={() => setDialog("work")} />
           <FieldRow icon={AcademicCapIcon} label={t.profile.education} value={shell.summary.school} onClick={() => setDialog("school")} />
-          <FieldRow icon={IdentificationIcon} label={t.profile.nationality} value={shell.summary.profileDetails.nationality || ""} onClick={() => setDialog("nationality")} />
+          <FieldRow icon={IdentificationIcon} label={t.profile.nationality} value={nationalityLabel} onClick={() => setDialog("nationality")} />
         </div>
       </section>
 
@@ -638,7 +786,7 @@ export default function ProfileDashboardClient() {
         <h2 className="m-0 capitalize">{t.profile.languageMeetup}</h2>
         <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.languageMeetupHelp}</p>
         <div className={`${brandPanelClass} mt-4 overflow-hidden px-4`}>
-          <FieldRow icon={LanguageIcon} label={t.profile.languages} value={shell.summary.profileDetails.languages?.join(", ") || ""} onClick={() => setDialog("languages")} />
+          <FieldRow icon={LanguageIcon} label={t.profile.languages} value={languageValue} onClick={() => setShowLanguages(true)} />
           <FieldRow icon={MapPinIcon} label={t.profile.location} value={shell.summary.location} onClick={() => setDialog("location")} />
           <FieldRow icon={ChatBubbleLeftRightIcon} label={t.profile.englishLevel} value={englishLevelValue} onClick={() => setDialog("english_level")} />
         </div>
@@ -657,9 +805,9 @@ export default function ProfileDashboardClient() {
 
   const mobileContent =
     activeSection === "connections" ? (
-      <ConnectionsPanel shell={shell} mobile onBack={closeMobilePanel} />
+      <ConnectionsPanel shell={shell} mobile />
     ) : activeSection === "account" ? (
-      <AccountMembershipPanel shell={shell} mobile onBack={closeMobilePanel} />
+      <AccountMembershipPanel shell={shell} mobile />
     ) : (
       <EditContent mobile />
     );
@@ -676,33 +824,33 @@ export default function ProfileDashboardClient() {
         {desktopContent}
       </DesktopProfileShell>
 
-      {hasExplicitSection ? (
-        <main className="mx-auto min-h-[calc(100vh-68px)] w-full max-w-[640px] bg-transparent text-[#050505] lg:hidden">
-          {mobileContent}
-          {(shell.notice || shell.error) && activeSection !== "account" && (
-            <div className={`mx-4 mb-6 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] font-bold shadow-[2px_2px_0_rgba(5,5,5,0.92)] sm:mx-6 ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-[#fff8dc] text-[#050505]"}`}>
-              {shell.error || shell.notice}
-            </div>
-          )}
-        </main>
-      ) : (
-        <MobileProfileHub
-          data={shell}
-          avatarOverride={avatar}
-          displayNameOverride={displayName}
-          onEdit={() => navigateSection("edit")}
-          onSectionChange={navigateSection}
-        />
-      )}
+      <MobileProfileShell
+        active={activeSection}
+        data={shell}
+        onSectionChange={navigateSection}
+        avatarOverride={avatar}
+        displayNameOverride={displayName}
+      >
+        {mobileContent}
+      </MobileProfileShell>
 
       {dialog && (
         <EditDialog
           title={dialogTitle[dialog]}
           value={fieldValue(dialog)}
           multiline={dialog === "bio"}
-          options={dialog === "english_level" ? englishLevelOptions : undefined}
+          options={dialog === "english_level" ? englishLevelOptions : dialog === "nationality" ? nationalityOptions : undefined}
           onClose={() => setDialog(null)}
           onSave={(value) => saveDialogValue(dialog, value)}
+        />
+      )}
+
+      {showLanguages && (
+        <LanguagesDialog
+          selected={selectedLanguages}
+          locale={locale}
+          onClose={() => setShowLanguages(false)}
+          onSave={saveLanguages}
         />
       )}
 

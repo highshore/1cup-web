@@ -221,7 +221,6 @@ export function useProfileShellData() {
       : summary.accountStatus === "leader"
         ? "LEADER"
         : "MEMBER";
-  // GDG is no longer a special billing state. Admins use the same paid membership controls as members.
   const membershipActive = summary.hasActiveSubscription || summary.accountStatus === "leader";
 
   const shareReferral = useCallback(async () => {
@@ -393,6 +392,29 @@ function SidebarNavItem({
   );
 }
 
+function MobileNavItem({
+  active,
+  icon: Icon,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  icon: ElementType;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[12px] px-2 py-2 text-center text-[11px] leading-tight transition-colors ${active ? "bg-[#fff0e8] font-extrabold text-[#050505]" : "bg-transparent font-semibold text-[#64748b]"}`}
+    >
+      <Icon className={`h-[20px] w-[20px] ${active ? "text-[#f47a4a]" : "text-[#64748b]"}`} />
+      <span className="line-clamp-2">{children}</span>
+    </button>
+  );
+}
+
 function MetricRing({
   value,
   unit,
@@ -426,24 +448,7 @@ function MetricRing({
   );
 }
 
-export function DesktopProfileShell({
-  active,
-  data,
-  onSectionChange,
-  avatarOverride,
-  displayNameOverride,
-  children,
-}: {
-  active: ProfileSection;
-  data: ProfileShellData;
-  onSectionChange: (section: ProfileSection) => void;
-  avatarOverride?: string | null;
-  displayNameOverride?: string | null;
-  children: React.ReactNode;
-}) {
-  const { t } = useI18n();
-  const name = displayNameOverride ?? data.currentUser?.displayName ?? t.profile.memberFallback;
-  const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
+function subscriptionMetrics(data: ProfileShellData, t: any) {
   const paidEnd = paidPeriodEnd(data.summary);
   const subscriptionDays = data.summary.accountStatus === "leader" ? 0 : daysUntil(paidEnd);
   const subscriptionRatio = data.summary.accountStatus === "leader"
@@ -462,12 +467,34 @@ export function DesktopProfileShell({
   const subscriptionRemaining = data.summary.accountStatus === "leader" || !data.summary.hasActiveSubscription
     ? 99
     : subscriptionDays;
+  return { subscriptionRatio, subscriptionValue, subscriptionUnit, subscriptionRemaining };
+}
+
+export function DesktopProfileShell({
+  active,
+  data,
+  onSectionChange,
+  avatarOverride,
+  displayNameOverride,
+  children,
+}: {
+  active: ProfileSection;
+  data: ProfileShellData;
+  onSectionChange: (section: ProfileSection) => void;
+  avatarOverride?: string | null;
+  displayNameOverride?: string | null;
+  children: React.ReactNode;
+}) {
+  const { t } = useI18n();
+  const name = displayNameOverride ?? data.currentUser?.displayName ?? t.profile.memberFallback;
+  const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
+  const { subscriptionRatio, subscriptionValue, subscriptionUnit, subscriptionRemaining } = subscriptionMetrics(data, t);
   const creditRatio = Math.min(1, Math.max(0, data.creditBalance) / 5);
 
   return (
     <>
       {(data.notice || data.error) && (
-        <div className="fixed left-1/2 top-[86px] z-[100] w-[min(92vw,520px)] -translate-x-1/2">
+        <div className="fixed left-1/2 top-[86px] z-[100] hidden w-[min(92vw,520px)] -translate-x-1/2 lg:block">
           <div
             className={`rounded-[14px] border border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold shadow-[0_6px_20px_rgba(5,5,5,0.08)] ${
               data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"
@@ -554,102 +581,107 @@ export function DesktopProfileShell({
   );
 }
 
-export function MobileProfileHub({
+export function MobileProfileShell({
+  active,
   data,
-  onEdit,
   onSectionChange,
   avatarOverride,
   displayNameOverride,
+  children,
 }: {
+  active: ProfileSection;
   data: ProfileShellData;
-  onEdit: () => void;
   onSectionChange: (section: ProfileSection) => void;
   avatarOverride?: string | null;
   displayNameOverride?: string | null;
+  children: React.ReactNode;
 }) {
   const { t } = useI18n();
   const name = displayNameOverride ?? data.currentUser?.displayName ?? t.profile.memberFallback;
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
+  const { subscriptionRatio, subscriptionValue, subscriptionUnit, subscriptionRemaining } = subscriptionMetrics(data, t);
+  const creditRatio = Math.min(1, Math.max(0, data.creditBalance) / 5);
 
   return (
-    <main className="mx-auto w-full max-w-[640px] px-4 pb-12 pt-5 text-[#050505] sm:px-6 lg:hidden">
-      <h1 className="mb-6">{t.profile.profileTitle}</h1>
-
-      <div className="flex items-center gap-4">
-        <div className="origin-left scale-[0.76]">
-          <ProfileAvatar src={avatar} name={name} completion={data.completion} />
-        </div>
-        <div className="ml-[-28px] min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="m-0 truncate text-[22px]! font-extrabold!">{name}</h2>
-            <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[10px] font-extrabold leading-none text-white">
-              {data.roleLabel}
-            </span>
+    <main className="mx-auto w-full max-w-[680px] px-4 pb-12 pt-5 text-[#050505] sm:px-6 lg:hidden">
+      <section className="rounded-[20px] border-[1.5px] border-[#e6e6e6] bg-white p-4 shadow-[3px_3px_0_rgba(5,5,5,0.14)] sm:p-5">
+        <div className="flex items-center gap-4">
+          <div className="w-[94px] flex-none origin-center scale-[0.72]">
+            <ProfileAvatar src={avatar} name={name} completion={data.completion} />
           </div>
-          <p className="mt-1 text-[13px] text-[#6c757d]">
-            {data.membershipYear ? interpolate(t.profile.memberSince, { year: data.membershipYear }) : t.profile.memberFallback}
-          </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="m-0 truncate text-[22px]! font-extrabold! leading-tight!">{name}</h1>
+              <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[10px] font-extrabold leading-none text-white">{data.roleLabel}</span>
+            </div>
+            <p className="mt-1 text-[12px] text-[#64748b]">
+              {data.membershipYear ? interpolate(t.profile.memberSince, { year: data.membershipYear }) : t.profile.memberFallback}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={onEdit}
-            className="mt-3 min-h-10 rounded-full bg-[#f47a4a] px-4 py-2 text-[13px] font-extrabold text-[#050505]"
+            onClick={() => onSectionChange("edit")}
+            className="flex min-h-[76px] items-center gap-3 rounded-[16px] border-2 border-[#050505] bg-white px-3.5 py-3 text-left shadow-[3px_3px_0_rgba(5,5,5,0.92)]"
           >
-            {t.profile.completeProfile}
+            <CheckCircleIcon className="h-[18px] w-[18px] flex-none" />
+            <span className="min-w-0">
+              <span className="block text-[11px] font-semibold text-[#64748b]">{t.profile.profileStrength}</span>
+              <strong className="mt-1 block text-[15px] font-extrabold">{data.completion}% {t.profile.complete}</strong>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void data.shareReferral()}
+            disabled={data.referralBusy}
+            className="flex min-h-[76px] items-center gap-3 rounded-[16px] border-2 border-[#050505] bg-white px-3.5 py-3 text-left shadow-[3px_3px_0_rgba(5,5,5,0.92)] disabled:opacity-60"
+          >
+            <TicketIcon className="h-[18px] w-[18px] flex-none text-[#f47a4a]" />
+            <span className="min-w-0">
+              <strong className="block text-[13px] font-extrabold">{t.profile.shareReferralCode}</strong>
+              <span className="mt-1 block text-[11px] leading-tight text-[#64748b]">{t.profile.inviteFriend}</span>
+            </span>
           </button>
         </div>
-      </div>
 
-      <button
-        type="button"
-        onClick={onEdit}
-        className="mt-6 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left shadow-[0_1px_0_rgba(5,5,5,0.03)]"
-      >
-        <span className="text-[12px] font-semibold text-[#6c757d]">{t.profile.profileStrength}</span>
-        <div className="mt-1.5 flex items-center justify-between gap-3">
-          <strong className="text-[22px] font-extrabold text-[#050505]">{data.completion}% {t.profile.complete}</strong>
-          <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
+        <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-[16px] bg-[#f5f5f5] p-1.5">
+          <MobileNavItem active={active === "edit"} icon={PencilSquareIcon} onClick={() => onSectionChange("edit")}>{t.profile.editProfile}</MobileNavItem>
+          <MobileNavItem active={active === "connections"} icon={ChatBubbleLeftRightIcon} onClick={() => onSectionChange("connections")}>{t.profile.connections}</MobileNavItem>
+          <MobileNavItem active={active === "account"} icon={CreditCardIcon} onClick={() => onSectionChange("account")}>{t.profile.accountMembership}</MobileNavItem>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#ececec]">
-          <div className="h-full rounded-full bg-[#f47a4a]" style={{ width: `${data.completion}%` }} />
+
+        <div className="mt-5 border-t border-[rgba(5,5,5,0.1)] pt-4">
+          <p className="mb-3 text-center text-[12px] font-semibold text-[#64748b]">{t.profile.membershipBalance}</p>
+          <div className="mx-auto flex max-w-[260px] items-start justify-between gap-5">
+            <MetricRing
+              value={subscriptionValue}
+              unit={subscriptionUnit}
+              label={t.profile.subscription}
+              remaining={subscriptionRemaining}
+              ratio={subscriptionRatio}
+            />
+            <MetricRing
+              value={data.creditBalance}
+              unit={t.profile.creditUnit}
+              label={t.profile.credits}
+              remaining={data.creditBalance}
+              ratio={creditRatio}
+            />
+          </div>
         </div>
-      </button>
+      </section>
 
-      <div className="mt-4 overflow-hidden rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white">
-        <button type="button" onClick={onEdit} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-          {t.profile.editProfile} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
-        </button>
-        <div className="mx-4 h-px bg-[rgba(5,5,5,0.1)]" />
-        <button type="button" onClick={() => onSectionChange("connections")} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-          {t.profile.connections} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
-        </button>
-      </div>
-
-      <h2 className="mb-3 mt-8">{t.profile.membership}</h2>
-      <div className="rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-[#fffaf6] p-4">
-        <div className="flex items-center justify-between gap-3">
-          <strong className="text-[16px] font-extrabold text-[#050505]">{t.profile.oneCupMember}</strong>
-          <span className="rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold text-[#050505]">
-            {data.membershipActive ? t.profile.active : t.profile.inactive}
-          </span>
-        </div>
-        <div className="mt-3 flex justify-between gap-3 text-[13px] text-[#6c757d]">
-          <span>{t.profile.meetupCredits}</span>
-          <strong className="text-[#050505]">{interpolate(t.profile.left, { count: data.creditBalance })}</strong>
-        </div>
-      </div>
-
-      <button type="button" onClick={() => void data.shareReferral()} disabled={data.referralBusy} className="mt-4 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-        {t.profile.shareReferralCode} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
-      </button>
-      <button type="button" onClick={() => onSectionChange("account")} className="mt-3 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-        {t.profile.accountMembership} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
-      </button>
-
-      {(data.notice || data.error) && (
+      {(data.notice || data.error) && active !== "account" && (
         <div className={`mt-4 rounded-[14px] border border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold ${data.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"}`}>
           {data.error || data.notice}
         </div>
       )}
+
+      <section className="mt-4 overflow-hidden rounded-[20px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white shadow-[0_2px_10px_rgba(5,5,5,0.035)]">
+        {children}
+      </section>
     </main>
   );
 }
