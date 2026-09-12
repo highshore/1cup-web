@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import ProfileDashboardClient from "./ProfileDashboardClient";
+import ProfileDashboardClient from "./ProfileDashboardClientV2";
 
 export const metadata: Metadata = {
   title: "Profile | OneCup English",
