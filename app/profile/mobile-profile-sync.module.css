@@ -1,0 +1,259 @@
+.root {
+  min-height: 100%;
+}
+
+@media (max-width: 1023px) {
+  .root {
+    min-height: 100vh;
+    background: #f5f5f5;
+  }
+
+  .root > main {
+    position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 430px;
+    flex-direction: column;
+    margin: 0 auto;
+    padding: 16px 16px 48px;
+    color: #050505;
+  }
+
+  /* 01 — compact member identity card */
+  .root > main > section:nth-of-type(1) {
+    order: 1;
+    min-height: 122px;
+    padding: 16px;
+    border: 1.5px solid #e6e6e6;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.12);
+  }
+
+  .root > main > section:nth-of-type(1) > div {
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .root > main > section:nth-of-type(1) > div > div:first-child {
+    width: 76px;
+    height: 76px;
+  }
+
+  .root > main > section:nth-of-type(1) h1 {
+    max-width: 156px;
+    font-size: 20px !important;
+    line-height: 1.15 !important;
+  }
+
+  .root > main > section:nth-of-type(1) p {
+    font-size: 11px;
+  }
+
+  .root > main > section:nth-of-type(1) button {
+    max-width: 92px;
+    margin-top: 10px;
+    gap: 5px;
+  }
+
+  .root > main > section:nth-of-type(1) button > span:first-child {
+    height: 6px;
+  }
+
+  .root > main > section:nth-of-type(1) button > span:last-child {
+    font-size: 11px;
+  }
+
+  /* Move referral before the section switcher; metrics visually live inside the identity card. */
+  .root > main > section:nth-of-type(2) {
+    display: contents;
+  }
+
+  .root > main > section:nth-of-type(2) > button {
+    order: 2;
+    min-height: 82px;
+    margin-top: 20px;
+    padding: 12px 16px;
+    border: 2px solid #050505;
+    border-radius: 16px;
+    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
+  }
+
+  .root > main > section:nth-of-type(2) > button strong {
+    font-size: 13px;
+  }
+
+  .root > main > section:nth-of-type(2) > button span span {
+    font-size: 11px;
+  }
+
+  .root > main > section:nth-of-type(2) > div {
+    position: absolute;
+    z-index: 2;
+    top: 62px;
+    right: 23px;
+    width: 116px;
+    min-height: 63px;
+    padding: 7px 8px 5px;
+    gap: 2px;
+    border: 1px solid #e6e6e6;
+    border-radius: 16px;
+    background: #fff;
+  }
+
+  .root > main > section:nth-of-type(2) > div > div {
+    gap: 1px;
+  }
+
+  .root > main > section:nth-of-type(2) > div > div > div:first-child {
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+  }
+
+  .root > main > section:nth-of-type(2) > div > div > div:first-child strong {
+    font-size: 17px;
+  }
+
+  .root > main > section:nth-of-type(2) > div > div > span {
+    font-size: 8px;
+  }
+
+  /* Mobile replacement for the desktop sidebar. */
+  .root > main > nav {
+    position: sticky;
+    top: 68px;
+    z-index: 30;
+    order: 3;
+    min-height: 68px;
+    margin-top: 28px;
+    padding: 5px;
+    gap: 1px;
+    border: 1px solid #e6e6e6;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+  }
+
+  .root > main > nav button {
+    min-height: 58px;
+    border-radius: 11px;
+    font-size: 10px;
+  }
+
+  /* Shared content shell for Edit / Connections / Account. */
+  .root > main > section:nth-of-type(3) {
+    order: 4;
+    margin-top: 96px;
+    overflow: hidden;
+    border: 1px solid #e6e6e6;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div {
+    padding: 20px 16px 32px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > div:first-child h1 {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .root > main > section:nth-of-type(3) > div > div:first-child button {
+    font-size: 12px;
+  }
+
+  /* Edit Profile content */
+  .root > main > section:nth-of-type(3) > div > section h2 {
+    font-size: 19px;
+    line-height: 1.2;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section p {
+    font-size: 11px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) > div {
+    gap: 18px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) > div > div:first-child {
+    width: 104px;
+    height: 104px;
+    border: 1.5px solid #050505;
+    box-shadow: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) button {
+    min-height: 36px;
+    box-shadow: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) button:first-child {
+    min-width: 142px;
+    min-height: 38px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) button:last-child {
+    min-width: 108px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(1) button svg {
+    display: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(2) > button {
+    min-height: 112px;
+    margin-top: 16px;
+    padding: 14px 12px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(2) > button > div {
+    gap: 8px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(2) > button span {
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) > div,
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) > div {
+    margin-top: 16px;
+    padding: 0 16px;
+    border: 2px solid #050505;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) button,
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) button {
+    min-height: 50px;
+    grid-template-columns: 1fr minmax(110px, 146px) 14px;
+    gap: 8px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) button > svg:first-child,
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) button > svg:first-child {
+    display: none;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) button > svg:last-child,
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) button > svg:last-child {
+    width: 14px;
+    height: 14px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) button span:nth-of-type(1),
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) button span:nth-of-type(1) {
+    font-size: 13px;
+  }
+
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(3) button span:nth-of-type(2),
+  .root > main > section:nth-of-type(3) > div > section:nth-of-type(4) button span:nth-of-type(2) {
+    font-size: 12px;
+  }
+}
