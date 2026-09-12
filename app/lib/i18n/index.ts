@@ -2,6 +2,7 @@ import adminGifts from "./admin_gifts";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
 import ko from "./locales/ko";
+import profileRedesign from "./profile_redesign";
 
 export type SupportedLocale = "en" | "ko";
 
@@ -11,6 +12,10 @@ const dictionaries = {
     home: {
       ...en.home,
       faq: homeFaq.en,
+    },
+    profile: {
+      ...en.profile,
+      ...profileRedesign.en,
     },
     admin: {
       ...en.admin,
@@ -32,6 +37,7 @@ const dictionaries = {
     },
     profile: {
       ...ko.profile,
+      ...profileRedesign.ko,
       viewConnections: "내 네트워크",
       connectionsTitle: "내 네트워크",
     },

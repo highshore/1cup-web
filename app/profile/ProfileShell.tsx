@@ -1,9 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  CreditCardIcon,
+  PencilSquareIcon,
+  TicketIcon,
+} from "@heroicons/react/24/outline";
 
 import { useAuth } from "../lib/contexts/auth_context";
+import { useI18n } from "../lib/i18n/I18nProvider";
 import { supabase, invokeFunction } from "../lib/supabase/client";
 import { getParticipationCreditBalance } from "../lib/features/meetup/services/participation_service";
 
@@ -74,6 +83,37 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function paidPeriodEnd(summary: ProfileSummary) {
+  if (!summary.hasActiveSubscription) return null;
+  if (summary.subscriptionEndDate && summary.subscriptionEndDate.getTime() > Date.now()) {
+    return summary.subscriptionEndDate;
+  }
+  if (!summary.subscriptionStartDate) return null;
+  const next = new Date(summary.subscriptionStartDate);
+  next.setMonth(next.getMonth() + 1);
+  while (next.getTime() <= Date.now()) next.setMonth(next.getMonth() + 1);
+  return next;
+}
+
+function daysUntil(date: Date | null) {
+  if (!date) return 0;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86400000));
+}
+
+function metricColor(remaining: number, ratio: number) {
+  if (remaining <= 1) return "#dc2626";
+  if (ratio > 0.7) return "#22c55e";
+  if (ratio > 0.3) return "#eab308";
+  return "#f47a4a";
+}
+
+function interpolate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
+
 async function loadKakaoSdk(): Promise<void> {
   if (typeof window === "undefined" || (window as any).Kakao) return;
   await new Promise<void>((resolve, reject) => {
@@ -88,6 +128,7 @@ async function loadKakaoSdk(): Promise<void> {
 
 export function useProfileShellData() {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const { currentUser, isLoading: authLoading } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary>(emptySummary);
   const [creditBalance, setCreditBalance] = useState(0);
@@ -135,11 +176,11 @@ export function useProfileShellData() {
       setError(null);
     } catch (loadError) {
       console.error("Unable to load profile summary:", loadError);
-      setError("Unable to load your profile. Please refresh and try again.");
+      setError(t.profile.profileLoadFailed);
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, t.profile.profileLoadFailed]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -180,8 +221,8 @@ export function useProfileShellData() {
       : summary.accountStatus === "leader"
         ? "LEADER"
         : "MEMBER";
-  const membershipActive =
-    summary.hasActiveSubscription || summary.gdgMember || summary.accountStatus === "leader";
+  // GDG is no longer a special billing state. Admins use the same paid membership controls as members.
+  const membershipActive = summary.hasActiveSubscription || summary.accountStatus === "leader";
 
   const shareReferral = useCallback(async () => {
     if (!currentUser) return;
@@ -197,7 +238,9 @@ export function useProfileShellData() {
       }
 
       const url = `https://1cupenglish.com/payment?ref=${code}`;
-      const text = `영어 한잔 추천 코드: ${code}\n${url}`;
+      const title = t.profile.referralShareTitle;
+      const codeLabel = interpolate(t.profile.referralCodeLabel, { code });
+      const text = `${title}: ${code}\n${url}`;
       let copied = false;
       try {
         await navigator.clipboard.writeText(text);
@@ -216,23 +259,19 @@ export function useProfileShellData() {
             Kakao.Share.sendDefault({
               objectType: "feed",
               content: {
-                title: "영어 한잔 추천 코드",
-                description: `코드: ${code}`,
+                title,
+                description: codeLabel,
                 imageUrl: "https://1cupenglish.com/images/logos/1cup_logo_new.svg",
                 link: { mobileWebUrl: url, webUrl: url },
               },
               buttons: [
                 {
-                  title: "바로 사용하기",
+                  title: t.profile.referralUseNow,
                   link: { mobileWebUrl: url, webUrl: url },
                 },
               ],
             });
-            setNotice(
-              copied
-                ? "카카오톡 공유 창을 열었습니다. 추천 코드도 클립보드에 복사했습니다."
-                : "카카오톡 공유 창을 열었습니다.",
-            );
+            setNotice(copied ? t.profile.referralKakaoCopied : t.profile.referralKakaoOpened);
             return;
           }
         } catch (kakaoError) {
@@ -243,22 +282,22 @@ export function useProfileShellData() {
       if (navigator.share) {
         try {
           await navigator.share({ title: "1 Cup English", text, url });
-          setNotice("추천 코드를 공유했습니다.");
+          setNotice(t.profile.referralShared);
           return;
         } catch {
           // Intentional dismissal falls back to clipboard.
         }
       }
 
-      if (copied) setNotice("추천 코드가 클립보드에 복사되었습니다.");
-      else setError(`추천 코드: ${code}`);
+      if (copied) setNotice(t.profile.referralCopied);
+      else setError(codeLabel);
     } catch (shareError) {
       console.error("Referral share failed:", shareError);
-      setError("추천 코드를 준비하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      setError(t.profile.referralFailed);
     } finally {
       setReferralBusy(false);
     }
-  }, [currentUser, summary.referralCode]);
+  }, [currentUser, summary.referralCode, locale, t.profile]);
 
   return {
     currentUser,
@@ -328,10 +367,12 @@ function ProfileAvatar({
 
 function SidebarNavItem({
   active,
+  icon: Icon,
   children,
   onClick,
 }: {
   active?: boolean;
+  icon: ElementType;
   children: React.ReactNode;
   onClick: () => void;
 }) {
@@ -339,15 +380,49 @@ function SidebarNavItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-11 w-full items-center justify-between rounded-[14px] border-0 px-3 py-2 text-left text-[14px] text-[#050505] transition-colors ${
+      className={`flex min-h-12 w-full items-center gap-3 rounded-[12px] border-0 px-4 py-2 text-left text-[14px] text-[#050505] transition-colors ${
         active
           ? "bg-[#fff0e8] font-extrabold"
           : "bg-transparent font-semibold hover:bg-[#f8f8f8]"
       }`}
     >
-      <span>{children}</span>
-      <span className="text-[22px] font-normal leading-none text-[#6c757d]">›</span>
+      <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-[#f47a4a]" : "text-[#64748b]"}`} />
+      <span className="min-w-0 flex-1">{children}</span>
+      <ChevronRightIcon className={`h-[18px] w-[18px] flex-none ${active ? "text-[#f47a4a]" : "text-[#64748b]"}`} />
     </button>
+  );
+}
+
+function MetricRing({
+  value,
+  unit,
+  label,
+  remaining,
+  ratio,
+}: {
+  value: string | number;
+  unit: string;
+  label: string;
+  remaining: number;
+  ratio: number;
+}) {
+  const normalized = Math.max(0, Math.min(1, ratio));
+  const color = metricColor(remaining, normalized);
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
+      <div
+        className="relative h-[78px] w-[78px] rounded-full p-[7px]"
+        style={{
+          background: `conic-gradient(${color} 0deg ${normalized * 360}deg, #e8e8e5 ${normalized * 360}deg 360deg)`,
+        }}
+      >
+        <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white">
+          <strong className="text-[21px] font-extrabold leading-none text-[#050505]">{value}</strong>
+          <span className="mt-1 text-[9px] font-medium text-[#64748b]">{unit}</span>
+        </div>
+      </div>
+      <span className="text-center text-[11px] font-semibold text-[#050505]">{label}</span>
+    </div>
   );
 }
 
@@ -366,8 +441,17 @@ export function DesktopProfileShell({
   displayNameOverride?: string | null;
   children: React.ReactNode;
 }) {
-  const name = displayNameOverride ?? data.currentUser?.displayName ?? "Member";
+  const { t } = useI18n();
+  const name = displayNameOverride ?? data.currentUser?.displayName ?? t.profile.memberFallback;
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
+  const paidEnd = paidPeriodEnd(data.summary);
+  const subscriptionDays = data.summary.accountStatus === "leader" ? 0 : daysUntil(paidEnd);
+  const subscriptionRatio = data.summary.accountStatus === "leader"
+    ? 1
+    : data.summary.hasActiveSubscription
+      ? Math.min(1, subscriptionDays / 30)
+      : 0;
+  const creditRatio = Math.min(1, Math.max(0, data.creditBalance) / 5);
 
   return (
     <>
@@ -384,66 +468,70 @@ export function DesktopProfileShell({
       )}
 
       <div className="mx-auto hidden w-full max-w-page grid-cols-[288px_minmax(0,1fr)] items-start gap-6 px-gutter pb-16 pt-8 text-[#050505] lg:grid">
-        <aside className="sticky top-[92px] self-start rounded-[20px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-6 shadow-[0_2px_10px_rgba(5,5,5,0.035)]">
-          <ProfileAvatar src={avatar} name={name} completion={data.completion} />
-
-          <div className="mt-7 text-center">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <h1 className="m-0 text-[20px]! font-extrabold! leading-tight!">{name}</h1>
-              <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[11px] font-extrabold leading-none text-white">
-                {data.roleLabel}
-              </span>
+        <aside className="sticky top-[92px] self-start rounded-[20px] border-[1.5px] border-[#e6e6e6] bg-white p-[14px] shadow-[3px_3px_0_rgba(5,5,5,0.14)]">
+          <div className="px-2 pt-3">
+            <ProfileAvatar src={avatar} name={name} completion={data.completion} />
+            <div className="mt-7 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <h1 className="m-0 text-[20px]! font-extrabold! leading-tight!">{name}</h1>
+                <span className="rounded-full bg-[#050505] px-2.5 py-1 text-[10px] font-extrabold leading-none text-white">
+                  {data.roleLabel}
+                </span>
+              </div>
             </div>
-            <p className="mt-2 text-[13px] text-[#6c757d]">
-              {data.membershipYear ? `Member since ${data.membershipYear}` : "1 Cup member"}
-            </p>
           </div>
 
           <button
             type="button"
             onClick={() => onSectionChange("edit")}
-            className="mt-8 flex min-h-[68px] w-full items-center justify-between rounded-[16px] border-0 bg-[#fff0e8] px-4 py-3 text-left"
+            className="mt-5 flex min-h-[72px] w-full items-center gap-3 rounded-[16px] border-2 border-[#050505] bg-white px-4 py-3 text-left shadow-[3px_3px_0_rgba(5,5,5,0.92)]"
           >
-            <span>
-              <span className="block text-[12px] font-semibold text-[#6c757d]">Profile strength</span>
-              <strong className="mt-1 block text-[17px] font-extrabold text-[#050505]">{data.completion}% complete</strong>
+            <CheckCircleIcon className="h-[18px] w-[18px] flex-none text-[#050505]" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-[#64748b]">{t.profile.profileStrength}</span>
+              <strong className="mt-1 block text-[17px] font-extrabold text-[#050505]">{data.completion}% {t.profile.complete}</strong>
             </span>
-            <span className="text-[22px] text-[#6c757d]">›</span>
+            <ChevronRightIcon className="h-[18px] w-[18px] flex-none text-[#64748b]" />
           </button>
-
-          <div className="mt-2 grid gap-1">
-            <SidebarNavItem active={active === "edit"} onClick={() => onSectionChange("edit")}>Edit profile</SidebarNavItem>
-            <SidebarNavItem active={active === "connections"} onClick={() => onSectionChange("connections")}>Connections</SidebarNavItem>
-            <SidebarNavItem active={active === "account"} onClick={() => onSectionChange("account")}>Account & Membership</SidebarNavItem>
-          </div>
 
           <button
             type="button"
             onClick={() => void data.shareReferral()}
             disabled={data.referralBusy}
-            className="mt-6 flex min-h-[72px] w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-left transition-[background-color,border-color] hover:border-[rgba(5,5,5,0.22)] hover:bg-[#fffaf6] disabled:opacity-60"
+            className="mt-3 flex min-h-[72px] w-full items-center gap-3 rounded-[16px] border-2 border-[#050505] bg-white px-4 py-3 text-left shadow-[3px_3px_0_rgba(5,5,5,0.92)] transition-transform hover:-translate-y-px disabled:opacity-60"
           >
-            <span>
-              <strong className="block text-[14px] font-extrabold text-[#050505]">Share referral code</strong>
-              <span className="mt-1 block text-[12px] text-[#6c757d]">Invite a friend to 1 Cup</span>
+            <TicketIcon className="h-[18px] w-[18px] flex-none text-[#f47a4a]" />
+            <span className="min-w-0 flex-1">
+              <strong className="block text-[14px] font-extrabold text-[#050505]">{t.profile.shareReferralCode}</strong>
+              <span className="mt-1 block text-[12px] text-[#2f2f2f]">{t.profile.inviteFriend}</span>
             </span>
-            <span className="text-[22px] text-[#6c757d]">›</span>
+            <ChevronRightIcon className="h-[18px] w-[18px] flex-none text-[#64748b]" />
           </button>
 
-          <div className="mt-4 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-[#fffaf6] p-4">
+          <div className="mt-4 grid gap-1">
+            <SidebarNavItem active={active === "edit"} icon={PencilSquareIcon} onClick={() => onSectionChange("edit")}>{t.profile.editProfile}</SidebarNavItem>
+            <SidebarNavItem active={active === "connections"} icon={ChatBubbleLeftRightIcon} onClick={() => onSectionChange("connections")}>{t.profile.connections}</SidebarNavItem>
+            <SidebarNavItem active={active === "account"} icon={CreditCardIcon} onClick={() => onSectionChange("account")}>{t.profile.accountMembership}</SidebarNavItem>
+          </div>
+
+          <div className="mt-7 px-1 pb-2">
+            <p className="mb-3 text-[12px] font-semibold text-[#64748b]">{t.profile.membershipBalance}</p>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span className="block text-[12px] font-semibold text-[#6c757d]">Membership</span>
-                <strong className="mt-1.5 block text-[16px] font-extrabold text-[#050505]">1 Cup Member</strong>
-              </div>
-              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">
-                {data.membershipActive ? "Active" : "Inactive"}
-              </span>
+              <MetricRing
+                value={data.summary.accountStatus === "leader" ? "—" : subscriptionDays}
+                unit={data.summary.accountStatus === "leader" ? t.profile.managed : t.profile.daysLeft}
+                label={t.profile.subscription}
+                remaining={data.summary.accountStatus === "leader" ? 99 : subscriptionDays}
+                ratio={subscriptionRatio}
+              />
+              <MetricRing
+                value={data.creditBalance}
+                unit={t.profile.creditUnit}
+                label={t.profile.credits}
+                remaining={data.creditBalance}
+                ratio={creditRatio}
+              />
             </div>
-            <p className="mt-2.5 text-[13px] text-[#6c757d]">{data.creditBalance} meetup credits left</p>
-            {data.membershipYear && (
-              <p className="mt-1 text-[12px] text-[#6c757d]">Member since {data.membershipYear}</p>
-            )}
           </div>
         </aside>
 
@@ -468,12 +556,13 @@ export function MobileProfileHub({
   avatarOverride?: string | null;
   displayNameOverride?: string | null;
 }) {
-  const name = displayNameOverride ?? data.currentUser?.displayName ?? "Member";
+  const { t } = useI18n();
+  const name = displayNameOverride ?? data.currentUser?.displayName ?? t.profile.memberFallback;
   const avatar = avatarOverride ?? data.currentUser?.photoURL ?? null;
 
   return (
     <main className="mx-auto w-full max-w-[640px] px-4 pb-12 pt-5 text-[#050505] sm:px-6 lg:hidden">
-      <h1 className="mb-6">Profile</h1>
+      <h1 className="mb-6">{t.profile.profileTitle}</h1>
 
       <div className="flex items-center gap-4">
         <div className="origin-left scale-[0.76]">
@@ -487,14 +576,14 @@ export function MobileProfileHub({
             </span>
           </div>
           <p className="mt-1 text-[13px] text-[#6c757d]">
-            {data.membershipYear ? `Member since ${data.membershipYear}` : "1 Cup member"}
+            {data.membershipYear ? interpolate(t.profile.memberSince, { year: data.membershipYear }) : t.profile.memberFallback}
           </p>
           <button
             type="button"
             onClick={onEdit}
             className="mt-3 min-h-10 rounded-full bg-[#f47a4a] px-4 py-2 text-[13px] font-extrabold text-[#050505]"
           >
-            Complete profile
+            {t.profile.completeProfile}
           </button>
         </div>
       </div>
@@ -504,10 +593,10 @@ export function MobileProfileHub({
         onClick={onEdit}
         className="mt-6 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left shadow-[0_1px_0_rgba(5,5,5,0.03)]"
       >
-        <span className="text-[12px] font-semibold text-[#6c757d]">Profile strength</span>
+        <span className="text-[12px] font-semibold text-[#6c757d]">{t.profile.profileStrength}</span>
         <div className="mt-1.5 flex items-center justify-between gap-3">
-          <strong className="text-[22px] font-extrabold text-[#050505]">{data.completion}% complete</strong>
-          <span className="text-[24px] text-[#6c757d]">›</span>
+          <strong className="text-[22px] font-extrabold text-[#050505]">{data.completion}% {t.profile.complete}</strong>
+          <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#ececec]">
           <div className="h-full rounded-full bg-[#f47a4a]" style={{ width: `${data.completion}%` }} />
@@ -516,33 +605,33 @@ export function MobileProfileHub({
 
       <div className="mt-4 overflow-hidden rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white">
         <button type="button" onClick={onEdit} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-          Edit profile <span className="text-[22px] text-[#6c757d]">›</span>
+          {t.profile.editProfile} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
         </button>
         <div className="mx-4 h-px bg-[rgba(5,5,5,0.1)]" />
         <button type="button" onClick={() => onSectionChange("connections")} className="flex min-h-14 w-full items-center justify-between border-0 bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-          Connections <span className="text-[22px] text-[#6c757d]">›</span>
+          {t.profile.connections} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
         </button>
       </div>
 
-      <h2 className="mb-3 mt-8">Membership</h2>
+      <h2 className="mb-3 mt-8">{t.profile.membership}</h2>
       <div className="rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-[#fffaf6] p-4">
         <div className="flex items-center justify-between gap-3">
-          <strong className="text-[16px] font-extrabold text-[#050505]">1 Cup Member</strong>
+          <strong className="text-[16px] font-extrabold text-[#050505]">{t.profile.oneCupMember}</strong>
           <span className="rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold text-[#050505]">
-            {data.membershipActive ? "Active" : "Inactive"}
+            {data.membershipActive ? t.profile.active : t.profile.inactive}
           </span>
         </div>
         <div className="mt-3 flex justify-between gap-3 text-[13px] text-[#6c757d]">
-          <span>Meetup credits</span>
-          <strong className="text-[#050505]">{data.creditBalance} left</strong>
+          <span>{t.profile.meetupCredits}</span>
+          <strong className="text-[#050505]">{interpolate(t.profile.left, { count: data.creditBalance })}</strong>
         </div>
       </div>
 
       <button type="button" onClick={() => void data.shareReferral()} disabled={data.referralBusy} className="mt-4 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-        Share referral code <span className="text-[22px] text-[#6c757d]">›</span>
+        {t.profile.shareReferralCode} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
       </button>
       <button type="button" onClick={() => onSectionChange("account")} className="mt-3 flex min-h-14 w-full items-center justify-between rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white px-4 py-3 text-[14px] font-semibold text-[#050505]">
-        Account & Membership <span className="text-[22px] text-[#6c757d]">›</span>
+        {t.profile.accountMembership} <ChevronRightIcon className="h-5 w-5 text-[#6c757d]" />
       </button>
 
       {(data.notice || data.error) && (
