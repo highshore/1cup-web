@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import ProfileDashboardClient from "./ProfileDashboardClientV2";
+import styles from "./mobile-profile-sync.module.css";
 
 export const metadata: Metadata = {
   title: "Profile | OneCup English",
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function ProfilePage() {
-  return <ProfileDashboardClient />;
+  return (
+    <div className={styles.root}>
+      <ProfileDashboardClient />
+    </div>
+  );
 }
