@@ -1,7 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeftIcon,
+  ArrowPathIcon,
+  ArrowRightOnRectangleIcon,
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  CreditCardIcon,
+  EnvelopeIcon,
+  ExclamationTriangleIcon,
+  PhoneIcon,
+  StopCircleIcon,
+  TicketIcon,
+  TrashIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -37,6 +53,15 @@ const cancellationReasons = [
 
 const refundReasons = ["결제 후 마음이 바뀌었어요 (단순 변심)", ...cancellationReasons];
 
+const primaryButtonClass =
+  "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-[#050505] bg-[#050505] px-4 text-[13px] font-extrabold text-white shadow-[3px_3px_0_#f47a4a] transition-[transform,box-shadow] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#f47a4a] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4";
+
+const secondaryButtonClass =
+  "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-[#050505] bg-white px-4 text-[13px] font-extrabold text-[#050505] transition-[background-color,transform] hover:-translate-y-px hover:bg-[#fff8dc] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4";
+
+const modalClass =
+  "w-full max-w-[540px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[640px]:rounded-[18px] min-[640px]:p-6";
+
 function nextBillingDate(startDate: Date | null, billingCancelled: boolean) {
   if (!startDate || billingCancelled) return null;
   const next = new Date(startDate);
@@ -64,23 +89,49 @@ function historyLabel(entry: CreditHistoryItem) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 sm:p-5">
+    <section className="rounded-[16px] border-2 border-[#050505] bg-white p-4 shadow-[3px_3px_0_rgba(5,5,5,0.92)] sm:p-5">
       {children}
     </section>
   );
 }
 
-function Row({ label, value, onClick }: { label: string; value?: string; onClick?: () => void }) {
+function Row({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon?: ElementType;
+  label: string;
+  value?: string;
+  onClick?: () => void;
+}) {
   const Tag = onClick ? "button" : "div";
   return (
     <Tag
       {...(onClick ? { type: "button" as const, onClick } : {})}
-      className="grid min-h-[46px] w-full grid-cols-[1fr_minmax(110px,180px)_18px] items-center gap-2 border-0 border-b border-[rgba(5,5,5,0.1)] bg-transparent px-0 text-left last:border-b-0"
+      className="grid min-h-[48px] w-full grid-cols-[20px_1fr_minmax(110px,180px)_18px] items-center gap-2 border-0 border-b border-[rgba(5,5,5,0.14)] bg-transparent px-0 text-left last:border-b-0"
     >
-      <span className="text-[14px] font-semibold text-[#050505]">{label}</span>
-      <span className="truncate text-right text-[13px] text-[#6c757d]">{value || ""}</span>
-      <span className={`text-right text-[22px] leading-none text-[#6c757d] ${onClick ? "" : "opacity-0"}`}>›</span>
+      <span className="text-[#475569]">{Icon ? <Icon className="h-[18px] w-[18px]" /> : null}</span>
+      <span className="text-[14px] font-bold text-[#050505]">{label}</span>
+      <span className="truncate text-right text-[13px] font-medium text-[#64748b]">{value || ""}</span>
+      <span className={onClick ? "text-[#475569]" : "opacity-0"}>
+        <ChevronRightIcon className="h-[18px] w-[18px]" />
+      </span>
     </Tag>
+  );
+}
+
+function ModalClose({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#050505] bg-white text-[#050505] hover:bg-[#fff8dc] [&_svg]:h-5 [&_svg]:w-5"
+      aria-label="Close"
+    >
+      <XMarkIcon />
+    </button>
   );
 }
 
@@ -104,32 +155,37 @@ function SurveyModal({
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/40 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
-      <div className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-t-[20px] bg-white p-5 shadow-[0_16px_48px_rgba(5,5,5,0.18)] min-[640px]:rounded-[20px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/45 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
+      <div className={`${modalClass} max-h-[88vh] overflow-y-auto rounded-t-[18px]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
           <h2 className="m-0">{title}</h2>
-          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-[#f5f5f5] text-[22px] text-[#6c757d]">×</button>
+          <ModalClose onClick={onClose} />
         </div>
-        <p className="mt-2 text-[13px] text-[#6c757d]">Tell us what influenced your decision. You can select more than one.</p>
+        <p className="mt-2 text-[13px] text-[#64748b]">Tell us what influenced your decision. You can select more than one.</p>
         <div className="mt-5 grid gap-2">
           {reasons.map((reason) => {
             const active = selected.includes(reason);
             return (
-              <label key={reason} className={`flex cursor-pointer items-start gap-3 rounded-[14px] border-[1.5px] p-3 text-[13px] leading-[1.45] ${active ? "border-[#f47a4a] bg-[#fff0e8]" : "border-[rgba(5,5,5,0.12)] bg-white"}`}>
+              <label key={reason} className={`flex cursor-pointer items-start gap-3 rounded-[12px] border-2 p-3 text-[13px] leading-[1.45] ${active ? "border-[#050505] bg-[#fff0e8] shadow-[2px_2px_0_#f47a4a]" : "border-[rgba(5,5,5,0.16)] bg-white"}`}>
                 <input
                   type="checkbox"
                   checked={active}
                   onChange={(event) => setSelected((current) => event.target.checked ? [...current, reason] : current.filter((item) => item !== reason))}
-                  className="mt-0.5"
+                  className="mt-0.5 accent-[#f47a4a]"
                 />
-                <span>{reason}</span>
+                <span className="font-medium text-[#050505]">{reason}</span>
               </label>
             );
           })}
         </div>
-        <textarea value={other} onChange={(event) => setOther(event.target.value)} placeholder="Anything else?" className="mt-4 min-h-[90px] w-full rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] p-3 text-[13px] outline-none focus:border-[#f47a4a]" />
+        <textarea
+          value={other}
+          onChange={(event) => setOther(event.target.value)}
+          placeholder="Anything else?"
+          className="mt-4 min-h-[96px] w-full rounded-[12px] border-2 border-[rgba(5,5,5,0.18)] p-3 text-[13px] outline-none focus:border-[#050505] focus:shadow-[2px_2px_0_#f47a4a]"
+        />
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-5 text-[13px] font-semibold">Cancel</button>
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>Cancel</button>
           <button
             type="button"
             disabled={saving || (selected.length === 0 && !other.trim())}
@@ -142,7 +198,7 @@ function SurveyModal({
                 setSaving(false);
               }
             }}
-            className={`min-h-10 rounded-full border-0 px-5 text-[13px] font-semibold text-white disabled:opacity-40 ${danger ? "bg-[#b42331]" : "bg-[#050505]"}`}
+            className={danger ? `${secondaryButtonClass} text-[#b42331]` : primaryButtonClass}
           >
             {saving ? "Working…" : submitLabel}
           </button>
@@ -155,34 +211,56 @@ function SurveyModal({
 function ManageMembershipModal({
   status,
   nextBilling,
+  billingCancelled,
   onClose,
   onStop,
+  onReactivate,
   onRefund,
 }: {
   status: string;
   nextBilling: string;
+  billingCancelled: boolean;
   onClose: () => void;
   onStop: () => void;
+  onReactivate: () => void;
   onRefund: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[1250] flex items-end justify-center bg-black/40 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
-      <div className="w-full max-w-[520px] rounded-t-[20px] bg-[#f5f5f5] p-5 shadow-[0_16px_48px_rgba(5,5,5,0.18)] min-[640px]:rounded-[20px] min-[640px]:p-6" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[1250] flex items-end justify-center bg-black/45 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
+      <div className={`${modalClass} rounded-t-[18px] bg-[#fffdf8]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="m-0">Manage membership</h2>
-          <button type="button" onClick={onClose} className="h-9 w-9 rounded-full border-0 bg-white text-[22px] text-[#6c757d]">×</button>
+          <div>
+            <h2 className="m-0">Manage membership</h2>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">Current status: {status} · Next billing: {nextBilling}</p>
+          </div>
+          <ModalClose onClick={onClose} />
         </div>
-        <p className="mt-2 text-[13px] text-[#6c757d]">Current status: {status} · Next billing: {nextBilling}</p>
 
-        <button type="button" onClick={onStop} className="mt-6 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left">
-          <strong className="block text-[16px] font-extrabold text-[#050505]">Stop next billing</strong>
-          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6c757d]">Keep access until the end of your current paid period.</span>
-          <span className="mt-3 inline-flex rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold text-[#050505]">Recommended</span>
-        </button>
+        {billingCancelled ? (
+          <button type="button" onClick={onReactivate} className="mt-6 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-4 text-left shadow-[3px_3px_0_#f47a4a]">
+            <ArrowPathIcon className="mt-0.5 h-5 w-5 flex-none" />
+            <span>
+              <strong className="block text-[16px] font-extrabold text-[#050505]">Reactivate recurring billing</strong>
+              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">Resume automatic renewal for the next billing cycle.</span>
+            </span>
+          </button>
+        ) : (
+          <button type="button" onClick={onStop} className="mt-6 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-4 text-left shadow-[3px_3px_0_#f47a4a]">
+            <StopCircleIcon className="mt-0.5 h-5 w-5 flex-none" />
+            <span>
+              <strong className="block text-[16px] font-extrabold text-[#050505]">Stop next billing</strong>
+              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">Keep access until the end of your current paid period. Your billing key is preserved so you can reactivate later.</span>
+              <span className="mt-3 inline-flex rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold text-[#050505]">Recommended</span>
+            </span>
+          </button>
+        )}
 
-        <button type="button" onClick={onRefund} className="mt-3 w-full rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-4 text-left">
-          <strong className="block text-[16px] font-extrabold text-[#b42331]">Cancel now & request refund</strong>
-          <span className="mt-2 block text-[13px] leading-[1.5] text-[#6c757d]">Service ends immediately. Refund eligibility depends on usage period.</span>
+        <button type="button" onClick={onRefund} className="mt-3 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-white p-4 text-left transition-colors hover:bg-[#fff1f2]">
+          <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-none text-[#b42331]" />
+          <span>
+            <strong className="block text-[16px] font-extrabold text-[#b42331]">Cancel now & request refund</strong>
+            <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">End the membership immediately and submit the existing refund flow. Refund eligibility depends on usage period.</span>
+          </span>
         </button>
       </div>
     </div>
@@ -205,18 +283,32 @@ function DeleteAccountModal({
 
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/45 p-5" onMouseDown={onClose}>
-      <div className="w-full max-w-[500px] rounded-[20px] bg-white p-6 shadow-[0_16px_48px_rgba(5,5,5,0.18)]" onMouseDown={(event) => event.stopPropagation()}>
-        <h2 className="m-0 text-[#b42331]!">Delete account</h2>
+      <div className={`${modalClass} rounded-[18px]`} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="m-0 text-[#b42331]!">Delete account</h2>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">This action permanently removes your account.</p>
+          </div>
+          <ModalClose onClick={onClose} />
+        </div>
         {requiresBillingStop ? (
-          <p className="mt-4 text-[13px] text-[#6c757d]">Stop your active billing first. This prevents deleting an account that still has an active recurring payment.</p>
+          <div className="mt-5 flex gap-3 rounded-[12px] border-2 border-[#050505] bg-[#fff8dc] p-4">
+            <ExclamationTriangleIcon className="h-5 w-5 flex-none" />
+            <p className="m-0 text-[13px] text-[#050505]">Stop your active billing first. This prevents deleting an account that still has an active recurring payment.</p>
+          </div>
         ) : (
           <>
-            <p className="mt-4 text-[13px] text-[#6c757d]">This permanently deletes your account and cannot be undone. Type <strong>{phrase}</strong> to confirm.</p>
-            <input value={value} onChange={(event) => setValue(event.target.value)} autoComplete="off" className="mt-3 h-12 w-full rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] px-4 text-[14px] outline-none focus:border-[#b42331]" />
+            <p className="mt-5 text-[13px] text-[#64748b]">Type <strong className="text-[#050505]">{phrase}</strong> to confirm.</p>
+            <input
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              autoComplete="off"
+              className="mt-3 h-12 w-full rounded-[12px] border-2 border-[rgba(5,5,5,0.18)] px-4 text-[14px] outline-none focus:border-[#b42331]"
+            />
           </>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-5 text-[13px] font-semibold">Cancel</button>
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>Cancel</button>
           {!requiresBillingStop && (
             <button
               type="button"
@@ -229,8 +321,9 @@ function DeleteAccountModal({
                   setWorking(false);
                 }
               }}
-              className="min-h-10 rounded-full border-0 bg-[#b42331] px-5 text-[13px] font-semibold text-white disabled:opacity-35"
+              className={`${secondaryButtonClass} text-[#b42331]`}
             >
+              <TrashIcon />
               {working ? "Deleting…" : "Delete account"}
             </button>
           )}
@@ -303,6 +396,20 @@ export function AccountMembershipPanel({
     : null;
   const managedMembership = shell.summary.gdgMember || shell.summary.accountStatus === "leader";
   const membershipStatus = shell.membershipActive ? "Active" : "Inactive";
+  const membershipBadge = managedMembership
+    ? "Managed"
+    : shell.summary.billingCancelled
+      ? "Billing stopped"
+      : daysLeft !== null
+        ? `${daysLeft} Days Left`
+        : membershipStatus;
+  const membershipNote = managedMembership
+    ? "Leader / GDG membership is managed separately and does not need recurring billing controls."
+    : !shell.summary.hasActiveSubscription
+      ? "No active paid membership. You can start membership whenever you’re ready."
+      : shell.summary.billingCancelled
+        ? "Next billing is stopped. Your current access stays active until the paid period ends; you can reactivate billing or cancel now and request a refund from Manage membership."
+        : "Your membership renews automatically. Manage membership lets you stop the next billing or cancel now and request a refund.";
 
   const handleIdentity = async (provider: string) => {
     if (provider !== "kakao" || identities.some((item) => item.provider === "kakao")) return;
@@ -332,7 +439,7 @@ export function AccountMembershipPanel({
       if (!(result as any)?.success) throw new Error((result as any)?.message || "Billing stop failed");
       await supabase.from("users").update({ billing_cancelled: true }).eq("uid", shell.currentUser!.uid);
       await shell.refresh();
-      shell.setNotice((result as any)?.message || "Next billing has been stopped.");
+      shell.setNotice((result as any)?.message || "Next billing has been stopped. Your membership remains active for the current paid period.");
     } catch (stopError) {
       console.error("Stop billing failed:", stopError);
       shell.setError("다음 결제를 중단하지 못했습니다. 잠시 후 다시 시도해주세요.");
@@ -358,6 +465,7 @@ export function AccountMembershipPanel({
         .update({
           has_active_subscription: false,
           subscription_end_date: new Date().toISOString(),
+          billing_cancelled: false,
         })
         .eq("uid", shell.currentUser!.uid);
       await shell.refresh();
@@ -390,10 +498,6 @@ export function AccountMembershipPanel({
       router.push("/payment");
       return;
     }
-    if (shell.summary.billingCancelled) {
-      void reactivateBilling();
-      return;
-    }
     setManageOpen(true);
   };
 
@@ -410,30 +514,40 @@ export function AccountMembershipPanel({
     }
   };
 
+  const loginMethods = [
+    { provider: "kakao", label: "Kakao", icon: ChatBubbleLeftRightIcon },
+    { provider: "phone", label: "Phone", icon: PhoneIcon },
+    { provider: "email", label: "Email", icon: EnvelopeIcon },
+  ] as const;
+
   return (
     <>
       <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
         <div className="flex items-start gap-3">
           {mobile && onBack && (
-            <button type="button" onClick={onBack} className="mt-[-3px] border-0 bg-transparent p-0 text-[28px] leading-none text-[#050505]" aria-label="Back to profile">
-              ‹
+            <button type="button" onClick={onBack} className="mt-[-2px] inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border-2 border-[#050505] bg-white" aria-label="Back to profile">
+              <ArrowLeftIcon className="h-5 w-5" />
             </button>
           )}
           <div className="min-w-0">
             <h1 className="m-0">Account & Membership</h1>
-            <p className="mt-1.5 text-[13px] text-[#6c757d]">Login, membership, credits and account actions.</p>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">Login, membership, participation credits and account actions.</p>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4">
+        <div className="mt-6 grid gap-5">
           <Card>
-            <h2 className="mb-1 mt-0">Login Methods</h2>
-            {(["kakao", "email"] as const).map((provider) => {
-              const connected = identities.some((identity) => identity.provider === provider) || (provider === "email" && Boolean(shell.currentUser?.email));
+            <h2 className="mb-2 mt-0">Login Methods</h2>
+            {loginMethods.map(({ provider, label, icon }) => {
+              const connected =
+                identities.some((identity) => identity.provider === provider) ||
+                (provider === "email" && Boolean(shell.currentUser?.email)) ||
+                (provider === "phone" && Boolean(shell.currentUser?.phoneNumber));
               return (
                 <Row
                   key={provider}
-                  label={provider === "kakao" ? "Kakao" : "Email"}
+                  icon={icon}
+                  label={label}
                   value={connected ? "Connected" : linkingIdentity && provider === "kakao" ? "Connecting…" : "Not connected"}
                   onClick={provider === "kakao" && !connected ? () => void handleIdentity("kakao") : undefined}
                 />
@@ -442,18 +556,24 @@ export function AccountMembershipPanel({
           </Card>
 
           <Card>
-            <div className="mb-1 flex items-center justify-between gap-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
               <h2 className="m-0">Membership</h2>
-              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">
-                {managedMembership ? "Managed" : daysLeft !== null ? `${daysLeft} Days Left` : membershipStatus}
+              <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">
+                {membershipBadge}
               </span>
             </div>
-            <Row label="Member status" value={membershipStatus} />
-            <Row label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
-            <Row label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
+            <Row icon={CheckCircleIcon} label="Member status" value={membershipStatus} />
+            <Row icon={CreditCardIcon} label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
+            <Row icon={CreditCardIcon} label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
+
+            <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
+              {membershipNote}
+            </div>
+
             {!managedMembership && (
-              <button type="button" onClick={manageMembership} className="mt-3 min-h-10 rounded-full border-0 bg-[#050505] px-4 text-[13px] font-semibold text-white">
-                {!shell.summary.hasActiveSubscription ? "Start membership" : shell.summary.billingCancelled ? "Reactivate billing" : "Manage membership"}
+              <button type="button" onClick={manageMembership} className={`${primaryButtonClass} mt-4`}>
+                <CreditCardIcon />
+                {!shell.summary.hasActiveSubscription ? "Start membership" : "Manage membership"}
               </button>
             )}
           </Card>
@@ -461,36 +581,46 @@ export function AccountMembershipPanel({
           <Card>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="m-0">Participation Credits</h2>
-              <span className="shrink-0 rounded-full bg-[#f47a4a] px-3 py-1.5 text-[11px] font-extrabold leading-none text-[#050505]">{shell.creditBalance} Credits Left</span>
+              <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">{shell.creditBalance} Credits Left</span>
             </div>
             {loadingHistory ? (
-              <p className="text-[13px] text-[#6c757d]">Loading credit history…</p>
+              <p className="text-[13px] text-[#64748b]">Loading credit history…</p>
             ) : history.length ? (
-              history.slice(0, 3).map((entry) => (
+              history.map((entry) => (
                 <Row
                   key={entry.id}
+                  icon={TicketIcon}
                   label={`${entry.amount > 0 ? `+${entry.amount}` : entry.amount} · ${historyLabel(entry)}`}
                   value={new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { month: "short", day: "numeric" }).format(new Date(entry.created_at))}
                 />
               ))
             ) : (
-              <p className="py-2 text-[13px] text-[#6c757d]">No participation-credit history yet.</p>
+              <p className="py-2 text-[13px] text-[#64748b]">No participation-credit history yet.</p>
             )}
-            <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className="mt-3 min-h-10 rounded-full border-0 bg-[#050505] px-4 text-[13px] font-semibold text-white">Buy 5-credit pack</button>
+            <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className={`${primaryButtonClass} mt-4`}>
+              <TicketIcon />
+              Buy 5-credit pack
+            </button>
           </Card>
 
           <Card>
             <h2 className="m-0">Account Actions</h2>
-            <p className="mb-4 mt-1 text-[12px] font-semibold text-[#b42331]">Danger Zone</p>
+            <p className="mb-4 mt-1 text-[12px] font-bold text-[#b42331]">Danger Zone</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={async () => { await logout(); router.push("/"); }} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-4 text-[13px] font-semibold text-[#050505]">Log out</button>
-              <button type="button" onClick={() => setDeleteOpen(true)} className="min-h-10 rounded-full border-[1.5px] border-[rgba(5,5,5,0.14)] bg-white px-4 text-[13px] font-semibold text-[#b42331]">Delete Account</button>
+              <button type="button" onClick={async () => { await logout(); router.push("/"); }} className={secondaryButtonClass}>
+                <ArrowRightOnRectangleIcon />
+                Log out
+              </button>
+              <button type="button" onClick={() => setDeleteOpen(true)} className={`${secondaryButtonClass} text-[#b42331]`}>
+                <TrashIcon />
+                Delete Account
+              </button>
             </div>
           </Card>
         </div>
 
         {(shell.notice || shell.error) && mobile && (
-          <div className={`mt-4 rounded-[14px] border-[1.5px] border-[rgba(5,5,5,0.14)] px-4 py-3 text-[13px] font-semibold ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-white text-[#050505]"}`}>
+          <div className={`mt-5 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] font-bold shadow-[2px_2px_0_rgba(5,5,5,0.92)] ${shell.error ? "bg-[#fff1f2] text-[#b42331]" : "bg-[#fff8dc] text-[#050505]"}`}>
             {shell.error || shell.notice}
           </div>
         )}
@@ -499,9 +629,11 @@ export function AccountMembershipPanel({
       {manageOpen && (
         <ManageMembershipModal
           status={membershipStatus}
-          nextBilling={dateLabel(nextBilling, locale)}
+          nextBilling={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)}
+          billingCancelled={shell.summary.billingCancelled}
           onClose={() => setManageOpen(false)}
           onStop={() => { setManageOpen(false); setSurvey("stop"); }}
+          onReactivate={() => { setManageOpen(false); void reactivateBilling(); }}
           onRefund={() => { setManageOpen(false); setSurvey("refund"); }}
         />
       )}
