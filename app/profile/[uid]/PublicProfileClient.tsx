@@ -21,6 +21,13 @@ interface PublicProfile {
   school?: string;
   location?: string;
   interests?: string;
+  profileDetails?: {
+    nationality?: string;
+    languages?: string[];
+    englishLevel?: string;
+    discussionTopics?: string[];
+    meetupPreferences?: string;
+  };
   badges: {
     gdgMember: boolean;
     activeMember: boolean;
@@ -131,7 +138,6 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           share: "프로필 공유",
           copied: "프로필 링크를 복사했어요.",
           shareFailed: "프로필을 공유하지 못했습니다.",
-          connectionCount: "연결",
           detailsRicher: "연결하면 더 많은 프로필 정보가 보여요",
           defaultTagline: "1 Cup에서 좋은 대화를 나누고 싶은 멤버입니다.",
           conversationFuel: "대화 시작점",
@@ -154,8 +160,8 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           aboutTitle: "이력서가 아니라, 알아볼 만큼만.",
           work: "직장",
           education: "학교",
-          location: "활동 지역",
-          noDetails: "연결 후 직장, 학교, 지역 등 프로필 상세 정보가 표시됩니다.",
+          languagePlace: "언어 · 활동 지역",
+          noDetails: "연결 후 직장, 학교, 언어, 지역 등 프로필 상세 정보가 표시됩니다.",
           ownerContext: "내 공개 프로필",
         }
       : {
@@ -170,7 +176,6 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           share: "Share profile",
           copied: "Profile link copied.",
           shareFailed: "Could not share this profile.",
-          connectionCount: "connections",
           detailsRicher: "details become richer once you connect",
           defaultTagline: "A 1 Cup member who is here for thoughtful conversations.",
           conversationFuel: "CONVERSATION FUEL",
@@ -197,9 +202,9 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           aboutTitle: "Enough to recognize the person — not a résumé.",
           work: "WORK",
           education: "EDUCATION",
-          location: "BASED IN",
+          languagePlace: "LANGUAGE & PLACE",
           noDetails:
-            "Work, education, and location context appears after you connect.",
+            "Work, education, language, and location context appears after you connect.",
           ownerContext: "Your public profile",
         };
 
@@ -241,7 +246,20 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
   }
 
   const isOwner = currentUser?.uid === profile.uid;
-  const interestChips = toChips(profile.interests).slice(0, 5);
+  const structuredTopics = profile.profileDetails?.discussionTopics || [];
+  const interestChips = (
+    structuredTopics.length > 0 ? structuredTopics : toChips(profile.interests)
+  ).slice(0, 5);
+  const languages = profile.profileDetails?.languages || [];
+  const englishLevel = profile.profileDetails?.englishLevel?.trim() || "";
+  const languageSummary = languages
+    .map((language) =>
+      language === "English" && englishLevel
+        ? `${language} (${englishLevel})`
+        : language,
+    )
+    .join(" · ");
+  const nationality = profile.profileDetails?.nationality?.trim() || "";
   const memberSince = profile.memberSince ? new Date(profile.memberSince) : null;
   const memberSinceLabel = memberSince
     ? memberSince.toLocaleDateString(locale === "ko" ? "ko-KR" : "en-US", {
@@ -257,7 +275,9 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
   const heroMeta = profile.detailsVisible
     ? [profile.work, profile.school, profile.location].filter(Boolean)
     : [];
-  const hasAbout = Boolean(profile.work || profile.school || profile.location);
+  const hasAbout = Boolean(
+    profile.work || profile.school || profile.location || languageSummary,
+  );
   const averageScore =
     profile.stats.averageSpeakingScore != null
       ? profile.stats.averageSpeakingScore.toFixed(1)
@@ -330,6 +350,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           profile.work ? `${profile.work}에서 일하고 있습니다` : "",
           profile.school ? `${profile.school}에서 공부했습니다` : "",
           profile.location ? `${profile.location}을 기반으로 활동합니다` : "",
+          languageSummary ? `${languageSummary}로 대화할 수 있습니다` : "",
         ]
           .filter(Boolean)
           .join(". ") + (hasAbout ? "." : "")
@@ -337,6 +358,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           profile.work ? `Works at ${profile.work}` : "",
           profile.school ? `Studied at ${profile.school}` : "",
           profile.location ? `Based in ${profile.location}` : "",
+          languageSummary ? `Speaks ${languageSummary}` : "",
         ]
           .filter(Boolean)
           .join(". ") + (hasAbout ? "." : "")
@@ -391,6 +413,12 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           )}
 
           <div className="mt-4 hidden flex-wrap gap-2 md:flex">
+            {profile.detailsVisible && nationality && (
+              <Pill tone="muted">{nationality.toUpperCase()}</Pill>
+            )}
+            {profile.detailsVisible && languageSummary && (
+              <Pill tone="muted">{languageSummary.toUpperCase()}</Pill>
+            )}
             {memberSinceYear && (
               <Pill tone="muted">
                 {locale === "ko"
@@ -422,7 +450,9 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
           <div className="mt-3 hidden text-[0.74rem] text-[#64748b] md:block">
             {isOwner
               ? copy.ownerContext
-              : `${profile.connection.isMutual ? "1" : ""}${profile.connection.isMutual ? " mutual · " : ""}${copy.detailsRicher}`}
+              : profile.connection.isMutual
+                ? copy.connected
+                : copy.detailsRicher}
           </div>
         </div>
       </section>
@@ -560,13 +590,13 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
                 </div>
               </div>
             )}
-            {profile.location && (
+            {(languageSummary || profile.location) && (
               <div className="rounded-[16px] bg-[#e0f5e5] px-4 py-3.5">
                 <div className="text-[0.62rem] font-[900] text-[#64748b]">
-                  {copy.location}
+                  {copy.languagePlace}
                 </div>
                 <div className="mt-1 text-[0.84rem] font-[800]">
-                  {profile.location}
+                  {[languageSummary, profile.location].filter(Boolean).join(" · ")}
                 </div>
               </div>
             )}
