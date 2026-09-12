@@ -21,6 +21,7 @@
 
   /* 01 — compact member identity card */
   .root > main > section:nth-of-type(1) {
+    position: relative;
     order: 1;
     min-height: 122px;
     padding: 16px;
@@ -50,18 +51,36 @@
     font-size: 11px;
   }
 
+  /* Reuse the existing completion text as the PC-style badge on the avatar ring. */
   .root > main > section:nth-of-type(1) button {
-    max-width: 92px;
-    margin-top: 10px;
-    gap: 5px;
+    position: absolute;
+    z-index: 3;
+    top: 84px;
+    left: 31px;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    gap: 0;
+    cursor: pointer;
   }
 
   .root > main > section:nth-of-type(1) button > span:first-child {
-    height: 6px;
+    display: none;
   }
 
   .root > main > section:nth-of-type(1) button > span:last-child {
-    font-size: 11px;
+    display: inline-flex;
+    min-width: 42px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #050505;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
   }
 
   /* Move referral before the section switcher; metrics visually live inside the identity card. */
@@ -92,9 +111,9 @@
     z-index: 2;
     top: 62px;
     right: 23px;
-    width: 116px;
-    min-height: 63px;
-    padding: 7px 8px 5px;
+    width: 120px;
+    min-height: 70px;
+    padding: 6px 7px 4px;
     gap: 2px;
     border: 1px solid #e6e6e6;
     border-radius: 16px;
@@ -102,21 +121,32 @@
   }
 
   .root > main > section:nth-of-type(2) > div > div {
-    gap: 1px;
+    gap: 2px;
   }
 
   .root > main > section:nth-of-type(2) > div > div > div:first-child {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     padding: 4px;
   }
 
+  .root > main > section:nth-of-type(2) > div > div > div:first-child > div {
+    align-items: center;
+    justify-content: center;
+  }
+
   .root > main > section:nth-of-type(2) > div > div > div:first-child strong {
-    font-size: 17px;
+    font-size: 21px;
+    line-height: 1;
+  }
+
+  .root > main > section:nth-of-type(2) > div > div > div:first-child span {
+    display: none;
   }
 
   .root > main > section:nth-of-type(2) > div > div > span {
-    font-size: 8px;
+    font-size: 9px;
+    line-height: 1.1;
   }
 
   /* Mobile replacement for the desktop sidebar. */
