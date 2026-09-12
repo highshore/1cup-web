@@ -451,6 +451,17 @@ export function DesktopProfileShell({
     : data.summary.hasActiveSubscription
       ? Math.min(1, subscriptionDays / 30)
       : 0;
+  const subscriptionValue = data.summary.accountStatus === "leader" || !data.summary.hasActiveSubscription
+    ? "—"
+    : subscriptionDays;
+  const subscriptionUnit = data.summary.accountStatus === "leader"
+    ? t.profile.managed
+    : data.summary.hasActiveSubscription
+      ? t.profile.daysLeft
+      : t.profile.inactive;
+  const subscriptionRemaining = data.summary.accountStatus === "leader" || !data.summary.hasActiveSubscription
+    ? 99
+    : subscriptionDays;
   const creditRatio = Math.min(1, Math.max(0, data.creditBalance) / 5);
 
   return (
@@ -518,10 +529,10 @@ export function DesktopProfileShell({
             <p className="mb-3 text-[12px] font-semibold text-[#64748b]">{t.profile.membershipBalance}</p>
             <div className="flex items-start justify-between gap-3">
               <MetricRing
-                value={data.summary.accountStatus === "leader" ? "—" : subscriptionDays}
-                unit={data.summary.accountStatus === "leader" ? t.profile.managed : t.profile.daysLeft}
+                value={subscriptionValue}
+                unit={subscriptionUnit}
                 label={t.profile.subscription}
-                remaining={data.summary.accountStatus === "leader" ? 99 : subscriptionDays}
+                remaining={subscriptionRemaining}
                 ratio={subscriptionRatio}
               />
               <MetricRing
