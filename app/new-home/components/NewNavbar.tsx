@@ -128,6 +128,7 @@ const NewNavbar: React.FC = () => {
                 : "text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]"
             }`}
             onClick={toggleLanguage}
+            aria-label={locale === "en" ? "Switch language" : "언어 변경"}
           >
             <img
               className={`w-[22px] h-[22px] rounded-full object-cover border max-[520px]:w-7 max-[520px]:h-7 ${
@@ -137,6 +138,30 @@ const NewNavbar: React.FC = () => {
               alt={locale}
             />
           </button>
+
+          {!isLoggedIn && (
+            <button
+              type="button"
+              onClick={handleJoin}
+              aria-label={locale === "en" ? "Sign in or join" : "로그인 또는 가입"}
+              className={`hidden box-border w-[var(--nav-action-size)] h-[var(--nav-action-size)] min-h-[var(--nav-action-size)] flex-[0_0_var(--nav-action-size)] items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer max-[920px]:inline-flex ${
+                isTransparent
+                  ? "hover:bg-[rgba(255,255,255,0.14)]"
+                  : "hover:bg-[#f8fafc]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-[15px] font-extrabold leading-none max-[520px]:h-9 max-[520px]:w-9 ${
+                  isTransparent
+                    ? "border-[rgba(255,255,255,0.68)] bg-[rgba(255,255,255,0.14)] text-white"
+                    : "border-[#cbd5e1] bg-[#f1f5f9] text-[#475569]"
+                }`}
+              >
+                ?
+              </span>
+            </button>
+          )}
 
           {isLoggedIn ? (
             // The profile photo is the single desktop account affordance. Notifications,
@@ -156,7 +181,6 @@ const NewNavbar: React.FC = () => {
               {t.nav.join}
             </button>
           )}
-
         </div>
 
         {isMobileMenuOpen && (
