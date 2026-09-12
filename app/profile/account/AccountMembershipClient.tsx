@@ -39,19 +39,35 @@ interface CreditHistoryItem {
   meetups?: { title?: string | null; date_time?: string | null } | null;
 }
 
-const cancellationReasons = [
-  "모임 시간이 저와 맞지 않았어요",
-  "모임 장소가 불편했어요",
-  "기대했던 만큼의 가치를 느끼지 못했어요",
-  "좀 더 체계적인 학습을 원했어요",
-  "혼자 공부하는 걸 더 선호해요",
-  "개인 사정으로 참여가 어려워졌어요",
-  "단기 목표를 달성했어요",
-  "가격이 지속적으로 부담되었어요",
-  "모임 분위기나 멤버 구성과 잘 맞지 않았어요",
-];
+const cancellationReasons = {
+  en: [
+    "The meetup times didn’t work for me",
+    "The meetup location was inconvenient",
+    "I didn’t get as much value as I expected",
+    "I want a more structured learning program",
+    "I prefer studying on my own",
+    "Personal circumstances make it hard to attend",
+    "I achieved my short-term goal",
+    "The price became difficult to maintain",
+    "The meetup atmosphere or member mix wasn’t a good fit",
+  ],
+  ko: [
+    "모임 시간이 저와 맞지 않았어요",
+    "모임 장소가 불편했어요",
+    "기대했던 만큼의 가치를 느끼지 못했어요",
+    "좀 더 체계적인 학습을 원했어요",
+    "혼자 공부하는 걸 더 선호해요",
+    "개인 사정으로 참여가 어려워졌어요",
+    "단기 목표를 달성했어요",
+    "가격이 지속적으로 부담되었어요",
+    "모임 분위기나 멤버 구성과 잘 맞지 않았어요",
+  ],
+};
 
-const refundReasons = ["결제 후 마음이 바뀌었어요 (단순 변심)", ...cancellationReasons];
+const refundLeadReason = {
+  en: "I changed my mind after payment",
+  ko: "결제 후 마음이 바뀌었어요 (단순 변심)",
+};
 
 const primaryButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-[#050505] bg-[#050505] px-4 text-[13px] font-extrabold text-white shadow-[3px_3px_0_#f47a4a] transition-[transform,box-shadow] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#f47a4a] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4";
@@ -62,10 +78,18 @@ const secondaryButtonClass =
 const modalClass =
   "w-full max-w-[540px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[640px]:rounded-[18px] min-[640px]:p-6";
 
+function interpolate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
+
 function nextBillingDate(startDate: Date | null, billingCancelled: boolean) {
   if (!startDate || billingCancelled) return null;
   const next = new Date(startDate);
   next.setMonth(next.getMonth() + 1);
+  while (next.getTime() <= Date.now()) next.setMonth(next.getMonth() + 1);
   return next;
 }
 
@@ -76,15 +100,6 @@ function dateLabel(date: Date | null, locale: string) {
     month: "short",
     day: "numeric",
   }).format(date);
-}
-
-function historyLabel(entry: CreditHistoryItem) {
-  const meetupTitle = entry.meetups?.title || "Sunday meetup";
-  if (entry.type === "purchase") return "Credit pack purchase";
-  if (entry.type === "registration") return meetupTitle;
-  if (entry.type === "registration_refund") return "Meetup cancellation";
-  if (entry.type === "payment_refund") return "Credit pack refund";
-  return "Credit adjustment";
 }
 
 function Card({ children }: { children: React.ReactNode }) {
@@ -123,12 +138,13 @@ function Row({
 }
 
 function ModalClose({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
       onClick={onClick}
       className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#050505] bg-white text-[#050505] hover:bg-[#fff8dc] [&_svg]:h-5 [&_svg]:w-5"
-      aria-label="Close"
+      aria-label={t.profile.close}
     >
       <XMarkIcon />
     </button>
@@ -150,6 +166,7 @@ function SurveyModal({
   onClose: () => void;
   onSubmit: (reasons: string[], other: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<string[]>([]);
   const [other, setOther] = useState("");
   const [saving, setSaving] = useState(false);
@@ -161,7 +178,7 @@ function SurveyModal({
           <h2 className="m-0">{title}</h2>
           <ModalClose onClick={onClose} />
         </div>
-        <p className="mt-2 text-[13px] text-[#64748b]">Tell us what influenced your decision. You can select more than one.</p>
+        <p className="mt-2 text-[13px] text-[#64748b]">{t.profile.surveyPrompt}</p>
         <div className="mt-5 grid gap-2">
           {reasons.map((reason) => {
             const active = selected.includes(reason);
@@ -181,11 +198,11 @@ function SurveyModal({
         <textarea
           value={other}
           onChange={(event) => setOther(event.target.value)}
-          placeholder="Anything else?"
+          placeholder={t.profile.anythingElse}
           className="mt-4 min-h-[96px] w-full rounded-[12px] border-2 border-[rgba(5,5,5,0.18)] p-3 text-[13px] outline-none focus:border-[#050505] focus:shadow-[2px_2px_0_#f47a4a]"
         />
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className={secondaryButtonClass}>Cancel</button>
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>{t.profile.cancel}</button>
           <button
             type="button"
             disabled={saving || (selected.length === 0 && !other.trim())}
@@ -200,7 +217,7 @@ function SurveyModal({
             }}
             className={danger ? `${secondaryButtonClass} text-[#b42331]` : primaryButtonClass}
           >
-            {saving ? "Working…" : submitLabel}
+            {saving ? t.profile.working : submitLabel}
           </button>
         </div>
       </div>
@@ -225,13 +242,14 @@ function ManageMembershipModal({
   onReactivate: () => void;
   onRefund: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="fixed inset-0 z-[1250] flex items-end justify-center bg-black/45 min-[640px]:items-center min-[640px]:p-5" onMouseDown={onClose}>
       <div className={`${modalClass} rounded-t-[18px] bg-[#fffdf8]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="m-0">Manage membership</h2>
-            <p className="mt-1.5 text-[13px] text-[#64748b]">Current status: {status} · Next billing: {nextBilling}</p>
+            <h2 className="m-0">{t.profile.manageMembership}</h2>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">{interpolate(t.profile.currentStatus, { status, date: nextBilling })}</p>
           </div>
           <ModalClose onClick={onClose} />
         </div>
@@ -240,17 +258,17 @@ function ManageMembershipModal({
           <button type="button" onClick={onReactivate} className="mt-6 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-4 text-left shadow-[3px_3px_0_#f47a4a]">
             <ArrowPathIcon className="mt-0.5 h-5 w-5 flex-none" />
             <span>
-              <strong className="block text-[16px] font-extrabold text-[#050505]">Reactivate recurring billing</strong>
-              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">Resume automatic renewal for the next billing cycle.</span>
+              <strong className="block text-[16px] font-extrabold text-[#050505]">{t.profile.reactivateBilling}</strong>
+              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">{t.profile.reactivateHelp}</span>
             </span>
           </button>
         ) : (
           <button type="button" onClick={onStop} className="mt-6 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-[#fff8dc] p-4 text-left shadow-[3px_3px_0_#f47a4a]">
             <StopCircleIcon className="mt-0.5 h-5 w-5 flex-none" />
             <span>
-              <strong className="block text-[16px] font-extrabold text-[#050505]">Stop next billing</strong>
-              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">Keep access until the end of your current paid period. Your billing key is preserved so you can reactivate later.</span>
-              <span className="mt-3 inline-flex rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold text-[#050505]">Recommended</span>
+              <strong className="block text-[16px] font-extrabold text-[#050505]">{t.profile.stopNextBilling}</strong>
+              <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">{t.profile.stopBillingHelp}</span>
+              <span className="mt-3 inline-flex rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold text-[#050505]">{t.profile.recommended}</span>
             </span>
           </button>
         )}
@@ -258,8 +276,8 @@ function ManageMembershipModal({
         <button type="button" onClick={onRefund} className="mt-3 flex w-full items-start gap-3 rounded-[14px] border-2 border-[#050505] bg-white p-4 text-left transition-colors hover:bg-[#fff1f2]">
           <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-none text-[#b42331]" />
           <span>
-            <strong className="block text-[16px] font-extrabold text-[#b42331]">Cancel now & request refund</strong>
-            <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">End the membership immediately and submit the existing refund flow. Refund eligibility depends on usage period.</span>
+            <strong className="block text-[16px] font-extrabold text-[#b42331]">{t.profile.cancelRefund}</strong>
+            <span className="mt-1.5 block text-[13px] leading-[1.5] text-[#64748b]">{t.profile.cancelRefundHelp}</span>
           </span>
         </button>
       </div>
@@ -278,6 +296,7 @@ function DeleteAccountModal({
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [working, setWorking] = useState(false);
 
@@ -286,19 +305,19 @@ function DeleteAccountModal({
       <div className={`${modalClass} rounded-[18px]`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="m-0 text-[#b42331]!">Delete account</h2>
-            <p className="mt-1.5 text-[13px] text-[#64748b]">This action permanently removes your account.</p>
+            <h2 className="m-0 text-[#b42331]!">{t.profile.deleteAccountTitle}</h2>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.deleteAccountLead}</p>
           </div>
           <ModalClose onClick={onClose} />
         </div>
         {requiresBillingStop ? (
           <div className="mt-5 flex gap-3 rounded-[12px] border-2 border-[#050505] bg-[#fff8dc] p-4">
             <ExclamationTriangleIcon className="h-5 w-5 flex-none" />
-            <p className="m-0 text-[13px] text-[#050505]">Stop your active billing first. This prevents deleting an account that still has an active recurring payment.</p>
+            <p className="m-0 text-[13px] text-[#050505]">{t.profile.stopBillingBeforeDelete}</p>
           </div>
         ) : (
           <>
-            <p className="mt-5 text-[13px] text-[#64748b]">Type <strong className="text-[#050505]">{phrase}</strong> to confirm.</p>
+            <p className="mt-5 text-[13px] text-[#64748b]">{interpolate(t.profile.typeToConfirm, { phrase })}</p>
             <input
               value={value}
               onChange={(event) => setValue(event.target.value)}
@@ -308,7 +327,7 @@ function DeleteAccountModal({
           </>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className={secondaryButtonClass}>Cancel</button>
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>{t.profile.cancel}</button>
           {!requiresBillingStop && (
             <button
               type="button"
@@ -324,7 +343,7 @@ function DeleteAccountModal({
               className={`${secondaryButtonClass} text-[#b42331]`}
             >
               <TrashIcon />
-              {working ? "Deleting…" : "Delete account"}
+              {working ? t.profile.deleting : t.profile.deleteAccountTitle}
             </button>
           )}
         </div>
@@ -394,22 +413,36 @@ export function AccountMembershipPanel({
   const daysLeft = nextBilling
     ? Math.max(0, Math.ceil((nextBilling.getTime() - Date.now()) / 86400000))
     : null;
-  const managedMembership = shell.summary.gdgMember || shell.summary.accountStatus === "leader";
-  const membershipStatus = shell.membershipActive ? "Active" : "Inactive";
+
+  // Only leaders have a separately managed membership. Admins use normal paid membership and credit controls.
+  const managedMembership = shell.summary.accountStatus === "leader";
+  const membershipStatus = shell.membershipActive ? t.profile.active : t.profile.inactive;
   const membershipBadge = managedMembership
-    ? "Managed"
+    ? t.profile.managed
     : shell.summary.billingCancelled
-      ? "Billing stopped"
+      ? t.profile.billingStopped
       : daysLeft !== null
-        ? `${daysLeft} Days Left`
+        ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
         : membershipStatus;
   const membershipNote = managedMembership
-    ? "Leader / GDG membership is managed separately and does not need recurring billing controls."
+    ? t.profile.leaderManagedNote
     : !shell.summary.hasActiveSubscription
-      ? "No active paid membership. You can start membership whenever you’re ready."
+      ? t.profile.noPaidMembership
       : shell.summary.billingCancelled
-        ? "Next billing is stopped. Your current access stays active until the paid period ends; you can reactivate billing or cancel now and request a refund from Manage membership."
-        : "Your membership renews automatically. Manage membership lets you stop the next billing or cancel now and request a refund.";
+        ? t.profile.billingStoppedNote
+        : t.profile.autoRenewNote;
+
+  const reasons = cancellationReasons[locale];
+  const refundReasons = [refundLeadReason[locale], ...reasons];
+
+  const historyLabel = (entry: CreditHistoryItem) => {
+    const meetupTitle = entry.meetups?.title || t.profile.sundayMeetup;
+    if (entry.type === "purchase") return t.profile.creditPackPurchase;
+    if (entry.type === "registration") return meetupTitle;
+    if (entry.type === "registration_refund") return t.profile.meetupCancellation;
+    if (entry.type === "payment_refund") return t.profile.creditPackRefund;
+    return t.profile.creditAdjustment;
+  };
 
   const handleIdentity = async (provider: string) => {
     if (provider !== "kakao" || identities.some((item) => item.provider === "kakao")) return;
@@ -423,15 +456,15 @@ export function AccountMembershipPanel({
       if (error) throw error;
     } catch (linkError) {
       console.error("Identity linking failed:", linkError);
-      shell.setError("카카오 계정 연결에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      shell.setError(locale === "ko" ? "카카오 계정 연결에 실패했습니다. 잠시 후 다시 시도해주세요." : "We couldn’t connect your Kakao account. Please try again shortly.");
       setLinkingIdentity(false);
     }
   };
 
-  const stopBilling = async (reasons: string[], other: string) => {
+  const stopBilling = async (selectedReasons: string[], other: string) => {
     shell.setError(null);
     try {
-      await saveFeedback("cancellation", reasons, other);
+      await saveFeedback("cancellation", selectedReasons, other);
       const result = await invokeFunction("payment", {
         action: "stop",
         reason: "User requested stop billing",
@@ -439,21 +472,21 @@ export function AccountMembershipPanel({
       if (!(result as any)?.success) throw new Error((result as any)?.message || "Billing stop failed");
       await supabase.from("users").update({ billing_cancelled: true }).eq("uid", shell.currentUser!.uid);
       await shell.refresh();
-      shell.setNotice((result as any)?.message || "Next billing has been stopped. Your membership remains active for the current paid period.");
+      shell.setNotice((result as any)?.message || t.profile.stopBillingSuccess);
     } catch (stopError) {
       console.error("Stop billing failed:", stopError);
-      shell.setError("다음 결제를 중단하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      shell.setError(t.profile.stopBillingFailed);
       throw stopError;
     }
   };
 
-  const cancelAndRefund = async (reasons: string[], other: string) => {
+  const cancelAndRefund = async (selectedReasons: string[], other: string) => {
     if (!shell.summary.billingKey) {
-      shell.setError("구독 정보를 찾을 수 없습니다.");
+      shell.setError(t.profile.missingSubscription);
       throw new Error("Missing billing key");
     }
     try {
-      await saveFeedback("refund", reasons, other);
+      await saveFeedback("refund", selectedReasons, other);
       const result = await invokeFunction("payment", {
         action: "cancel",
         userId: shell.currentUser!.uid,
@@ -469,10 +502,10 @@ export function AccountMembershipPanel({
         })
         .eq("uid", shell.currentUser!.uid);
       await shell.refresh();
-      shell.setNotice("Membership was canceled and the refund request was submitted.");
+      shell.setNotice(t.profile.refundSuccess);
     } catch (refundError) {
       console.error("Cancel/refund failed:", refundError);
-      shell.setError("구독 해지 또는 환불 처리에 실패했습니다. 고객 서비스에 문의해주세요.");
+      shell.setError(t.profile.refundFailed);
       throw refundError;
     }
   };
@@ -485,10 +518,10 @@ export function AccountMembershipPanel({
         .eq("uid", shell.currentUser!.uid);
       if (error) throw error;
       await shell.refresh();
-      shell.setNotice("Recurring billing has been reactivated.");
+      shell.setNotice(t.profile.reactivateSuccess);
     } catch (reactivateError) {
       console.error("Billing reactivation failed:", reactivateError);
-      shell.setError("결제 재활성화에 실패했습니다.");
+      shell.setError(t.profile.reactivateFailed);
     }
   };
 
@@ -516,8 +549,8 @@ export function AccountMembershipPanel({
 
   const loginMethods = [
     { provider: "kakao", label: "Kakao", icon: ChatBubbleLeftRightIcon },
-    { provider: "phone", label: "Phone", icon: PhoneIcon },
-    { provider: "email", label: "Email", icon: EnvelopeIcon },
+    { provider: "phone", label: locale === "ko" ? "휴대폰" : "Phone", icon: PhoneIcon },
+    { provider: "email", label: locale === "ko" ? "이메일" : "Email", icon: EnvelopeIcon },
   ] as const;
 
   return (
@@ -525,19 +558,19 @@ export function AccountMembershipPanel({
       <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
         <div className="flex items-start gap-3">
           {mobile && onBack && (
-            <button type="button" onClick={onBack} className="mt-[-2px] inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border-2 border-[#050505] bg-white" aria-label="Back to profile">
+            <button type="button" onClick={onBack} className="mt-[-2px] inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border-2 border-[#050505] bg-white" aria-label={t.profile.backToProfile}>
               <ArrowLeftIcon className="h-5 w-5" />
             </button>
           )}
           <div className="min-w-0">
-            <h1 className="m-0">Account & Membership</h1>
-            <p className="mt-1.5 text-[13px] text-[#64748b]">Login, membership, participation credits and account actions.</p>
+            <h1 className="m-0">{t.profile.accountMembership}</h1>
+            <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.accountHelp}</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5">
           <Card>
-            <h2 className="mb-2 mt-0">Login Methods</h2>
+            <h2 className="mb-2 mt-0">{t.profile.loginMethods}</h2>
             {loginMethods.map(({ provider, label, icon }) => {
               const connected =
                 identities.some((identity) => identity.provider === provider) ||
@@ -548,7 +581,7 @@ export function AccountMembershipPanel({
                   key={provider}
                   icon={icon}
                   label={label}
-                  value={connected ? "Connected" : linkingIdentity && provider === "kakao" ? "Connecting…" : "Not connected"}
+                  value={connected ? t.profile.connected : linkingIdentity && provider === "kakao" ? t.profile.connecting : t.profile.notConnected}
                   onClick={provider === "kakao" && !connected ? () => void handleIdentity("kakao") : undefined}
                 />
               );
@@ -557,14 +590,14 @@ export function AccountMembershipPanel({
 
           <Card>
             <div className="mb-2 flex items-center justify-between gap-3">
-              <h2 className="m-0">Membership</h2>
+              <h2 className="m-0">{t.profile.membership}</h2>
               <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">
                 {membershipBadge}
               </span>
             </div>
-            <Row icon={CheckCircleIcon} label="Member status" value={membershipStatus} />
-            <Row icon={CreditCardIcon} label="Last payment" value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
-            <Row icon={CreditCardIcon} label="Next billing" value={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)} />
+            <Row icon={CheckCircleIcon} label={t.profile.memberStatus} value={membershipStatus} />
+            <Row icon={CreditCardIcon} label={t.profile.lastPayment} value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
+            <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={managedMembership ? t.profile.notApplicable : shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)} />
 
             <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
               {membershipNote}
@@ -573,18 +606,18 @@ export function AccountMembershipPanel({
             {!managedMembership && (
               <button type="button" onClick={manageMembership} className={`${primaryButtonClass} mt-4`}>
                 <CreditCardIcon />
-                {!shell.summary.hasActiveSubscription ? "Start membership" : "Manage membership"}
+                {!shell.summary.hasActiveSubscription ? t.profile.startMembership : t.profile.manageMembership}
               </button>
             )}
           </Card>
 
           <Card>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="m-0">Participation Credits</h2>
-              <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">{shell.creditBalance} Credits Left</span>
+              <h2 className="m-0">{t.profile.participationCredits}</h2>
+              <span className="shrink-0 rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[11px] font-extrabold leading-none text-[#050505]">{interpolate(t.profile.creditsLeft, { count: shell.creditBalance })}</span>
             </div>
             {loadingHistory ? (
-              <p className="text-[13px] text-[#64748b]">Loading credit history…</p>
+              <p className="text-[13px] text-[#64748b]">{t.profile.loadingCreditHistory}</p>
             ) : history.length ? (
               history.map((entry) => (
                 <Row
@@ -595,25 +628,25 @@ export function AccountMembershipPanel({
                 />
               ))
             ) : (
-              <p className="py-2 text-[13px] text-[#64748b]">No participation-credit history yet.</p>
+              <p className="py-2 text-[13px] text-[#64748b]">{t.profile.noCreditHistory}</p>
             )}
             <button type="button" onClick={() => router.push("/payment?product=participation_pack_5")} className={`${primaryButtonClass} mt-4`}>
               <TicketIcon />
-              Buy 5-credit pack
+              {t.profile.buyFiveCredits}
             </button>
           </Card>
 
           <Card>
-            <h2 className="m-0">Account Actions</h2>
-            <p className="mb-4 mt-1 text-[12px] font-bold text-[#b42331]">Danger Zone</p>
+            <h2 className="m-0">{t.profile.accountActions}</h2>
+            <p className="mb-4 mt-1 text-[12px] font-bold text-[#b42331]">{t.profile.dangerZone}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={async () => { await logout(); router.push("/"); }} className={secondaryButtonClass}>
                 <ArrowRightOnRectangleIcon />
-                Log out
+                {t.profile.logOut}
               </button>
               <button type="button" onClick={() => setDeleteOpen(true)} className={`${secondaryButtonClass} text-[#b42331]`}>
                 <TrashIcon />
-                Delete Account
+                {t.profile.deleteAccountTitle}
               </button>
             </div>
           </Card>
@@ -629,7 +662,7 @@ export function AccountMembershipPanel({
       {manageOpen && (
         <ManageMembershipModal
           status={membershipStatus}
-          nextBilling={managedMembership ? "Not applicable" : shell.summary.billingCancelled ? "Stopped" : dateLabel(nextBilling, locale)}
+          nextBilling={managedMembership ? t.profile.notApplicable : shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)}
           billingCancelled={shell.summary.billingCancelled}
           onClose={() => setManageOpen(false)}
           onStop={() => { setManageOpen(false); setSurvey("stop"); }}
@@ -639,10 +672,10 @@ export function AccountMembershipPanel({
       )}
 
       {survey === "stop" && (
-        <SurveyModal title="Stop next billing" reasons={cancellationReasons} submitLabel="Stop next billing" onClose={() => setSurvey(null)} onSubmit={stopBilling} />
+        <SurveyModal title={t.profile.stopNextBilling} reasons={reasons} submitLabel={t.profile.stopNextBilling} onClose={() => setSurvey(null)} onSubmit={stopBilling} />
       )}
       {survey === "refund" && (
-        <SurveyModal title="Cancel now & request refund" reasons={refundReasons} submitLabel="Cancel & request refund" danger onClose={() => setSurvey(null)} onSubmit={cancelAndRefund} />
+        <SurveyModal title={t.profile.cancelRefund} reasons={refundReasons} submitLabel={t.profile.cancelRequestRefund} danger onClose={() => setSurvey(null)} onSubmit={cancelAndRefund} />
       )}
       {deleteOpen && (
         <DeleteAccountModal
