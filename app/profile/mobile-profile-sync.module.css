@@ -145,7 +145,7 @@
   /* Shared content shell for Edit / Connections / Account. */
   .root > main > section:nth-of-type(3) {
     order: 4;
-    margin-top: 96px;
+    margin-top: 16px;
     overflow: hidden;
     border: 1px solid #e6e6e6;
     border-radius: 20px;
