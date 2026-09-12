@@ -18,10 +18,39 @@ const toIso = (value: any) => {
   return null;
 };
 
-// Upgrade http image URLs to https so browsers don't block them as mixed content
-// (some Kakao CDN avatar URLs come back as http://).
 const toHttps = (u: any) =>
   typeof u === "string" ? u.replace(/^http:\/\//, "https://") : u;
+
+function parseProfileDetails(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      nationality: "",
+      languages: [] as string[],
+      englishLevel: "",
+      discussionTopics: [] as string[],
+      meetupPreferences: "",
+    };
+  }
+
+  const row = value as Record<string, unknown>;
+  return {
+    nationality: typeof row.nationality === "string" ? row.nationality : "",
+    languages: Array.isArray(row.languages)
+      ? row.languages.filter((item): item is string => typeof item === "string")
+      : [],
+    englishLevel:
+      typeof row.english_level === "string" ? row.english_level : "",
+    discussionTopics: Array.isArray(row.discussion_topics)
+      ? row.discussion_topics.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [],
+    meetupPreferences:
+      typeof row.meetup_preferences === "string"
+        ? row.meetup_preferences
+        : "",
+  };
+}
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { uid } = await context.params;
@@ -45,7 +74,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const { data, error: userError } = await sb
       .from("users")
       .select(
-        "uid, display_name, photo_url, bio, work, school, location, interests, profile_public, gdg_member, has_active_subscription, account_status, created_at"
+        "uid, display_name, photo_url, bio, work, school, location, interests, profile_details, profile_public, gdg_member, has_active_subscription, account_status, created_at",
       )
       .eq("uid", uid)
       .is("deleted_at", null)
@@ -57,9 +86,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // Name, avatar, badges and stats stay visible in member surfaces. Detailed profile
-    // fields require both people to like each other, while preserving the owner's
-    // existing opt-in privacy setting.
     const isPublic = data.profile_public !== false;
     let connection = {
       likedByMe: false,
@@ -82,8 +108,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     const detailsVisible = viewerUid === uid || (isPublic && connection.isMutual);
+    const structuredDetails = parseProfileDetails(data.profile_details);
 
-    // The users/{uid}/speaking_reports subcollection is now a top-level table keyed by user_id.
     const { data: reports } = await sb
       .from("speaking_reports")
       .select("*")
@@ -100,9 +126,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       }
     });
 
-    // The old code counted meetup participants + leaders across the old "meetup" and "events"
-    // collections (four array-contains queries summed). Those collections merged into the
-    // single `meetups` table; participation (both roles) now lives in `meetup_participants`.
     const { data: participations } = await sb
       .from("meetup_participants")
       .select("meetup_id")
@@ -116,12 +139,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       isPublic,
       detailsVisible,
       connection,
-      // Only mutual connections (or the owner) receive detailed personal fields.
       bio: detailsVisible ? data.bio || "" : "",
       work: detailsVisible ? data.work || "" : "",
       school: detailsVisible ? data.school || "" : "",
       location: detailsVisible ? data.location || "" : "",
       interests: detailsVisible ? data.interests || "" : "",
+      profileDetails: detailsVisible
+        ? structuredDetails
+        : {
+            nationality: "",
+            languages: [],
+            englishLevel: "",
+            discussionTopics: [],
+            meetupPreferences: "",
+          },
       badges: {
         gdgMember: data.gdg_member === true,
         activeMember: data.has_active_subscription === true,
@@ -148,7 +179,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     console.error("Failed to fetch public profile", error);
     return NextResponse.json(
       { error: "Failed to fetch public profile" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
