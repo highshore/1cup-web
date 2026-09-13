@@ -12,3 +12,70 @@
     box-shadow: 4px 4px 0 #050505;
   }
 }
+
+/*
+ * Compact event-card rhythm.
+ *
+ * Keep this local to the meetup page rather than changing the site's global
+ * line-height. These selectors target the Tailwind tokens on renderEventCard
+ * so the migration stays visually compact without affecting unrelated pages.
+ */
+[class~="my-[12px]"][class~="p-[24px]"] {
+  padding: 18px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+[class~="my-[12px]"][class~="p-[24px]"] > div[class~="gap-[20px]"] {
+  gap: 14px !important;
+}
+
+[class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > h3 {
+  margin-bottom: 4px !important;
+  line-height: 1.2 !important;
+}
+
+[class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(2),
+[class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(3) {
+  gap: 6px !important;
+  margin-bottom: 3px !important;
+  line-height: 1.2 !important;
+}
+
+[class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(4) {
+  margin-top: 4px !important;
+  min-height: 28px !important;
+}
+
+[class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(4) > span:last-child {
+  padding: 6px 12px !important;
+  line-height: 1 !important;
+}
+
+@media (max-width: 768px) {
+  [class~="my-[12px]"][class~="p-[24px]"] {
+    padding: 14px !important;
+    margin-top: 7px !important;
+    margin-bottom: 7px !important;
+  }
+
+  [class~="my-[12px]"][class~="p-[24px]"] > div[class~="gap-[20px]"] {
+    gap: 10px !important;
+  }
+
+  [class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > h3 {
+    margin-bottom: 4px !important;
+    line-height: 1.15 !important;
+  }
+
+  [class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(2),
+  [class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(3) {
+    gap: 5px !important;
+    margin-bottom: 2px !important;
+    line-height: 1.15 !important;
+  }
+
+  [class~="my-[12px]"][class~="p-[24px]"] > div > div:last-child > div:nth-child(4) {
+    margin-top: 3px !important;
+  }
+}
