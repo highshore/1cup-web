@@ -93,6 +93,8 @@
     color: var(--color-ink);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* styled-reset used a compact line-height baseline; preserve that migration parity. */
+    line-height: 1;
     overflow-x: hidden;
     position: relative;
     width: 100%;
