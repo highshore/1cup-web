@@ -2,6 +2,7 @@ import adminGifts from "./admin_gifts";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
 import ko from "./locales/ko";
+import payment from "./payment";
 import profileRedesign from "./profile_redesign";
 
 export type SupportedLocale = "en" | "ko";
@@ -9,6 +10,7 @@ export type SupportedLocale = "en" | "ko";
 const dictionaries = {
   en: {
     ...en,
+    payment: payment.en,
     home: {
       ...en.home,
       faq: homeFaq.en,
@@ -43,6 +45,7 @@ const dictionaries = {
   },
   ko: {
     ...ko,
+    payment: payment.ko,
     home: {
       ...ko.home,
       faq: homeFaq.ko,
