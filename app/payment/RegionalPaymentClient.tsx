@@ -13,6 +13,22 @@ const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
 type Region = "anam" | "yeouido";
 type ProductId = "membership_30d" | "participation_pack_5";
 
+const MEMBERSHIP_CARD_MEDIA: Record<
+  Region,
+  { src: string; credit: string; creditHref: string }
+> = {
+  anam: {
+    src: "/images/payment/anam-korea-university.webp",
+    credit: "Korea University · Chocolatte2 / CC BY-SA 4.0",
+    creditHref: "https://commons.wikimedia.org/wiki/File:KU_Main_Building.jpg",
+  },
+  yeouido: {
+    src: "/images/payment/yeouido.webp",
+    credit: "Yeouido · CC0 / Wikimedia Commons",
+    creditHref: "https://commons.wikimedia.org/wiki/File:Yeouido.png",
+  },
+};
+
 type PaymentProduct = {
   id: ProductId;
   region: Region;
@@ -101,6 +117,7 @@ export default function RegionalPaymentClient() {
 
   const isPack = productId === "participation_pack_5";
   const regionLabel = copy.locations[region];
+  const cardMedia = MEMBERSHIP_CARD_MEDIA[region];
   const discount = quote?.validReferral ? quote.discountAmount : 0;
   const totalAmount = quote?.validReferral
     ? quote.finalAmount
@@ -406,8 +423,11 @@ export default function RegionalPaymentClient() {
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-2 max-[720px]:items-start">
-            <p className="m-0 text-[12px] font-bold text-[#64748b]">
+        </section>
+
+        <section className="relative grid grid-cols-[430px_minmax(0,1fr)] gap-11 rounded-[28px] border-2 border-[#050505] bg-white px-[34px] pb-[34px] pt-[98px] shadow-[6px_6px_0_rgba(5,5,5,0.13)] max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[600px]:rounded-[22px] max-[600px]:px-5 max-[600px]:pb-5 max-[600px]:pt-[92px]">
+          <div className="absolute left-1/2 top-[20px] z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            <p className="m-0 text-[11px] font-bold text-[#64748b]">
               {copy.locationLabel}
             </p>
             <div className="flex gap-1 rounded-[22px] bg-[#eaeae8] p-1">
@@ -428,13 +448,15 @@ export default function RegionalPaymentClient() {
               ))}
             </div>
           </div>
-        </section>
-
-        <section className="grid grid-cols-[430px_minmax(0,1fr)] gap-11 rounded-[28px] border-2 border-[#050505] bg-white p-[34px] shadow-[6px_6px_0_rgba(5,5,5,0.13)] max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[600px]:rounded-[22px] max-[600px]:p-5">
-          <div className="flex min-w-0 flex-col gap-4">
-            <div className="relative h-[254px] w-full overflow-hidden rounded-[24px] border-2 border-[#050505] bg-[#f47a4a] shadow-[4px_4px_0_rgba(5,5,5,0.95)]">
-              <div className="absolute -right-[78px] -top-[54px] h-[210px] w-[210px] rounded-full bg-white/25" />
-              <div className="absolute -bottom-1 -right-0 h-24 w-24 rounded-full bg-white/20" />
+          <div className="flex min-w-0 flex-col justify-center">
+            <div
+              className="relative h-[254px] w-full overflow-hidden rounded-[24px] border-2 border-[#050505] bg-[#f47a4a] shadow-[4px_4px_0_rgba(5,5,5,0.95)]"
+              style={{
+                backgroundImage: `linear-gradient(112deg, rgba(244,122,74,0.93) 0%, rgba(244,122,74,0.78) 42%, rgba(5,5,5,0.20) 100%), url("${cardMedia.src}")`,
+                backgroundPosition: region === "anam" ? "center 45%" : "center 55%",
+                backgroundSize: "cover",
+              }}
+            >
               <p className="absolute left-[22px] top-5 m-0 text-[15px] font-extrabold">
                 1 CUP ENGLISH
               </p>
@@ -458,6 +480,14 @@ export default function RegionalPaymentClient() {
               <p className="absolute bottom-[10px] left-[22px] m-0 text-[11px] font-medium">
                 {copy.membership.renewal}
               </p>
+              <a
+                href={cardMedia.creditHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-[9px] right-[12px] max-w-[190px] truncate text-right text-[8px] font-medium text-white/75 [text-shadow:0_1px_3px_rgba(0,0,0,0.7)] hover:text-white hover:underline"
+              >
+                {cardMedia.credit}
+              </a>
             </div>
           </div>
 
@@ -741,19 +771,6 @@ export default function RegionalPaymentClient() {
               </a>
             </section>
 
-            <p className="mt-2 text-center text-[11px] font-medium leading-4 text-[#64748b]">
-              {copy.checkout.payplePrefix}
-              <a
-                href="https://www.payple.kr/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-[#f47a4a] underline underline-offset-2"
-              >
-                Payple
-              </a>
-              {copy.checkout.paypleSuffix}
-            </p>
-
             {error ? <StatusMessage error>{error}</StatusMessage> : null}
 
             <button
@@ -767,8 +784,17 @@ export default function RegionalPaymentClient() {
                 : `${formatWon(totalAmount)} ${copy.checkout.pay}`}
             </button>
 
-            <p className="mt-4 text-[11px] leading-[17px] text-[#64748b]">
-              {isPack ? copy.checkout.flexAfterPay : copy.checkout.membershipAfterPay}
+            <p className="mt-4 text-[11px] font-medium leading-[17px] text-[#64748b]">
+              {copy.checkout.payplePrefix}
+              <a
+                href="https://www.payple.kr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-[#f47a4a] underline underline-offset-2"
+              >
+                Payple
+              </a>
+              {copy.checkout.paypleSuffix}
             </p>
             <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[#64748b]">
               <span className="text-[8px] text-[#16794f]">●</span>
