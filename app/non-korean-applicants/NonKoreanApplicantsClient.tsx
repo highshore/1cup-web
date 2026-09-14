@@ -22,12 +22,20 @@ const formInputClass =
 const formNoticeClass = (success: boolean) =>
   `m-0 text-[0.78rem] font-[750] leading-[1.5] ${success ? "text-[#176b3a]" : "text-[#b42318]"}`;
 
-const HERO_IMAGES = [
+type HeroImage = {
+  src: string;
+  width: number;
+  height: number;
+  rotate?: boolean;
+  objectPosition?: string;
+};
+
+const HERO_IMAGES: readonly HeroImage[] = [
   { src: "/assets/homepage/gallery1.webp", width: 900, height: 902 },
   { src: "/assets/homepage/gallery2.webp", width: 1100, height: 825 },
   { src: "/assets/homepage/gallery3.webp", width: 1100, height: 825, rotate: true },
   { src: "/assets/homepage/activity.webp", width: 768, height: 1024, objectPosition: "center 72%" },
-] as const;
+];
 
 const COUNTRY_OPTIONS = `Afghanistan|Albania|Algeria|Andorra|Angola|Antigua and Barbuda|Argentina|Armenia|Australia|Austria|Azerbaijan|Bahamas|Bahrain|Bangladesh|Barbados|Belarus|Belgium|Belize|Benin|Bhutan|Bolivia|Bosnia and Herzegovina|Botswana|Brazil|Brunei|Bulgaria|Burkina Faso|Burundi|Cabo Verde|Cambodia|Cameroon|Canada|Central African Republic|Chad|Chile|China|Colombia|Comoros|Costa Rica|Croatia|Cuba|Cyprus|Czechia|Democratic Republic of the Congo|Denmark|Djibouti|Dominica|Dominican Republic|Ecuador|Egypt|El Salvador|Equatorial Guinea|Eritrea|Estonia|Eswatini|Ethiopia|Fiji|Finland|France|Gabon|Gambia|Georgia|Germany|Ghana|Greece|Grenada|Guatemala|Guinea|Guinea-Bissau|Guyana|Haiti|Honduras|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland|Israel|Italy|Ivory Coast|Jamaica|Japan|Jordan|Kazakhstan|Kenya|Kiribati|Kosovo|Kuwait|Kyrgyzstan|Laos|Latvia|Lebanon|Lesotho|Liberia|Libya|Liechtenstein|Lithuania|Luxembourg|Madagascar|Malawi|Malaysia|Maldives|Mali|Malta|Marshall Islands|Mauritania|Mauritius|Mexico|Micronesia|Moldova|Monaco|Mongolia|Montenegro|Morocco|Mozambique|Myanmar|Namibia|Nauru|Nepal|Netherlands|New Zealand|Nicaragua|Niger|Nigeria|North Korea|North Macedonia|Norway|Oman|Pakistan|Palau|Palestine|Panama|Papua New Guinea|Paraguay|Peru|Philippines|Poland|Portugal|Qatar|Republic of the Congo|Romania|Russia|Rwanda|Saint Kitts and Nevis|Saint Lucia|Saint Vincent and the Grenadines|Samoa|San Marino|Sao Tome and Principe|Saudi Arabia|Senegal|Serbia|Seychelles|Sierra Leone|Singapore|Slovakia|Slovenia|Solomon Islands|Somalia|South Africa|South Korea|South Sudan|Spain|Sri Lanka|Sudan|Suriname|Sweden|Switzerland|Syria|Taiwan|Tajikistan|Tanzania|Thailand|Timor-Leste|Togo|Tonga|Trinidad and Tobago|Tunisia|Turkey|Turkmenistan|Tuvalu|Uganda|Ukraine|United Arab Emirates|United Kingdom|United States|Uruguay|Uzbekistan|Vanuatu|Vatican City|Venezuela|Vietnam|Yemen|Zambia|Zimbabwe`.split("|");
 
@@ -280,7 +288,7 @@ function PhotoCollage({ copy }: { copy: (typeof pageCopy)["en"] | (typeof pageCo
             fill
             sizes={index === 0 || index === 3 ? "(max-width: 860px) 70vw, 286px" : "(max-width: 860px) 43vw, 172px"}
             className={`applicant-hero-photo-image object-cover ${image.rotate ? "rotate-90 scale-[1.34]" : ""}`}
-            style={"objectPosition" in image ? { objectPosition: image.objectPosition } : undefined}
+            style={image.objectPosition ? { objectPosition: image.objectPosition } : undefined}
             priority={index < 2}
           />
         </figure>
