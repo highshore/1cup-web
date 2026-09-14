@@ -60,21 +60,39 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const sb = admin();
     const viewerClient = await createServerClientRSC();
     const {
       data: { user: authUser },
+      error: authError,
     } = await viewerClient.auth.getUser();
-    const { data: viewerRows } = authUser
-      ? await viewerClient.rpc("current_user_row")
-      : { data: null };
+
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    const { data: viewerRows, error: viewerError } = await viewerClient.rpc(
+      "current_user_row",
+    );
+    if (viewerError) throw viewerError;
+
     const viewer = Array.isArray(viewerRows) ? viewerRows[0] : null;
     const viewerUid = typeof viewer?.uid === "string" ? viewer.uid : null;
 
+    if (!viewerUid) {
+      return NextResponse.json(
+        { error: "Member profile required" },
+        { status: 403 },
+      );
+    }
+
+    const sb = admin();
     const { data, error: userError } = await sb
       .from("users")
       .select(
-        "uid, display_name, photo_url, bio, work, school, location, interests, profile_details, profile_public, gdg_member, has_active_subscription, account_status, created_at",
+        "uid, display_name, photo_url, bio, work, school, location, interests, profile_details, gdg_member, has_active_subscription, account_status, created_at",
       )
       .eq("uid", uid)
       .is("deleted_at", null)
@@ -86,14 +104,13 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const isPublic = data.profile_public !== false;
     let connection = {
       likedByMe: false,
       likesMe: false,
       isMutual: false,
     };
 
-    if (viewerUid && viewerUid !== uid) {
+    if (viewerUid !== uid) {
       const { data: connectionRows } = await viewerClient.rpc("profile_like_state", {
         p_profile_user_id: uid,
       });
@@ -107,7 +124,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       };
     }
 
-    const detailsVisible = viewerUid === uid || (isPublic && connection.isMutual);
+    const detailsVisible = viewerUid === uid || connection.isMutual;
     const structuredDetails = parseProfileDetails(data.profile_details);
 
     const { data: reports } = await sb
@@ -136,7 +153,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       uid,
       displayName: data.display_name || `Member ${uid.slice(0, 6)}`,
       photoURL: toHttps(data.photo_url) || null,
-      isPublic,
       detailsVisible,
       connection,
       bio: detailsVisible ? data.bio || "" : "",
