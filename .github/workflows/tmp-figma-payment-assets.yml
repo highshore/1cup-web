@@ -1,0 +1,24 @@
+name: Temporary Figma payment asset upload
+
+on:
+  push:
+    branches:
+      - tmp/figma-payment-asset-upload
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload Korea University card image
+        run: |
+          curl --fail --show-error --silent -X POST \
+            -H 'Content-Type: image/webp' \
+            --data-binary '@public/images/payment/anam-korea-university.webp' \
+            'https://mcp.figma.com/mcp/upload/abb464ac-0675-4655-ac1f-95c558cc0a0a/submit?scaleMode=FILL'
+      - name: Upload Yeouido card image
+        run: |
+          curl --fail --show-error --silent -X POST \
+            -H 'Content-Type: image/webp' \
+            --data-binary '@public/images/payment/yeouido.webp' \
+            'https://mcp.figma.com/mcp/upload/fd266204-ff7e-4702-9ba6-658f5b2b0844/submit?scaleMode=FILL'
