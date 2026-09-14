@@ -13,11 +13,13 @@ export default function MainLayoutWrapper({
   const pathname = usePathname();
   const isHomePage = pathname === "/";
   const isArticlePage = pathname.startsWith("/article/");
+  const isPaymentPage = pathname === "/payment";
   const isPrivateProfilePage =
     pathname === "/profile" ||
     pathname === "/profile/connections" ||
     pathname === "/profile/account";
-  const isFullWidth = isHomePage || isArticlePage || isPrivateProfilePage;
+  const isFullWidth =
+    isHomePage || isArticlePage || isPaymentPage || isPrivateProfilePage;
 
   return (
     <div
