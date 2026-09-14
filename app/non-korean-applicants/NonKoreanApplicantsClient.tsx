@@ -9,7 +9,7 @@ import { useAuth } from "../lib/contexts/auth_context";
 import { supabase } from "../lib/supabase/client";
 import "./non-korean-applicants.css";
 
-const pageContainerClass = "mx-auto w-full max-w-[1020px] px-6 max-[640px]:px-4";
+const pageContainerClass = "mx-auto w-full max-w-page px-gutter max-[920px]:px-gutter-mobile";
 const brandTagClass =
   "inline-flex min-h-[28px] items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[0.68rem] font-[900] tracking-[0.015em] text-[#050505]";
 const buttonBaseClass =
@@ -42,7 +42,7 @@ const COUNTRY_OPTIONS = `Afghanistan|Albania|Algeria|Andorra|Angola|Antigua and 
 const pageCopy = {
   en: {
     heroEyebrow: "FOR INTERNATIONAL MEMBERS",
-    heroTitle: "Build a real circle in Seoul.",
+    heroTitle: "Build Your Circle in Seoul",
     heroSubtitle:
       "Meet thoughtful Korean professionals and students through conversations that go beyond the usual language exchange.",
     membershipNote: "Membership fee waived for approved international members",
@@ -59,55 +59,55 @@ const pageCopy = {
       review: "Application review",
     },
     whyEyebrow: "WHY CHOOSE US",
-    whyTitle: "Not another language exchange.",
+    whyTitle: "Not Another Language Exchange",
     whyDescription:
       "Come for a real conversation. Come back because the people start feeling familiar.",
     benefits: [
       {
-        title: "Conversations worth showing up for",
+        title: "Conversations Worth Showing Up For",
         description:
           "Tech, business, society and culture — guided by prepared discussion topics and led by facilitators, not random icebreakers.",
       },
       {
-        title: "Meet people outside the expat bubble",
+        title: "Meet People Outside the Expat Bubble",
         description:
           "Build relationships with Korean professionals you would rarely meet through ordinary international events.",
       },
       {
-        title: "See familiar faces again",
+        title: "See Familiar Faces Again",
         description:
           "Recurring meetups create continuity. You are not restarting from zero with a new room every week.",
       },
     ],
     bringTag: "WHAT YOU BRING",
-    bringTitle: "Perspective, fluent English, curiosity.",
+    bringTitle: "Perspective Fluent English and Curiosity",
     bringDescription:
       "You help make the room more globally interesting simply by showing up as yourself and engaging seriously.",
     getTag: "WHAT YOU GET",
-    getTitle: "A curated Korean professional circle.",
+    getTitle: "A Curated Korean Professional Circle",
     getDescription:
       "Approved international members join without a membership fee and get access to recurring community meetups.",
-    fitTitle: "You’ll probably love 1 Cup if…",
+    fitTitle: "You’ll Probably Love 1 Cup If",
     fitDescription:
       "These are signals, not a rigid checklist. We review applications individually.",
     eligibility: [
-      { title: "English is your first language", description: "You grew up primarily speaking English." },
+      { title: "English Is Your First Language", description: "You grew up primarily speaking English." },
       {
-        title: "You’re building a life in Korea",
+        title: "You’re Building a Life in Korea",
         description: "You work, study professionally, or are rooted here beyond a short trip.",
       },
       {
-        title: "You plan to stay",
+        title: "You Plan to Stay",
         description: "Longer-term residents create the continuity the community depends on.",
       },
       {
-        title: "You actually like discussion",
+        title: "You Actually Like Discussion",
         description:
           "You are curious, respectful, and happy to engage beyond surface-level networking.",
       },
     ],
     applicationTag: "APPLICATION",
-    applicationTitle: "Quick Application. No Strings Attached.",
+    applicationTitle: "Quick Application No Strings Attached",
     applicationDescription:
       "We keep this lightweight. The goal is simply to make sure the room works for everyone who joins.",
     steps: [
@@ -123,7 +123,7 @@ const pageCopy = {
     credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
     invalidCredential: "Enter a valid HTTPS URL.",
     faqTag: "FAQ",
-    faqTitle: "A few things people usually ask.",
+    faqTitle: "A Few Things People Usually Ask",
     faq: [
       [
         "Is membership really free?",
@@ -148,7 +148,7 @@ const pageCopy = {
       ],
     ],
     finalTag: "READY WHEN YOU ARE",
-    finalTitle: "Find your people in Seoul.",
+    finalTitle: "Find Your People in Seoul",
     finalDescription:
       "If you want conversations with substance and a community you can actually return to, we’d like to meet you.",
     applyNow: "Apply now →",
