@@ -11,6 +11,7 @@ const payment = {
     membership: {
       label: "30-day membership",
       name: "MEMBER",
+      period: "/ 30 days",
       renewal: "Renews every 30 days",
       cta: "Start 30-day membership",
       activeCta: "Membership active",
@@ -30,6 +31,7 @@ const payment = {
     referralPromptCta: "Get discount →",
     flex: {
       eyebrow: "FLEX PASS",
+      name: "5-visit pass",
       title: "Can’t come regularly? Choose a 5-visit pass.",
       description: "5 visits · Use within 180 days of purchase · No auto-renewal",
       oneTime: "One-time payment",
@@ -97,6 +99,7 @@ const payment = {
     membership: {
       label: "30일 멤버십",
       name: "MEMBER",
+      period: "/ 30일",
       renewal: "30일마다 자동 갱신",
       cta: "30일 멤버십 시작하기",
       activeCta: "멤버십 이용 중",
@@ -116,6 +119,7 @@ const payment = {
     referralPromptCta: "할인 받기 →",
     flex: {
       eyebrow: "FLEX PASS",
+      name: "5회 참여권",
       title: "자주 오기 어렵다면, 5회 참여권.",
       description: "5회 · 구매 후 180일 동안 사용 · 자동 갱신 없음",
       oneTime: "1회 결제",
