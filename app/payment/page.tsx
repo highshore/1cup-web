@@ -3,9 +3,9 @@ import { Suspense } from "react";
 import RegionalPaymentClient from "./RegionalPaymentClient";
 
 export const metadata: Metadata = {
-  title: "영어 한잔 이용권 | OneCup English",
+  title: "영어 한잔 멤버십 | OneCup English",
   description:
-    "안암 또는 여의도 지역을 선택하고 30일 이용권이나 5회 이용권을 구매하세요.",
+    "안암 또는 여의도에서 30일 멤버십이나 5회 참여권을 선택하고 안전하게 결제하세요.",
 };
 
 // Kill-switch for the payment feature during the Supabase migration/cutover.
