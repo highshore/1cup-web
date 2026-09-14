@@ -391,8 +391,8 @@ export default function RegionalPaymentClient() {
   const flexPrice = flexProduct?.price;
 
   return (
-    <main className="min-h-[calc(100vh-74px)] bg-[#f5f5f5] px-5 py-[54px] text-[#050505] max-[768px]:px-4 max-[768px]:py-8">
-      <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-7">
+    <main className="min-h-[calc(100vh-74px)] bg-[#f5f5f5] py-[54px] text-[#050505] max-[768px]:py-8">
+      <div className="mx-auto flex w-full max-w-page flex-col gap-7 px-gutter max-[920px]:px-gutter-mobile">
         <section className="flex min-h-[128px] items-end justify-between gap-8 max-[720px]:min-h-0 max-[720px]:flex-col max-[720px]:items-start">
           <div className="flex flex-col gap-2">
             <p className="m-0 text-[12px] font-bold text-[#f47a4a]">
@@ -459,20 +459,6 @@ export default function RegionalPaymentClient() {
                 {copy.membership.renewal}
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => openCheckout("membership_30d")}
-              disabled={!membershipProduct || alreadySubscribed}
-              className="flex h-[52px] w-full items-center justify-center rounded-[26px] bg-[#050505] px-5 text-[15px] font-bold text-white shadow-[4px_4px_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
-            >
-              {alreadySubscribed
-                ? copy.membership.activeCta
-                : `${copy.membership.cta}  →`}
-            </button>
-            <p className="m-0 text-center text-[11px] text-[#64748b]">
-              {copy.membership.renewalNote}
-            </p>
           </div>
 
           <div className="flex min-w-0 flex-col gap-2">
@@ -508,23 +494,20 @@ export default function RegionalPaymentClient() {
             ))}
 
             <div className="h-px w-full bg-[#e6e6e6]" />
-            <div className="flex min-h-[38px] items-center justify-between gap-4 text-[12px]">
-              <p className="m-0 font-medium text-[#64748b]">
-                {copy.referralPrompt}
-              </p>
+            <div className="flex flex-col gap-2 pt-1">
               <button
                 type="button"
-                onClick={() =>
-                  openCheckout(
-                    alreadySubscribed ? "participation_pack_5" : "membership_30d",
-                    true,
-                  )
-                }
-                disabled={alreadySubscribed ? !flexProduct : !membershipProduct}
-                className="shrink-0 font-bold text-[#f47a4a] hover:underline disabled:opacity-45"
+                onClick={() => openCheckout("membership_30d")}
+                disabled={!membershipProduct || alreadySubscribed}
+                className="flex h-[48px] w-full items-center justify-center rounded-[24px] bg-[#050505] px-5 text-[14px] font-bold text-white shadow-[3px_3px_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
               >
-                {copy.referralPromptCta}
+                {alreadySubscribed
+                  ? copy.membership.activeCta
+                  : `${copy.membership.cta}  →`}
               </button>
+              <p className="m-0 text-center text-[11px] text-[#64748b]">
+                {copy.membership.renewalNote}
+              </p>
             </div>
             {alreadySubscribed ? (
               <p className="m-0 text-[11px] leading-[1.55] text-[#64748b]">
