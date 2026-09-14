@@ -57,7 +57,6 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   const [location, setLocation] = useState<Location>("anam");
   const [interests, setInterests] = useState<string[]>([]);
   const [bio, setBio] = useState("");
-  const [profilePublic, setProfilePublic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -113,7 +112,6 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
           location,
           interests: selectedInterests,
           bio: bio.trim() || null,
-          profile_public: profilePublic,
           onboarding_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -182,10 +180,6 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       <p className={descriptionClass}>{t.onboarding.story.description}</p>
       <label className={fieldLabelClass} htmlFor="onboarding-bio">{t.onboarding.story.label}</label>
       <textarea className={textareaClass} id="onboarding-bio" value={bio} onChange={(event) => setBio(event.target.value)} placeholder={t.onboarding.story.placeholder} maxLength={300} />
-      <label className="mt-4 flex cursor-pointer items-start gap-[0.8rem] rounded-[14px] bg-[#f5efe7] p-4 text-[0.9rem] leading-[1.5] text-[#56493d]">
-        <input className="mt-[0.2rem] accent-[#2c1810]" type="checkbox" checked={profilePublic} onChange={(event) => setProfilePublic(event.target.checked)} />
-        <span>{t.onboarding.story.publicProfile}</span>
-      </label>
     </div>,
   ];
 
