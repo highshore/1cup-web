@@ -1,0 +1,55 @@
+@keyframes applicantHeroFloatOne {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.35deg); }
+  50% { transform: translate3d(0, -7px, 0) rotate(0.35deg); }
+}
+
+@keyframes applicantHeroFloatTwo {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0.45deg); }
+  50% { transform: translate3d(4px, 6px, 0) rotate(-0.4deg); }
+}
+
+@keyframes applicantHeroFloatThree {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0.2deg); }
+  50% { transform: translate3d(-4px, -5px, 0) rotate(-0.45deg); }
+}
+
+@keyframes applicantHeroFloatFour {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.25deg); }
+  50% { transform: translate3d(3px, 5px, 0) rotate(0.35deg); }
+}
+
+@keyframes applicantHeroImageDrift {
+  0%, 100% { transform: scale(1.015); }
+  50% { transform: scale(1.055); }
+}
+
+.applicant-hero-photo {
+  will-change: transform;
+  transition: box-shadow 180ms ease, z-index 180ms ease;
+}
+
+.applicant-hero-photo:hover {
+  z-index: 5;
+  box-shadow: 7px 7px 0 rgba(5, 5, 5, 0.18);
+}
+
+.applicant-hero-photo-1 { animation: applicantHeroFloatOne 6.8s ease-in-out infinite; }
+.applicant-hero-photo-2 { animation: applicantHeroFloatTwo 7.4s ease-in-out 0.45s infinite; }
+.applicant-hero-photo-3 { animation: applicantHeroFloatThree 7.1s ease-in-out 0.9s infinite; }
+.applicant-hero-photo-4 { animation: applicantHeroFloatFour 8s ease-in-out 0.2s infinite; }
+
+.applicant-hero-photo-image {
+  animation: applicantHeroImageDrift 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+.applicant-hero-photo:nth-child(2) .applicant-hero-photo-image { animation-delay: -2.5s; }
+.applicant-hero-photo:nth-child(3) .applicant-hero-photo-image { animation: none; }
+.applicant-hero-photo:nth-child(4) .applicant-hero-photo-image { animation-delay: -7.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .applicant-hero-photo,
+  .applicant-hero-photo-image {
+    animation: none !important;
+  }
+}

@@ -1,32 +1,43 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { HomeStats } from "../lib/features/home/services/stats_service";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { useAuth } from "../lib/contexts/auth_context";
 import { supabase } from "../lib/supabase/client";
+import "./non-korean-applicants.css";
 
-const pageContainerClass =
-  "mx-auto w-full max-w-[1020px] px-6 max-[640px]:px-4";
-
+const pageContainerClass = "mx-auto w-full max-w-[1020px] px-6 max-[640px]:px-4";
 const brandTagClass =
   "inline-flex min-h-[28px] items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 py-1 text-[0.68rem] font-[900] tracking-[0.015em] text-[#050505]";
-
 const buttonBaseClass =
   "inline-flex min-h-[50px] items-center justify-center rounded-full border-[2.5px] border-[#050505] px-5 py-3 text-[0.88rem] font-[900] no-underline transition-[transform,box-shadow,background-color] duration-150 hover:no-underline";
-
 const primaryButtonClass = `${buttonBaseClass} bg-[#050505] text-white shadow-[5px_5px_0_#f47a4a] hover:-translate-x-px hover:-translate-y-px hover:text-white hover:shadow-[7px_7px_0_#f47a4a]`;
 const secondaryButtonClass = `${buttonBaseClass} bg-[#fdf9ec] text-[#050505] shadow-[4px_4px_0_#050505] hover:-translate-x-px hover:-translate-y-px hover:bg-white hover:text-[#050505] hover:shadow-[6px_6px_0_#050505]`;
-
-const formFieldClass =
-  "grid gap-2 text-[0.72rem] font-[900] text-[#050505]";
+const formFieldClass = "grid gap-2 text-[0.72rem] font-[900] text-[#050505]";
 const formInputClass =
   "min-h-[44px] w-full rounded-xl border border-[#dbdbd6] bg-[#fbfbfa] px-3 py-2.5 text-[0.8rem] font-[600] text-[#050505] outline-none focus:border-[#050505] focus:ring-2 focus:ring-[#f47a4a]/35";
 const formNoticeClass = (success: boolean) =>
-  `m-0 text-[0.78rem] font-[750] leading-[1.5] ${
-    success ? "text-[#176b3a]" : "text-[#b42318]"
-  }`;
+  `m-0 text-[0.78rem] font-[750] leading-[1.5] ${success ? "text-[#176b3a]" : "text-[#b42318]"}`;
+
+type HeroImage = {
+  src: string;
+  width: number;
+  height: number;
+  rotate?: boolean;
+  objectPosition?: string;
+};
+
+const HERO_IMAGES: readonly HeroImage[] = [
+  { src: "/assets/homepage/gallery1.webp", width: 900, height: 902 },
+  { src: "/assets/homepage/gallery2.webp", width: 1100, height: 825 },
+  { src: "/assets/homepage/gallery3.webp", width: 1100, height: 825, rotate: true },
+  { src: "/assets/homepage/activity.webp", width: 768, height: 1024, objectPosition: "center 72%" },
+];
+
+const COUNTRY_OPTIONS = `Afghanistan|Albania|Algeria|Andorra|Angola|Antigua and Barbuda|Argentina|Armenia|Australia|Austria|Azerbaijan|Bahamas|Bahrain|Bangladesh|Barbados|Belarus|Belgium|Belize|Benin|Bhutan|Bolivia|Bosnia and Herzegovina|Botswana|Brazil|Brunei|Bulgaria|Burkina Faso|Burundi|Cabo Verde|Cambodia|Cameroon|Canada|Central African Republic|Chad|Chile|China|Colombia|Comoros|Costa Rica|Croatia|Cuba|Cyprus|Czechia|Democratic Republic of the Congo|Denmark|Djibouti|Dominica|Dominican Republic|Ecuador|Egypt|El Salvador|Equatorial Guinea|Eritrea|Estonia|Eswatini|Ethiopia|Fiji|Finland|France|Gabon|Gambia|Georgia|Germany|Ghana|Greece|Grenada|Guatemala|Guinea|Guinea-Bissau|Guyana|Haiti|Honduras|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland|Israel|Italy|Ivory Coast|Jamaica|Japan|Jordan|Kazakhstan|Kenya|Kiribati|Kosovo|Kuwait|Kyrgyzstan|Laos|Latvia|Lebanon|Lesotho|Liberia|Libya|Liechtenstein|Lithuania|Luxembourg|Madagascar|Malawi|Malaysia|Maldives|Mali|Malta|Marshall Islands|Mauritania|Mauritius|Mexico|Micronesia|Moldova|Monaco|Mongolia|Montenegro|Morocco|Mozambique|Myanmar|Namibia|Nauru|Nepal|Netherlands|New Zealand|Nicaragua|Niger|Nigeria|North Korea|North Macedonia|Norway|Oman|Pakistan|Palau|Palestine|Panama|Papua New Guinea|Paraguay|Peru|Philippines|Poland|Portugal|Qatar|Republic of the Congo|Romania|Russia|Rwanda|Saint Kitts and Nevis|Saint Lucia|Saint Vincent and the Grenadines|Samoa|San Marino|Sao Tome and Principe|Saudi Arabia|Senegal|Serbia|Seychelles|Sierra Leone|Singapore|Slovakia|Slovenia|Solomon Islands|Somalia|South Africa|South Korea|South Sudan|Spain|Sri Lanka|Sudan|Suriname|Sweden|Switzerland|Syria|Taiwan|Tajikistan|Tanzania|Thailand|Timor-Leste|Togo|Tonga|Trinidad and Tobago|Tunisia|Turkey|Turkmenistan|Tuvalu|Uganda|Ukraine|United Arab Emirates|United Kingdom|United States|Uruguay|Uzbekistan|Vanuatu|Vatican City|Venezuela|Vietnam|Yemen|Zambia|Zimbabwe`.split("|");
 
 const pageCopy = {
   en: {
@@ -35,11 +46,12 @@ const pageCopy = {
     heroSubtitle:
       "Meet thoughtful Korean professionals and students through conversations that go beyond the usual language exchange.",
     membershipNote: "Membership fee waived for approved international members",
-    photoMain: "Sunday discussion · Anam",
-    photoSmall: "After-talk coffee",
-    photoDinner: "Member dinner",
-    photoWide: "Tech · society · business",
-    photoSubtitle: "1 Cup member meetup",
+    heroImageAlts: [
+      "1 Cup English members at a meetup",
+      "1 Cup English community meetup",
+      "Members talking at a 1 Cup English gathering",
+      "1 Cup English meetup activity",
+    ],
     proof: {
       meetups: "Meetups hosted",
       members: "Community members",
@@ -79,19 +91,14 @@ const pageCopy = {
     fitDescription:
       "These are signals, not a rigid checklist. We review applications individually.",
     eligibility: [
-      {
-        title: "English is your first language",
-        description: "You grew up primarily speaking English.",
-      },
+      { title: "English is your first language", description: "You grew up primarily speaking English." },
       {
         title: "You’re building a life in Korea",
-        description:
-          "You work, study professionally, or are rooted here beyond a short trip.",
+        description: "You work, study professionally, or are rooted here beyond a short trip.",
       },
       {
         title: "You plan to stay",
-        description:
-          "Longer-term residents create the continuity the community depends on.",
+        description: "Longer-term residents create the continuity the community depends on.",
       },
       {
         title: "You actually like discussion",
@@ -100,7 +107,7 @@ const pageCopy = {
       },
     ],
     applicationTag: "APPLICATION",
-    applicationTitle: "A quick application. A considered community.",
+    applicationTitle: "Quick Application. No Strings Attached.",
     applicationDescription:
       "We keep this lightweight. The goal is simply to make sure the room works for everyone who joins.",
     steps: [
@@ -112,7 +119,7 @@ const pageCopy = {
     formTitle: "Apply as an International Member",
     formSubtitle: "Takes about 2 minutes · Reviewed by a real person",
     formPolicy: "By applying, you agree to our community guidelines and privacy policy.",
-    credentialLabel: "LinkedIn or another profile",
+    credentialLabel: "LinkedIn or Profile URL",
     credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
     invalidCredential: "Enter a valid HTTPS URL.",
     faqTag: "FAQ",
@@ -153,11 +160,12 @@ const pageCopy = {
     heroSubtitle:
       "흔한 언어교환을 넘어, 생각 있는 한국 직장인과 학생들을 깊이 있는 대화로 만나보세요.",
     membershipNote: "승인된 외국인 멤버는 멤버십 비용이 면제됩니다",
-    photoMain: "일요일 디스커션 · 안암",
-    photoSmall: "밋업 후 커피",
-    photoDinner: "멤버 저녁 모임",
-    photoWide: "테크 · 사회 · 비즈니스",
-    photoSubtitle: "영어 한잔 멤버 밋업",
+    heroImageAlts: [
+      "영어 한잔 밋업에 참여한 멤버들",
+      "영어 한잔 커뮤니티 밋업",
+      "영어 한잔 모임에서 대화하는 멤버들",
+      "영어 한잔 밋업 활동",
+    ],
     proof: {
       meetups: "누적 밋업",
       members: "커뮤니티 멤버",
@@ -196,10 +204,7 @@ const pageCopy = {
     fitTitle: "이런 분이라면 영어 한잔이 잘 맞을 거예요.",
     fitDescription: "절대적인 체크리스트가 아니라 참고 기준이며, 지원서는 개별 검토합니다.",
     eligibility: [
-      {
-        title: "영어가 모국어예요",
-        description: "어릴 때부터 영어를 주된 언어로 사용해왔습니다.",
-      },
+      { title: "영어가 모국어예요", description: "어릴 때부터 영어를 주된 언어로 사용해왔습니다." },
       {
         title: "한국에서 삶을 만들어가고 있어요",
         description: "한국에서 일하거나 전문적으로 공부하며 단기 방문 이상의 기반이 있습니다.",
@@ -214,7 +219,7 @@ const pageCopy = {
       },
     ],
     applicationTag: "APPLICATION",
-    applicationTitle: "지원은 가볍게. 커뮤니티는 신중하게.",
+    applicationTitle: "간단한 지원. 부담 없는 시작.",
     applicationDescription:
       "지원 과정은 간단합니다. 함께하는 공간이 모두에게 잘 맞는지만 확인합니다.",
     steps: [
@@ -226,17 +231,23 @@ const pageCopy = {
     formTitle: "외국인 멤버 지원하기",
     formSubtitle: "약 2분 소요 · 운영진이 직접 검토합니다",
     formPolicy: "지원 시 커뮤니티 가이드라인 및 개인정보 처리방침에 동의하게 됩니다.",
-    credentialLabel: "LinkedIn 또는 경력을 확인할 수 있는 프로필",
+    credentialLabel: "LinkedIn 또는 프로필 URL",
     credentialPlaceholder: "https://www.linkedin.com/in/your-profile",
     invalidCredential: "유효한 HTTPS URL을 입력해 주세요.",
     faqTag: "FAQ",
     faqTitle: "자주 묻는 질문",
     faq: [
       ["멤버십이 정말 무료인가요?", "승인된 외국인 멤버는 멤버십 비용이 면제됩니다."],
-      ["영어 원어민이어야 하나요?", "현재 외국인 멤버 경로는 원어민 수준의 영어 기여를 기준으로 하며, 지원서는 개별 검토합니다."],
+      [
+        "영어 원어민이어야 하나요?",
+        "현재 외국인 멤버 경로는 원어민 수준의 영어 기여를 기준으로 하며, 지원서는 개별 검토합니다.",
+      ],
       ["한국어를 해야 하나요?", "아니요. 밋업은 영어로 진행되며 한국어 능력은 필수가 아닙니다."],
       ["승인 후에는 어떻게 되나요?", "밋업 예약과 멤버 프로필 작성을 위한 다음 단계를 안내드립니다."],
-      ["교환학생도 지원할 수 있나요?", "지원할 수 있지만, 장기적으로 반복 참여할 가능성이 높은 분을 우선 검토합니다."],
+      [
+        "교환학생도 지원할 수 있나요?",
+        "지원할 수 있지만, 장기적으로 반복 참여할 가능성이 높은 분을 우선 검토합니다.",
+      ],
       ["왜 지원 절차가 있나요?", "인원 수보다 커뮤니티의 지속성과 그룹 적합성을 더 중요하게 보기 때문입니다."],
     ],
     finalTag: "READY WHEN YOU ARE",
@@ -249,79 +260,39 @@ const pageCopy = {
 } as const;
 
 function approximateMetric(value: number | undefined, fallback: number) {
-  if (!value || value <= 0) return `${fallback}+`;
-  return `${Math.max(fallback, Math.floor(value / 10) * 10)}+`;
-}
-
-function PersonCard({
-  className = "",
-  tone,
-  label,
-  subtitle,
-  compact = false,
-}: {
-  className?: string;
-  tone: string;
-  label: string;
-  subtitle: string;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      className={`relative overflow-hidden rounded-[22px] border-2 border-[#050505] ${tone} ${className}`}
-      aria-label={label}
-    >
-      <div
-        className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-[#c79272] ${
-          compact ? "top-[18%] h-10 w-10" : "top-[17%] h-16 w-16"
-        }`}
-        aria-hidden="true"
-      />
-      <div
-        className={`absolute left-1/2 -translate-x-1/2 rounded-t-[999px] bg-[#28313d] ${
-          compact
-            ? "top-[38%] h-[75%] w-[72%]"
-            : "top-[39%] h-[76%] w-[72%]"
-        }`}
-        aria-hidden="true"
-      />
-      <div className="absolute inset-x-3 bottom-3 rounded-[13px] border-[1.5px] border-[#050505] bg-white px-3 py-2">
-        <p className="m-0 text-[0.68rem] font-[900] leading-[1.3] text-[#050505]">{label}</p>
-        <p className="mt-0.5 mb-0 text-[0.56rem] font-[650] leading-[1.3] text-[#64748b]">{subtitle}</p>
-      </div>
-    </div>
-  );
+  const resolved = value && value > 0 ? value : fallback;
+  return `${Math.max(10, Math.floor(resolved / 10) * 10)}+`;
 }
 
 function PhotoCollage({ copy }: { copy: (typeof pageCopy)["en"] | (typeof pageCopy)["ko"] }) {
+  const desktopPositions = [
+    "left-0 top-0 h-[270px] w-[286px] max-[860px]:left-0 max-[860px]:top-3 max-[860px]:h-[176px] max-[860px]:w-[70%]",
+    "right-0 top-0 h-[196px] w-[172px] max-[860px]:right-0 max-[860px]:top-0 max-[860px]:h-[124px] max-[860px]:w-[43%]",
+    "left-0 bottom-0 h-[168px] w-[172px] max-[860px]:left-auto max-[860px]:right-[5%] max-[860px]:bottom-0 max-[860px]:h-[102px] max-[860px]:w-[48%]",
+    "right-0 bottom-0 h-[252px] w-[286px] max-[860px]:hidden",
+  ];
+
   return (
-    <div className="grid h-[470px] grid-cols-[1.65fr_1fr] grid-rows-[1.15fr_0.85fr] gap-4 max-[860px]:h-[190px] max-[860px]:grid-cols-1 max-[860px]:grid-rows-1">
-      <PersonCard
-        tone="bg-[#d1c7b0]"
-        label={copy.photoMain}
-        subtitle={copy.photoSubtitle}
-        className="max-[860px]:h-[190px]"
-      />
-      <PersonCard
-        tone="bg-[#bfc7b2]"
-        label={copy.photoSmall}
-        subtitle={copy.photoSubtitle}
-        compact
-        className="max-[860px]:hidden"
-      />
-      <PersonCard
-        tone="bg-[#fff0e8]"
-        label={copy.photoDinner}
-        subtitle={copy.photoSubtitle}
-        compact
-        className="max-[860px]:hidden"
-      />
-      <PersonCard
-        tone="bg-[#fdf9ec]"
-        label={copy.photoWide}
-        subtitle={copy.photoSubtitle}
-        className="max-[860px]:hidden"
-      />
+    <div
+      className="relative h-[470px] w-full max-[860px]:mx-auto max-[860px]:h-[210px] max-[860px]:max-w-[520px]"
+      aria-label="1 Cup English meetup photos"
+    >
+      {HERO_IMAGES.map((image, index) => (
+        <figure
+          key={image.src}
+          className={`applicant-hero-photo applicant-hero-photo-${index + 1} absolute m-0 overflow-hidden rounded-[22px] border-2 border-[#050505] bg-[#ddd] shadow-[4px_4px_0_rgba(5,5,5,0.12)] ${desktopPositions[index]}`}
+        >
+          <Image
+            src={image.src}
+            alt={copy.heroImageAlts[index]}
+            fill
+            sizes={index === 0 || index === 3 ? "(max-width: 860px) 70vw, 286px" : "(max-width: 860px) 43vw, 172px"}
+            className={`applicant-hero-photo-image object-cover ${image.rotate ? "rotate-90 scale-[1.34]" : ""}`}
+            style={image.objectPosition ? { objectPosition: image.objectPosition } : undefined}
+            priority={index < 2}
+          />
+        </figure>
+      ))}
     </div>
   );
 }
@@ -340,10 +311,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formMessage, setFormMessage] = useState<{
-    tone: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [formMessage, setFormMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   const page = t.nonKoreanApplicants;
   const application = page.application;
@@ -351,6 +319,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
   const authHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
   const meetupMetric = approximateMetric(stats?.totalMeetups, 80);
   const memberMetric = approximateMetric(stats?.totalMembers, 70);
+  const hasLegacyNationality = Boolean(nationality && !COUNTRY_OPTIONS.includes(nationality));
 
   useEffect(() => {
     if (authLoading || !currentUser) {
@@ -491,16 +460,24 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
                 index % 2 === 0 ? "max-[640px]:border-r max-[640px]:border-[#dbdbd6]" : ""
               } ${index < 2 ? "max-[640px]:border-b max-[640px]:border-[#dbdbd6]" : ""}`}
             >
-              <strong className="text-[1.65rem] font-[950] leading-none text-[#050505] max-[640px]:text-[1.35rem]">{value}</strong>
-              <span className="mt-2 text-[0.72rem] font-[750] text-[#64748b] max-[640px]:text-[0.62rem]">{label}</span>
+              <strong className="text-[1.65rem] font-[950] leading-none text-[#050505] max-[640px]:text-[1.35rem]">
+                {value}
+              </strong>
+              <span className="mt-2 text-[0.72rem] font-[750] text-[#64748b] max-[640px]:text-[0.62rem]">
+                {label}
+              </span>
             </div>
           ))}
         </section>
 
         <section className="pt-16 pb-12 max-[640px]:pt-12 max-[640px]:pb-10">
           <span className={brandTagClass}>{copy.whyEyebrow}</span>
-          <h2 className="mt-4 mb-0 text-[2.25rem] font-[950] leading-[1.15] tracking-[-0.025em] max-[640px]:text-[1.8rem]">{copy.whyTitle}</h2>
-          <p className="mt-2 mb-0 max-w-[620px] text-[0.95rem] font-[600] leading-[1.6] text-[#64748b]">{copy.whyDescription}</p>
+          <h2 className="mt-4 mb-0 text-[2.25rem] font-[950] leading-[1.15] tracking-[-0.025em] max-[640px]:text-[1.8rem]">
+            {copy.whyTitle}
+          </h2>
+          <p className="mt-2 mb-0 max-w-[620px] text-[0.95rem] font-[600] leading-[1.6] text-[#64748b]">
+            {copy.whyDescription}
+          </p>
           <div className="mt-8 grid grid-cols-3 gap-[18px] max-[760px]:grid-cols-1 max-[760px]:gap-3">
             {copy.benefits.map((benefit, index) => (
               <article
@@ -512,8 +489,12 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
                 <span className="inline-grid h-[42px] w-[42px] place-items-center rounded-full border-[1.5px] border-[#050505] bg-white text-[0.75rem] font-[950] max-[760px]:h-auto max-[760px]:w-auto max-[760px]:place-items-start max-[760px]:border-0 max-[760px]:bg-transparent max-[760px]:text-[#f47a4a]">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="mt-4 mb-0 text-[1.35rem] font-[950] leading-[1.25] max-[760px]:mt-2 max-[760px]:text-[1rem]">{benefit.title}</h3>
-                <p className="mt-5 mb-0 text-[0.82rem] font-[600] leading-[1.55] text-[#64748b] max-[760px]:mt-2 max-[760px]:text-[0.68rem]">{benefit.description}</p>
+                <h3 className="mt-4 mb-0 text-[1.35rem] font-[950] leading-[1.25] max-[760px]:mt-2 max-[760px]:text-[1rem]">
+                  {benefit.title}
+                </h3>
+                <p className="mt-5 mb-0 text-[0.82rem] font-[600] leading-[1.55] text-[#64748b] max-[760px]:mt-2 max-[760px]:text-[0.68rem]">
+                  {benefit.description}
+                </p>
               </article>
             ))}
           </div>
@@ -524,23 +505,36 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
             <div className="p-6 max-[760px]:pb-5">
               <span className={brandTagClass}>{copy.bringTag}</span>
               <h3 className="mt-3 mb-0 text-[1.32rem] font-[950] leading-[1.35]">{copy.bringTitle}</h3>
-              <p className="mt-2 mb-0 text-[0.78rem] font-[600] leading-[1.6] text-[#64748b]">{copy.bringDescription}</p>
+              <p className="mt-2 mb-0 text-[0.78rem] font-[600] leading-[1.6] text-[#64748b]">
+                {copy.bringDescription}
+              </p>
             </div>
             <div className="border-l-2 border-[#dbdbd6] p-6 max-[760px]:border-t-2 max-[760px]:border-l-0">
               <span className={brandTagClass}>{copy.getTag}</span>
               <h3 className="mt-3 mb-0 text-[1.32rem] font-[950] leading-[1.35]">{copy.getTitle}</h3>
-              <p className="mt-2 mb-0 text-[0.78rem] font-[600] leading-[1.6] text-[#64748b]">{copy.getDescription}</p>
+              <p className="mt-2 mb-0 text-[0.78rem] font-[600] leading-[1.6] text-[#64748b]">
+                {copy.getDescription}
+              </p>
             </div>
           </div>
 
-          <h2 className="mt-8 mb-0 text-[1.8rem] font-[950] leading-[1.2] tracking-[-0.02em] max-[640px]:text-[1.5rem]">{copy.fitTitle}</h2>
+          <h2 className="mt-8 mb-0 text-[1.8rem] font-[950] leading-[1.2] tracking-[-0.02em] max-[640px]:text-[1.5rem]">
+            {copy.fitTitle}
+          </h2>
           <p className="mt-2 mb-0 text-[0.75rem] font-[600] leading-[1.5] text-[#64748b]">{copy.fitDescription}</p>
           <div className="mt-5 grid grid-cols-4 gap-3 max-[760px]:grid-cols-2 max-[420px]:gap-2">
             {copy.eligibility.map((item, index) => (
-              <article key={item.title} className="min-h-[212px] rounded-[20px] border-2 border-[#050505] bg-white p-4 shadow-[2px_2px_0_rgba(5,5,5,0.06)] max-[640px]:min-h-[148px] max-[640px]:rounded-[18px] max-[640px]:border-[1.5px] max-[640px]:p-3">
+              <article
+                key={item.title}
+                className="min-h-[212px] rounded-[20px] border-2 border-[#050505] bg-white p-4 shadow-[2px_2px_0_rgba(5,5,5,0.06)] max-[640px]:min-h-[148px] max-[640px]:rounded-[18px] max-[640px]:border-[1.5px] max-[640px]:p-3"
+              >
                 <span className="text-[0.68rem] font-[950] text-[#f47a4a]">{String(index + 1).padStart(2, "0")}</span>
-                <h3 className="mt-3 mb-0 text-[1.05rem] font-[950] leading-[1.25] max-[640px]:text-[0.88rem]">{item.title}</h3>
-                <p className="mt-3 mb-0 text-[0.72rem] font-[600] leading-[1.5] text-[#64748b] max-[640px]:mt-2 max-[640px]:text-[0.62rem]">{item.description}</p>
+                <h3 className="mt-3 mb-0 text-[1.05rem] font-[950] leading-[1.25] max-[640px]:text-[0.88rem]">
+                  {item.title}
+                </h3>
+                <p className="mt-3 mb-0 text-[0.72rem] font-[600] leading-[1.5] text-[#64748b] max-[640px]:mt-2 max-[640px]:text-[0.62rem]">
+                  {item.description}
+                </p>
               </article>
             ))}
           </div>
@@ -554,12 +548,18 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
           <div className="grid grid-cols-[minmax(0,1fr)_482px] gap-9 max-[900px]:grid-cols-1">
             <div>
               <span className={brandTagClass}>{copy.applicationTag}</span>
-              <h2 className="mt-5 mb-0 max-w-[430px] text-[1.8rem] font-[950] leading-[1.2] tracking-[-0.02em] text-white max-[640px]:text-[1.7rem]">{copy.applicationTitle}</h2>
-              <p className="mt-4 mb-0 max-w-[410px] text-[0.88rem] font-[600] leading-[1.55] text-[#c2c2c2]">{copy.applicationDescription}</p>
+              <h2 className="mt-5 mb-0 max-w-[430px] text-[1.8rem] font-[950] leading-[1.2] tracking-[-0.02em] text-white max-[640px]:text-[1.7rem]">
+                {copy.applicationTitle}
+              </h2>
+              <p className="mt-4 mb-0 max-w-[410px] text-[0.88rem] font-[600] leading-[1.55] text-[#c2c2c2]">
+                {copy.applicationDescription}
+              </p>
               <div className="mt-9 grid gap-6 max-[900px]:mb-8">
                 {copy.steps.map(([title, detail], index) => (
                   <div key={title} className="grid grid-cols-[38px_1fr] items-center gap-3">
-                    <span className="grid h-[38px] w-[38px] place-items-center rounded-full bg-[#f47a4a] text-[0.65rem] font-[950] text-[#050505]">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="grid h-[38px] w-[38px] place-items-center rounded-full bg-[#f47a4a] text-[0.65rem] font-[950] text-[#050505]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
                     <div>
                       <p className="m-0 text-[0.84rem] font-[900] text-white">{title}</p>
                       <p className="mt-1 mb-0 text-[0.67rem] font-[600] text-[#a6a6a6]">{detail}</p>
@@ -592,16 +592,23 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
                   </label>
                   <label className={formFieldClass}>
                     {application.form.nationalityLabel}
-                    <input
-                      className={formInputClass}
-                      type="text"
+                    <select
+                      className={`${formInputClass} cursor-pointer appearance-auto`}
                       autoComplete="country-name"
                       value={nationality}
                       onChange={(event) => setNationality(event.target.value)}
-                      placeholder={application.form.nationalityPlaceholder}
-                      maxLength={100}
                       required
-                    />
+                    >
+                      <option value="" disabled>
+                        {application.form.nationalityPlaceholder}
+                      </option>
+                      {hasLegacyNationality ? <option value={nationality}>{nationality}</option> : null}
+                      {COUNTRY_OPTIONS.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className={formFieldClass}>
                     {copy.credentialLabel}
@@ -646,20 +653,29 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
         <section className="py-16 max-[640px]:py-12">
           <span className={brandTagClass}>{copy.faqTag}</span>
           <h2 className="mt-4 mb-0 text-[1.9rem] font-[950] leading-[1.2] max-[640px]:text-[1.6rem]">{copy.faqTitle}</h2>
-          <div className="mt-7 grid grid-cols-2 gap-3 max-[700px]:grid-cols-1">
+          <div className="mt-7 grid grid-cols-2 gap-3 max-[700px]:grid-cols-1 max-[700px]:gap-2.5">
             {copy.faq.map(([question, answer]) => (
-              <article key={question} className="min-h-[100px] rounded-[18px] border-[1.5px] border-[#050505] bg-white p-4 max-[640px]:min-h-[78px] max-[640px]:rounded-[16px] max-[640px]:p-3.5">
-                <h3 className="m-0 text-[0.88rem] font-[950] leading-[1.35] max-[640px]:text-[0.75rem]">{question}</h3>
-                <p className="mt-2 mb-0 text-[0.74rem] font-[600] leading-[1.45] text-[#64748b] max-[640px]:text-[0.62rem]">{answer}</p>
+              <article
+                key={question}
+                className="min-h-[100px] rounded-[18px] border-[1.5px] border-[#050505] bg-white p-4 max-[700px]:min-h-[78px] max-[700px]:rounded-[16px] max-[700px]:p-3.5"
+              >
+                <h3 className="m-0 text-[0.88rem] font-[950] leading-[1.35] max-[700px]:text-[0.78rem]">{question}</h3>
+                <p className="mt-2 mb-0 text-[0.72rem] font-[600] leading-[1.5] text-[#64748b] max-[700px]:text-[0.64rem]">
+                  {answer}
+                </p>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="mb-16 rounded-[28px] border-2 border-[#050505] bg-[#fff0e8] p-10 shadow-[5px_5px_0_rgba(5,5,5,0.14)] max-[640px]:mb-10 max-[640px]:rounded-[24px] max-[640px]:p-5">
+        <section className="mb-16 rounded-[28px] border-2 border-[#050505] bg-[#fff0e8] p-10 shadow-[5px_5px_0_rgba(5,5,5,0.14)] max-[640px]:mb-12 max-[640px]:rounded-[24px] max-[640px]:p-[18px]">
           <span className={brandTagClass}>{copy.finalTag}</span>
-          <h2 className="mt-5 mb-0 text-[2.35rem] font-[950] leading-[1.15] tracking-[-0.025em] max-[640px]:text-[1.85rem]">{copy.finalTitle}</h2>
-          <p className="mt-3 mb-0 max-w-[700px] text-[0.88rem] font-[600] leading-[1.55] text-[#64748b]">{copy.finalDescription}</p>
+          <h2 className="mt-5 mb-0 text-[2.35rem] font-[950] leading-[1.15] tracking-[-0.025em] max-[640px]:text-[1.9rem]">
+            {copy.finalTitle}
+          </h2>
+          <p className="mt-3 mb-0 max-w-[700px] text-[0.88rem] font-[600] leading-[1.6] text-[#64748b] max-[640px]:text-[0.72rem]">
+            {copy.finalDescription}
+          </p>
           <div className="mt-7 flex flex-wrap gap-4 max-[640px]:grid max-[640px]:grid-cols-1">
             {currentUser ? (
               <Link className={primaryButtonClass} href="#application" onClick={scrollToApplication}>
