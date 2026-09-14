@@ -14,12 +14,17 @@ export default function MainLayoutWrapper({
   const isHomePage = pathname === "/";
   const isArticlePage = pathname.startsWith("/article/");
   const isPaymentPage = pathname === "/payment";
+  const isNonKoreanApplicantPage = pathname === "/non-korean-applicants";
   const isPrivateProfilePage =
     pathname === "/profile" ||
     pathname === "/profile/connections" ||
     pathname === "/profile/account";
   const isFullWidth =
-    isHomePage || isArticlePage || isPaymentPage || isPrivateProfilePage;
+    isHomePage ||
+    isArticlePage ||
+    isPaymentPage ||
+    isNonKoreanApplicantPage ||
+    isPrivateProfilePage;
 
   return (
     <div
