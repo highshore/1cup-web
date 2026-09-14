@@ -263,9 +263,9 @@ export async function fetchMeetupLeaderboardsServer(
         )
         .abortSignal(querySignal()),
       supabase
-      .from("meetup_participants")
-      .select("meetup_id,user_id,role")
-      .eq("registration_status", "registered")
+        .from("meetup_participants")
+        .select("meetup_id,user_id,role")
+        .eq("registration_status", "registered")
         .abortSignal(querySignal()),
       supabase
         .from("user_first_paid")
@@ -363,9 +363,9 @@ export async function fetchMeetupLeaderboardsServer(
       displayName: user.displayName,
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
       value: 1,
-      ...(paidMemberSortDate(user)
-        ? { joinedAt: paidMemberSortDate(user)!.toISOString() }
-        : {}),
+      // Keep the paid date server-side for ranking. The public response uses the
+      // account creation date so payment/subscription timing is not disclosed.
+      ...(user.createdAt ? { joinedAt: user.createdAt.toISOString() } : {}),
     }));
 
   const monthLabel = new Intl.DateTimeFormat("en-US", {
