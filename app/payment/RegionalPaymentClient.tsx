@@ -261,7 +261,11 @@ export default function RegionalPaymentClient() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !processing) closeCheckout();
+      if (event.key === "Escape" && !processing) {
+        setCheckoutOpen(false);
+        setMessage("");
+        setError("");
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -447,7 +451,9 @@ export default function RegionalPaymentClient() {
                 <p className="m-0 text-[34px] font-black leading-none tracking-[-0.035em]">
                   {formatWon(membershipPrice)}
                 </p>
-                <p className="m-0 pb-[2px] text-[13px] font-bold">/ 30일</p>
+                <p className="m-0 pb-[2px] text-[13px] font-bold">
+                  {copy.membership.period}
+                </p>
               </div>
               <p className="absolute bottom-[10px] left-[22px] m-0 text-[11px] font-medium">
                 {copy.membership.renewal}
@@ -622,14 +628,14 @@ export default function RegionalPaymentClient() {
                 {isPack ? `${copy.flex.eyebrow} · ${regionLabel}` : `${copy.membership.label} · ${regionLabel}`}
               </p>
               <p className="m-0 text-[28px] font-bold leading-[34px] tracking-[-0.025em]">
-                {isPack ? copy.flex.title.replace(/^.*?,\s*/, "") : copy.membership.name}
+                {isPack ? copy.flex.name : copy.membership.name}
               </p>
               <div className="flex items-baseline gap-2">
                 <p className="m-0 text-[30px] font-bold leading-9">
                   {formatWon(totalAmount)}
                 </p>
                 <p className="m-0 text-[12px] font-medium text-[#64748b]">
-                  {isPack ? copy.flex.oneTime : "/ 30일"}
+                  {isPack ? copy.flex.oneTime : copy.membership.period}
                 </p>
               </div>
               <p className="m-0 text-[12px] leading-[18px] text-[#64748b]">
