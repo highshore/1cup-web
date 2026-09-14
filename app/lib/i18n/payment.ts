@@ -2,7 +2,7 @@ const payment = {
   en: {
     eyebrow: "1 CUP MEMBERSHIP",
     title: "Make 1 Cup part of your routine.",
-    subtitle: "Thoughtful conversations every week. Join as often as you like with one membership.",
+    subtitle: "Skip the small talk. Use your English every week on topics worth discussing.",
     locationLabel: "Location",
     locations: {
       anam: "Anam",
@@ -27,8 +27,6 @@ const payment = {
       benefitThreeBody: "Stop the next payment from your profile and keep using the remaining period.",
       alreadyActive: "You already have an active 30-day membership. Your current price is protected, and you can still buy a 5-visit pass separately.",
     },
-    referralPrompt: "Have a friend referral code?",
-    referralPromptCta: "Get discount →",
     flex: {
       eyebrow: "FLEX PASS",
       name: "5-visit pass",
@@ -90,7 +88,7 @@ const payment = {
   ko: {
     eyebrow: "1 CUP MEMBERSHIP",
     title: "영어 한잔을, 내 루틴으로.",
-    subtitle: "매주 깊이 있는 대화. 멤버십 하나로 원하는 만큼 참여하세요.",
+    subtitle: "가벼운 스몰토크 대신, 매주 제대로 영어로 이야기하세요.",
     locationLabel: "참여 지역",
     locations: {
       anam: "안암",
@@ -115,8 +113,6 @@ const payment = {
       benefitThreeBody: "프로필에서 다음 결제를 중단하고 남은 기간은 그대로 이용하세요.",
       alreadyActive: "현재 30일 멤버십을 이용 중입니다. 기존 결제금액은 그대로 유지되며 5회 참여권은 별도로 구매할 수 있습니다.",
     },
-    referralPrompt: "친구 추천 코드가 있나요?",
-    referralPromptCta: "할인 받기 →",
     flex: {
       eyebrow: "FLEX PASS",
       name: "5회 참여권",
