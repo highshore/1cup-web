@@ -8,11 +8,13 @@
 - `constants/`: shared design and layout constants.
 - `contexts/`: React context providers such as authentication.
 - `features/`: feature-scoped modules with services, types, components, and utilities.
-- `firebase/`: client and server Firebase initialization.
 - `hooks/`: app-wide React hooks.
 - `i18n/`: locale provider and translation dictionaries.
+- `otp/`: phone verification and Alimtalk messaging.
 - `services/`: cross-feature service functions.
-- `styled-components/`: SSR registry for styled-components.
+- `supabase/`: browser and server Supabase clients.
+- `utils/`: small shared helpers.
+- `vocabulary/`: vocabulary study scheduling logic.
 
 ## 한국어
 
@@ -22,8 +24,10 @@
 - `constants/`: 공통 디자인/레이아웃 상수.
 - `contexts/`: 인증 같은 React context provider.
 - `features/`: 기능별 서비스, 타입, 컴포넌트, 유틸리티.
-- `firebase/`: 클라이언트/서버 Firebase 초기화.
 - `hooks/`: 앱 전역 React hook.
 - `i18n/`: locale provider와 번역 사전.
+- `otp/`: 휴대폰 인증과 알림톡 발송.
 - `services/`: 여러 기능이 공유하는 service 함수.
-- `styled-components/`: styled-components SSR registry.
+- `supabase/`: 브라우저/서버 Supabase 클라이언트.
+- `utils/`: 공통 헬퍼 함수.
+- `vocabulary/`: 단어 학습 스케줄링 로직.
