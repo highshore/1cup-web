@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { fetchPublishedBlogPostsServer } from "./lib/features/blog/services/blog_service_server";
 import { fetchMeetupEventsPageServer } from "./lib/features/meetup/services/meetup_public_server";
+import type { MeetupEvent } from "./lib/features/meetup/types/meetup_types";
 import { getBlogRouteSlug, getMeetupRouteSlug } from "./lib/seo/route_slugs";
 
 const SITE_URL = "https://1cupenglish.com";
@@ -10,8 +11,8 @@ const MAX_MEETUPS = 500;
 
 export const dynamic = "force-dynamic";
 
-async function getMeetupsForSitemap() {
-  const events = [];
+async function getMeetupsForSitemap(): Promise<MeetupEvent[]> {
+  const events: MeetupEvent[] = [];
   let offset = 0;
 
   while (offset < MAX_MEETUPS) {
@@ -66,7 +67,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entries.push(
       ...meetups.map((event) => ({
         url: `${SITE_URL}/meetup/${encodeURIComponent(getMeetupRouteSlug(event))}`,
-        lastModified: new Date(`${event.date}T${event.time}:00+09:00`),
         changeFrequency: "monthly" as const,
         priority: 0.6,
       })),
