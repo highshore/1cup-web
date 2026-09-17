@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
-  ChatBubbleLeftRightIcon,
   NewspaperIcon,
   TrophyIcon,
   UserCircleIcon,
@@ -19,7 +18,6 @@ import NotificationDropdown from "../../lib/features/chat/components/Notificatio
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
-  { path: "/shadow", labelKey: "shadowing", icon: ChatBubbleLeftRightIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
   { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
