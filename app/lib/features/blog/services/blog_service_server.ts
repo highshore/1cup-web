@@ -1,5 +1,6 @@
 import { cache } from "react";
 
+import { getBlogRouteSlug, routeSlugEquals } from "../../../seo/route_slugs";
 import { admin } from "../../../supabase/server";
 import { BlogPost } from "../types/blog_types";
 
@@ -74,6 +75,26 @@ export const fetchPublishedBlogPostByIdServer = cache(async (
     console.error("Error fetching published blog post by ID on server:", error);
     return null;
   }
+});
+
+// Resolve the public route segment from a title-based slug.
+export const fetchPublishedBlogPostByRouteSlugServer = cache(async (
+  routeSlug: string,
+): Promise<BlogPost | null> => {
+  const posts = await fetchPublishedBlogPostsServer();
+  return (
+    posts.find((post) => routeSlugEquals(getBlogRouteSlug(post), routeSlug)) ||
+    null
+  );
+});
+
+// Preserve old ID links while making the title-based slug canonical.
+export const resolvePublishedBlogPostRouteServer = cache(async (
+  routeValue: string,
+): Promise<BlogPost | null> => {
+  const byId = await fetchPublishedBlogPostByIdServer(routeValue);
+  if (byId) return byId;
+  return fetchPublishedBlogPostByRouteSlugServer(routeValue);
 });
 
 // Get all published blog post IDs (for getStaticPaths)
