@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { fetchMeetupEventsPageServer } from "../../../../lib/features/meetup/services/meetup_public_active_server";
+import { getMeetupRouteSlug, routeSlugEquals } from "../../../../lib/seo/route_slugs";
 
 const PAGE_SIZE = 50;
 const MAX_SCAN = 500;
@@ -10,17 +11,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const eventId = decodeURIComponent(id || "").trim();
+  const routeValue = decodeURIComponent(id || "").trim();
 
-  if (!eventId) {
-    return NextResponse.json({ error: "Missing event id" }, { status: 400 });
+  if (!routeValue) {
+    return NextResponse.json({ error: "Missing event route" }, { status: 400 });
   }
 
   try {
     let offset = 0;
     while (offset < MAX_SCAN) {
       const page = await fetchMeetupEventsPageServer(offset, PAGE_SIZE);
-      const event = page.events.find((item) => item.id === eventId);
+      const event = page.events.find(
+        (item) =>
+          item.id === routeValue ||
+          routeSlugEquals(getMeetupRouteSlug(item), routeValue),
+      );
       if (event) {
         return NextResponse.json(event, {
           headers: { "Cache-Control": "no-store" },
