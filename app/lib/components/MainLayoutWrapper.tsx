@@ -15,7 +15,7 @@ export default function MainLayoutWrapper({
   const isArticlePage = pathname.startsWith("/article/");
   const isPaymentPage = pathname === "/payment";
   const isNonKoreanApplicantPage = pathname === "/non-korean-applicants";
-  const isSpeakingTestPage = pathname === "/speaking-test";
+  const isExamCenterPage = pathname === "/exam-center";
   const isPrivateProfilePage =
     pathname === "/profile" ||
     pathname === "/profile/connections" ||
@@ -25,26 +25,26 @@ export default function MainLayoutWrapper({
     isArticlePage ||
     isPaymentPage ||
     isNonKoreanApplicantPage ||
-    isSpeakingTestPage ||
+    isExamCenterPage ||
     isPrivateProfilePage;
 
   return (
     <div
       className={`flex min-h-screen flex-col ${
-        isHomePage || isSpeakingTestPage ? "bg-white" : "bg-[#f5f5f5]"
+        isHomePage || isExamCenterPage ? "bg-white" : "bg-[#f5f5f5]"
       }`}
     >
       <NewNavbar />
       <div
-        className={`mx-auto min-h-screen w-full flex-1 [font-family:'Noto_Sans_KR',sans-serif] ${isSpeakingTestPage ? "pb-0" : "pb-8"} ${
-          isHomePage ? "pt-0" : isSpeakingTestPage ? "pt-[60px]" : "pt-[74px] max-[768px]:pt-[68px]"
+        className={`mx-auto min-h-screen w-full flex-1 [font-family:'Noto_Sans_KR',sans-serif] ${isExamCenterPage ? "pb-0" : "pb-8"} ${
+          isHomePage ? "pt-0" : isExamCenterPage ? "pt-[60px]" : "pt-[74px] max-[768px]:pt-[68px]"
         } ${isFullWidth ? "max-w-full" : "max-w-[960px] max-[768px]:px-2"} ${
           isPrivateProfilePage ? "profile-workspace" : ""
         }`}
       >
         {children}
       </div>
-      <Footer />
+      {!isExamCenterPage && <Footer />}
       <NonKoreanApplicantPrompt />
     </div>
   );
