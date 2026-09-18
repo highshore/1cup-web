@@ -53,7 +53,8 @@ export default function SpeakingCenterLanding({
   const displayCards = liveTests.map((test, index) => ({
     test,
     title: test.title,
-    taskCount: test.taskCount,
+    taskCount: test.categories.includes("toefl") ? 97 : test.taskCount,
+    duration: test.categories.includes("toefl") ? (isKo ? "~72분" : "~72 min") : copy.duration,
     type: testType(test, locale),
     badge:
       index === 0
@@ -295,7 +296,7 @@ export default function SpeakingCenterLanding({
                       }`}
                       style={{ color: metaColor }}
                     >
-                      {card.taskCount} {copy.tasks}   ·   {copy.duration}
+                      {card.taskCount} {copy.tasks}   ·   {card.duration}
                     </span>
 
                     <span
