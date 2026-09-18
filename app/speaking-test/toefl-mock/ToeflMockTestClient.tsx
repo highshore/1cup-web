@@ -334,6 +334,19 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
   }, [step?.id]);
 
   useEffect(() => {
+    if (!step) return;
+    if (step.kind === "volume_adjusted") setVolumeOpen(true);
+  }, [step?.id, step?.kind]);
+
+  useEffect(() => {
+    if (mode !== "exam" || step?.kind !== "mic_instructions") return;
+    const timer = window.setTimeout(() => {
+      setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [mode, step?.id, step?.kind, steps.length]);
+
+  useEffect(() => {
     if (mode !== "exam") return;
     if (step?.kind !== "email" && step?.kind !== "discussion") return;
     const timer = window.setInterval(() => {
@@ -588,7 +601,7 @@ function ExamScreen({
         />
       )}
 
-      {showTopBar && (volumeOpen || step.kind === "volume_adjusted") && (
+      {showTopBar && volumeOpen && (
         <div className="toefl-volume-popover">
           <button type="button" className="toefl-volume-close" onClick={onVolume} aria-label="Close volume control">×</button>
           <LevelSegments color="teal" filled={13} />
