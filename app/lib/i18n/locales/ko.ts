@@ -11,7 +11,7 @@ const ko = {
     login: "로그인",
     join: "참여하기",
     shadowing: "쉐도잉",
-    speakingTest: "스피킹 테스트",
+    speakingTest: "시험 대비",
     vocabulary: "단어장",
     meetup: "밋업",
     leaderboard: "리더보드",
