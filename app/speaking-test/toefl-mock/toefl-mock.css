@@ -2122,3 +2122,221 @@
   font-size: 14px;
   line-height: 1;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Reading daily-life + academic question layout from the real TOEFL reference */
+/* -------------------------------------------------------------------------- */
+
+.toefl-topbar-back {
+  position: absolute;
+  top: 4px;
+  right: 112px;
+  width: 82px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  border: 1px solid #d4e1e2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #087b82;
+  padding: 0 10px;
+  font: 700 13px/1 Arial, Helvetica, sans-serif;
+  cursor: pointer;
+}
+
+.toefl-nav-chevron.back {
+  display: inline-block;
+  margin-top: -1px;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.toefl-topbar.has-back .toefl-topbar-action {
+  right: 2px;
+  width: 106px;
+}
+
+.toefl-topbar.has-back .toefl-topbar-volume {
+  right: 198px;
+  width: 128px;
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 92px;
+  width: 100%;
+  height: calc(100dvh - 92px);
+  min-height: calc(100dvh - 92px);
+  transform: none;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 42px;
+  align-items: start;
+  border: 1px solid #333333;
+  background: #ffffff;
+  padding: 24px 20px 34px;
+  overflow: hidden;
+}
+
+.toefl-reading-daily > h1,
+.toefl-reading-academic > h1 {
+  position: static;
+  grid-column: 1 / -1;
+  width: auto;
+  margin: 0 0 50px;
+  color: #101010;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.toefl-passage {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  width: auto;
+  height: auto;
+  max-height: calc(100dvh - 225px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 0 12px 24px 0;
+  scrollbar-gutter: stable;
+}
+
+.toefl-passage p {
+  margin: 0 0 15px;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.28;
+}
+
+.toefl-academic-question {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  box-sizing: border-box;
+  padding: 0 16px 0 0;
+}
+
+.toefl-academic-question h2,
+.toefl-daily-question h2 {
+  margin: 0 0 18px;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.toefl-academic-question .toefl-options,
+.toefl-daily-question .toefl-options {
+  gap: 10px;
+}
+
+.toefl-academic-question .toefl-option,
+.toefl-daily-question .toefl-option {
+  min-height: 28px;
+  gap: 12px;
+  padding: 2px 0;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.toefl-academic-question .toefl-radio,
+.toefl-daily-question .toefl-radio {
+  width: 19px;
+  height: 19px;
+  flex-basis: 19px;
+  border: 1px solid #666666;
+}
+
+.toefl-daily-stimulus {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  width: auto;
+  min-height: 0;
+  max-height: calc(100dvh - 225px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: 1px solid #c8c8c8;
+  background: #ffffff;
+  padding: 24px 28px;
+}
+
+.toefl-daily-stimulus > strong {
+  display: block;
+  margin-bottom: 16px;
+  color: #087b82;
+  text-align: center;
+  font: 700 17px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-daily-stimulus p {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 400 14px/1.42 Arial, Helvetica, sans-serif;
+}
+
+.toefl-daily-question {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  box-sizing: border-box;
+  padding: 0 16px 0 0;
+}
+
+.toefl-stimulus-placeholder {
+  margin-top: 18px;
+  border: 1px dashed #a3aaad;
+  padding: 10px;
+  text-align: center;
+  color: #70787c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    column-gap: 24px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .toefl-reading-daily > h1,
+  .toefl-reading-academic > h1 {
+    margin-bottom: 38px;
+    font-size: 23px;
+  }
+
+  .toefl-passage p {
+    font-size: 13px;
+  }
+
+  .toefl-academic-question h2,
+  .toefl-daily-question h2,
+  .toefl-academic-question .toefl-option,
+  .toefl-daily-question .toefl-option {
+    font-size: 13px;
+  }
+}
