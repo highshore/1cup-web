@@ -4,7 +4,6 @@ import {
   ArrowRightOnRectangleIcon,
   BellAlertIcon,
   BookOpenIcon,
-  MicrophoneIcon,
   WrenchScrewdriverIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -196,10 +195,6 @@ export default function NotificationDropdown({ isTransparent }: { isTransparent:
             <BellAlertIcon />
             <span className="min-w-0 flex-1">{t.nav.notifications}</span>
             {unreadCount > 0 && <span className={menuCountClass}>{badgeLabel}</span>}
-          </button>
-          <button type="button" role="menuitem" className={menuItemClass()} onClick={() => { setIsMenuOpen(false); router.push("/exam-center"); }}>
-            <MicrophoneIcon />
-            <span className="min-w-0 flex-1">{t.speakingCenter.navLabel}</span>
           </button>
           <button type="button" role="menuitem" className={menuItemClass()} onClick={() => { setIsMenuOpen(false); router.push("/vocabulary"); }}>
             <BookOpenIcon />
