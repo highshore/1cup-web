@@ -1,12 +1,13 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import type {
   DeployedExam,
   SpeakingTestAttempt,
 } from "../lib/features/speaking-test/types";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import { SectionTitle } from "../new-home/components/SectionHeading";
 
 const pageContainerClass =
   "mx-auto w-full max-w-page px-gutter max-[920px]:px-gutter-mobile";
@@ -65,6 +66,7 @@ export default function SpeakingCenterLanding({
   const copy = t.speakingCenter;
   const visibleTests = tests.slice(0, 12);
   const completedAttempts = attempts.filter((entry) => entry.report);
+  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
   const scrollToTests = () => {
     document.getElementById("speaking-practice-tests")?.scrollIntoView({
@@ -80,7 +82,7 @@ export default function SpeakingCenterLanding({
           className={`${pageContainerClass} relative min-h-[592px] max-[860px]:min-h-0 max-[860px]:py-9`}
         >
           <div className="grid min-h-[592px] grid-cols-[526px_346px] gap-10 max-[980px]:grid-cols-[minmax(0,1fr)_346px] max-[860px]:min-h-0 max-[860px]:grid-cols-1 max-[860px]:gap-8">
-            <div className="pt-[68px] max-[860px]:pt-0">
+            <div className="flex flex-col justify-center py-10 max-[860px]:py-0">
               <span className="inline-flex h-[30px] items-center justify-center rounded-full border-2 border-[#050505] px-4 text-[11px] font-[800] leading-none tracking-[0.01em] text-[#050505]">
                 {copy.eyebrow}
               </span>
@@ -104,7 +106,7 @@ export default function SpeakingCenterLanding({
               </button>
             </div>
 
-            <div className="pt-[52px] max-[860px]:pt-0">
+            <div className="flex items-center justify-center max-[860px]:pt-0">
               <div className="relative mx-auto h-[470px] w-[346px] max-w-full overflow-hidden rounded-[26px] border-[2.5px] border-[#050505] bg-white shadow-[7px_7px_0_0_rgba(5,5,5,0.14)]">
                 <div className="absolute left-6 top-6 text-[11px] font-[900] text-[#f47a4a]">
                   {copy.previewEyebrow}
@@ -282,42 +284,46 @@ export default function SpeakingCenterLanding({
         </div>
       </section>
 
-      <section className="bg-[#f5f3ed]">
-        <div
-          className={`${pageContainerClass} min-h-[700px] pt-[58px] pb-[68px] max-[860px]:min-h-0 max-[860px]:py-12`}
-        >
-          <span className="inline-flex h-7 items-center justify-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-4 text-[10px] font-[900] leading-none text-[#050505]">
-            {copy.faqEyebrow}
-          </span>
+      <section className="mb-0 bg-[#f5f5f5] px-0 pt-20 pb-0">
+        <div className="mx-auto max-w-page px-6 max-[768px]:px-4">
+          <SectionTitle>{copy.faqTitle}</SectionTitle>
 
-          <h2 className="mt-4 min-h-[46px] [font-family:inherit] text-[36px] font-[900] leading-[42px] tracking-[-0.035em] text-[#050505] max-[640px]:min-h-0 max-[640px]:text-[30px] max-[640px]:leading-9">
-            {copy.faqTitle}
-          </h2>
+          <div className="flex w-full flex-col gap-[1.2rem]">
+            {copy.faq.map((item, index) => {
+              const isOpen = openFAQ === index;
 
-          <p className="mt-2 min-h-[38px] text-[14px] font-[600] leading-[21px] text-[#64748b] max-[640px]:min-h-0">
-            {copy.faqIntro}
-          </p>
-
-          <div className="mt-[42px] grid gap-5">
-            {copy.faq.map((item) => (
-              <div
-                key={item.q}
-                className="relative min-h-[84px] rounded-[18px] border-[1.25px] border-[#dbdbd6] bg-white px-[18px] py-[13px] pr-14"
-              >
-                <h3 className="m-0 [font-family:inherit] text-[12px] font-[900] leading-[18px] text-[#050505]">
-                  {item.q}
-                </h3>
-                <p className="mt-[6px] text-[10px] font-[600] leading-[15px] text-[#64748b]">
-                  {item.a}
-                </p>
-                <span
-                  aria-hidden="true"
-                  className="absolute right-[18px] top-[13px] text-[16px] font-[900] leading-5 text-[#f47a4a]"
+              return (
+                <div
+                  key={item.q}
+                  className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white [transition:all_0.2s_ease] hover:border-[#050505] hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
                 >
-                  +
-                </span>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => setOpenFAQ(isOpen ? null : index)}
+                    className="flex w-full items-center justify-between border-none bg-transparent p-6 text-left font-['Noto_Sans_KR',sans-serif] text-[1.05rem] font-semibold text-[#1f2937] [transition:color_0.2s_ease] hover:text-primary max-[768px]:p-[1.2rem] max-[768px]:text-[0.95rem]"
+                  >
+                    {item.q}
+                    <span
+                      className={`ml-4 shrink-0 text-[1.4rem] font-normal text-primary [transition:transform_0.25s_ease] ${
+                        isOpen ? "[transform:rotate(180deg)]" : "[transform:none]"
+                      }`}
+                    >
+                      {isOpen ? "−" : "+"}
+                    </span>
+                  </button>
+
+                  <div
+                    className={`overflow-hidden font-['Noto_Sans_KR',sans-serif] text-[0.95rem] leading-[1.7] text-[#6b7280] [transition:max-height_0.3s_ease,padding_0.3s_ease] max-[768px]:text-[0.9rem] ${
+                      isOpen
+                        ? "max-h-[500px] px-6 pt-0 pb-6 max-[768px]:px-[1.2rem] max-[768px]:pb-[1.2rem]"
+                        : "max-h-0 px-6 py-0 max-[768px]:px-[1.2rem]"
+                    }`}
+                  >
+                    {item.a}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
