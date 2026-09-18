@@ -15,6 +15,8 @@ const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-lite-image";
 const GOOGLE_CLOUD_PROJECT =
   Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
 const GENERATED_IMAGE_BUCKET = "assets";
+const MIN_KEY_VOCABULARY_ITEMS = 5;
+const MAX_KEY_VOCABULARY_ITEMS = 12;
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
@@ -562,6 +564,7 @@ Requirements:
 const extractC1Vocabulary = async (
   refinedTitle: string,
   paragraphs: string[],
+  excludedTerms: string[] = [],
 ): Promise<AdvancedVocabularyItem[]> => {
   const output = await generateJson(
     "advanced vocabulary extraction",
@@ -572,7 +575,12 @@ Requirements:
 - Include only items that are genuinely useful or notable.
 - Avoid trivial words.
 - Return 5 to 12 items.
-- The "term" must be normalized to its dictionary or base form, not the inflected surface form from the article.
+- Prefer established dictionary headwords and common lexicalized expressions over one-off descriptive phrases.
+${
+      excludedTerms.length
+        ? `- Do not return any of these previously attempted terms: ${excludedTerms.join(", ")}.\n`
+        : ""
+    }- The "term" must be normalized to its dictionary or base form, not the inflected surface form from the article.
 - Prefer the canonical original expression without tense or aspect inflection.
 - For verbs and verbal phrases, remove past tense and -ing forms when possible.
 - Keep multi-word expressions and phrasal verbs together.
@@ -1203,7 +1211,7 @@ const updateArticleProgress = async (
     progress,
     provider: "vertex-ai",
     model: GEMINI_TEXT_MODEL,
-    workflow: "admin-article-ingest-v5",
+    workflow: "admin-article-ingest-v6",
   };
 
   const [articleResult, jobResult] = await Promise.all([
@@ -1250,7 +1258,7 @@ const markArticleFailed = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v6",
           error: {
             errorName: details.errorName,
             errorCode: details.errorCode,
@@ -1316,17 +1324,57 @@ const processArticle = async (
     const summary = await summarizeArticle(refined.title, paragraphs);
 
     await progress("extractingVocabulary", 45);
-    const advancedVocabulary = await extractC1Vocabulary(
+    let advancedVocabulary = await extractC1Vocabulary(
       refined.title,
       paragraphs,
     );
-    const dictionaryVocabulary = await resolveVocabularyFromDictionary(
+    let dictionaryVocabulary = await resolveVocabularyFromDictionary(
       db,
       advancedVocabulary,
     );
-    if (dictionaryVocabulary.items.length < 5) {
-      throw new Error(
-        "The shared dictionary did not resolve at least five advanced vocabulary items.",
+
+    // A sparse dictionary match should not make the entire article fail. Ask the
+    // model for one fresh set of alternatives, then publish with however many
+    // canonical dictionary meanings we can safely resolve.
+    if (dictionaryVocabulary.items.length < MIN_KEY_VOCABULARY_ITEMS) {
+      const excludedTerms = advancedVocabulary.map((item) => item.term);
+      try {
+        const supplementalVocabulary = await extractC1Vocabulary(
+          refined.title,
+          paragraphs,
+          excludedTerms,
+        );
+        const seenTerms = new Set(
+          advancedVocabulary.map((item) => normalizeDictionaryTerm(item.term)),
+        );
+        const uniqueSupplemental = supplementalVocabulary.filter((item) => {
+          const normalized = normalizeDictionaryTerm(item.term);
+          if (!normalized || seenTerms.has(normalized)) return false;
+          seenTerms.add(normalized);
+          return true;
+        });
+        advancedVocabulary = [...advancedVocabulary, ...uniqueSupplemental];
+        dictionaryVocabulary = await resolveVocabularyFromDictionary(
+          db,
+          advancedVocabulary,
+        );
+      } catch (error) {
+        console.warn(
+          "Unable to supplement advanced vocabulary; continuing with resolved dictionary items:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    dictionaryVocabulary = {
+      items: dictionaryVocabulary.items.slice(0, MAX_KEY_VOCABULARY_ITEMS),
+      mappings: dictionaryVocabulary.mappings
+        .slice(0, MAX_KEY_VOCABULARY_ITEMS)
+        .map((mapping, index) => ({ ...mapping, source_order: index })),
+    };
+    if (dictionaryVocabulary.items.length < MIN_KEY_VOCABULARY_ITEMS) {
+      console.warn(
+        `Only ${dictionaryVocabulary.items.length} advanced vocabulary item(s) resolved from the shared dictionary; continuing article publication.`,
       );
     }
 
@@ -1402,7 +1450,7 @@ const processArticle = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v6",
           completedAt,
         },
         updated_at: completedAt,
@@ -1421,16 +1469,18 @@ const processArticle = async (
     if (clearVocabularyError) {
       throw new Error(clearVocabularyError.message);
     }
-    const { error: vocabularyError } = await db
-      .from("article_vocabulary")
-      .insert(
-        dictionaryVocabulary.mappings.map((mapping) => ({
-          article_id: articleId,
-          ...mapping,
-        })),
-      );
-    if (vocabularyError) {
-      throw new Error(vocabularyError.message);
+    if (dictionaryVocabulary.mappings.length) {
+      const { error: vocabularyError } = await db
+        .from("article_vocabulary")
+        .insert(
+          dictionaryVocabulary.mappings.map((mapping) => ({
+            article_id: articleId,
+            ...mapping,
+          })),
+        );
+      if (vocabularyError) {
+        throw new Error(vocabularyError.message);
+      }
     }
 
     const jobResult = await db
@@ -1695,7 +1745,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           progress: 5,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v6",
         },
       });
     if (articleError) throw new Error(articleError.message);
@@ -1713,7 +1763,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         progress: 5,
         provider: "vertex-ai",
         model: GEMINI_TEXT_MODEL,
-        workflow: "admin-article-ingest-v5",
+        workflow: "admin-article-ingest-v6",
         created_by: uid,
       });
 
