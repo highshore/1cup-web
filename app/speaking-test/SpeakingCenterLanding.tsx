@@ -50,23 +50,18 @@ export default function SpeakingCenterLanding({
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
   const liveTests = tests.slice(0, 12);
-  const displayCards = Array.from({ length: 12 }, (_, index) => {
-    const test = liveTests[index];
-    return {
-      test,
-      title:
-        test?.title ??
-        (isKo ? `스피킹 테스트 ${index + 1}` : `Speaking Test ${index + 1}`),
-      taskCount: test?.taskCount ?? 4,
-      type: testType(test, locale),
-      badge:
-        index === 0
-          ? copy.free
-          : index === 3 || index === 7
-            ? copy.popular
-            : null,
-    };
-  });
+  const displayCards = liveTests.map((test, index) => ({
+    test,
+    title: test.title,
+    taskCount: test.taskCount,
+    type: testType(test, locale),
+    badge:
+      index === 0
+        ? copy.free
+        : index === 3 || index === 7
+          ? copy.popular
+          : null,
+  }));
 
   const handleHeroStart = () => {
     const freeTest = liveTests.find((test) => test.categories.includes("free"));
