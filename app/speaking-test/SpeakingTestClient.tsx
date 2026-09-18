@@ -22,7 +22,6 @@ import {
   type SpeakingTestReport,
 } from "../lib/features/speaking-test/types";
 import SpeakingCenterLanding from "./SpeakingCenterLanding";
-import "./speaking-test.css";
 
 type Screen = "center" | "test" | "scoring" | "report";
 type CapturedResponse = {
@@ -416,10 +415,7 @@ export default function SpeakingTestClient() {
     return (
       <main style={{ ...page, display: "grid", placeItems: "center" }}>
         <div style={{ textAlign: "center" }}>
-          <ArrowPathIcon
-            width={34}
-            style={{ animation: "speaking-test-spin 1s linear infinite" }}
-          />
+          <ArrowPathIcon width={34} className="animate-spin" />
           <h1 style={{ fontSize: 26 }}>{copy.scoring}</h1>
           <p style={{ color: "rgba(5,5,5,.62)" }}>{copy.audioSaved}</p>
         </div>
