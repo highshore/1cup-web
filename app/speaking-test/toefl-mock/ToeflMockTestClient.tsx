@@ -791,7 +791,9 @@ function ExamScreen({
           step.kind === "section_end" ||
           step.kind === "writing_instructions" ||
           step.kind === "speaking_instructions" ||
-          step.kind === "speaking_scenario"
+          step.kind === "speaking_scenario" ||
+          step.kind === "listening_stimulus" ||
+          (step.kind === "listening_response" && !selected)
         ? undefined
         : speakingNoNext
           ? undefined
@@ -981,10 +983,13 @@ function ExamScreen({
 
       {step.kind === "listening_response" && (
         <div className="toefl-listening-response">
-          <h1>Listen and choose the best response.</h1>
-          <MediaPlaceholder label={step.mediaLabel} type="audio" className="response-audio" />
+          <h1>Choose the best response.</h1>
+          <MediaPlaceholder
+            label="Speaker image placeholder"
+            type="image"
+            className="listening-figure response-figure"
+          />
           <div className="toefl-response-question">
-            <h2>{step.questionText}</h2>
             <OptionList options={step.options} selected={selected} onSelect={onAnswer} />
           </div>
         </div>
@@ -994,19 +999,26 @@ function ExamScreen({
         <div className="toefl-listening-stimulus">
           <h1>Listen to {step.stimulusTitle?.toLowerCase()}.</h1>
           <MediaPlaceholder
-            label={step.mediaLabel}
-            type="audio"
-            className="large-audio"
+            label={step.stimulusTitle === "Conversation" ? "Conversation image placeholder" : "Stimulus image placeholder"}
+            type="image"
+            className="listening-figure stimulus-figure"
             onClick={onForceNext}
           />
-          <p>Click the placeholder to simulate the audio ending.</p>
+          <p>Click the image placeholder to simulate the audio ending.</p>
         </div>
       )}
 
       {step.kind === "listening_question" && (
         <div className="toefl-listening-question">
-          <h1>{step.questionText}</h1>
-          <OptionList options={step.options} selected={selected} onSelect={onAnswer} />
+          <MediaPlaceholder
+            label="Stimulus image placeholder"
+            type="image"
+            className="listening-figure question-figure"
+          />
+          <div className="toefl-listening-question-copy">
+            <h1>{step.questionText}</h1>
+            <OptionList options={step.options} selected={selected} onSelect={onAnswer} />
+          </div>
         </div>
       )}
 
