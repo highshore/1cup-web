@@ -15,6 +15,7 @@ export default function MainLayoutWrapper({
   const isArticlePage = pathname.startsWith("/article/");
   const isPaymentPage = pathname === "/payment";
   const isNonKoreanApplicantPage = pathname === "/non-korean-applicants";
+  const isSpeakingTestPage = pathname === "/speaking-test";
   const isPrivateProfilePage =
     pathname === "/profile" ||
     pathname === "/profile/connections" ||
@@ -24,12 +25,13 @@ export default function MainLayoutWrapper({
     isArticlePage ||
     isPaymentPage ||
     isNonKoreanApplicantPage ||
+    isSpeakingTestPage ||
     isPrivateProfilePage;
 
   return (
     <div
       className={`flex min-h-screen flex-col ${
-        isHomePage ? "bg-white" : "bg-[#f5f5f5]"
+        isHomePage || isSpeakingTestPage ? "bg-white" : "bg-[#f5f5f5]"
       }`}
     >
       <NewNavbar />
