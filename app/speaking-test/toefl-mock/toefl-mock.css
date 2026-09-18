@@ -2808,3 +2808,402 @@
     gap: 14px 20px;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Writing email/discussion + status-row timer + Speaking response timer       */
+/* -------------------------------------------------------------------------- */
+
+.toefl-statusbar-time {
+  margin-left: auto;
+  color: #333333;
+  font: 400 13px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+/* Writing task workspaces start directly below the section/progress row. */
+.toefl-email,
+.toefl-discussion {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(1180px, calc(100vw - 48px));
+  height: calc(100dvh - 92px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------------ Email task -------------------------------- */
+
+.toefl-email {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  border-left: 1px solid #d7d7d7;
+  border-right: 1px solid #d7d7d7;
+}
+
+.toefl-email-prompt {
+  position: static;
+  width: auto;
+  height: 100%;
+  box-sizing: border-box;
+  border-right: 1px solid #d7d7d7;
+  padding: 20px 22px 24px;
+  overflow-y: auto;
+  color: #151515;
+  font-size: 15px;
+}
+
+.toefl-email-prompt p {
+  margin: 0 0 13px;
+  line-height: 1.35;
+}
+
+.toefl-email-prompt h2 {
+  margin: 14px 0 2px;
+  color: #111111;
+  font: 700 16px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-email-prompt h3 {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 700 16px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-email-prompt ul {
+  margin: 0 0 16px 27px;
+  padding: 0;
+  color: #111111;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.toefl-email-prompt li {
+  padding-left: 3px;
+}
+
+.toefl-email-prompt li::marker,
+.toefl-discussion-prompt li::marker {
+  font-size: 1.3em;
+}
+
+.toefl-writing-note {
+  margin-top: 10px !important;
+}
+
+.toefl-email-editor {
+  position: static;
+  width: auto;
+  height: 100%;
+  box-sizing: border-box;
+  border: 0;
+  padding: 22px 14px 20px;
+  overflow: hidden;
+}
+
+.toefl-response-heading {
+  display: block;
+  margin: 0 0 23px;
+  color: #111111;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.toefl-email-addresses {
+  margin-bottom: 14px;
+  color: #111111;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.toefl-email-addresses b {
+  font-weight: 700;
+}
+
+.toefl-editor-shell {
+  width: 100%;
+  height: calc(100% - 96px);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border: 1px solid #d7d7d7;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.toefl-editor-tools {
+  height: 55px;
+  flex: 0 0 55px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  border: 0;
+  background: #f7f7f7;
+  padding: 8px 13px;
+  color: #555d61;
+  font-size: 11px;
+}
+
+.toefl-editor-tool-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toefl-editor-tool-buttons button {
+  min-width: 55px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: #dddddd;
+  color: #3f3f3f;
+  padding: 0 13px;
+  font: 400 12px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-editor-tool-buttons button.active {
+  background: #078a91;
+  color: #ffffff;
+}
+
+.toefl-word-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #078a91;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.toefl-word-count span {
+  margin-left: 7px;
+  color: #222222;
+  float: none;
+  font-size: 12px;
+}
+
+.toefl-email-editor textarea,
+.toefl-discussion-editor textarea {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 14px 16px;
+  resize: none;
+  outline: none;
+  color: #222222;
+  font: 400 14px/1.5 Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------- Academic Discussion ----------------------------- */
+
+.toefl-discussion {
+  display: grid;
+  grid-template-columns: 38% 62%;
+  border-left: 1px solid #d7d7d7;
+  border-right: 1px solid #d7d7d7;
+}
+
+.toefl-discussion-prompt {
+  height: 100%;
+  box-sizing: border-box;
+  border-right: 1px solid #d7d7d7;
+  padding: 16px 18px 22px;
+  overflow-y: auto;
+  color: #151515;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.toefl-discussion-prompt > p {
+  margin: 0 0 14px;
+}
+
+.toefl-discussion-prompt h2 {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 700 14px/1.35 Arial, Helvetica, sans-serif;
+}
+
+.toefl-discussion-prompt ul {
+  margin: 0 0 14px 27px;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.toefl-professor-avatar {
+  width: 84px;
+  height: 84px;
+  margin: 18px auto 14px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed #9aa4a6;
+  border-radius: 50%;
+  background: #f2f4f4;
+  color: #758083;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.toefl-professor-question p {
+  margin: 0 0 9px;
+  line-height: 1.42;
+}
+
+.toefl-discussion-workspace {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  box-sizing: border-box;
+  padding: 14px 12px 12px;
+  overflow: hidden;
+}
+
+.toefl-discussion-posts {
+  display: grid;
+  gap: 11px;
+  margin-bottom: 12px;
+}
+
+.toefl-discussion .toefl-student-post {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 0 8px;
+  color: #111111;
+  font-size: 14px;
+}
+
+.toefl-discussion .toefl-student-post p {
+  margin: 0;
+  line-height: 1.42;
+}
+
+.toefl-discussion .toefl-avatar-placeholder {
+  width: 52px;
+  height: 52px;
+  border: 1px dashed #99a3a5;
+  border-radius: 50%;
+  background: #f1f4f4;
+  font-size: 7px;
+}
+
+.toefl-discussion-editor {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+}
+
+.toefl-discussion-editor .toefl-editor-shell {
+  height: 100%;
+}
+
+/* --------------------------- Speaking timer ------------------------------- */
+
+.toefl-response-time,
+.toefl-response-time.interview,
+.toefl-response-time.save {
+  width: 180px;
+  text-align: center;
+}
+
+.toefl-response-time {
+  left: 422px;
+  top: 536px;
+}
+
+.toefl-response-time.interview {
+  left: 422px;
+  top: 486px;
+}
+
+.toefl-response-time.save {
+  left: 422px;
+  top: 522px;
+}
+
+.toefl-response-time-card {
+  width: 180px;
+  height: 66px;
+  box-sizing: border-box;
+  border: 1px solid #078a91;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.toefl-response-time-label {
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: #078a91;
+  color: #ffffff;
+  font: 700 11px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: .01em;
+}
+
+.toefl-response-time-value {
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #444444;
+  font: 700 17px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-response-mic {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #d5dadd;
+  border-radius: 50%;
+  color: #6c7f82;
+  background: #ffffff;
+}
+
+.toefl-response-mic svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 900px) {
+  .toefl-email,
+  .toefl-discussion {
+    width: calc(100vw - 20px);
+  }
+
+  .toefl-email {
+    grid-template-columns: 40% 60%;
+  }
+
+  .toefl-discussion {
+    grid-template-columns: 39% 61%;
+  }
+
+  .toefl-editor-tool-buttons button {
+    min-width: 46px;
+    padding: 0 8px;
+  }
+}
