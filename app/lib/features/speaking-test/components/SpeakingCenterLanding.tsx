@@ -35,7 +35,7 @@ export default function SpeakingCenterLanding({
   onStartExam,
   onStartFirst,
 }: SpeakingCenterLandingProps) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const copy = t.speakingTest.center;
   const visibleTests = tests.slice(0, 12);
 
@@ -207,7 +207,6 @@ export default function SpeakingCenterLanding({
         </div>
       </section>
 
-      <span className="sr-only">{locale}</span>
     </main>
   );
 }
