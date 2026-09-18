@@ -54,17 +54,17 @@ export default function SpeakingCenterLanding({
             <span className="inline-flex h-[30px] items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-3 text-[11px] font-bold">
               {copy.eyebrow}
             </span>
-            <h1 className="mt-[18px] whitespace-pre-line text-[52px] font-extrabold leading-[56px] tracking-[-0.035em] text-[#050505] max-[640px]:text-[40px] max-[640px]:leading-[44px]">
+            <h1 className="mt-[18px] min-h-[124px] whitespace-pre-line text-[52px] font-extrabold leading-[56px] tracking-[-0.035em] text-[#050505] max-[640px]:min-h-0 max-[640px]:text-[40px] max-[640px]:leading-[44px]">
               {copy.title}
             </h1>
-            <p className="mt-[10px] max-w-[526px] text-[18px] font-medium leading-[27px] text-[#050505] max-[640px]:text-[16px] max-[640px]:leading-6">
+            <p className="mt-[10px] min-h-[74px] max-w-[526px] text-[18px] font-medium leading-[27px] text-[#050505] max-[640px]:min-h-0 max-[640px]:text-[16px] max-[640px]:leading-6">
               {copy.subtitle}
             </p>
             <button
               type="button"
               onClick={onStartFirst}
               disabled={loading}
-              className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#050505] px-7 text-[14px] font-extrabold text-white shadow-[5px_5px_0_#f47a4a] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+              className="mt-8 inline-flex min-h-[52px] min-w-[203px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#050505] px-7 text-[14px] font-extrabold text-white shadow-[5px_5px_0_#f47a4a] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
             >
               {copy.startFree}
             </button>
