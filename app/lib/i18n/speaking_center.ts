@@ -5,7 +5,7 @@ const speakingCenter = {
     titleLineTwo: "Practice Center",
     subtitle:
       "Practice realistic English exams with timers, recording flow and structured feedback designed for focused improvement.",
-    startFree: "Start Free Test →",
+    startFree: "Browse Practice Tests →",
     previewEyebrow: "PRACTICE TEST 01",
     previewTitle: "Give Your Opinion",
     previewPrompt:
@@ -42,7 +42,7 @@ const speakingCenter = {
       },
       {
         q: "Do I need a membership to try it?",
-        a: "A free starter test can be opened without committing to a full membership.",
+        a: "No paid membership is required for the current practice flow. Sign-in is required to record responses and save scores.",
       },
       {
         q: "Is this only for advanced speakers?",
@@ -56,7 +56,7 @@ const speakingCenter = {
     titleLineTwo: "연습 센터",
     subtitle:
       "타이머와 녹음, 구조화된 피드백을 활용해 실제 시험과 유사한 영어 말하기 연습을 집중적으로 진행하세요.",
-    startFree: "무료 테스트 시작 →",
+    startFree: "연습 테스트 보기 →",
     previewEyebrow: "연습 테스트 01",
     previewTitle: "의견 말하기",
     previewPrompt:
@@ -93,7 +93,7 @@ const speakingCenter = {
       },
       {
         q: "사용하려면 멤버십이 필요한가요?",
-        a: "아니요. 무료 스타터 테스트는 멤버십 가입 없이 시작할 수 있습니다.",
+        a: "현재 연습 기능은 유료 멤버십 없이 이용할 수 있습니다. 답변 녹음과 점수 저장을 위해서는 로그인이 필요합니다.",
       },
       {
         q: "상급자만 사용할 수 있나요?",
