@@ -785,7 +785,7 @@ function ExamScreen({
         ? undefined
         : speakingNoNext
           ? undefined
-          : "Next >";
+          : "Next";
 
   const time =
     step.kind === "email" || step.kind === "discussion"
