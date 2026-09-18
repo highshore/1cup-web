@@ -17,8 +17,6 @@ const speakingCenter = {
     testsTitle: "Choose a Practice Exam",
     testsIntro:
       "Each set mirrors the real exam flow with timed preparation, recording and post-response review.",
-    loading: "Loading available tests…",
-    noTests: "There are no deployed practice tests available yet.",
     loadFailed: "Practice tests are temporarily unavailable.",
     type: "Type",
     difficulty: "Difficulty",
@@ -28,11 +26,7 @@ const speakingCenter = {
     start: "Start →",
     free: "FREE",
     popular: "POPULAR",
-    savedTitle: "Your saved results",
-    savedEmpty: "Complete a recorded test to build your score history.",
-    faqEyebrow: "FAQ",
     faqTitle: "Frequently Asked Questions",
-    faqIntro: "The practical details before you start recording.",
     faq: [
       {
         q: "Do I need to install anything?",
@@ -51,6 +45,15 @@ const speakingCenter = {
         a: "No. The structure is useful whenever you want more disciplined timed speaking practice.",
       },
     ],
+    footer: {
+      tagline:
+        "Thoughtful English practice and real conversations, built into one community.",
+      practice: ["PRACTICE", "Speaking Center", "Shadowing", "Leaderboard"],
+      community: ["COMMUNITY", "Meetups", "Guidelines", "Blog"],
+      account: ["ACCOUNT", "Membership", "Profile", "Contact"],
+      copyright: "© 2026 1 Cup English. Built for better conversations.",
+      links: "Privacy    Terms    Instagram    LinkedIn",
+    },
   },
   ko: {
     navLabel: "스피킹",
@@ -70,8 +73,6 @@ const speakingCenter = {
     testsTitle: "연습할 시험을 선택하세요",
     testsIntro:
       "저희 시험 세트는 준비 시간, 녹음, 답변 후 리뷰까지 실제 시험 흐름을 반영했습니다.",
-    loading: "사용 가능한 테스트를 불러오는 중…",
-    noTests: "아직 배포된 연습 테스트가 없습니다.",
     loadFailed: "현재 연습 테스트를 불러올 수 없습니다.",
     type: "시험 종류",
     difficulty: "난이도",
@@ -81,11 +82,7 @@ const speakingCenter = {
     start: "시작 →",
     free: "무료",
     popular: "인기",
-    savedTitle: "저장된 결과",
-    savedEmpty: "녹음 테스트를 완료하면 이전 점수가 이곳에 표시됩니다.",
-    faqEyebrow: "FAQ",
     faqTitle: "자주 묻는 질문",
-    faqIntro: "녹음을 시작하기 전에 알아두면 좋은 내용입니다.",
     faq: [
       {
         q: "녹음한 답변을 다시 들을 수 있나요?",
@@ -104,6 +101,14 @@ const speakingCenter = {
         a: "반응형으로 사용할 수 있지만, 전체 테스트와 리뷰는 노트북 환경을 권장합니다.",
       },
     ],
+    footer: {
+      tagline: "생각을 담은 영어 연습과 깊이 있는 대화를 하나의 커뮤니티에서.",
+      practice: ["연습", "스피킹 센터", "섀도잉", "리더보드"],
+      community: ["커뮤니티", "밋업", "가이드라인", "블로그"],
+      account: ["계정", "멤버십", "프로필", "문의"],
+      copyright: "© 2026 1 Cup English. 더 나은 대화를 위해 만들었습니다.",
+      links: "개인정보처리방침    이용약관    Instagram    LinkedIn",
+    },
   },
 } as const;
 
