@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { buildMockToeflSteps, MOCK_TOEFL, type ExamStep, type MockOption } from "./mock-toefl";
 
@@ -60,7 +60,7 @@ function TopBar({
   );
 }
 
-function PrimaryButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function PrimaryButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
     <button type="button" className="toefl-primary" onClick={onClick}>
       {children}
@@ -269,14 +269,17 @@ export default function ExamCenterClient() {
       setSpeakingSeconds((value) => {
         if (value <= 1) {
           window.clearInterval(timer);
-          window.setTimeout(() => advance(true), 120);
+          window.setTimeout(() => {
+            setVolumeOpen(false);
+            setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+          }, 120);
           return 0;
         }
         return value - 1;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [mode, step?.id, step?.kind]);
+  }, [mode, step?.id, step?.kind, steps.length]);
 
   const startMock = () => {
     setCompleted(false);
@@ -481,19 +484,23 @@ function ExamScreen({
       ? formatTime(writingSeconds)
       : undefined;
 
+  const showTopBar = step.kind !== "welcome" && step.kind !== "hardware";
+
   return (
     <div className="toefl-screen">
-      <TopBar
-        section={section}
-        progress={step.progressLabel}
-        time={time}
-        showVolume={step.section !== "Writing"}
-        action={topAction}
-        onAction={onNext}
-        onVolume={onVolume}
-      />
+      {showTopBar && (
+        <TopBar
+          section={section}
+          progress={step.progressLabel}
+          time={time}
+          showVolume={step.section !== "Writing"}
+          action={topAction}
+          onAction={onNext}
+          onVolume={onVolume}
+        />
+      )}
 
-      {volumeOpen && (
+      {showTopBar && volumeOpen && (
         <div className="toefl-volume-popover">
           <strong>Volume</strong>
           <input
