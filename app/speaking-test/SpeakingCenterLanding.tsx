@@ -135,7 +135,7 @@ export default function SpeakingCenterLanding({
             </div>
 
             <div className="absolute right-0 top-[52px] h-[470px] w-[346px] max-[860px]:relative max-[860px]:top-auto max-[860px]:right-auto max-[860px]:mx-auto max-[860px]:mt-10 max-[420px]:w-full">
-              <span className="absolute -right-[-4px] bottom-[20px] h-[92px] w-[92px] rounded-full bg-[#e8eddb]" aria-hidden="true" />
+              <span className="absolute right-[4px] bottom-[20px] h-[92px] w-[92px] rounded-full bg-[#e8eddb]" aria-hidden="true" />
 
               <div className="relative h-full w-full overflow-hidden rounded-[26px] border-[2.5px] border-[#050505] bg-white shadow-[7px_7px_0_0_rgba(5,5,5,0.14)]">
                 <p
