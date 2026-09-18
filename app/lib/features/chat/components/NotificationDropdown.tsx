@@ -199,7 +199,7 @@ export default function NotificationDropdown({ isTransparent }: { isTransparent:
           </button>
           <button type="button" role="menuitem" className={menuItemClass()} onClick={() => { setIsMenuOpen(false); router.push("/exam-center"); }}>
             <MicrophoneIcon />
-            <span className="min-w-0 flex-1">{t.nav.speakingTest}</span>
+            <span className="min-w-0 flex-1">{t.speakingCenter.navLabel}</span>
           </button>
           <button type="button" role="menuitem" className={menuItemClass()} onClick={() => { setIsMenuOpen(false); router.push("/vocabulary"); }}>
             <BookOpenIcon />
