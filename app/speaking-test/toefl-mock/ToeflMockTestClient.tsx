@@ -32,7 +32,6 @@ function TopBar({
   return (
     <>
       <div className={`toefl-topbar${showBack ? " has-back" : ""}`}>
-        {time && <div className="toefl-topbar-time">{time}</div>}
         {showVolume && (
           <button type="button" className="toefl-topbar-volume" onClick={onVolume}>
             <span>Volume</span>
@@ -56,6 +55,7 @@ function TopBar({
           {section && <div className="toefl-statusbar-section">{section}</div>}
           {section && progress && <div className="toefl-statusbar-divider" aria-hidden="true" />}
           {progress && <div className="toefl-statusbar-progress">{progress}</div>}
+          {time && <div className="toefl-statusbar-time">{time}</div>}
         </div>
       )}
     </>
@@ -221,9 +221,32 @@ function IntroTable({ rows }: { rows?: Array<[string, string]> }) {
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, seconds);
-  const minutes = Math.floor(safe / 60);
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
   const remainder = safe % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+function countWords(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+function ResponseTimerCard({ seconds }: { seconds: number }) {
+  return (
+    <div className="toefl-response-time-card">
+      <div className="toefl-response-time-label">RESPONSE TIME</div>
+      <div className="toefl-response-time-value">
+        <span className="toefl-response-mic" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+            <path d="M6.5 11.5c0 3.4 2.2 5.7 5.5 5.7s5.5-2.3 5.5-5.7M12 17.2V21M9.5 21h5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span>{`00:00:${String(Math.max(0, seconds)).padStart(2, "0")}`}</span>
+      </div>
+    </div>
+  );
 }
 
 function ExamModal({
@@ -1183,45 +1206,76 @@ function ExamScreen({
             <ul>
               {step.requirements?.map((item) => <li key={item}>{item}</li>)}
             </ul>
-            <p>Write as much as you can and in complete sentences.</p>
+            <p className="toefl-writing-note">Write as much as you can and in complete sentences.</p>
           </div>
           <div className="toefl-email-editor">
-            <strong>Your Response:</strong>
-            <div className="toefl-email-line">To: {step.recipient}</div>
-            <div className="toefl-email-line">Subject: {step.subject}</div>
-            <div className="toefl-editor-tools">Cut&nbsp;&nbsp;&nbsp;Paste&nbsp;&nbsp;&nbsp;Undo&nbsp;&nbsp;&nbsp;Redo <span>Hide Word Count</span></div>
-            <textarea
-              value={emailText}
-              onChange={(event) => onEmailText(event.target.value)}
-              placeholder="Type your response here..."
-            />
+            <strong className="toefl-response-heading">Your Response:</strong>
+            <div className="toefl-email-addresses">
+              <div><b>To:</b> {step.recipient}</div>
+              <div><b>Subject:</b> {step.subject}</div>
+            </div>
+            <div className="toefl-editor-shell">
+              <div className="toefl-editor-tools">
+                <div className="toefl-editor-tool-buttons">
+                  <button type="button" className="active">Cut</button>
+                  <button type="button">Paste</button>
+                  <button type="button">Undo</button>
+                  <button type="button">Redo</button>
+                </div>
+                <div className="toefl-word-count">◉&nbsp; Hide Word Count <span>{countWords(emailText)}</span></div>
+              </div>
+              <textarea
+                value={emailText}
+                onChange={(event) => onEmailText(event.target.value)}
+                placeholder="Type your response here..."
+              />
+            </div>
           </div>
         </div>
       )}
 
       {step.kind === "discussion" && (
         <div className="toefl-discussion">
-          <div className="toefl-discussion-feed">
-            <h1>Write for an Academic Discussion</h1>
-            <div className="toefl-professor">
-              <strong>Professor</strong>
+          <div className="toefl-discussion-prompt">
+            <p>Your professor is teaching a class and has posted a question for the class discussion.</p>
+            <h2>In your response, you should do the following.</h2>
+            <ul>
+              <li>Express and support your opinion.</li>
+              <li>Make a contribution to the discussion in your own words.</li>
+            </ul>
+            <p>An effective response will contain at least 100 words.</p>
+            <div className="toefl-professor-avatar">PROFESSOR</div>
+            <div className="toefl-professor-question">
               {step.professorPrompt?.map((line) => <p key={line}>{line}</p>)}
             </div>
-            {step.posts?.map((post) => (
-              <div className="toefl-student-post" key={post.name}>
-                <div className="toefl-avatar-placeholder">AVATAR</div>
-                <div><strong>{post.name}</strong><p>{post.text}</p></div>
-              </div>
-            ))}
           </div>
-          <div className="toefl-discussion-editor">
-            <strong>Your Response:</strong>
-            <div className="toefl-editor-tools">Cut&nbsp;&nbsp;&nbsp;Paste&nbsp;&nbsp;&nbsp;Undo&nbsp;&nbsp;&nbsp;Redo <span>Hide Word Count</span></div>
-            <textarea
-              value={discussionText}
-              onChange={(event) => onDiscussionText(event.target.value)}
-              placeholder="Type your response here..."
-            />
+          <div className="toefl-discussion-workspace">
+            <div className="toefl-discussion-posts">
+              {step.posts?.map((post) => (
+                <div className="toefl-student-post" key={post.name}>
+                  <div className="toefl-avatar-placeholder">AVATAR</div>
+                  <div><p>{post.text}</p></div>
+                </div>
+              ))}
+            </div>
+            <div className="toefl-discussion-editor">
+              <div className="toefl-editor-shell">
+                <div className="toefl-editor-tools">
+                  <div className="toefl-editor-tool-buttons">
+                    <button type="button" className="active">Cut</button>
+                    <button type="button">Paste</button>
+                    <button type="button">Undo</button>
+                    <button type="button">Redo</button>
+                  </div>
+                  <div className="toefl-word-count">◉&nbsp; Hide Word Count <span>{countWords(discussionText)}</span></div>
+                </div>
+                <textarea
+                  value={discussionText}
+                  onChange={(event) => onDiscussionText(event.target.value)}
+                  placeholder="Type your response here..."
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1266,8 +1320,7 @@ function ExamScreen({
             onClick={onForceNext}
           />
           <div className={step.questionNumber && step.questionNumber >= 8 ? "toefl-response-time interview" : "toefl-response-time"}>
-            <strong>RESPONSE TIME</strong>
-            <span>{`00:00:${String(speakingSeconds).padStart(2, "0")}`}</span>
+            <ResponseTimerCard seconds={speakingSeconds} />
           </div>
         </div>
       )}
@@ -1284,8 +1337,7 @@ function ExamScreen({
             onClick={onForceNext}
           />
           <div className={step.questionNumber && step.questionNumber >= 8 ? "toefl-response-time interview" : "toefl-response-time save"}>
-            <strong>RESPONSE TIME</strong>
-            <span>00:00:00</span>
+            <ResponseTimerCard seconds={0} />
           </div>
         </div>
       )}
