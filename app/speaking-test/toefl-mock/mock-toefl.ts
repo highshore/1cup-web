@@ -238,14 +238,14 @@ export function buildMockToeflSteps(): ExamStep[] {
     " why collective performance has remained important across human history.",
     "",
   ];
-  steps.push({ id: "r-m1-cloze", kind: "reading_cloze", section: "Reading", module: 1, progressLabel: "Questions 1–10 of 40", clozeParts: clozeOne });
+  steps.push({ id: "r-m1-cloze", kind: "reading_cloze", section: "Reading", module: 1, progressLabel: "Questions 1–10 of 20", clozeParts: clozeOne });
 
   dailyStimuli.forEach((item, index) => {
-    steps.push({ id: `r-m1-daily-${index + 1}`, kind: "reading_daily", section: "Reading", module: 1, questionNumber: 11 + index, progressLabel: `Question ${11 + index} of 40`, stimulusTitle: item.title, stimulusBody: item.body, questionText: item.question, options: item.options, mediaType: "image", mediaLabel: "Stimulus image placeholder" });
+    steps.push({ id: `r-m1-daily-${index + 1}`, kind: "reading_daily", section: "Reading", module: 1, questionNumber: 11 + index, progressLabel: `Question ${11 + index} of 20`, stimulusTitle: item.title, stimulusBody: item.body, questionText: item.question, options: item.options, mediaType: "image", mediaLabel: "Stimulus image placeholder" });
   });
 
   academicQuestionsOne.forEach(([questionText, options], index) => {
-    steps.push({ id: `r-m1-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 1, questionNumber: 16 + index, progressLabel: `Question ${16 + index} of 40`, passageTitle: "Community Seed Libraries", passage: academicPassageOne, questionText, options: [...options] });
+    steps.push({ id: `r-m1-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 1, questionNumber: 16 + index, progressLabel: `Question ${16 + index} of 20`, passageTitle: "Community Seed Libraries", passage: academicPassageOne, questionText, options: [...options] });
   });
 
   const clozeTwo = [
@@ -262,14 +262,14 @@ export function buildMockToeflSteps(): ExamStep[] {
     " an important role in public health.",
     "",
   ];
-  steps.push({ id: "r-m2-cloze", kind: "reading_cloze", section: "Reading", module: 2, progressLabel: "Questions 21–30 of 40", clozeParts: clozeTwo });
+  steps.push({ id: "r-m2-cloze", kind: "reading_cloze", section: "Reading", module: 2, progressLabel: "Questions 1–10 of 20", clozeParts: clozeTwo });
 
   dailyStimuliTwo.forEach((item, index) => {
-    steps.push({ id: `r-m2-daily-${index + 1}`, kind: "reading_daily", section: "Reading", module: 2, questionNumber: 31 + index, progressLabel: `Question ${31 + index} of 40`, stimulusTitle: item.title, stimulusBody: item.body, questionText: item.question, options: item.options, mediaType: "image", mediaLabel: "Stimulus image placeholder" });
+    steps.push({ id: `r-m2-daily-${index + 1}`, kind: "reading_daily", section: "Reading", module: 2, questionNumber: 31 + index, progressLabel: `Question ${11 + index} of 20`, stimulusTitle: item.title, stimulusBody: item.body, questionText: item.question, options: item.options, mediaType: "image", mediaLabel: "Stimulus image placeholder" });
   });
 
   academicQuestionsTwo.forEach(([questionText, options], index) => {
-    steps.push({ id: `r-m2-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 2, questionNumber: 36 + index, progressLabel: `Question ${36 + index} of 40`, passageTitle: "Urban Trees and Local Climate", passage: academicPassageTwo, questionText, options: [...options] });
+    steps.push({ id: `r-m2-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 2, questionNumber: 36 + index, progressLabel: `Question ${16 + index} of 20`, passageTitle: "Urban Trees and Local Climate", passage: academicPassageTwo, questionText, options: [...options] });
   });
 
   steps.push(
