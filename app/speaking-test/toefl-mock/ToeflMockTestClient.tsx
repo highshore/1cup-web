@@ -264,7 +264,7 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [clozeValues, setClozeValues] = useState<Record<string, string[]>>({});
-  const [sentencePlaced, setSentencePlaced] = useState<Record<string, string[]>>({});
+  const [sentencePlaced, setSentencePlaced] = useState<Record<string, Array<string | null>>>({});
   const [emailText, setEmailText] = useState("");
   const [discussionText, setDiscussionText] = useState("");
   const [volumeOpen, setVolumeOpen] = useState(false);
@@ -597,15 +597,57 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
 
   const placeSentenceToken = (token: string) => {
     if (!step) return;
-    const current = sentencePlaced[step.id] ?? [];
-    if (current.includes(token)) {
-      setSentencePlaced((all) => ({
-        ...all,
-        [step.id]: current.filter((item) => item !== token),
-      }));
+    const blankCount = step.correctOrder?.length ?? 0;
+    const current = Array.from(
+      { length: blankCount },
+      (_, index) => sentencePlaced[step.id]?.[index] ?? null,
+    );
+    const existingIndex = current.indexOf(token);
+    if (existingIndex >= 0) {
+      current[existingIndex] = null;
+      setSentencePlaced((all) => ({ ...all, [step.id]: current }));
       return;
     }
-    setSentencePlaced((all) => ({ ...all, [step.id]: [...current, token] }));
+    const emptyIndex = current.findIndex((item) => item === null);
+    if (emptyIndex < 0) return;
+    current[emptyIndex] = token;
+    setSentencePlaced((all) => ({ ...all, [step.id]: current }));
+  };
+
+  const dropSentenceToken = (slotIndex: number, token: string, fromSlot?: number) => {
+    if (!step || !token) return;
+    const blankCount = step.correctOrder?.length ?? 0;
+    const current = Array.from(
+      { length: blankCount },
+      (_, index) => sentencePlaced[step.id]?.[index] ?? null,
+    );
+
+    if (typeof fromSlot === "number" && fromSlot >= 0 && fromSlot < current.length) {
+      current[fromSlot] = null;
+    } else {
+      const existingIndex = current.indexOf(token);
+      if (existingIndex >= 0) current[existingIndex] = null;
+    }
+
+    const displaced = current[slotIndex];
+    current[slotIndex] = token;
+
+    if (displaced && typeof fromSlot === "number" && fromSlot >= 0 && fromSlot < current.length) {
+      current[fromSlot] = displaced;
+    }
+
+    setSentencePlaced((all) => ({ ...all, [step.id]: current }));
+  };
+
+  const removeSentenceToken = (slotIndex: number) => {
+    if (!step) return;
+    const blankCount = step.correctOrder?.length ?? 0;
+    const current = Array.from(
+      { length: blankCount },
+      (_, index) => sentencePlaced[step.id]?.[index] ?? null,
+    );
+    current[slotIndex] = null;
+    setSentencePlaced((all) => ({ ...all, [step.id]: current }));
   };
 
   if (mode === "center") {
@@ -700,6 +742,8 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
             setClozeValues((current) => ({ ...current, [step.id]: values }));
           }}
           onSentenceToken={placeSentenceToken}
+          onSentenceDrop={dropSentenceToken}
+          onSentenceRemove={removeSentenceToken}
           onEmailText={setEmailText}
           onDiscussionText={setDiscussionText}
           onNext={() => advance()}
@@ -740,6 +784,8 @@ function ExamScreen({
   onAnswer,
   onClozeChange,
   onSentenceToken,
+  onSentenceDrop,
+  onSentenceRemove,
   onEmailText,
   onDiscussionText,
   onNext,
@@ -749,7 +795,7 @@ function ExamScreen({
   step: ExamStep;
   selected?: string;
   clozeValues: string[];
-  sentencePlaced: string[];
+  sentencePlaced: Array<string | null>;
   emailText: string;
   discussionText: string;
   writingSeconds: number;
@@ -766,6 +812,8 @@ function ExamScreen({
   onAnswer: (id: string) => void;
   onClozeChange: (index: number, value: string) => void;
   onSentenceToken: (token: string) => void;
+  onSentenceDrop: (slotIndex: number, token: string, fromSlot?: number) => void;
+  onSentenceRemove: (slotIndex: number) => void;
   onEmailText: (value: string) => void;
   onDiscussionText: (value: string) => void;
   onNext: () => void;
@@ -1033,28 +1081,95 @@ function ExamScreen({
       {step.kind === "build_sentence" && (
         <div className="toefl-sentence">
           <h1>{step.instruction}</h1>
-          <div className="toefl-sentence-answer">
-            {sentencePlaced.length === 0 ? (
-              <span>Click words below to build the sentence.</span>
-            ) : (
-              sentencePlaced.map((token) => (
-                <button key={token} type="button" onClick={() => onSentenceToken(token)}>
+
+          <div className="toefl-sentence-dialogue">
+            <div className="toefl-sentence-turn prompt">
+              <div className="toefl-sentence-avatar" aria-label={step.sentenceSpeakerA || "Speaker 1"}>
+                <span>PHOTO</span>
+              </div>
+              <p>{step.sentencePrompt}</p>
+            </div>
+
+            <div className="toefl-sentence-turn response">
+              <div className="toefl-sentence-avatar" aria-label={step.sentenceSpeakerB || "Speaker 2"}>
+                <span>PHOTO</span>
+              </div>
+              <div className="toefl-sentence-composer">
+                <div className="toefl-sentence-line">
+                  <span className="toefl-sentence-fixed">{step.sentencePrefix}</span>
+                  {Array.from({ length: step.correctOrder?.length ?? 0 }, (_, index) => {
+                    const token = sentencePlaced[index] ?? null;
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`toefl-sentence-slot${token ? " filled" : ""}`}
+                        draggable={Boolean(token)}
+                        onClick={() => token && onSentenceRemove(index)}
+                        onDragStart={(event) => {
+                          if (!token) return;
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", token);
+                          event.dataTransfer.setData("application/x-toefl-slot", String(index));
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const droppedToken = event.dataTransfer.getData("text/plain");
+                          const rawFromSlot = event.dataTransfer.getData("application/x-toefl-slot");
+                          const fromSlot = rawFromSlot === "" ? undefined : Number(rawFromSlot);
+                          onSentenceDrop(index, droppedToken, fromSlot);
+                        }}
+                        aria-label={token ? `Blank ${index + 1}: ${token}. Click to remove.` : `Blank ${index + 1}`}
+                      >
+                        {token || "\u00A0"}
+                      </button>
+                    );
+                  })}
+                  <span className="toefl-sentence-fixed suffix">{step.sentenceSuffix}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="toefl-token-bank"
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const rawFromSlot = event.dataTransfer.getData("application/x-toefl-slot");
+              if (rawFromSlot !== "") onSentenceRemove(Number(rawFromSlot));
+            }}
+          >
+            {step.tokens?.map((token) => {
+              const used = sentencePlaced.includes(token);
+              return (
+                <button
+                  key={token}
+                  type="button"
+                  draggable={!used}
+                  className={used ? "placed" : ""}
+                  onClick={() => onSentenceToken(token)}
+                  onDragStart={(event) => {
+                    if (used) {
+                      event.preventDefault();
+                      return;
+                    }
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", token);
+                    event.dataTransfer.setData("application/x-toefl-slot", "");
+                  }}
+                >
                   {token}
                 </button>
-              ))
-            )}
-          </div>
-          <div className="toefl-token-bank">
-            {step.tokens?.map((token) => (
-              <button
-                key={token}
-                type="button"
-                className={sentencePlaced.includes(token) ? "placed" : ""}
-                onClick={() => onSentenceToken(token)}
-              >
-                {token}
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
