@@ -26,9 +26,8 @@ function testType(test: DeployedExam, locale: "en" | "ko") {
   return locale === "ko" ? "스피킹" : "Speaking";
 }
 
-function testBadge(test: DeployedExam, index: number, locale: "en" | "ko") {
+function testBadge(test: DeployedExam, locale: "en" | "ko") {
   if (test.categories.includes("free")) return locale === "ko" ? "무료" : "FREE";
-  if (index === 3 || index === 7) return locale === "ko" ? "추천" : "POPULAR";
   return null;
 }
 
@@ -171,7 +170,7 @@ export default function SpeakingCenterLanding({
             <div className="mt-10 grid grid-cols-3 gap-x-6 gap-y-6 max-[840px]:grid-cols-2 max-[560px]:grid-cols-1">
               {visibleTests.map((test, index) => {
                 const palette = TEST_COLORS[index % TEST_COLORS.length];
-                const badge = testBadge(test, index, locale);
+                const badge = testBadge(test, locale);
                 return (
                   <button
                     key={test.id}
