@@ -76,7 +76,7 @@ export default function SpeakingCenterLanding({
   };
 
   return (
-    <main className="w-full bg-[#f5f3ed] text-[#050505] [font-family:Inter,'Noto_Sans_KR',system-ui,sans-serif]">
+    <main className="w-full bg-[#f5f3ed] font-sans text-[#050505]">
       <section className="bg-[#f47a4a]">
         <div className="mx-auto grid min-h-[592px] max-w-[912px] grid-cols-[minmax(0,1fr)_346px] items-start gap-10 px-0 py-[52px] max-[980px]:grid-cols-1 max-[980px]:px-6 max-[980px]:py-12 max-[640px]:px-4">
           <div className="pt-4 max-[980px]:pt-0">
@@ -248,7 +248,7 @@ export default function SpeakingCenterLanding({
                       </span>
                     </span>
                     <strong className="shrink-0 text-[12px]">
-                      {entry.score}/55 · {entry.band}
+                      {entry.score ?? "—"}/55 · {entry.band ?? "—"}
                     </strong>
                   </button>
                 ))}
