@@ -11,7 +11,7 @@ const en = {
     login: "Log in",
     join: "Sign up",
     shadowing: "Shadowing",
-    speakingTest: "Speaking Test",
+    speakingTest: "Exam Prep",
     vocabulary: "Vocabulary",
     meetup: "Meetup",
     leaderboard: "Leaderboard",
