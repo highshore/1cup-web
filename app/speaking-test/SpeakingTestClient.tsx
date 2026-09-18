@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowLeftIcon,
@@ -22,9 +23,8 @@ import {
   type SpeakingTestReport,
 } from "../lib/features/speaking-test/types";
 import SpeakingCenterLanding from "./SpeakingCenterLanding";
-import ToeflMockTestClient from "./toefl-mock/ToeflMockTestClient";
 
-type Screen = "center" | "test" | "scoring" | "report" | "toefl_mock";
+type Screen = "center" | "test" | "scoring" | "report";
 type CapturedResponse = {
   itemId: string;
   blob: Blob;
@@ -118,6 +118,7 @@ async function responseJson<T>(response: Response): Promise<T> {
 }
 
 export default function SpeakingTestClient() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const { t } = useI18n();
   const copy = t.speakingTest.deployed;
@@ -359,12 +360,7 @@ export default function SpeakingTestClient() {
         if (!currentUser) throw new Error(copy.signInRequired);
         const selectedTest = tests.find((test) => test.id === examSetId);
         if (selectedTest?.categories.includes("toefl")) {
-          setExam(null);
-          setAttempt(null);
-          setTaskIndex(0);
-          setCaptured([]);
-          setReport(null);
-          setScreen("toefl_mock");
+          router.push("/exam-center/toefl-mock-test-01");
           return;
         }
         const detail = await responseJson<DeployedExamDetail>(
@@ -391,7 +387,7 @@ export default function SpeakingTestClient() {
         setBusy(false);
       }
     },
-    [copy.signInRequired, currentUser, tests],
+    [copy.signInRequired, currentUser, router, tests],
   );
 
   const returnToCenter = () => {
@@ -418,10 +414,6 @@ export default function SpeakingTestClient() {
         onStartTest={(examSetId) => void openTest(examSetId)}
       />
     );
-  }
-
-  if (screen === "toefl_mock") {
-    return <ToeflMockTestClient onExit={returnToCenter} />;
   }
 
   if (screen === "scoring") {

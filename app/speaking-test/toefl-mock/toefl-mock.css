@@ -1661,3 +1661,166 @@
 .toefl-meter-example .toefl-segments span {
   width: 15px;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Full-viewport exam runner                                                   */
+/* -------------------------------------------------------------------------- */
+
+.toefl-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #fff;
+}
+
+.toefl-canvas {
+  position: absolute;
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100dvh;
+  transform: none !important;
+  transform-origin: initial;
+  overflow: hidden;
+  background: #fff;
+}
+
+.toefl-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: #fff;
+}
+
+.toefl-topbar {
+  width: 100%;
+}
+
+.toefl-pretest-copy,
+.toefl-mic-instruction-content,
+.toefl-copy-screen,
+.toefl-section-intro,
+.toefl-writing-instructions,
+.toefl-speaking-instructions,
+.toefl-end-screen {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-mic-record-card,
+.toefl-success-modal {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic,
+.toefl-listening-response,
+.toefl-listening-stimulus,
+.toefl-email,
+.toefl-discussion,
+.toefl-speaking-prompt,
+.toefl-speaking-record,
+.toefl-speaking-save {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1024px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.toefl-cloze {
+  left: 50%;
+  right: auto;
+  width: min(940px, calc(100vw - 64px));
+  transform: translateX(-50%);
+}
+
+.toefl-listening-question {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-sentence,
+.toefl-speaking-scenario {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-speaker-test {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 48px;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #078b92;
+  padding: 0;
+  cursor: pointer;
+}
+
+.toefl-speaker-test:hover,
+.toefl-speaker-test:focus-visible {
+  outline: 2px solid rgba(7, 139, 146, .28);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.toefl-record-circle:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.toefl-record-level .toefl-segments.teal span.filled {
+  border-color: #08898f;
+  background: #08898f;
+}
+
+.toefl-record-level .toefl-segments.red span.filled {
+  border-color: #d8292f;
+  background: #d8292f;
+}
+
+.toefl-hardware-error {
+  position: absolute;
+  left: 50%;
+  top: 620px;
+  width: min(604px, calc(100vw - 64px));
+  transform: translateX(-50%);
+  border: 1px solid #c44;
+  border-radius: 5px;
+  background: #fff4f4;
+  color: #8c1d1d;
+  padding: 10px 12px;
+  font: 13px/1.45 Arial, Helvetica, sans-serif;
+  z-index: 50;
+}
+
+@media (max-width: 1060px) {
+  .toefl-pretest-copy,
+  .toefl-mic-instruction-content,
+  .toefl-copy-screen,
+  .toefl-section-intro,
+  .toefl-writing-instructions,
+  .toefl-speaking-instructions,
+  .toefl-end-screen {
+    width: min(604px, calc(100vw - 40px));
+  }
+
+  .toefl-reading-daily,
+  .toefl-reading-academic,
+  .toefl-listening-response,
+  .toefl-listening-stimulus,
+  .toefl-email,
+  .toefl-discussion,
+  .toefl-speaking-prompt,
+  .toefl-speaking-record,
+  .toefl-speaking-save {
+    width: 1024px;
+  }
+}

@@ -1,29 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { buildMockToeflSteps, MOCK_TOEFL, type ExamStep, type MockOption } from "./mock-toefl";
 import "./toefl-mock.css";
 
 type Mode = "center" | "exam";
 type ModalState = null | "answer_required" | "time_remaining";
-
-function useCanvasScale(active: boolean) {
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    if (!active) return;
-    const update = () => {
-      const next = Math.min(window.innerWidth / 1024, window.innerHeight / 768);
-      setScale(Math.max(0.48, next));
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [active]);
-
-  return scale;
-}
 
 function TopBar({
   section,
@@ -115,7 +98,7 @@ function MeterExample({ color, filled }: { color: "teal" | "red"; filled: number
   );
 }
 
-function MicInstructionVisual({ body }: { body?: string[] }) {
+function MicInstructionVisual({ body, liveLevel = 0 }: { body?: string[]; liveLevel?: number }) {
   return (
     <div className="toefl-mic-instruction-content">
       <h1>Adjusting the Microphone</h1>
@@ -125,7 +108,7 @@ function MicInstructionVisual({ body }: { body?: string[] }) {
       </div>
       <h3>Example:</h3>
       <div className="toefl-mic-examples">
-        <MeterExample color="teal" filled={9} />
+        <MeterExample color="teal" filled={Math.max(1, Math.min(16, Math.round(liveLevel * 16)))} />
         <MeterExample color="red" filled={15} />
       </div>
       <div className="toefl-mic-verdicts">
@@ -136,9 +119,9 @@ function MicInstructionVisual({ body }: { body?: string[] }) {
   );
 }
 
-function RecordMicButton({ onClick }: { onClick: () => void }) {
+function RecordMicButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
   return (
-    <button type="button" className="toefl-record-circle" onClick={onClick} aria-label="Record microphone test">
+    <button type="button" className="toefl-record-circle" onClick={onClick} disabled={disabled} aria-label="Record microphone test">
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect x="25" y="8" width="14" height="30" rx="7" fill="none" stroke="currentColor" strokeWidth="5" />
         <path d="M15 29c0 11 7 18 17 18s17-7 17-18M32 47v10M24 57h16" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
@@ -272,9 +255,194 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
   const [writingSeconds, setWritingSeconds] = useState(0);
   const [speakingSeconds, setSpeakingSeconds] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "ready" | "recording" | "error">("idle");
+  const [micError, setMicError] = useState("");
 
-  const scale = useCanvasScale(mode === "exam");
+  const speakerContextRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micContextRef = useRef<AudioContext | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micAnimationRef = useRef<number | null>(null);
+  const calibrationRecorderRef = useRef<MediaRecorder | null>(null);
+  const calibrationTimerRef = useRef<number | null>(null);
+
   const step = steps[stepIndex];
+
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    return AudioContextCtor ?? null;
+  }, []);
+
+  const playSpeakerTest = useCallback(
+    async (level = volume) => {
+      const AudioContextCtor = getAudioContext();
+      if (!AudioContextCtor) return;
+      let context = speakerContextRef.current;
+      if (!context || context.state === "closed") {
+        context = new AudioContextCtor();
+        speakerContextRef.current = context;
+      }
+      if (context.state === "suspended") await context.resume();
+
+      const gain = context.createGain();
+      const now = context.currentTime;
+      const peak = Math.max(0.015, Math.min(0.2, (level / 100) * 0.18));
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(peak, now + 0.03);
+      gain.gain.setValueAtTime(peak, now + 0.38);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.62);
+      gain.connect(context.destination);
+
+      const first = context.createOscillator();
+      first.type = "sine";
+      first.frequency.value = 523.25;
+      first.connect(gain);
+      first.start(now);
+      first.stop(now + 0.3);
+
+      const second = context.createOscillator();
+      second.type = "sine";
+      second.frequency.value = 659.25;
+      second.connect(gain);
+      second.start(now + 0.28);
+      second.stop(now + 0.62);
+    },
+    [getAudioContext, volume],
+  );
+
+  const stopMicHardware = useCallback(() => {
+    if (micAnimationRef.current !== null) {
+      window.cancelAnimationFrame(micAnimationRef.current);
+      micAnimationRef.current = null;
+    }
+    if (calibrationTimerRef.current !== null) {
+      window.clearTimeout(calibrationTimerRef.current);
+      calibrationTimerRef.current = null;
+    }
+    const recorder = calibrationRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        // Recorder already stopped.
+      }
+    }
+    calibrationRecorderRef.current = null;
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+    const context = micContextRef.current;
+    micContextRef.current = null;
+    micAnalyserRef.current = null;
+    if (context && context.state !== "closed") {
+      void context.close();
+    }
+    setMicLevel(0);
+  }, []);
+
+  const startMicMonitor = useCallback(async () => {
+    if (micStreamRef.current?.active) {
+      setMicStatus("ready");
+      return micStreamRef.current;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicError("Microphone access is not supported in this browser.");
+      setMicStatus("error");
+      return null;
+    }
+
+    setMicStatus("requesting");
+    setMicError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          autoGainControl: false,
+          echoCancellation: false,
+          noiseSuppression: false,
+        },
+        video: false,
+      });
+      const AudioContextCtor = getAudioContext();
+      if (!AudioContextCtor) throw new Error("Web Audio is not supported.");
+
+      const context = new AudioContextCtor();
+      if (context.state === "suspended") await context.resume();
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.72;
+      source.connect(analyser);
+
+      micStreamRef.current = stream;
+      micContextRef.current = context;
+      micAnalyserRef.current = analyser;
+      setMicStatus("ready");
+
+      const data = new Uint8Array(analyser.fftSize);
+      const update = () => {
+        if (!micAnalyserRef.current) return;
+        micAnalyserRef.current.getByteTimeDomainData(data);
+        let sum = 0;
+        for (const sample of data) {
+          const normalized = (sample - 128) / 128;
+          sum += normalized * normalized;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        setMicLevel(Math.min(1, rms * 9));
+        micAnimationRef.current = window.requestAnimationFrame(update);
+      };
+      update();
+      return stream;
+    } catch (error) {
+      setMicError(
+        error instanceof Error
+          ? error.message
+          : "Microphone permission was denied or no microphone is available.",
+      );
+      setMicStatus("error");
+      stopMicHardware();
+      return null;
+    }
+  }, [getAudioContext, stopMicHardware]);
+
+  const startMicCalibrationRecording = useCallback(async () => {
+    if (micStatus === "recording") return;
+    const stream = (await startMicMonitor()) ?? micStreamRef.current;
+    if (!stream) return;
+
+    setMicStatus("recording");
+    if (typeof MediaRecorder === "undefined") {
+      calibrationTimerRef.current = window.setTimeout(() => {
+        setMicStatus("ready");
+        setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+      }, 3500);
+      return;
+    }
+
+    try {
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((candidate) =>
+        MediaRecorder.isTypeSupported(candidate),
+      );
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      calibrationRecorderRef.current = recorder;
+      recorder.onstop = () => {
+        calibrationRecorderRef.current = null;
+        setMicStatus("ready");
+        setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+      };
+      recorder.start();
+      calibrationTimerRef.current = window.setTimeout(() => {
+        calibrationTimerRef.current = null;
+        if (recorder.state !== "inactive") recorder.stop();
+      }, 3500);
+    } catch (error) {
+      setMicError(error instanceof Error ? error.message : "Microphone recording failed.");
+      setMicStatus("error");
+    }
+  }, [micStatus, startMicMonitor, steps.length]);
 
   const isChoiceStep =
     step?.kind === "reading_daily" ||
@@ -296,6 +464,10 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
 
     setModal(null);
     setVolumeOpen(false);
+
+    if (step.kind === "mic_success") {
+      stopMicHardware();
+    }
 
     if (stepIndex >= steps.length - 1) {
       setCompleted(true);
@@ -340,11 +512,27 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
 
   useEffect(() => {
     if (mode !== "exam" || step?.kind !== "mic_instructions") return;
+    void startMicMonitor();
+  }, [mode, startMicMonitor, step?.id, step?.kind]);
+
+  useEffect(() => {
+    if (mode !== "exam" || step?.kind !== "mic_instructions" || micStatus !== "ready") return;
     const timer = window.setTimeout(() => {
       setStepIndex((current) => Math.min(current + 1, steps.length - 1));
     }, 3500);
     return () => window.clearTimeout(timer);
-  }, [mode, step?.id, step?.kind, steps.length]);
+  }, [micStatus, mode, step?.id, step?.kind, steps.length]);
+
+  useEffect(
+    () => () => {
+      stopMicHardware();
+      const speakerContext = speakerContextRef.current;
+      if (speakerContext && speakerContext.state !== "closed") {
+        void speakerContext.close();
+      }
+    },
+    [stopMicHardware],
+  );
 
   useEffect(() => {
     if (mode !== "exam") return;
@@ -462,12 +650,7 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
 
   return (
     <div className="toefl-overlay">
-      <div
-        className="toefl-canvas"
-        style={{
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
-      >
+      <div className="toefl-canvas">
         <ExamScreen
           step={step}
           selected={step ? answers[step.id] : undefined}
@@ -479,8 +662,19 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
           speakingSeconds={speakingSeconds}
           volumeOpen={volumeOpen}
           volume={volume}
-          onVolume={() => setVolumeOpen((open) => !open)}
-          onVolumeChange={setVolume}
+          onVolume={() => {
+            setVolumeOpen((open) => !open);
+            void playSpeakerTest();
+          }}
+          onVolumeChange={(nextVolume) => {
+            setVolume(nextVolume);
+            void playSpeakerTest(nextVolume);
+          }}
+          onSpeakerTest={() => void playSpeakerTest()}
+          micLevel={micLevel}
+          micStatus={micStatus}
+          micError={micError}
+          onMicRecord={() => void startMicCalibrationRecording()}
           onAnswer={selectAnswer}
           onClozeChange={(index, value) => {
             if (!step) return;
@@ -521,6 +715,11 @@ function ExamScreen({
   volume,
   onVolume,
   onVolumeChange,
+  onSpeakerTest,
+  micLevel,
+  micStatus,
+  micError,
+  onMicRecord,
   onAnswer,
   onClozeChange,
   onSentenceToken,
@@ -542,6 +741,11 @@ function ExamScreen({
   volume: number;
   onVolume: () => void;
   onVolumeChange: (value: number) => void;
+  onSpeakerTest: () => void;
+  micLevel: number;
+  micStatus: "idle" | "requesting" | "ready" | "recording" | "error";
+  micError: string;
+  onMicRecord: () => void;
   onAnswer: (id: string) => void;
   onClozeChange: (index: number, value: string) => void;
   onSentenceToken: (token: string) => void;
@@ -604,7 +808,7 @@ function ExamScreen({
       {showTopBar && volumeOpen && (
         <div className="toefl-volume-popover">
           <button type="button" className="toefl-volume-close" onClick={onVolume} aria-label="Close volume control">×</button>
-          <LevelSegments color="teal" filled={13} />
+          <LevelSegments color="teal" filled={Math.max(1, Math.min(16, Math.round((volume / 100) * 16)))} />
           <input
             type="range"
             min="0"
@@ -644,27 +848,29 @@ function ExamScreen({
             {step.body?.map((line) => <p key={line}>{line}</p>)}
           </div>
           <div className="toefl-volume-note">
-            <SpeakerGlyph className="toefl-volume-note-icon" />
+            <button type="button" className="toefl-speaker-test" onClick={onSpeakerTest} aria-label="Play speaker test tone">
+              <SpeakerGlyph className="toefl-volume-note-icon" />
+            </button>
             <span>You now have the option to adjust the volume.</span>
           </div>
         </div>
       )}
 
       {step.kind === "mic_instructions" && (
-        <MicInstructionVisual body={step.body} />
+        <><MicInstructionVisual body={step.body} liveLevel={micLevel} />{micError && <div className="toefl-hardware-error">{micError}</div>}</>
       )}
 
       {step.kind === "mic_record" && (
         <>
           <div className="toefl-mic-record-backdrop">
             <div className="toefl-mic-record-card">
-              <RecordMicButton onClick={onNext} />
+              <RecordMicButton onClick={onMicRecord} disabled={micStatus === "recording" || micStatus === "requesting"} />
               <div className="toefl-mic-record-copy">
                 <p>Select the 'Record' button. A timer will count down until the system is ready to record.</p>
                 <p>To check your microphone level, you will record the following paragraph using your normal tone and volume.</p>
                 <p>{step.body?.[0]}</p>
                 <div className="toefl-record-level">
-                  <LevelSegments color="yellow" filled={2} />
+                  <LevelSegments color={micLevel > 0.78 ? "red" : micLevel < 0.2 ? "yellow" : "teal"} filled={Math.max(1, Math.min(16, Math.round(micLevel * 16)))} />
                   <div className="toefl-record-guide" aria-hidden="true" />
                   <div className="toefl-record-labels"><span>Too<br />Quiet</span><span>Good</span><span>Too Loud</span></div>
                 </div>
@@ -676,7 +882,7 @@ function ExamScreen({
 
       {step.kind === "mic_success" && (
         <>
-          <MicInstructionVisual body={["In order to check your microphone volume, you will speak into the microphone using your normal tone and volume. For best recording results, your voice level should remain generally within the Good Range. While you speak the microphone will adjust automatically."]} />
+          <MicInstructionVisual body={["In order to check your microphone volume, you will speak into the microphone using your normal tone and volume. For best recording results, your voice level should remain generally within the Good Range. While you speak the microphone will adjust automatically."]} liveLevel={micLevel} />
           <div className="toefl-success-scrim">
             <div className="toefl-success-modal">
               <h2><span className="toefl-success-dot">✓</span>Success</h2>
