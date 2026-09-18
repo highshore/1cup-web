@@ -2388,3 +2388,213 @@
     column-gap: 22px;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Borderless Reading working area + source-matched Listening layouts          */
+/* -------------------------------------------------------------------------- */
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  border: 0;
+}
+
+/* Listening screens use the same centered working area proportions as the
+   real UI, but without a visible card/stroke around the work area. */
+.toefl-listening-response,
+.toefl-listening-stimulus,
+.toefl-listening-question {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(960px, calc(100vw - 120px));
+  height: min(720px, calc(100dvh - 104px));
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 0;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Listen and Choose a Response */
+.toefl-listening-response h1 {
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 100%;
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 23px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-response .response-figure {
+  position: absolute;
+  left: 78px;
+  top: 92px;
+  width: 290px;
+  height: 330px;
+}
+
+.toefl-response-question {
+  position: absolute;
+  left: 520px;
+  top: 92px;
+  width: 365px;
+}
+
+.toefl-response-question .toefl-options {
+  gap: 12px;
+}
+
+.toefl-response-question .toefl-option {
+  min-height: 30px;
+  gap: 13px;
+  padding: 2px 0;
+  color: #333333;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Audio stimulus playback: title + one centered visual, no Next button. */
+.toefl-listening-stimulus h1 {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 100%;
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 23px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-stimulus .stimulus-figure {
+  position: absolute;
+  left: 50%;
+  top: 70px;
+  width: 420px;
+  height: 450px;
+  transform: translateX(-50%);
+}
+
+.toefl-listening-stimulus > p {
+  position: absolute;
+  left: 0;
+  top: 535px;
+  width: 100%;
+  margin: 0;
+  color: #8a9295;
+  text-align: center;
+  font-size: 10px;
+}
+
+/* Questions tied to a conversation / announcement / academic talk. */
+.toefl-listening-question {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  column-gap: 72px;
+  align-items: start;
+  padding: 52px 34px 30px;
+}
+
+.toefl-listening-question .question-figure {
+  position: static;
+  grid-column: 1;
+  width: 390px;
+  height: 450px;
+  justify-self: center;
+}
+
+.toefl-listening-question-copy {
+  grid-column: 2;
+  width: 100%;
+  padding-top: 0;
+}
+
+.toefl-listening-question-copy h1 {
+  margin: 0 0 20px;
+  color: #111111;
+  text-align: left;
+  font: 700 15px/1.35 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-question-copy .toefl-options {
+  gap: 11px;
+}
+
+.toefl-listening-question-copy .toefl-option {
+  min-height: 30px;
+  gap: 13px;
+  padding: 2px 0;
+  color: #111111;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Listening visuals are real media in production. Until assets are supplied,
+   keep placeholders borderless so the overall composition matches the source. */
+.toefl-media-placeholder.listening-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 35%, #edf0f0 0 44px, transparent 45px),
+    linear-gradient(to bottom, transparent 0 43%, #f1f3f3 43% 100%);
+  color: #8a9295;
+  cursor: default;
+  box-shadow: none;
+}
+
+.toefl-listening-stimulus .toefl-media-placeholder.listening-figure {
+  cursor: pointer;
+}
+
+.toefl-media-placeholder.listening-figure .toefl-media-icon {
+  margin: 0 0 12px;
+  color: #b7bfc1;
+  font-size: 48px !important;
+}
+
+.toefl-media-placeholder.listening-figure strong {
+  color: #747d80;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toefl-media-placeholder.listening-figure > span:last-child {
+  display: none;
+}
+
+@media (max-width: 1080px) {
+  .toefl-listening-response,
+  .toefl-listening-stimulus,
+  .toefl-listening-question {
+    width: calc(100vw - 56px);
+  }
+
+  .toefl-listening-response .response-figure {
+    left: 40px;
+    width: 260px;
+  }
+
+  .toefl-response-question {
+    left: 50%;
+    width: 42%;
+  }
+
+  .toefl-listening-question {
+    grid-template-columns: 40% 1fr;
+    column-gap: 40px;
+  }
+
+  .toefl-listening-question .question-figure {
+    width: 100%;
+  }
+}
