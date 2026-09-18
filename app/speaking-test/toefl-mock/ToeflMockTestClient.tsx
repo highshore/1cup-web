@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { useAuth } from "../../lib/contexts/auth_context";
 import { buildMockToeflSteps, MOCK_TOEFL, type ExamStep, type MockOption } from "./mock-toefl";
 import "./toefl-mock.css";
 
@@ -18,6 +19,7 @@ function TopBar({
   onAction,
   onBack,
   onVolume,
+  onAdminGesture,
 }: {
   section: string;
   progress?: string;
@@ -28,10 +30,16 @@ function TopBar({
   onAction?: () => void;
   onBack?: () => void;
   onVolume?: () => void;
+  onAdminGesture?: () => void;
 }) {
   return (
     <>
-      <div className={`toefl-topbar${showBack ? " has-back" : ""}`}>
+      <div
+        className={`toefl-topbar${showBack ? " has-back" : ""}`}
+        onDoubleClick={(event) => {
+          if (event.shiftKey) onAdminGesture?.();
+        }}
+      >
         {showVolume && (
           <button type="button" className="toefl-topbar-volume" onClick={onVolume}>
             <span>Volume</span>
@@ -281,7 +289,104 @@ function ExamModal({
   );
 }
 
+const adminKindLabels: Record<ExamStep["kind"], string> = {
+  welcome: "Welcome",
+  hardware: "Hardware Check",
+  volume_instructions: "Volume Instructions",
+  volume_adjusted: "Volume Open",
+  mic_instructions: "Mic Instructions",
+  mic_record: "Mic Recording",
+  mic_success: "Mic Success",
+  section_intro: "Section Intro",
+  reading_cloze: "Complete the Words",
+  reading_daily: "Read in Daily Life",
+  reading_academic: "Academic Passage",
+  section_end: "Section End",
+  listening_response: "Choose a Response",
+  listening_stimulus: "Listening Stimulus",
+  listening_question: "Listening Question",
+  writing_instructions: "Writing Instructions",
+  build_sentence: "Build a Sentence",
+  email: "Write an Email",
+  discussion: "Academic Discussion",
+  speaking_instructions: "Speaking Instructions",
+  speaking_scenario: "Speaking Scenario",
+  speaking_prompt: "Speaking Prompt",
+  speaking_record: "Speaking Recording",
+  speaking_save: "Speaking Save",
+};
+
+function adminStepLabel(step: ExamStep, index: number) {
+  const detail = step.progressLabel || step.title || adminKindLabels[step.kind];
+  return `${index + 1}. ${detail} — ${adminKindLabels[step.kind]}`;
+}
+
+function AdminNavigator({
+  steps,
+  currentIndex,
+  onJump,
+  onClose,
+}: {
+  steps: ExamStep[];
+  currentIndex: number;
+  onJump: (index: number) => void;
+  onClose: () => void;
+}) {
+  const sectionOrder: ExamStep["section"][] = ["Pre-test", "Reading", "Listening", "Writing", "Speaking"];
+  const grouped = sectionOrder
+    .map((section) => ({
+      section,
+      items: steps
+        .map((step, index) => ({ step, index }))
+        .filter(({ step }) => step.section === section),
+    }))
+    .filter(({ items }) => items.length > 0);
+
+  return (
+    <div className="toefl-admin-scrim" role="dialog" aria-modal="true" aria-label="Admin exam navigator">
+      <div className="toefl-admin-panel">
+        <div className="toefl-admin-header">
+          <div>
+            <strong>Admin Navigator</strong>
+            <span>Current: {currentIndex + 1} / {steps.length}</span>
+          </div>
+          <button type="button" onClick={onClose}>Close</button>
+        </div>
+
+        <div className="toefl-admin-section-jumps">
+          {grouped.map(({ section, items }) => (
+            <button key={section} type="button" onClick={() => onJump(items[0].index)}>
+              {section === "Pre-test" ? "Prep" : section}
+            </button>
+          ))}
+        </div>
+
+        <div className="toefl-admin-groups">
+          {grouped.map(({ section, items }) => (
+            <section key={section}>
+              <h3>{section === "Pre-test" ? "Prep" : section}</h3>
+              <div className="toefl-admin-step-grid">
+                {items.map(({ step, index }) => (
+                  <button
+                    key={step.id}
+                    type="button"
+                    className={index === currentIndex ? "current" : ""}
+                    onClick={() => onJump(index)}
+                  >
+                    {adminStepLabel(step, index)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) {
+  const { accountStatus } = useAuth();
   const steps = useMemo(() => buildMockToeflSteps(), []);
   const [mode, setMode] = useState<Mode>("exam");
   const [stepIndex, setStepIndex] = useState(0);
@@ -299,6 +404,8 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
   const [micLevel, setMicLevel] = useState(0);
   const [micStatus, setMicStatus] = useState<"idle" | "requesting" | "ready" | "recording" | "error">("idle");
   const [micError, setMicError] = useState("");
+  const [adminNavigatorOpen, setAdminNavigatorOpen] = useState(false);
+  const isAdmin = accountStatus === "admin";
 
   const speakerContextRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -528,6 +635,10 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
   useEffect(() => {
     if (mode !== "exam") return;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (adminNavigatorOpen) {
+        if (event.key === "Escape") setAdminNavigatorOpen(false);
+        return;
+      }
       if (event.key === "Escape") {
         onExit();
         return;
@@ -673,6 +784,22 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
     setSentencePlaced((all) => ({ ...all, [step.id]: current }));
   };
 
+  const openAdminNavigator = () => {
+    if (!isAdmin) return;
+    setModal(null);
+    setVolumeOpen(false);
+    setAdminNavigatorOpen(true);
+  };
+
+  const jumpAdminStep = (index: number) => {
+    if (!isAdmin || index < 0 || index >= steps.length) return;
+    stopMicHardware();
+    setModal(null);
+    setVolumeOpen(false);
+    setAdminNavigatorOpen(false);
+    setStepIndex(index);
+  };
+
   if (mode === "center") {
     return (
       <main className="exam-center-page">
@@ -772,7 +899,17 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
           onNext={() => advance()}
           onForceNext={() => advance(true)}
           onBack={goBack}
+          onAdminGesture={isAdmin ? openAdminNavigator : undefined}
         />
+
+        {isAdmin && adminNavigatorOpen && (
+          <AdminNavigator
+            steps={steps}
+            currentIndex={stepIndex}
+            onJump={jumpAdminStep}
+            onClose={() => setAdminNavigatorOpen(false)}
+          />
+        )}
 
         {modal && (
           <ExamModal
@@ -814,6 +951,7 @@ function ExamScreen({
   onNext,
   onForceNext,
   onBack,
+  onAdminGesture,
 }: {
   step: ExamStep;
   selected?: string;
@@ -842,6 +980,7 @@ function ExamScreen({
   onNext: () => void;
   onForceNext: () => void;
   onBack: () => void;
+  onAdminGesture?: () => void;
 }) {
   const section = step.section === "Pre-test" ? "" : step.section;
   const speakingNoNext =
@@ -894,6 +1033,7 @@ function ExamScreen({
           onAction={onNext}
           onBack={onBack}
           onVolume={onVolume}
+          onAdminGesture={onAdminGesture}
         />
       )}
 
