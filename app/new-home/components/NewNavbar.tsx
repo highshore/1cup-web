@@ -33,6 +33,8 @@ const NewNavbar: React.FC = () => {
   const pathname = usePathname();
   const { currentUser } = useAuth();
   const isLoggedIn = Boolean(currentUser);
+  const isSpeakingCenter =
+    pathname === "/speaking-test" || pathname.startsWith("/speaking-test/");
   const isTransparent = pathname === "/" && !isScrolled;
   const logoSrc = isTransparent
     ? "/images/logos/1cup_logo_new_white.svg"
@@ -65,6 +67,102 @@ const NewNavbar: React.FC = () => {
 
   const isActivePath = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);
+
+  if (isSpeakingCenter) {
+    return (
+      <nav className="fixed inset-x-0 top-0 z-50 h-[68px] border-b border-[#dbdbd6] bg-white [font-family:Inter,'Noto_Sans_KR',system-ui,sans-serif]">
+        <div className="relative mx-auto grid h-full w-full max-w-[912px] grid-cols-[minmax(150px,1fr)_auto_minmax(150px,1fr)] items-center px-0 max-[960px]:px-6 max-[720px]:grid-cols-[1fr_auto_1fr] max-[520px]:px-4">
+          <button
+            type="button"
+            onClick={() => handleNavigate("/")}
+            className="justify-self-start border-0 bg-transparent p-0 text-[18px] font-extrabold tracking-[-0.02em] text-[#050505] max-[720px]:col-start-2 max-[720px]:row-start-1 max-[720px]:justify-self-center"
+            aria-label="Home"
+          >
+            1 CUP ENGLISH
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="hidden h-10 w-10 items-center justify-center rounded-full border-0 bg-transparent text-[#050505] max-[720px]:col-start-1 max-[720px]:row-start-1 max-[720px]:inline-flex"
+            aria-label={locale === "en" ? "Toggle menu" : "메뉴 열기"}
+          >
+            {isMobileMenuOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
+          </button>
+
+          <div className="flex items-center justify-center gap-[30px] max-[720px]:hidden">
+            {NAV_ITEMS.map((item) => {
+              const active = isActivePath(item.path);
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => handleNavigate(item.path)}
+                  className={`border-0 bg-transparent p-0 text-[13px] font-semibold transition-colors hover:text-[#050505] ${
+                    active ? "font-extrabold text-[#f47a4a]" : "text-[#4d4d4d]"
+                  }`}
+                >
+                  {t.nav[item.labelKey]}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 justify-self-end max-[720px]:col-start-3 max-[720px]:row-start-1">
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="border-0 bg-transparent p-0 text-[12px] font-bold text-[#f47a4a]"
+              aria-label={locale === "en" ? "Switch language" : "언어 변경"}
+            >
+              {locale === "en" ? "EN" : "KR"}
+            </button>
+
+            {isLoggedIn ? (
+              <NotificationDropdown isTransparent={false} />
+            ) : (
+              <button
+                type="button"
+                onClick={handleJoin}
+                className="inline-flex h-10 min-w-[126px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#050505] px-5 text-[14px] font-extrabold text-white shadow-[5px_5px_0_#f47a4a] max-[720px]:hidden"
+              >
+                {t.nav.joinOneCup}
+              </button>
+            )}
+          </div>
+
+          {isMobileMenuOpen && (
+            <div className="absolute left-4 right-4 top-[62px] hidden rounded-[16px] border-2 border-[#050505] bg-white p-2 shadow-[4px_4px_0_#f47a4a] max-[720px]:grid">
+              {NAV_ITEMS.map((item) => {
+                const active = isActivePath(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => handleNavigate(item.path)}
+                    className={`min-h-10 rounded-[12px] border-0 px-3 text-left text-[13px] font-bold ${
+                      active ? "bg-[#fff0e8] text-[#f47a4a]" : "bg-white text-[#4d4d4d]"
+                    }`}
+                  >
+                    {t.nav[item.labelKey]}
+                  </button>
+                );
+              })}
+              {!isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={handleJoin}
+                  className="mt-1 min-h-10 rounded-full border-2 border-[#050505] bg-[#050505] px-4 text-[13px] font-extrabold text-white"
+                >
+                  {t.nav.joinOneCup}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav
