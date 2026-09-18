@@ -36,7 +36,7 @@ export default function MainLayoutWrapper({
     >
       <NewNavbar />
       <div
-        className={`mx-auto min-h-screen w-full flex-1 pb-8 [font-family:'Noto_Sans_KR',sans-serif] ${
+        className={`mx-auto min-h-screen w-full flex-1 [font-family:'Noto_Sans_KR',sans-serif] ${isSpeakingTestPage ? "pb-0" : "pb-8"} ${
           isHomePage ? "pt-0" : "pt-[74px] max-[768px]:pt-[68px]"
         } ${isFullWidth ? "max-w-full" : "max-w-[960px] max-[768px]:px-2"} ${
           isPrivateProfilePage ? "profile-workspace" : ""
