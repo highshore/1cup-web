@@ -14,7 +14,9 @@ function TopBar({
   time,
   showVolume = true,
   action,
+  showBack = false,
   onAction,
+  onBack,
   onVolume,
 }: {
   section: string;
@@ -22,17 +24,25 @@ function TopBar({
   time?: string;
   showVolume?: boolean;
   action?: string;
+  showBack?: boolean;
   onAction?: () => void;
+  onBack?: () => void;
   onVolume?: () => void;
 }) {
   return (
     <>
-      <div className="toefl-topbar">
+      <div className={`toefl-topbar${showBack ? " has-back" : ""}`}>
         {time && <div className="toefl-topbar-time">{time}</div>}
         {showVolume && (
           <button type="button" className="toefl-topbar-volume" onClick={onVolume}>
             <span>Volume</span>
             <SpeakerGlyph className="toefl-topbar-volume-icon" />
+          </button>
+        )}
+        {showBack && (
+          <button type="button" className="toefl-topbar-back" onClick={onBack}>
+            <span className="toefl-nav-chevron back" aria-hidden="true">‹</span>
+            <span>Back</span>
           </button>
         )}
         {action && (
@@ -807,7 +817,9 @@ function ExamScreen({
             step.section !== "Writing"
           }
           action={topAction}
+          showBack={step.kind === "reading_daily" || step.kind === "reading_academic"}
           onAction={onNext}
+          onBack={onBack}
           onVolume={onVolume}
         />
       )}
