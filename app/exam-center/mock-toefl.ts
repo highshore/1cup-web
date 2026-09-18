@@ -66,11 +66,11 @@ const choices = (...labels: string[]): MockOption[] =>
   labels.map((label, index) => ({ id: String.fromCharCode(65 + index), label }));
 
 const academicPassageOne = [
-  "Very young children cannot recognize themselves in a mirror; they usually achieve this milestone around 18 months of age.",
-  "The ability to recognize oneself in the mirror is considered to be a key component of self-awareness and consciousness for humans. But what about animals?",
-  "For many years, scientists have known that members of the great ape family could recognize themselves in mirrors. They measured this by the mirror test, which involved putting a colored mark on an ape's body and then showing the ape its reflection.",
-  "In more recent experiments, elephants, dolphins, and even cleaner fish have shown behaviors that researchers interpret as signs of self-recognition.",
-  "These findings have encouraged scientists to reconsider how self-awareness may appear across different species.",
+  "Community seed libraries allow gardeners to borrow seeds, grow plants, and return seeds collected at the end of the season.",
+  "Unlike commercial seed banks, these small programs are usually organized through public libraries, schools, or neighborhood groups. Their goal is not only to distribute seeds but also to preserve plant varieties that perform well in local conditions.",
+  "A seed library becomes more useful when participants record information about soil, weather, harvest time, and plant traits. Over several growing seasons, these notes can reveal which varieties tolerate heat, resist disease, or produce reliably in a particular area.",
+  "The system does have limitations. Seeds can be mislabeled, some plants cross-pollinate easily, and inexperienced gardeners may collect seeds before they are mature.",
+  "For that reason, successful programs combine seed sharing with simple training and careful record keeping. The result is both a practical resource and a form of community knowledge.",
 ];
 
 const academicPassageTwo = [
@@ -178,11 +178,11 @@ const dailyStimuliTwo = [
 ];
 
 const academicQuestionsOne = [
-  ["What is the passage mainly about?", choices("Research on animal self-recognition", "Stages of childhood language learning", "Differences in zoo habitats", "The history of mirror manufacturing")],
-  ["The word “milestone” is closest in meaning to", choices("important achievement", "physical distance", "unexpected problem", "scientific instrument")],
-  ["Why does the passage mention cleaner fish?", choices("To show self-recognition may occur in unexpected species", "To explain why fish avoid mirrors", "To compare ocean temperatures", "To criticize an experiment")],
-  ["According to the passage, what do researchers observe in the mirror test?", choices("Whether an animal responds to a mark on its own body", "Whether an animal can swim quickly", "Whether an animal follows another animal", "Whether an animal recognizes food")],
-  ["What can be inferred from the final paragraph?", choices("Scientists are reconsidering assumptions about animal cognition", "All animals pass the mirror test", "Mirror tests are no longer used", "Young children outperform every animal")],
+  ["What is the passage mainly about?", choices("How community seed libraries work and what makes them useful", "Why commercial farms avoid public libraries", "How to design a school greenhouse", "Why gardeners should buy new seeds each year")],
+  ["Why are participant notes useful to a seed library?", choices("They help identify varieties suited to local conditions", "They guarantee that every seed will germinate", "They replace the need to label seeds", "They prevent all cross-pollination")],
+  ["Which limitation of seed libraries is mentioned?", choices("Seeds may be mislabeled", "Libraries cannot store paper records", "Gardeners are not allowed to return seeds", "Local plants always require greenhouses")],
+  ["What does the passage suggest successful programs provide in addition to seeds?", choices("Basic training and record-keeping guidance", "Commercial farming equipment", "Guaranteed harvest insurance", "Professional landscaping services")],
+  ["What can be inferred about community seed libraries?", choices("Their value can increase as local knowledge accumulates", "They work only in cold climates", "They are intended mainly for commercial farmers", "They eliminate the need for seed companies")],
 ] as const;
 
 const academicQuestionsTwo = [
@@ -245,7 +245,7 @@ export function buildMockToeflSteps(): ExamStep[] {
   });
 
   academicQuestionsOne.forEach(([questionText, options], index) => {
-    steps.push({ id: `r-m1-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 1, questionNumber: 16 + index, progressLabel: `Question ${16 + index} of 40`, passageTitle: "The Mirror Test", passage: academicPassageOne, questionText, options: [...options] });
+    steps.push({ id: `r-m1-academic-${index + 1}`, kind: "reading_academic", section: "Reading", module: 1, questionNumber: 16 + index, progressLabel: `Question ${16 + index} of 40`, passageTitle: "Community Seed Libraries", passage: academicPassageOne, questionText, options: [...options] });
   });
 
   const clozeTwo = [
@@ -386,13 +386,13 @@ export function buildMockToeflSteps(): ExamStep[] {
   );
 
   const repeatLines = [
-    "We have a variety of wildlife.",
-    "Bears, wolves, and large cats are to the right.",
-    "You can find sea lions and elephants further down the path.",
-    "Please, no outside food or drinks, and do not feed the animals.",
-    "Avoid banging or tapping on the displays and enclosures.",
-    "For those with children, we offer summer camps and educational opportunities.",
-    "The visitor's center, located near the front entrance, can give you more information.",
+    "The aquarium opens at nine every morning.",
+    "Please keep your ticket with you during the tour.",
+    "The tropical birds are in the building across the courtyard.",
+    "Food and drinks are allowed only in the picnic area.",
+    "You can borrow a map from the information desk.",
+    "Our weekend workshops are designed for visitors of all ages.",
+    "Staff members in blue shirts can answer questions about the exhibits.",
   ];
 
   repeatLines.forEach((line, index) => {
