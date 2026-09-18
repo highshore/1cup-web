@@ -402,16 +402,9 @@ export default function SpeakingTestClient() {
     return (
       <SpeakingCenterLanding
         tests={tests}
-        attempts={attempts}
         busy={busy}
         message={message}
         onStartTest={(examSetId) => void openTest(examSetId)}
-        onOpenReport={(entry) => {
-          if (!entry.report) return;
-          setReport(entry.report);
-          setExam(null);
-          setScreen("report");
-        }}
       />
     );
   }
