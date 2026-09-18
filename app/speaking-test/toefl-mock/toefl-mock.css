@@ -2340,3 +2340,51 @@
     font-size: 13px;
   }
 }
+
+
+/* Constrain post-cloze Reading questions to a centered, near-4:3 working area. */
+.toefl-reading-daily,
+.toefl-reading-academic {
+  left: 50%;
+  right: auto;
+  width: min(1080px, calc(100vw - 140px));
+  height: min(790px, calc(100dvh - 116px));
+  min-height: 0;
+  top: 104px;
+  transform: translateX(-50%);
+  padding: 24px 28px 34px;
+}
+
+.toefl-reading-daily > h1,
+.toefl-reading-academic > h1 {
+  margin-bottom: 46px;
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  column-gap: 48px;
+}
+
+.toefl-passage,
+.toefl-daily-stimulus {
+  max-height: calc(min(790px, calc(100dvh - 116px)) - 128px);
+}
+
+@media (max-width: 1180px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    width: calc(100vw - 72px);
+  }
+}
+
+@media (max-width: 760px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    width: calc(100vw - 28px);
+    height: calc(100dvh - 108px);
+    top: 98px;
+    padding-left: 16px;
+    padding-right: 16px;
+    column-gap: 22px;
+  }
+}
