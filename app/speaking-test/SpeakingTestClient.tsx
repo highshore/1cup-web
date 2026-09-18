@@ -329,7 +329,12 @@ export default function SpeakingTestClient() {
       for (const result of results) {
         for (const test of result.tests) unique.set(test.id, test);
       }
-      setTests([...unique.values()].slice(0, 12));
+      const ordered = [...unique.values()].sort((a, b) => {
+        const right = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+        const left = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+        return right - left;
+      });
+      setTests(ordered.slice(0, 12));
       void loadHistory();
     } catch (error) {
       setTests([]);
