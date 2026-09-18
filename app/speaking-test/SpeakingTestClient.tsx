@@ -22,8 +22,9 @@ import {
   type SpeakingTestReport,
 } from "../lib/features/speaking-test/types";
 import SpeakingCenterLanding from "./SpeakingCenterLanding";
+import ToeflMockTestClient from "./toefl-mock/ToeflMockTestClient";
 
-type Screen = "center" | "test" | "scoring" | "report";
+type Screen = "center" | "test" | "scoring" | "report" | "toefl_mock";
 type CapturedResponse = {
   itemId: string;
   blob: Blob;
@@ -356,6 +357,16 @@ export default function SpeakingTestClient() {
       setMessage("");
       try {
         if (!currentUser) throw new Error(copy.signInRequired);
+        const selectedTest = tests.find((test) => test.id === examSetId);
+        if (selectedTest?.categories.includes("toefl")) {
+          setExam(null);
+          setAttempt(null);
+          setTaskIndex(0);
+          setCaptured([]);
+          setReport(null);
+          setScreen("toefl_mock");
+          return;
+        }
         const detail = await responseJson<DeployedExamDetail>(
           await fetch("/api/speaking-test/exams/" + examSetId),
         );
@@ -380,7 +391,7 @@ export default function SpeakingTestClient() {
         setBusy(false);
       }
     },
-    [copy.signInRequired, currentUser],
+    [copy.signInRequired, currentUser, tests],
   );
 
   const returnToCenter = () => {
@@ -407,6 +418,10 @@ export default function SpeakingTestClient() {
         onStartTest={(examSetId) => void openTest(examSetId)}
       />
     );
+  }
+
+  if (screen === "toefl_mock") {
+    return <ToeflMockTestClient onExit={returnToCenter} />;
   }
 
   if (screen === "scoring") {
