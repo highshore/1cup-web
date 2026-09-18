@@ -26,21 +26,29 @@ function TopBar({
   onVolume?: () => void;
 }) {
   return (
-    <div className="toefl-topbar">
-      <div className="toefl-topbar-section">{section}</div>
-      <div className="toefl-topbar-progress">{progress}</div>
-      {time && <div className="toefl-topbar-time">{time}</div>}
-      {showVolume && (
-        <button type="button" className="toefl-topbar-volume" onClick={onVolume}>
-          Volume
-        </button>
+    <>
+      <div className="toefl-topbar">
+        {time && <div className="toefl-topbar-time">{time}</div>}
+        {showVolume && (
+          <button type="button" className="toefl-topbar-volume" onClick={onVolume}>
+            <span>Volume</span>
+            <SpeakerGlyph className="toefl-topbar-volume-icon" />
+          </button>
+        )}
+        {action && (
+          <button type="button" className="toefl-topbar-action" onClick={onAction}>
+            {action}
+          </button>
+        )}
+      </div>
+      {(section || progress) && (
+        <div className="toefl-statusbar">
+          {section && <div className="toefl-statusbar-section">{section}</div>}
+          {section && progress && <div className="toefl-statusbar-divider" aria-hidden="true" />}
+          {progress && <div className="toefl-statusbar-progress">{progress}</div>}
+        </div>
       )}
-      {action && (
-        <button type="button" className="toefl-topbar-action" onClick={onAction}>
-          {action}
-        </button>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -664,7 +672,6 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
           volume={volume}
           onVolume={() => {
             setVolumeOpen((open) => !open);
-            void playSpeakerTest();
           }}
           onVolumeChange={(nextVolume) => {
             setVolume(nextVolume);
@@ -755,7 +762,7 @@ function ExamScreen({
   onForceNext: () => void;
   onBack: () => void;
 }) {
-  const section = step.section === "Pre-test" ? "Reading" : step.section;
+  const section = step.section === "Pre-test" ? "" : step.section;
   const speakingNoNext =
     step.kind === "speaking_prompt" ||
     step.kind === "speaking_record" ||
@@ -791,7 +798,7 @@ function ExamScreen({
     <div className="toefl-screen">
       {showTopBar && (
         <TopBar
-          section={step.kind === "welcome" || step.kind === "hardware" ? "" : section}
+          section={section}
           progress={step.progressLabel}
           time={time}
           showVolume={
