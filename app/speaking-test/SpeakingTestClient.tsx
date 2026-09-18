@@ -320,9 +320,9 @@ export default function SpeakingTestClient() {
     setMessage("");
     try {
       const results = await Promise.all(
-        SPEAKING_TEST_CATEGORIES.map((category) =>
+        SPEAKING_TEST_CATEGORIES.map(async (category) =>
           responseJson<{ tests: DeployedExam[] }>(
-            fetch("/api/speaking-test/catalog?category=" + category),
+            await fetch("/api/speaking-test/catalog?category=" + category),
           ),
         ),
       );
@@ -353,10 +353,10 @@ export default function SpeakingTestClient() {
       try {
         if (!currentUser) throw new Error(copy.signInRequired);
         const detail = await responseJson<DeployedExamDetail>(
-          fetch("/api/speaking-test/exams/" + examSetId),
+          await fetch("/api/speaking-test/exams/" + examSetId),
         );
         const started = await responseJson<StartedAttempt>(
-          fetch("/api/speaking-test/attempt", {
+          await fetch("/api/speaking-test/attempt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ examSetId }),
