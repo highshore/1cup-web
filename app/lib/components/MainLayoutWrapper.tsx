@@ -41,7 +41,7 @@ export default function MainLayoutWrapper({
           isHomePage
             ? "pt-0 pb-8"
             : isSpeakingTestPage
-              ? "pt-[60px] pb-0 max-[768px]:pt-[60px]"
+              ? "pt-[68px] pb-0 max-[768px]:pt-[68px]"
               : "pt-[74px] pb-8 max-[768px]:pt-[68px]"
         } ${isFullWidth ? "max-w-full" : "max-w-[960px] max-[768px]:px-2"} ${
           isPrivateProfilePage ? "profile-workspace" : ""
