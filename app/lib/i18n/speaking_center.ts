@@ -1,5 +1,6 @@
 const speakingCenter = {
   en: {
+    navLabel: "Speaking",
     eyebrow: "Exam prep center",
     titleLineOne: "English Exam",
     titleLineTwo: "Practice Center",
@@ -51,6 +52,7 @@ const speakingCenter = {
     ],
   },
   ko: {
+    navLabel: "스피킹",
     eyebrow: "시험 대비 센터",
     titleLineOne: "영어 시험",
     titleLineTwo: "연습 센터",
