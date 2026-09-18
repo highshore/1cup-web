@@ -27,7 +27,7 @@ function testType(test: DeployedExam, locale: "en" | "ko") {
 }
 
 function testBadge(test: DeployedExam, locale: "en" | "ko") {
-  if (test.categories.includes("free")) return locale === "ko" ? "무료" : "FREE";
+  if (test.categories.includes("free")) return locale === "ko" ? "자유 연습" : "FREE STYLE";
   return null;
 }
 
@@ -62,13 +62,7 @@ export default function SpeakingCenterLanding({
   const visibleTests = tests.slice(0, 12);
   const completedAttempts = attempts.filter((entry) => entry.report);
 
-  const startFirstAvailable = () => {
-    const firstFree = tests.find((test) => test.categories.includes("free"));
-    const first = firstFree ?? tests[0];
-    if (first) {
-      onStartTest(first.id);
-      return;
-    }
+  const scrollToTests = () => {
     document.getElementById("speaking-practice-tests")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -96,7 +90,7 @@ export default function SpeakingCenterLanding({
             <button
               type="button"
               disabled={busy}
-              onClick={startFirstAvailable}
+              onClick={scrollToTests}
               className="mt-7 inline-flex min-h-[52px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#050505] px-7 text-[14px] font-extrabold text-white shadow-[5px_5px_0_0_#fff0e8] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
             >
               {copy.startFree}
