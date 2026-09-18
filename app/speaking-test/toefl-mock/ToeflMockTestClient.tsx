@@ -14,7 +14,7 @@ function useCanvasScale(active: boolean) {
   useEffect(() => {
     if (!active) return;
     const update = () => {
-      const next = Math.min(window.innerWidth / 1024, window.innerHeight / 720);
+      const next = Math.min(window.innerWidth / 1024, window.innerHeight / 768);
       setScale(Math.max(0.48, next));
     };
     update();
@@ -65,6 +65,84 @@ function PrimaryButton({ children, onClick }: { children: ReactNode; onClick: ()
   return (
     <button type="button" className="toefl-primary" onClick={onClick}>
       {children}
+    </button>
+  );
+}
+
+function SpeakerGlyph({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 64 48" aria-hidden="true">
+      <path d="M4 17h12L30 6v36L16 31H4z" fill="currentColor" />
+      <path d="M39 14c4 4 6 8 6 10s-2 6-6 10M46 8c6 6 9 11 9 16s-3 10-9 16" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HardwareIcons() {
+  return (
+    <div className="toefl-hardware-icons" aria-hidden="true">
+      <svg viewBox="0 0 64 64">
+        <rect x="25" y="5" width="14" height="34" rx="7" fill="none" stroke="currentColor" strokeWidth="6" />
+        <path d="M15 29c0 11 7 18 17 18s17-7 17-18M32 47v12M23 59h18" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+      </svg>
+      <svg viewBox="0 0 64 64">
+        <path d="M10 34v-8C10 14 20 5 32 5s22 9 22 21v8" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+        <rect x="7" y="29" width="12" height="25" rx="6" fill="currentColor" />
+        <rect x="45" y="29" width="12" height="25" rx="6" fill="currentColor" />
+      </svg>
+      <SpeakerGlyph />
+    </div>
+  );
+}
+
+function LevelSegments({ color, filled = 11 }: { color: "teal" | "red" | "yellow"; filled?: number }) {
+  return (
+    <div className={`toefl-segments ${color}`}>
+      {Array.from({ length: 16 }, (_, index) => (
+        <span key={index} className={index < filled ? "filled" : ""} />
+      ))}
+    </div>
+  );
+}
+
+function MeterExample({ color, filled }: { color: "teal" | "red"; filled: number }) {
+  return (
+    <div className="toefl-meter-example">
+      <LevelSegments color={color} filled={filled} />
+      <div className="toefl-meter-guides" aria-hidden="true"><i /><i /></div>
+      <div className="toefl-meter-labels"><span>Too Quiet</span><span>Good</span><span>Too Loud</span></div>
+    </div>
+  );
+}
+
+function MicInstructionVisual({ body }: { body?: string[] }) {
+  return (
+    <div className="toefl-mic-instruction-content">
+      <h1>Adjusting the Microphone</h1>
+      <div className="toefl-title-rule" />
+      <div className="toefl-copy-paragraphs">
+        {body?.map((line) => <p key={line}>{line}</p>)}
+      </div>
+      <h3>Example:</h3>
+      <div className="toefl-mic-examples">
+        <MeterExample color="teal" filled={9} />
+        <MeterExample color="red" filled={15} />
+      </div>
+      <div className="toefl-mic-verdicts">
+        <div className="good"><span className="toefl-checkmark" />Good</div>
+        <div className="loud"><span className="toefl-crossmark" />Too Loud</div>
+      </div>
+    </div>
+  );
+}
+
+function RecordMicButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="toefl-record-circle" onClick={onClick} aria-label="Record microphone test">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="25" y="8" width="14" height="30" rx="7" fill="none" stroke="currentColor" strokeWidth="5" />
+        <path d="M15 29c0 11 7 18 17 18s17-7 17-18M32 47v10M24 57h16" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+      </svg>
     </button>
   );
 }
@@ -254,6 +332,19 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
     if (step.kind === "discussion") setWritingSeconds(10 * 60);
     if (step.kind === "speaking_record") setSpeakingSeconds(step.responseSeconds ?? 45);
   }, [step?.id]);
+
+  useEffect(() => {
+    if (!step) return;
+    if (step.kind === "volume_adjusted") setVolumeOpen(true);
+  }, [step?.id, step?.kind]);
+
+  useEffect(() => {
+    if (mode !== "exam" || step?.kind !== "mic_instructions") return;
+    const timer = window.setTimeout(() => {
+      setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [mode, step?.id, step?.kind, steps.length]);
 
   useEffect(() => {
     if (mode !== "exam") return;
@@ -469,32 +560,41 @@ function ExamScreen({
   const topAction =
     step.kind === "welcome" ||
     step.kind === "hardware" ||
-    step.kind === "mic_success" ||
-    step.kind === "section_intro" ||
-    step.kind === "section_end" ||
-    step.kind === "writing_instructions" ||
-    step.kind === "speaking_instructions" ||
-    step.kind === "speaking_scenario"
-      ? undefined
-      : speakingNoNext
+    step.kind === "volume_instructions" ||
+    step.kind === "volume_adjusted"
+      ? "Continue"
+      : step.kind === "mic_instructions" ||
+          step.kind === "mic_record" ||
+          step.kind === "mic_success" ||
+          step.kind === "section_intro" ||
+          step.kind === "section_end" ||
+          step.kind === "writing_instructions" ||
+          step.kind === "speaking_instructions" ||
+          step.kind === "speaking_scenario"
         ? undefined
-        : "Next >";
+        : speakingNoNext
+          ? undefined
+          : "Next >";
 
   const time =
     step.kind === "email" || step.kind === "discussion"
       ? formatTime(writingSeconds)
       : undefined;
 
-  const showTopBar = step.kind !== "welcome" && step.kind !== "hardware";
+  const showTopBar = true;
 
   return (
     <div className="toefl-screen">
       {showTopBar && (
         <TopBar
-          section={section}
+          section={step.kind === "welcome" || step.kind === "hardware" ? "" : section}
           progress={step.progressLabel}
           time={time}
-          showVolume={step.section !== "Writing"}
+          showVolume={
+            step.kind !== "welcome" &&
+            step.kind !== "hardware" &&
+            step.section !== "Writing"
+          }
           action={topAction}
           onAction={onNext}
           onVolume={onVolume}
@@ -503,85 +603,89 @@ function ExamScreen({
 
       {showTopBar && volumeOpen && (
         <div className="toefl-volume-popover">
-          <strong>Volume</strong>
+          <button type="button" className="toefl-volume-close" onClick={onVolume} aria-label="Close volume control">×</button>
+          <LevelSegments color="teal" filled={13} />
           <input
             type="range"
             min="0"
             max="100"
             value={volume}
             onChange={(event) => onVolumeChange(Number(event.target.value))}
+            aria-label="Volume"
           />
         </div>
       )}
 
       <div className="toefl-hidden-back" onDoubleClick={onBack} />
 
-      {(step.kind === "welcome" || step.kind === "hardware") && (
-        <div className="toefl-copy-screen">
+      {step.kind === "welcome" && (
+        <div className="toefl-pretest-copy toefl-welcome-screen">
           <h1>{step.title}</h1>
-          <div className="toefl-copy-paragraphs">
-            {step.body?.map((line) => <p key={line}>{line}</p>)}
-          </div>
-          <PrimaryButton onClick={onNext}>{step.actionLabel || "Continue"}</PrimaryButton>
+          <div className="toefl-title-rule" />
+          <p>{step.body?.[0]}</p>
+        </div>
+      )}
+
+      {step.kind === "hardware" && (
+        <div className="toefl-pretest-copy toefl-hardware-screen">
+          <h1>{step.title}</h1>
+          <div className="toefl-title-rule" />
+          <p>{step.body?.[0]}</p>
+          <HardwareIcons />
+          <p className="toefl-hardware-note">{step.body?.[1]}</p>
         </div>
       )}
 
       {(step.kind === "volume_instructions" || step.kind === "volume_adjusted") && (
-        <div className="toefl-copy-screen">
+        <div className="toefl-pretest-copy toefl-volume-screen">
           <h1>{step.title}</h1>
+          <div className="toefl-title-rule" />
           <div className="toefl-copy-paragraphs">
             {step.body?.map((line) => <p key={line}>{line}</p>)}
           </div>
-          {step.kind === "volume_adjusted" && (
-            <div className="toefl-inline-slider">
-              <span>Volume</span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(event) => onVolumeChange(Number(event.target.value))}
-              />
-            </div>
-          )}
-          <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+          <div className="toefl-volume-note">
+            <SpeakerGlyph className="toefl-volume-note-icon" />
+            <span>You now have the option to adjust the volume.</span>
+          </div>
         </div>
       )}
 
       {step.kind === "mic_instructions" && (
-        <div className="toefl-copy-screen">
-          <h1>{step.title}</h1>
-          <div className="toefl-copy-paragraphs">
-            {step.body?.map((line) => <p key={line}>{line}</p>)}
-          </div>
-          <h3 className="toefl-example-label">Example</h3>
-          <div className="toefl-level-meter">
-            <span>Too Quiet</span><span>Good</span><span>Too Loud</span>
-            <div><i /></div>
-          </div>
-          <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
-        </div>
+        <MicInstructionVisual body={step.body} />
       )}
 
       {step.kind === "mic_record" && (
-        <div className="toefl-mic-record">
-          <p>Select the Record button. A timer will count down until the system is ready to record.</p>
-          <p>To check your microphone level, read the paragraph below using your normal tone and volume.</p>
-          <blockquote>{step.body?.[0]}</blockquote>
-          <PrimaryButton onClick={onNext}>Record</PrimaryButton>
-          <div className="toefl-record-meter">
-            <span>Too Quiet</span><span>Good</span><span>Too Loud</span>
-            <div><i /></div>
+        <>
+          <div className="toefl-mic-record-backdrop">
+            <div className="toefl-mic-record-card">
+              <RecordMicButton onClick={onNext} />
+              <div className="toefl-mic-record-copy">
+                <p>Select the 'Record' button. A timer will count down until the system is ready to record.</p>
+                <p>To check your microphone level, you will record the following paragraph using your normal tone and volume.</p>
+                <p>{step.body?.[0]}</p>
+                <div className="toefl-record-level">
+                  <LevelSegments color="yellow" filled={2} />
+                  <div className="toefl-record-guide" aria-hidden="true" />
+                  <div className="toefl-record-labels"><span>Too<br />Quiet</span><span>Good</span><span>Too Loud</span></div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {step.kind === "mic_success" && (
-        <div className="toefl-success-screen">
-          <h1>{step.title}</h1>
-          <p>{step.body?.[0]}</p>
-          <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
-        </div>
+        <>
+          <MicInstructionVisual body={["In order to check your microphone volume, you will speak into the microphone using your normal tone and volume. For best recording results, your voice level should remain generally within the Good Range. While you speak the microphone will adjust automatically."]} />
+          <div className="toefl-success-scrim">
+            <div className="toefl-success-modal">
+              <h2><span className="toefl-success-dot">✓</span>Success</h2>
+              <div className="toefl-success-rule" />
+              <p>{step.body?.[0]}</p>
+              <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+            </div>
+          </div>
+        </>
       )}
 
       {step.kind === "section_intro" && (
