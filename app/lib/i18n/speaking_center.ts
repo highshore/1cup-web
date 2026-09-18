@@ -5,7 +5,7 @@ const speakingCenter = {
     titleLineTwo: "Practice Center",
     subtitle:
       "Practice realistic English exams with timers, recording flow and structured feedback designed for focused improvement.",
-    startFree: "Browse Practice Tests →",
+    startFree: "Start a Practice Test →",
     previewEyebrow: "PRACTICE TEST 01",
     previewTitle: "Give Your Opinion",
     previewPrompt:
@@ -56,7 +56,7 @@ const speakingCenter = {
     titleLineTwo: "연습 센터",
     subtitle:
       "타이머와 녹음, 구조화된 피드백을 활용해 실제 시험과 유사한 영어 말하기 연습을 집중적으로 진행하세요.",
-    startFree: "연습 테스트 보기 →",
+    startFree: "연습 테스트 시작 →",
     previewEyebrow: "연습 테스트 01",
     previewTitle: "의견 말하기",
     previewPrompt:
