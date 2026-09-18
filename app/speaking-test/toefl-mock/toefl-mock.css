@@ -3207,3 +3207,147 @@
     padding: 0 8px;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Admin-only exam navigator. Rendered only after the admin gesture is used.  */
+/* -------------------------------------------------------------------------- */
+
+.toefl-admin-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .58);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-panel {
+  width: min(940px, calc(100vw - 64px));
+  height: min(720px, calc(100dvh - 64px));
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .28);
+  overflow: hidden;
+}
+
+.toefl-admin-header {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #d9d9d9;
+  padding: 13px 18px;
+}
+
+.toefl-admin-header > div {
+  min-width: 0;
+}
+
+.toefl-admin-header strong {
+  display: block;
+  color: #151515;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.toefl-admin-header span {
+  display: block;
+  margin-top: 4px;
+  color: #6d7679;
+  font-size: 12px;
+}
+
+.toefl-admin-header button,
+.toefl-admin-section-jumps button {
+  border: 0;
+  border-radius: 8px;
+  background: #078a91;
+  color: #ffffff;
+  cursor: pointer;
+  font: 700 12px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-header button {
+  min-width: 76px;
+  height: 36px;
+}
+
+.toefl-admin-section-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #e1e1e1;
+  padding: 10px 16px;
+}
+
+.toefl-admin-section-jumps button {
+  min-height: 34px;
+  padding: 0 14px;
+  background: #edf5f5;
+  color: #087b82;
+  border: 1px solid #a8cbce;
+}
+
+.toefl-admin-groups {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+}
+
+.toefl-admin-groups section + section {
+  margin-top: 20px;
+}
+
+.toefl-admin-groups h3 {
+  margin: 0 0 9px;
+  color: #252525;
+  font: 700 14px/1.2 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-step-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.toefl-admin-step-grid button {
+  min-height: 42px;
+  border: 1px solid #d5d9da;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #333333;
+  padding: 7px 9px;
+  text-align: left;
+  cursor: pointer;
+  font: 400 11px/1.28 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-step-grid button:hover {
+  border-color: #078a91;
+  background: #f2f8f8;
+}
+
+.toefl-admin-step-grid button.current {
+  border-color: #078a91;
+  background: #078a91;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .toefl-admin-panel {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+  }
+
+  .toefl-admin-step-grid {
+    grid-template-columns: 1fr;
+  }
+}
