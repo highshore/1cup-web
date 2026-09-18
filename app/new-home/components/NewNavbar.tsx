@@ -201,7 +201,7 @@ const NewNavbar: React.FC = () => {
                   }`}
                 >
                   <Icon />
-                  {t.nav[item.labelKey]}
+                  {item.path === "/exam-center" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
                 </button>
               );
             })}
