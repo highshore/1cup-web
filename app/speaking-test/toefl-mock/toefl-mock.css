@@ -1647,3 +1647,17 @@
 .toefl-end-screen {
   top: 108px;
 }
+
+
+/* Fine alignment from the microphone reference capture. */
+.toefl-mic-examples {
+  grid-template-columns: 303px 303px;
+  gap: 62px;
+}
+.toefl-meter-example,
+.toefl-meter-example .toefl-segments {
+  width: 303px;
+}
+.toefl-meter-example .toefl-segments span {
+  width: 15px;
+}
