@@ -2054,3 +2054,71 @@
     font-size: 16px;
   }
 }
+
+
+/* Tidy microphone calibration success modal. */
+.toefl-success-modal {
+  width: 480px;
+  height: 320px;
+  box-sizing: border-box;
+  padding: 56px 72px 48px;
+  text-align: left;
+}
+
+.toefl-success-modal h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: #3f3f3f;
+  font: 700 18px/1.2 Arial, Helvetica, sans-serif;
+  text-align: left;
+}
+
+.toefl-success-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 50%;
+  background: #078a91;
+  color: #ffffff;
+  font: 700 13px/1 Arial, Helvetica, sans-serif;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.toefl-success-rule {
+  width: 100%;
+  height: 1px;
+  margin: 18px 0 0;
+  background: #dedede;
+}
+
+.toefl-success-modal p {
+  width: 100%;
+  margin: 42px 0 0;
+  color: #414141;
+  font: 400 16px/1.45 Arial, Helvetica, sans-serif;
+  text-align: left;
+}
+
+.toefl-success-modal .toefl-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 122px;
+  height: 44px;
+  margin: 36px 0 0;
+  padding: 0 18px;
+  border: 2px solid #147f85;
+  border-radius: 11px;
+  background: #078a91;
+  box-shadow: inset 0 0 0 2px #ffffff;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1;
+}
