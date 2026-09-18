@@ -52,6 +52,11 @@ export type ExamStep = {
   instruction?: string;
   tokens?: string[];
   correctOrder?: string[];
+  sentencePrompt?: string;
+  sentencePrefix?: string;
+  sentenceSuffix?: string;
+  sentenceSpeakerA?: string;
+  sentenceSpeakerB?: string;
   emailScenario?: string[];
   requirements?: string[];
   recipient?: string;
@@ -194,16 +199,76 @@ const academicQuestionsTwo = [
 ] as const;
 
 const sentenceTasks = [
-  ["The research team", "finished", "the project", "because", "the members worked together."],
-  ["The professor", "asked", "the students", "to submit", "their drafts by Friday."],
-  ["The new policy", "will help", "residents", "reduce", "household waste."],
-  ["Many commuters", "choose", "the train", "because", "it is more reliable."],
-  ["The museum", "extended", "its hours", "so that", "more visitors could attend."],
-  ["Our group", "decided", "to postpone", "the meeting", "until next week."],
-  ["The experiment", "produced", "unexpected results", "after", "the temperature changed."],
-  ["The city", "plans", "to add", "more bike lanes", "next year."],
-  ["She", "recommended", "taking notes", "while", "listening to the lecture."],
-  ["The company", "introduced", "a flexible schedule", "to improve", "employee satisfaction."],
+  {
+    prompt: "What was the highlight of your trip?",
+    prefix: "The",
+    suffix: "fantastic.",
+    tokens: ["were", "the", "was", "old city", "showed us around", "who", "tour guides"],
+    correctOrder: ["tour guides", "who", "showed us around", "the", "old city", "were"],
+  },
+  {
+    prompt: "Why did the professor contact the class?",
+    prefix: "She",
+    suffix: "by Friday.",
+    tokens: ["their drafts", "asked", "submit", "the students", "to", "asks", "professor"],
+    correctOrder: ["asked", "the students", "to", "submit", "their drafts"],
+  },
+  {
+    prompt: "How will the new policy affect residents?",
+    prefix: "It",
+    suffix: "household waste.",
+    tokens: ["will help", "residents", "reduce", "will helps", "to", "the", "helped"],
+    correctOrder: ["will help", "residents", "reduce"],
+  },
+  {
+    prompt: "Why do many commuters take the train?",
+    prefix: "Many commuters",
+    suffix: "it is more reliable.",
+    tokens: ["choose", "the train", "because", "chosen", "although", "a train", "chooses"],
+    correctOrder: ["choose", "the train", "because"],
+  },
+  {
+    prompt: "Why did the museum extend its hours?",
+    prefix: "The museum",
+    suffix: "more visitors could attend.",
+    tokens: ["extended", "its hours", "so that", "extend", "because of", "hour", "for"],
+    correctOrder: ["extended", "its hours", "so that"],
+  },
+  {
+    prompt: "What did your group decide about the meeting?",
+    prefix: "Our group",
+    suffix: "until next week.",
+    tokens: ["decided", "to postpone", "the meeting", "decide", "postponing", "a meeting", "for"],
+    correctOrder: ["decided", "to postpone", "the meeting"],
+  },
+  {
+    prompt: "When did the experiment produce unexpected results?",
+    prefix: "The experiment",
+    suffix: "the temperature changed.",
+    tokens: ["produced", "unexpected results", "after", "produce", "before of", "result", "when was"],
+    correctOrder: ["produced", "unexpected results", "after"],
+  },
+  {
+    prompt: "What is the city planning for next year?",
+    prefix: "The city",
+    suffix: "next year.",
+    tokens: ["plans", "to add", "more bike lanes", "plan", "adding", "a bike lane", "for"],
+    correctOrder: ["plans", "to add", "more bike lanes"],
+  },
+  {
+    prompt: "What did she recommend during the lecture?",
+    prefix: "She",
+    suffix: "listening to the lecture.",
+    tokens: ["recommended", "taking notes", "while", "recommend", "take notes", "during of", "was"],
+    correctOrder: ["recommended", "taking notes", "while"],
+  },
+  {
+    prompt: "Why did the company introduce a flexible schedule?",
+    prefix: "The company",
+    suffix: "employee satisfaction.",
+    tokens: ["introduced", "a flexible schedule", "to improve", "introduces", "for improving", "flexible schedules", "was"],
+    correctOrder: ["introduced", "a flexible schedule", "to improve"],
+  },
 ];
 
 const interviewQuestions = [
@@ -346,8 +411,22 @@ export function buildMockToeflSteps(): ExamStep[] {
     { id: "writing-sentence-instructions", kind: "writing_instructions", section: "Writing", title: "Build a Sentence", body: ["Move the words in the boxes to create a grammatical sentence.", "You will complete 10 items."], actionLabel: "Begin" },
   );
 
-  sentenceTasks.forEach((tokens, index) => {
-    steps.push({ id: `w-sentence-${index + 1}`, kind: "build_sentence", section: "Writing", questionNumber: index + 1, progressLabel: `Question ${index + 1} of 12`, instruction: "Arrange the words to make a sentence.", tokens: [...tokens].reverse(), correctOrder: [...tokens] });
+  sentenceTasks.forEach((task, index) => {
+    steps.push({
+      id: `w-sentence-${index + 1}`,
+      kind: "build_sentence",
+      section: "Writing",
+      questionNumber: index + 1,
+      progressLabel: `Question ${index + 1} of 12`,
+      instruction: "Make an appropriate sentence.",
+      sentencePrompt: task.prompt,
+      sentencePrefix: task.prefix,
+      sentenceSuffix: task.suffix,
+      sentenceSpeakerA: "Speaker 1",
+      sentenceSpeakerB: "Speaker 2",
+      tokens: task.tokens,
+      correctOrder: task.correctOrder,
+    });
   });
 
   steps.push(

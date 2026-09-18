@@ -2598,3 +2598,213 @@
     width: 100%;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* TOEFL Writing — Build a Sentence, matched to the real interaction pattern   */
+/* -------------------------------------------------------------------------- */
+
+.toefl-sentence {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(940px, calc(100vw - 80px));
+  height: calc(100dvh - 92px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  padding: 24px 24px 40px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toefl-sentence h1 {
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 25px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-sentence-dialogue {
+  width: min(780px, 100%);
+  margin: 135px auto 0;
+}
+
+.toefl-sentence-turn {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  column-gap: 22px;
+  align-items: center;
+}
+
+.toefl-sentence-turn + .toefl-sentence-turn {
+  margin-top: 30px;
+}
+
+.toefl-sentence-avatar {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 2px solid #0b9297;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, #dfe6e6 0 20px, transparent 21px),
+    linear-gradient(to bottom, #f4f6f6 0 48%, #dde5e5 48% 100%);
+  color: #798487;
+  overflow: hidden;
+}
+
+.toefl-sentence-avatar span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.toefl-sentence-turn.prompt p {
+  margin: 0;
+  color: #111111;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.toefl-sentence-composer {
+  min-width: 0;
+}
+
+.toefl-sentence-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 7px;
+  min-height: 70px;
+  color: #111111;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.toefl-sentence-fixed {
+  display: inline-flex;
+  align-items: flex-end;
+  min-height: 34px;
+  padding-bottom: 5px;
+  white-space: nowrap;
+}
+
+.toefl-sentence-fixed.suffix {
+  margin-left: 2px;
+}
+
+.toefl-sentence-slot {
+  position: relative;
+  min-width: 104px;
+  min-height: 34px;
+  max-width: 190px;
+  border: 0;
+  border-bottom: 1.5px solid #5f5f5f;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  padding: 0 5px 4px;
+  font: 400 14px/1.25 Arial, Helvetica, sans-serif;
+  text-align: center;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.toefl-sentence-slot.filled {
+  cursor: grab;
+}
+
+.toefl-sentence-slot.filled:active {
+  cursor: grabbing;
+}
+
+.toefl-sentence-slot:focus-visible {
+  outline: 2px solid #0b9297;
+  outline-offset: 2px;
+}
+
+.toefl-sentence-slot:hover {
+  background: rgba(11, 146, 151, .035);
+}
+
+.toefl-token-bank {
+  width: min(760px, 100%);
+  margin: 56px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 28px;
+  min-height: 58px;
+  padding: 8px 0 18px;
+}
+
+.toefl-token-bank button {
+  min-height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  padding: 5px 3px;
+  font: 400 14px/1.3 Arial, Helvetica, sans-serif;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.toefl-token-bank button:hover:not(.placed) {
+  color: #087b82;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.toefl-token-bank button:active:not(.placed) {
+  cursor: grabbing;
+}
+
+.toefl-token-bank button.placed {
+  opacity: .22;
+  cursor: default;
+  text-decoration: none;
+}
+
+.toefl-token-bank button:focus-visible {
+  outline: 2px solid #0b9297;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (max-width: 840px) {
+  .toefl-sentence {
+    width: calc(100vw - 32px);
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .toefl-sentence-dialogue {
+    margin-top: 90px;
+  }
+
+  .toefl-sentence-turn {
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 16px;
+  }
+
+  .toefl-sentence-avatar {
+    width: 68px;
+    height: 68px;
+  }
+
+  .toefl-sentence-slot {
+    min-width: 82px;
+  }
+
+  .toefl-token-bank {
+    margin-top: 42px;
+    gap: 14px 20px;
+  }
+}
