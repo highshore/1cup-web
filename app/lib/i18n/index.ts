@@ -4,6 +4,7 @@ import en from "./locales/en";
 import ko from "./locales/ko";
 import payment from "./payment";
 import profileRedesign from "./profile_redesign";
+import speakingCenter from "./speaking_center";
 
 export type SupportedLocale = "en" | "ko";
 
@@ -11,6 +12,7 @@ const dictionaries = {
   en: {
     ...en,
     payment: payment.en,
+    speakingCenter: speakingCenter.en,
     home: {
       ...en.home,
       faq: homeFaq.en,
@@ -46,6 +48,7 @@ const dictionaries = {
   ko: {
     ...ko,
     payment: payment.ko,
+    speakingCenter: speakingCenter.ko,
     home: {
       ...ko.home,
       faq: homeFaq.ko,
