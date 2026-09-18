@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import SpeakingTestClient from "./SpeakingTestClient";
 
 export const metadata: Metadata = {
-  title: "Speaking Tests | 1 Cup English",
-  description: "Choose a deployed speaking test, record each response, and receive an evidence-based TOEFL practice score.",
+  title: "English Exam Practice Center | 1 Cup English",
+  description: "Practice realistic English speaking exams with timed prompts, browser recording, and structured feedback from 1 Cup English.",
 };
 
 export const dynamic = "force-dynamic";
