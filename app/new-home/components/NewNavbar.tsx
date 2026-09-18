@@ -19,7 +19,7 @@ import NotificationDropdown from "../../lib/features/chat/components/Notificatio
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
-  { path: "/speaking-test", labelKey: "speakingTest", icon: MicrophoneIcon },
+  { path: "/exam-center", labelKey: "speakingTest", icon: MicrophoneIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
   { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
@@ -108,7 +108,7 @@ const NewNavbar: React.FC = () => {
                     ? active
                       ? "bg-[rgba(255,255,255,0.18)] text-white"
                       : "bg-transparent text-[rgba(255,255,255,0.88)] hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
-                    : active && item.path === "/speaking-test"
+                    : active && item.path === "/exam-center"
                       ? "bg-transparent text-[#f47a4a]"
                       : active
                         ? "bg-[#e2e8f0] text-[#0f172a]"
@@ -116,7 +116,7 @@ const NewNavbar: React.FC = () => {
                 }`}
               >
                 <Icon />
-                {item.path === "/speaking-test" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
+                {item.path === "/exam-center" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
               </button>
             );
           })}
