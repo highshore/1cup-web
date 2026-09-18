@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../lib/contexts/auth_context";
 import { supabase } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import SpeakingCenterLanding from "../lib/features/speaking-test/components/SpeakingCenterLanding";
 import {
   SPEAKING_TEST_CATEGORIES,
   type DeployedExam,
@@ -264,6 +265,42 @@ export default function SpeakingTestClient() {
     }
   }, []);
 
+  useEffect(() => {
+    if (screen !== "categories") return;
+
+    let active = true;
+    setBusy(true);
+    setMessage("");
+
+    void Promise.all(
+      SPEAKING_TEST_CATEGORIES.map(async (item) => {
+        const payload = await responseJson<{ tests: DeployedExam[] }>(
+          await fetch("/api/speaking-test/catalog?category=" + item),
+        );
+        return payload.tests;
+      }),
+    )
+      .then((groups) => {
+        if (!active) return;
+        const unique = new Map<string, DeployedExam>();
+        groups.flat().forEach((test) => unique.set(test.id, test));
+        setTests(Array.from(unique.values()));
+        void loadHistory();
+      })
+      .catch((error) => {
+        if (!active) return;
+        setTests([]);
+        setMessage(error instanceof Error ? error.message : "Tests are temporarily unavailable.");
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadHistory, screen]);
+
   const chooseCategory = useCallback(async (nextCategory: SpeakingTestCategory) => {
     setCategory(nextCategory);
     setScreen("catalog");
@@ -317,11 +354,22 @@ export default function SpeakingTestClient() {
   };
 
   if (screen === "categories") {
-    return <main style={page}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
-        {SPEAKING_TEST_CATEGORIES.map((item) => <button key={item} type="button" onClick={() => void chooseCategory(item)} style={{ ...card, minHeight: 178, padding: 20, color: "#303030", cursor: "pointer", font: "inherit", fontSize: "clamp(23px, 4vw, 34px)", fontWeight: 720, letterSpacing: "-0.055em", textAlign: "left" }}>{categoryLabel(item, copy)}</button>)}
-      </div>
-    </main>;
+    return (
+      <SpeakingCenterLanding
+        tests={tests}
+        loading={busy}
+        message={message}
+        onStartExam={(examSetId) => void openTest(examSetId)}
+        onStartFirst={() => {
+          const first = tests.find((test) => test.categories.includes("free")) ?? tests[0];
+          if (first) {
+            void openTest(first.id);
+            return;
+          }
+          document.getElementById("practice-exams")?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
+    );
   }
 
   if (screen === "catalog") {
