@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
+  MicrophoneIcon,
   NewspaperIcon,
   TrophyIcon,
   UserCircleIcon,
@@ -18,6 +19,7 @@ import NotificationDropdown from "../../lib/features/chat/components/Notificatio
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
+  { path: "/speaking-test", labelKey: "speakingTest", icon: MicrophoneIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
   { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
@@ -106,13 +108,15 @@ const NewNavbar: React.FC = () => {
                     ? active
                       ? "bg-[rgba(255,255,255,0.18)] text-white"
                       : "bg-transparent text-[rgba(255,255,255,0.88)] hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
-                    : active
-                      ? "bg-[#e2e8f0] text-[#0f172a]"
-                      : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                    : active && item.path === "/speaking-test"
+                      ? "bg-transparent text-[#f47a4a]"
+                      : active
+                        ? "bg-[#e2e8f0] text-[#0f172a]"
+                        : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
                 }`}
               >
                 <Icon />
-                {t.nav[item.labelKey]}
+                {item.path === "/speaking-test" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
               </button>
             );
           })}
