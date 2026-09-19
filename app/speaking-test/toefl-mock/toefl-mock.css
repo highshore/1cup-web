@@ -3374,3 +3374,17 @@
   box-sizing: border-box;
   padding: 0 10px;
 }
+
+
+/* Ensure the mic glyph itself remains centered inside its circular badge.
+   A legacy `.toefl-response-time span` rule was overriding inline-grid. */
+.toefl-response-time .toefl-response-mic {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.toefl-response-time .toefl-response-mic svg {
+  display: block;
+  margin: 0;
+}
