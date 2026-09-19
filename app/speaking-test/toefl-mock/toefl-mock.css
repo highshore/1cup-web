@@ -3351,3 +3351,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Fix legacy response-time span rules leaking into the compact timer card. */
+.toefl-response-time .toefl-response-time-value > span {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.toefl-response-time .toefl-response-mic {
+  margin-top: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.toefl-response-time-value {
+  box-sizing: border-box;
+  padding: 0 10px;
+}
