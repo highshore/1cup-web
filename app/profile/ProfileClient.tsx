@@ -1,7 +1,5 @@
 "use client";
 
-import { buildReferralShareMessage, copyShareText } from "../lib/share_messages";
-
 import "./profile.css";
 import { supabase, invokeFunction } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
@@ -965,11 +963,7 @@ export default function ProfileClient() {
 
   const handleShareReferral = async () => {
     if (!userData?.referralCode) return;
-    const shareText = buildReferralShareMessage(
-      "영어 한잔 추천 코드",
-      userData.referralCode,
-      `https://1cupenglish.com/payment?ref=${userData.referralCode}`,
-    );
+    const shareText = `영어 한잔 추천 코드: ${userData.referralCode}\nhttps://1cupenglish.com/payment?ref=${userData.referralCode}`;
     const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
 
     // Copy BEFORE opening the Kakao dialog, for two reasons. The dialog can fail after
@@ -980,7 +974,7 @@ export default function ProfileClient() {
     // would otherwise break.
     let copied = false;
     try {
-      await copyShareText(shareText);
+      await navigator.clipboard.writeText(shareText);
       copied = true;
     } catch (e) {
       console.error("Clipboard copy failed", e);

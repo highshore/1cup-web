@@ -1,5 +1,3 @@
-import { normalizeShareText } from "../../../share_messages";
-
 type KakaoShare = {
   isInitialized?: () => boolean;
   init?: (key: string) => void;
@@ -69,8 +67,8 @@ export async function shareMatchedProfileViaKakao({
   Kakao.Share.sendDefault({
     objectType: "feed",
     content: {
-      title: normalizeShareText(title),
-      description: normalizeShareText(description),
+      title,
+      description,
       imageUrl: "https://1cupenglish.com/images/logos/1cup_logo.jpg",
       link: { mobileWebUrl: url, webUrl: url },
     },
