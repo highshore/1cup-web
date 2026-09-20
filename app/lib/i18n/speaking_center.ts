@@ -1,7 +1,7 @@
 const speakingCenter = {
   en: {
     navLabel: "Exam Prep",
-    eyebrow: "EXAM PREP CENTER",
+    eyebrow: "EXAM CENTER",
     titleLineOne: "English Exam",
     titleLineTwo: "Practice Center",
     subtitle:
@@ -57,7 +57,7 @@ const speakingCenter = {
   },
   ko: {
     navLabel: "시험 대비",
-    eyebrow: "스피킹 센터",
+    eyebrow: "시험 준비 센터",
     titleLineOne: "각종 영어 시험에",
     titleLineTwo: "대비하는 테스트 센터",
     subtitle:
@@ -69,7 +69,7 @@ const speakingCenter = {
       "어떤 사람들은 팀으로 일하는 것을 선호하고, 다른 사람들은 혼자 일하는 것을 선호합니다. 여러분은 어느 쪽을 선호하며, 그 이유는 무엇인가요?",
     previewRecord: "답변 녹음하기",
     previewMeta: "4문항  ·  16분  ·  즉시 리뷰",
-    testsEyebrow: "연습 테스트",
+    testsEyebrow: "모의 테스트",
     testsTitle: "연습할 시험을 선택하세요",
     testsIntro:
       "저희 시험 세트는 준비 시간, 녹음, 답변 후 리뷰까지 실제 시험 흐름을 반영했습니다.",

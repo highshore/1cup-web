@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import "./exam-center-motion.css";
 
 import type { DeployedExam } from "../lib/features/speaking-test/types";
 import { useI18n } from "../lib/i18n/I18nProvider";
@@ -83,8 +84,23 @@ export default function SpeakingCenterLanding({
 
   return (
     <main className={`w-full bg-[#f5f3ed] text-[#050505] ${fontClass}`}>
-      <section className="bg-[#f47a4a]">
-        <div className={pageContainerClass}>
+      <section className="relative isolate overflow-hidden bg-[#f47a4a]">
+        <div className="exam-ribbon-stage" aria-hidden="true">
+          {(["back", "middle", "front"] as const).map((layer) => (
+            // These decorative SVG layers retain the exact Figma geometry.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={layer}
+              className={`exam-ribbon exam-ribbon-${layer}`}
+              src={`/images/exam-center/ribbon-${layer}.svg`}
+              width={1728}
+              height={972}
+              alt=""
+            />
+          ))}
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-[#f47a4a]/55" aria-hidden="true" />
+        <div className={`${pageContainerClass} relative`}>
           <div className="relative h-[592px] max-[860px]:h-auto max-[860px]:py-10">
             <div
               className={`absolute left-0 w-[560px] max-w-[58%] max-[860px]:relative max-[860px]:top-auto max-[860px]:w-full max-[860px]:max-w-none ${
@@ -92,7 +108,7 @@ export default function SpeakingCenterLanding({
               }`}
             >
               <span
-                className={`inline-flex h-[30px] w-[154px] items-center justify-center rounded-[15px] border-2 border-[#050505] bg-[#f47a4a] text-[11px] leading-none text-[#050505] ${
+                className={`inline-flex h-[30px] ${isKo ? "w-[95px]" : "w-[112px]"} items-center justify-center rounded-[15px] border-2 border-[#050505] bg-[#f47a4a] text-[11px] leading-none text-[#050505] ${
                   isKo ? "font-bold" : "font-[800]"
                 }`}
               >
@@ -100,7 +116,7 @@ export default function SpeakingCenterLanding({
               </span>
 
               <h1
-                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-[-0.045em] text-[#050505] max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
+                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-normal text-[#050505] max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
                   isKo ? "font-bold" : "font-[800]"
                 }`}
               >
@@ -142,7 +158,7 @@ export default function SpeakingCenterLanding({
                   {copy.previewEyebrow}
                 </p>
 
-                <div className="absolute left-[249.5px] top-[17.5px] flex h-7 w-[70px] items-center justify-center rounded-[14px] border-[1.5px] border-[#050505] bg-[#fdf9ec] text-[11px] font-[800] text-[#050505]">
+                <div className="absolute right-[21.5px] top-[17.5px] flex h-7 w-[70px] items-center justify-center rounded-[14px] border-[1.5px] border-[#050505] bg-[#fdf9ec] text-[11px] font-[800] text-[#050505]">
                   00:45
                 </div>
 
@@ -155,33 +171,31 @@ export default function SpeakingCenterLanding({
                 </h2>
 
                 <p
-                  className={`absolute left-[21.5px] top-[99.5px] h-[74px] w-[298px] text-[14px] leading-[22px] text-[#4d4d4d] ${
+                  className={`absolute left-[21.5px] top-[99.5px] h-[74px] w-[calc(100%-43px)] text-[14px] leading-[22px] text-[#4d4d4d] ${
                     isKo ? "font-medium" : "font-medium"
                   }`}
                 >
                   {copy.previewPrompt}
                 </p>
 
-                <div className="absolute left-[21.5px] top-[195.5px] flex h-[98px] w-[298px] items-center justify-center gap-2 overflow-hidden rounded-[18px] border border-[#dbdbd6] bg-[#f5f3ed] px-3">
+                <div className="absolute left-[21.5px] top-[195.5px] flex h-[98px] w-[calc(100%-43px)] items-center justify-between overflow-hidden rounded-[18px] border border-[#dbdbd6] bg-[#f5f3ed] px-[17px]">
                   {WAVE_BARS.map((height, index) => (
                     <span
                       key={index}
-                      className="block w-[7px] shrink-0 rounded-[3px] bg-[#050505]"
+                      className={`exam-wave-bar exam-wave-bar-${index + 1} block w-[7px] shrink-0 rounded-[3px] bg-[#050505]`}
                       style={{ height } as CSSProperties}
                     />
                   ))}
                 </div>
 
-                <div className="absolute left-[136.5px] top-[315.5px] flex h-[68px] w-[68px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#f47a4a] shadow-[4px_4px_0_0_#050505]">
-                  <span className="h-5 w-5 rounded-full bg-[#050505]" />
-                </div>
+                <div className="absolute left-1/2 -translate-x-1/2 top-[315.5px] flex h-[68px] w-[68px] items-center justify-center rounded-full border-[2.5px] border-[#050505] bg-[#f47a4a] shadow-[4px_4px_0_0_#050505]" />
 
-                <p className="absolute left-[159px] top-[335.5px] m-0 h-7 w-7 text-center text-[20px] font-[800] leading-7 text-[#050505]">
+                <p className="absolute left-1/2 -translate-x-1/2 top-[335.5px] m-0 h-7 w-7 text-center text-[20px] font-[800] leading-7 text-[#050505]">
                   ●
                 </p>
 
                 <p
-                  className={`absolute left-[88px] top-[395.5px] h-[18px] w-[170px] text-center text-[13px] leading-normal text-[#050505] ${
+                  className={`absolute left-1/2 -translate-x-1/2 top-[395.5px] h-[18px] w-[170px] text-center text-[13px] leading-normal text-[#050505] ${
                     isKo ? "font-bold" : "font-[800]"
                   }`}
                 >
@@ -189,7 +203,7 @@ export default function SpeakingCenterLanding({
                 </p>
 
                 <p
-                  className={`absolute left-[44px] top-[429.5px] h-4 w-[258px] text-center text-[11px] leading-normal text-[#64748b] ${
+                  className={`absolute left-1/2 -translate-x-1/2 top-[429.5px] h-4 w-[258px] text-center text-[11px] leading-normal text-[#64748b] ${
                     isKo ? "font-medium" : "font-semibold"
                   }`}
                 >
