@@ -1,0 +1,43 @@
+name: Validate Kakao share message cleanup
+on:
+  push:
+    branches: [fix/kakao-share-spacing-20260920]
+    paths:
+      - .github/workflows/kakao-share-maintenance.yml
+      - .github/kakao-share-patch.py
+permissions:
+  contents: write
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read applicable repository guides
+        run: find app -name AGENTS.md -print -exec cat '{}' \;
+      - name: Apply exact-match share message edits
+        run: python3 .github/kakao-share-patch.py
+      - name: Run plain-text and clipboard regression tests
+        run: node --experimental-strip-types --test app/lib/share_messages.test.mjs
+      - name: Install project dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check production build
+        id: build
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-validation-placeholder
+        run: npm run build
+      - name: Publish tested source edits on the working branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'app/meetup/[id]/EventDetailClient.tsx' app/profile/ProfileShell.tsx app/profile/ProfileClient.tsx app/lib/features/profile/services/kakao_profile_share.ts
+          git diff --cached --check
+          git commit -m 'fix: normalize Kakao share messages and provide plain-text copy actions'
+          git push origin HEAD:fix/kakao-share-spacing-20260920
+          echo "Source commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Local build outcome: ${{ steps.build.outcome }}" >> "$GITHUB_STEP_SUMMARY"
