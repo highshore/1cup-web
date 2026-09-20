@@ -4,6 +4,14 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import "./event-detail.css";
+import { useI18n } from "../../lib/i18n/I18nProvider";
+import { SHARE_MESSAGE_LABELS } from "../../lib/i18n/share_message_labels";
+import {
+  SEATING_SHARE_MESSAGE,
+  buildMeetupArticleMessage,
+  buildTextShareData,
+  copyShareText,
+} from "../../lib/share_messages";
 import {
   MeetupEvent,
   Article,
@@ -1021,6 +1029,8 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
 };
 
 export function EventDetailClient() {
+  const { locale } = useI18n();
+  const shareMessageLabels = SHARE_MESSAGE_LABELS[locale];
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
@@ -1668,8 +1678,7 @@ export function EventDetailClient() {
         type: "image/png",
       });
       const shareData: ShareData = {
-        title: "영어한잔 좌석 배치",
-        text: "안녕하세요! 오늘 영어 한잔 안암 커뮤니티 좌석배치 공유드립니다. 그럼 이따 뵙겠습니다!",
+        ...buildTextShareData(SEATING_SHARE_MESSAGE),
         files: [file],
       };
       const canShareFiles =
@@ -1722,6 +1731,24 @@ export function EventDetailClient() {
     }
   };
 
+  // A separate plain-text copy path avoids formatting added by native share targets.
+  // Keep the existing image/share-sheet workflow available; never send automatically.
+  const handleCopyDefaultMessage = async (kind: "article" | "seating") => {
+    if (!eventId) return;
+    const text = kind === "seating"
+      ? SEATING_SHARE_MESSAGE
+      : buildMeetupArticleMessage(
+          `https://1cupenglish.com/meetup/${encodeURIComponent(eventId)}`,
+        );
+    try {
+      await copyShareText(text);
+      alert(shareMessageLabels.copied);
+    } catch (error) {
+      console.error("Unable to copy the default share message:", error);
+      alert(shareMessageLabels.copyFailed);
+    }
+  };
+
   const handleShareArticleLink = async () => {
     if (!eventId) {
       alert("공유할 밋업 링크가 없습니다.");
@@ -1731,43 +1758,17 @@ export function EventDetailClient() {
     const meetupUrl = `https://1cupenglish.com/meetup/${encodeURIComponent(
       eventId
     )}`;
-    const shareText = `안녕하세요,
-
-저희 밋업페이지에 아티클이 업데이트 되었습니다.
-${meetupUrl}
-*아티클은 로그인 하셔야 확인 가능합니다.
-
-질문은 추후 변경될 수 있는점 참고하셔서 확인 부탁드립니다.
-
-감사합니다!`;
+    const shareText = buildMeetupArticleMessage(meetupUrl);
 
     setArticleShareLoading(true);
     try {
       if (typeof navigator.share === "function") {
-        await navigator.share({ text: shareText });
+        await navigator.share(buildTextShareData(shareText));
         return;
       }
 
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText);
-        alert("아티클 안내 문구를 복사했습니다. 카카오톡에 붙여넣어 주세요.");
-        return;
-      }
-
-      const textarea = document.createElement("textarea");
-      textarea.value = shareText;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand("copy");
-      textarea.remove();
-
-      if (!copied) {
-        throw new Error("클립보드 복사를 지원하지 않는 브라우저입니다.");
-      }
-
-      alert("아티클 안내 문구를 복사했습니다. 카카오톡에 붙여넣어 주세요.");
+      await copyShareText(shareText);
+      alert(shareMessageLabels.copied);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
@@ -2992,6 +2993,13 @@ ${meetupUrl}
                 </span>
               </AdminButton>
               <AdminButton
+                onClick={() => handleCopyDefaultMessage("seating")}
+                disabled={seatingAssignments.length === 0}
+              >
+                <DocumentDuplicateIcon />
+                <span>{shareMessageLabels.copySeating}</span>
+              </AdminButton>
+              <AdminButton
                 onClick={handleShareArticleLink}
                 disabled={articleShareLoading}
               >
@@ -2999,6 +3007,10 @@ ${meetupUrl}
                 <span>
                   {articleShareLoading ? "Sharing..." : "Share Article via Kakao"}
                 </span>
+              </AdminButton>
+              <AdminButton onClick={() => handleCopyDefaultMessage("article")}>
+                <DocumentDuplicateIcon />
+                <span>{shareMessageLabels.copyArticle}</span>
               </AdminButton>
               <AdminButton onClick={handleSendReminderToParticipants}>
                 <MegaphoneIcon />

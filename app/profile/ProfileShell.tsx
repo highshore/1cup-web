@@ -1,5 +1,7 @@
 "use client";
 
+import { buildReferralShareMessage, buildTextShareData, copyShareText, normalizeShareText } from "../lib/share_messages";
+
 import { useCallback, useEffect, useMemo, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -237,12 +239,12 @@ export function useProfileShellData() {
       }
 
       const url = `https://1cupenglish.com/payment?ref=${code}`;
-      const title = t.profile.referralShareTitle;
-      const codeLabel = interpolate(t.profile.referralCodeLabel, { code });
-      const text = `${title}: ${code}\n${url}`;
+      const title = normalizeShareText(t.profile.referralShareTitle);
+      const codeLabel = normalizeShareText(interpolate(t.profile.referralCodeLabel, { code }));
+      const text = buildReferralShareMessage(title, code, url);
       let copied = false;
       try {
-        await navigator.clipboard.writeText(text);
+        await copyShareText(text);
         copied = true;
       } catch {
         copied = false;
@@ -280,7 +282,7 @@ export function useProfileShellData() {
 
       if (navigator.share) {
         try {
-          await navigator.share({ title: "1 Cup English", text, url });
+          await navigator.share(buildTextShareData(text));
           setNotice(t.profile.referralShared);
           return;
         } catch {
