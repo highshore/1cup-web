@@ -104,7 +104,7 @@ export default function SpeakingCenterLanding({
               </span>
 
               <h1
-                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-normal text-white max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
+                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-normal text-[#050505] max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
                   isKo ? "font-bold" : "font-[800]"
                 }`}
               >
@@ -113,7 +113,7 @@ export default function SpeakingCenterLanding({
               </h1>
 
               <p
-                className={`h-[74px] w-[526px] max-w-full text-[18px] leading-[27px] text-[#fff0e8] max-[640px]:h-auto max-[640px]:text-[16px] max-[640px]:leading-6 ${
+                className={`h-[74px] w-[526px] max-w-full text-[18px] leading-[27px] text-[#050505] max-[640px]:h-auto max-[640px]:text-[16px] max-[640px]:leading-6 ${
                   isKo ? "mt-[18px] font-medium" : "mt-[10px] font-medium"
                 }`}
               >
@@ -124,7 +124,7 @@ export default function SpeakingCenterLanding({
                 type="button"
                 disabled={busy}
                 onClick={handleHeroStart}
-                className={`inline-flex h-[52px] items-center justify-center rounded-[26px] border-[2.5px] border-white bg-white px-5 text-[14px] text-[#050505] shadow-[5px_5px_0_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-wait disabled:opacity-60 ${
+                className={`inline-flex h-[52px] items-center justify-center rounded-[26px] border-[2.5px] border-[#050505] bg-[#050505] px-5 text-[14px] text-white shadow-[5px_5px_0_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-wait disabled:opacity-60 ${
                   isKo
                     ? "mt-[24px] w-[185px] font-bold"
                     : "mt-[32px] w-[203px] font-[800]"
