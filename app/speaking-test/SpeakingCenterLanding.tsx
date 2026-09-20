@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import "./exam-center-motion.css";
+import ExamHeroRibbons from "./ExamHeroRibbons";
 
 import type { DeployedExam } from "../lib/features/speaking-test/types";
 import { useI18n } from "../lib/i18n/I18nProvider";
@@ -85,20 +86,7 @@ export default function SpeakingCenterLanding({
   return (
     <main className={`w-full bg-[#f5f3ed] text-[#050505] ${fontClass}`}>
       <section className="relative isolate overflow-hidden bg-[#f47a4a]">
-        <div className="exam-ribbon-stage" aria-hidden="true">
-          {(["back", "middle", "front"] as const).map((layer) => (
-            // These decorative SVG layers retain the exact Figma geometry.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={layer}
-              className={`exam-ribbon exam-ribbon-${layer}`}
-              src={`/images/exam-center/ribbon-${layer}.svg`}
-              width={1728}
-              height={972}
-              alt=""
-            />
-          ))}
-        </div>
+        <ExamHeroRibbons />
         <div className="pointer-events-none absolute inset-0 bg-[#f47a4a]/55" aria-hidden="true" />
         <div className={`${pageContainerClass} relative`}>
           <div className="relative h-[592px] max-[860px]:h-auto max-[860px]:py-10">
