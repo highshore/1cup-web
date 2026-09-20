@@ -84,10 +84,10 @@ export default function SpeakingCenterLanding({
     : "[font-family:Inter,Arial,sans-serif]";
 
   return (
-    <main className={`w-full bg-[#f5f3ed] text-[#050505] ${fontClass}`}>
+    <main lang={locale} className={`w-full bg-[#f5f3ed] text-[#050505] ${fontClass}`}>
       <section className="relative isolate overflow-hidden bg-[#f47a4a]">
         <ExamHeroRibbons />
-        <div className="pointer-events-none absolute inset-0 bg-[#f47a4a]/55" aria-hidden="true" />
+        <div className="exam-hero-overlay pointer-events-none absolute inset-0" aria-hidden="true" />
         <div className={`${pageContainerClass} relative`}>
           <div className="relative h-[592px] max-[860px]:h-auto max-[860px]:py-10">
             <div
@@ -104,7 +104,7 @@ export default function SpeakingCenterLanding({
               </span>
 
               <h1
-                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-normal text-[#050505] max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
+                className={`mt-[18px] h-[124px] w-[560px] max-w-full text-[52px] leading-[56px] tracking-normal text-white max-[640px]:h-auto max-[640px]:text-[40px] max-[640px]:leading-[45px] ${
                   isKo ? "font-bold" : "font-[800]"
                 }`}
               >
@@ -113,7 +113,7 @@ export default function SpeakingCenterLanding({
               </h1>
 
               <p
-                className={`h-[74px] w-[526px] max-w-full text-[18px] leading-[27px] text-[#050505] max-[640px]:h-auto max-[640px]:text-[16px] max-[640px]:leading-6 ${
+                className={`h-[74px] w-[526px] max-w-full text-[18px] leading-[27px] text-[#fff0e8] max-[640px]:h-auto max-[640px]:text-[16px] max-[640px]:leading-6 ${
                   isKo ? "mt-[18px] font-medium" : "mt-[10px] font-medium"
                 }`}
               >
@@ -124,7 +124,7 @@ export default function SpeakingCenterLanding({
                 type="button"
                 disabled={busy}
                 onClick={handleHeroStart}
-                className={`inline-flex h-[52px] items-center justify-center rounded-[26px] border-[2.5px] border-[#050505] bg-[#050505] px-5 text-[14px] text-white shadow-[5px_5px_0_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-wait disabled:opacity-60 ${
+                className={`inline-flex h-[52px] items-center justify-center rounded-[26px] border-[2.5px] border-white bg-white px-5 text-[14px] text-[#050505] shadow-[5px_5px_0_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-wait disabled:opacity-60 ${
                   isKo
                     ? "mt-[24px] w-[185px] font-bold"
                     : "mt-[32px] w-[203px] font-[800]"
@@ -205,9 +205,9 @@ export default function SpeakingCenterLanding({
 
       <section id="exam-practice-tests" className="bg-white">
         <div className={pageContainerClass}>
-          <div className="relative h-[1120px] max-[760px]:h-auto max-[760px]:py-12">
+          <div className="py-16 max-[760px]:py-12">
             <span
-              className={`absolute left-0 top-16 inline-flex h-7 w-[132px] items-center justify-center rounded-[14px] border-2 border-[#050505] bg-[#f47a4a] text-[10px] leading-none text-[#050505] max-[760px]:static ${
+              className={`inline-flex h-7 w-[132px] items-center justify-center rounded-[14px] border-2 border-[#050505] bg-[#f47a4a] text-[10px] leading-none text-[#050505] max-[760px]:static ${
                 isKo ? "font-bold" : "font-[800]"
               }`}
             >
@@ -215,7 +215,7 @@ export default function SpeakingCenterLanding({
             </span>
 
             <h2
-              className={`absolute left-0 top-28 h-[46px] w-[600px] max-w-full text-[36px] leading-[42px] tracking-[-0.03em] text-[#050505] max-[760px]:static max-[760px]:mt-5 max-[640px]:h-auto max-[640px]:text-[30px] max-[640px]:leading-9 ${
+              className={`mt-5 h-[46px] w-[600px] max-w-full text-[36px] leading-[42px] tracking-[-0.03em] text-[#050505] max-[760px]:static max-[760px]:mt-5 max-[640px]:h-auto max-[640px]:text-[30px] max-[640px]:leading-9 ${
                 isKo ? "font-bold" : "font-[800]"
               }`}
             >
@@ -223,7 +223,7 @@ export default function SpeakingCenterLanding({
             </h2>
 
             <p
-              className={`absolute left-0 top-[166px] h-11 w-[670px] max-w-full text-[14px] leading-[21px] text-[#64748b] max-[760px]:static max-[760px]:mt-2 max-[760px]:h-auto ${
+              className={`mt-2 min-h-11 w-[670px] max-w-full text-[14px] leading-[21px] text-[#64748b] max-[760px]:static max-[760px]:mt-2 max-[760px]:h-auto ${
                 isKo ? "font-medium" : "font-medium"
               }`}
             >
@@ -231,12 +231,12 @@ export default function SpeakingCenterLanding({
             </p>
 
             {message && (
-              <p className="absolute left-0 top-[212px] z-10 m-0 rounded-lg bg-[#fff0e8] px-3 py-2 text-[11px] font-semibold text-[#8d2d1d] max-[760px]:static max-[760px]:mt-4">
+              <p className="relative z-10 mt-4 rounded-lg bg-[#fff0e8] px-3 py-2 text-[11px] font-semibold text-[#8d2d1d] max-[760px]:static max-[760px]:mt-4">
                 {message}
               </p>
             )}
 
-            <div className="absolute left-0 top-[250px] grid w-full grid-cols-3 gap-x-6 gap-y-6 max-[760px]:static max-[760px]:mt-10 max-[760px]:grid-cols-2 max-[520px]:grid-cols-1">
+            <div className="mt-10 grid w-full grid-cols-3 gap-x-6 gap-y-6 max-[760px]:static max-[760px]:mt-10 max-[760px]:grid-cols-2 max-[520px]:grid-cols-1">
               {displayCards.map((card, index) => {
                 const background = TEST_COLORS[index];
                 const dark = background === "#050505";
@@ -317,6 +317,23 @@ export default function SpeakingCenterLanding({
         </div>
       </section>
 
+      <section className="bg-[#fff0e8]" aria-labelledby="exam-creator-title">
+        <div className={`${pageContainerClass} py-16 max-[760px]:py-12`}>
+          <p className="text-[11px] font-extrabold tracking-[0.1em] text-[#a33b14]">{copy.creator.eyebrow}</p>
+          <h2 id="exam-creator-title" className="mt-4 max-w-[720px] text-[36px] font-extrabold leading-[42px] tracking-[-0.03em] max-[640px]:text-[30px] max-[640px]:leading-9">{copy.creator.title}</h2>
+          <p className="mt-4 max-w-[912px] text-[16px] leading-6 text-[#5c4033]">{copy.creator.intro}</p>
+          <div className="mt-8 grid grid-cols-3 gap-6 max-[640px]:grid-cols-1">
+            {copy.creator.credentials.map((credential) => (
+              <div key={credential.label} className="rounded-[22px] border-2 border-[#050505] bg-white p-6 shadow-[4px_4px_0_0_#f47a4a]">
+                <p className="text-[12px] font-bold text-[#5c4033]">{credential.label}</p>
+                <p className="mt-3 text-[36px] font-extrabold leading-10 text-[#050505]">{credential.value}</p>
+                <p className="mt-2 text-[13px] leading-5 text-[#5c4033]">{credential.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="bg-[#f5f5f5]">
         <div className={pageContainerClass}>
           <div className="py-[78px] pb-[81px]">
@@ -364,59 +381,6 @@ export default function SpeakingCenterLanding({
         </div>
       </section>
 
-      <footer className="h-[356px] bg-[#050505] max-[760px]:h-auto">
-        <div className={pageContainerClass}>
-          <div className="relative h-[356px] max-[760px]:h-auto max-[760px]:py-12">
-            <div className="absolute left-0 top-[72px] max-[760px]:static">
-              <p className="m-0 h-6 w-[180px] text-[18px] font-[800] leading-normal text-white">
-                1 CUP ENGLISH
-              </p>
-              <p
-                className={`mt-3 h-[46px] w-[360px] max-w-full text-[13px] leading-5 text-[#d1d5db] ${
-                  isKo ? "font-medium" : "font-medium"
-                }`}
-              >
-                {copy.footer.tagline}
-              </p>
-            </div>
-
-            <div className="absolute left-[448px] top-[72px] grid grid-cols-3 gap-[26px] max-[760px]:static max-[760px]:mt-8 max-[760px]:grid-cols-2 max-[520px]:grid-cols-1">
-              {[copy.footer.practice, copy.footer.community, copy.footer.account].map((column, columnIndex) => (
-                <div
-                  key={columnIndex}
-                  className={`h-[110px] w-[150px] text-[11px] leading-[26px] text-[#d1d5db] ${
-                    isKo ? "font-medium" : "font-semibold"
-                  }`}
-                >
-                  {column.map((item, itemIndex) => (
-                    <p key={item} className="m-0">
-                      {item}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div className="absolute left-0 top-[238px] h-px w-full bg-[#2a2a2a] max-[760px]:static max-[760px]:mt-8" />
-
-            <p
-              className={`absolute left-0 top-[270px] m-0 h-[18px] w-[480px] max-w-full text-[10px] leading-normal text-[#8b8b8b] max-[760px]:static max-[760px]:mt-6 ${
-                isKo ? "font-medium" : "font-medium"
-              }`}
-            >
-              {copy.footer.copyright}
-            </p>
-
-            <p
-              className={`absolute right-0 top-[270px] m-0 h-[18px] w-[312px] text-right text-[10px] leading-normal whitespace-pre-wrap text-[#8b8b8b] max-[760px]:static max-[760px]:mt-3 max-[760px]:w-full max-[760px]:text-left ${
-                isKo ? "font-medium" : "font-medium"
-              }`}
-            >
-              {copy.footer.links}
-            </p>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

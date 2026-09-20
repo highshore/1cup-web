@@ -26,6 +26,16 @@ const speakingCenter = {
     start: "Start →",
     free: "FREE",
     popular: "POPULAR",
+    creator: {
+      eyebrow: "BUILT FROM EXPERIENCE",
+      title: "Practice built from firsthand experience.",
+      intro: "Created by someone who scored 6/6 on TOEFL, earned OPIc AL, and passed Amazon interviews.",
+      credentials: [
+        { label: "TOEFL", value: "6 / 6", detail: "Overall score" },
+        { label: "OPIc", value: "AL", detail: "Advanced Low" },
+        { label: "Amazon interviews", value: "Passed", detail: "Firsthand interview experience" },
+      ],
+    },
     faqTitle: "Frequently Asked Questions",
     faq: [
       {
@@ -82,6 +92,16 @@ const speakingCenter = {
     start: "시작 →",
     free: "무료",
     popular: "인기",
+    creator: {
+      eyebrow: "직접 경험한 사람이 만듭니다",
+      title: "시험도 면접도, 직접 경험을 바탕으로.",
+      intro: "TOEFL 6/6점, OPIc AL 등급, Amazon 면접 합격 경험을 가진 제작자가 연습 문제를 만듭니다.",
+      credentials: [
+        { label: "TOEFL", value: "6 / 6", detail: "총점" },
+        { label: "OPIc", value: "AL", detail: "Advanced Low 등급" },
+        { label: "Amazon 면접", value: "합격", detail: "직접 경험한 면접 과정" },
+      ],
+    },
     faqTitle: "자주 묻는 질문",
     faq: [
       {

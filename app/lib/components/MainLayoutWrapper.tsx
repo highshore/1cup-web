@@ -44,7 +44,7 @@ export default function MainLayoutWrapper({
       >
         {children}
       </div>
-      {!isExamCenterPage && <Footer />}
+      <Footer />
       <NonKoreanApplicantPrompt />
     </div>
   );
