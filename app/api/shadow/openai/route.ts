@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerClientRSC } from "../../../lib/supabase/server";
+import { admin, createServerClientRSC } from "../../../lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,12 @@ export async function POST(request: Request) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return error("Please sign in to use AI practice tools.", 401);
 
-  let body: { action?: unknown; word?: unknown; context?: unknown };
+  let body: {
+    action?: unknown;
+    word?: unknown;
+    context?: unknown;
+    articleId?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -30,6 +35,27 @@ export async function POST(request: Request) {
       const context = typeof body.context === "string" ? body.context.trim() : "";
       if (!/^[A-Za-z][A-Za-z'’-]{0,63}$/.test(word) || !context || context.length > 800) {
         return error("Invalid definition request.", 400);
+      }
+
+      // The article reader passes an articleId so definitions are cached and shared
+      // between readers. The cache write lives here rather than in the browser so
+      // article_meanings rows can only be created by a validated provider response.
+      const articleId =
+        typeof body.articleId === "string" && body.articleId.trim()
+          ? body.articleId.trim()
+          : null;
+      const wordKey = word.toLowerCase();
+
+      if (articleId) {
+        const { data: cached } = await supabase
+          .from("article_meanings")
+          .select("definition")
+          .eq("article_id", articleId)
+          .eq("word", wordKey)
+          .maybeSingle();
+        if (cached?.definition) {
+          return NextResponse.json({ definition: cached.definition });
+        }
       }
 
       const response = await fetch(`${OPENAI_URL}/chat/completions`, {
@@ -60,6 +86,23 @@ export async function POST(request: Request) {
       if (typeof definition !== "string" || !definition.trim()) {
         return error("AI practice is temporarily unavailable.", 502);
       }
+
+      if (articleId) {
+        // Written with the service-role client: article_meanings is a cache shared by
+        // every reader, so only a validated provider response may populate it. Member
+        // roles hold select on the table and nothing more.
+        const { error: cacheError } = await admin()
+          .from("article_meanings")
+          .upsert(
+            { article_id: articleId, word: wordKey, definition: definition.trim() },
+            { onConflict: "article_id,word" },
+          );
+        // A cache miss on write is not worth failing the lookup over.
+        if (cacheError) {
+          console.error("[shadow] definition cache write failed", cacheError.message);
+        }
+      }
+
       return NextResponse.json({ definition: definition.trim() });
     }
 
