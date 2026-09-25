@@ -728,83 +728,12 @@ export const subscribeToEvent = (
   }
 };
 
-// Join an event either as a participant or a leader
-export const joinEventAsRole = async (
-  eventId: string,
-  userId: string,
-  role: "participant" | "leader"
-): Promise<void> => {
-  try {
-    // Read current participation for this event.
-    const { data: rows, error: readError } = await supabase
-      .from("meetup_participants")
-      .select("user_id, role")
-      .eq("meetup_id", eventId);
-    if (readError) throw readError;
-
-    const existing = (rows || []).find((r) => r.user_id === userId);
-
-    // Already in the chosen role — nothing to do.
-    if (existing && existing.role === role) {
-      console.log(`User ${userId} already in the event as ${role}.`);
-      return;
-    }
-
-    // Prevent joining as a participant if the event is full.
-    if (role === "participant") {
-      const { data: meetup, error: meetupError } = await supabase
-        .from(MEETUP_TABLE)
-        .select("max_participants")
-        .eq("id", eventId)
-        .maybeSingle();
-      if (meetupError) throw meetupError;
-      if (!meetup) throw new Error("Event does not exist!");
-
-      const currentTotal = (rows || []).length - (existing ? 1 : 0);
-      if (currentTotal >= (meetup.max_participants as number)) {
-        throw new Error("Event is already full for participants.");
-      }
-    }
-
-    // Upsert the caller's own row into the new role (RLS: user_id must be self).
-    const { error: upsertError } = await supabase
-      .from("meetup_participants")
-      .upsert(
-        { meetup_id: eventId, user_id: userId, role },
-        { onConflict: "meetup_id,user_id" }
-      );
-    if (upsertError) throw upsertError;
-
-    console.log(
-      `User ${userId} successfully joined event ${eventId} as ${role}.`
-    );
-  } catch (error) {
-    console.error("Error joining event:", error);
-    throw error;
-  }
-};
-
-// Cancel participation in an event (removes the user's row regardless of role)
-export const cancelParticipation = async (
-  eventId: string,
-  userId: string
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from("meetup_participants")
-      .delete()
-      .eq("meetup_id", eventId)
-      .eq("user_id", userId);
-    if (error) throw error;
-
-    console.log(
-      `User ${userId} successfully canceled participation for event ${eventId}.`
-    );
-  } catch (error) {
-    console.error("Error canceling participation:", error);
-    throw error;
-  }
-};
+// joinEventAsRole / cancelParticipation used to live here and wrote
+// meetup_participants.user_id and .role straight from the browser. The
+// participation-credit migration dropped the "join self"/"leave self" policies that
+// backed them, so participation is now owned by the register_for_meetup /
+// cancel_meetup_registration RPCs in meetup_registration_service.ts, which take the
+// caller's uid from the session instead of an argument.
 
 // Create a new meetup event
 export const createMeetupEvent = async (
