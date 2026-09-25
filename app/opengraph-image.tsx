@@ -1,6 +1,9 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+// No `runtime = "edge"`: next/og's bundled renderer grew past Vercel's 1 MB Edge
+// Function limit, and the Edge Runtime is deprecated as of Next 16.3. The image takes
+// no dynamic params, so the default runtime prerenders it once at build time and
+// serves a static PNG — no function, no size ceiling.
 export const alt = "영어 한잔 - 1 Cup English";
 export const size = {
   width: 1200,
