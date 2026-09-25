@@ -734,77 +734,31 @@ const LoadingDefinitionContent = tw(
   "text-[rgba(5,5,5,0.6)] italic py-4 px-0 flex items-center justify-center min-h-[100px]"
 );
 
+// Definition lookups go through the same server route the shadowing reader uses:
+// the provider key is server-only, the caller is authenticated there, and the
+// shared article_meanings cache is read and written on the server.
 const getWordDefinition = async (
   word: string,
   context: string,
   articleId: string
 ): Promise<string> => {
   try {
-    // Normalize the word to lowercase for consistent storage
-    const wordLower = word.toLowerCase();
-
-    // Shared definition cache, keyed by (article, word).
-    const { data: cached } = await supabase
-      .from("article_meanings")
-      .select("definition")
-      .eq("article_id", articleId)
-      .eq("word", wordLower)
-      .maybeSingle();
-
-    if (cached?.definition) {
-      return cached.definition;
-    }
-
-    // If no saved answer is found, call the GPT API.
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error("OpenAI API key not configured");
-    }
-    const url = "https://api.openai.com/v1/chat/completions";
-
-    const prompt = `다음 문장에서 '${word}'의 정의를 한국어로 제공해주세요. 단어의 의미를 문장의 맥락에 맞게 설명해주세요. 반드시 존대말로 작성해주세요.
-
-문장: "${context}"
-
-* 결과 형식:
-뜻풀이: [문장 문맥에 맞는 단어 정의]
-`;
-
-    const response = await fetch(url, {
+    const response = await fetch("/api/shadow/openai", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: "gpt-4.1-nano",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 300,
-      }),
+      body: JSON.stringify({ action: "definition", word, context, articleId }),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
+    const data = await response.json().catch(() => null);
+    if (!response.ok || typeof data?.definition !== "string") {
+      throw new Error(data?.error || `HTTP error ${response.status}`);
     }
 
-    const data = await response.json();
-    const definition = data.choices[0].message.content;
-
-    // Store the result for future readers.
-    await supabase.from("article_meanings").upsert(
-      { article_id: articleId, word: wordLower, definition },
-      { onConflict: "article_id,word" },
-    );
-
-    return definition;
+    return data.definition;
   } catch (error) {
-    console.error("GPT API Error:", error);
+    console.error("Definition lookup failed:", error);
     return `뜻풀이를 가져오는 중 오류가 발생했습니다: ${error}`;
   }
 };
