@@ -29,7 +29,7 @@ export default function FaqSection() {
   };
 
   return (
-    <section className="pt-20 pb-0 px-0 bg-[#f5f5f5] mb-0">
+    <section className="relative z-[1] pt-20 pb-0 px-0 bg-[#f5f5f5] mb-0">
       <div className="max-w-page mx-auto px-6 max-[768px]:px-4">
         <SectionTitle>{t.home.faq.title}</SectionTitle>
         <div className="w-full flex flex-col gap-[1.2rem]">
