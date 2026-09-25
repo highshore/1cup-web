@@ -630,19 +630,77 @@ async function refundParticipationPack(uid: string, body: Record<string, unknown
   };
 }
 
+// Payple callback fields that /payment/result renders or forwards to the payment
+// function's "verify" action. Anything else Payple sends is dropped rather than
+// copied into the redirect URL: the callback is an unauthenticated endpoint, so
+// without an allowlist any caller can push arbitrary keys into the page's query
+// string. PCD_CST_ID / PCD_CUST_KEY / PCD_AUTH_KEY / PCD_REFUND_KEY are deliberately
+// absent — those are our Payple credentials and must never reach a browser.
+const CALLBACK_PASSTHROUGH_FIELDS = new Set([
+  "PCD_PAY_RST",
+  "PCD_PAY_CODE",
+  "PCD_PAY_MSG",
+  "PCD_PAY_OID",
+  "PCD_PAY_TYPE",
+  "PCD_PAY_WORK",
+  "PCD_PAY_GOODS",
+  "PCD_PAY_TOTAL",
+  "PCD_PAY_TIME",
+  "PCD_PAY_YEAR",
+  "PCD_PAY_MONTH",
+  "PCD_PAY_CARDNAME",
+  "PCD_PAYER_ID",
+  "PCD_PAYER_NO",
+  "PCD_PAYER_NAME",
+  "PCD_PAYER_EMAIL",
+  "PCD_CARD_VER",
+  "PCD_CARD_BILLKEY",
+  "PCD_REGULER_FLAG",
+  "PCD_USER_DEFINE1",
+]);
+
+// Payple's own values are short; this only bounds how long a forged redirect can get.
+const CALLBACK_VALUE_MAX_LENGTH = 512;
+
+function collectCallbackField(
+  target: Record<string, string>,
+  key: string,
+  value: unknown,
+): void {
+  if (!CALLBACK_PASSTHROUGH_FIELDS.has(key)) return;
+  if (typeof value !== "string" && typeof value !== "number") return;
+  const text = String(value);
+  if (text.length > CALLBACK_VALUE_MAX_LENGTH) return;
+  target[key] = text;
+}
+
 async function callback(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const paymentData: Record<string, string> = {};
   if (req.method === "POST") {
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
-      Object.assign(paymentData, await req.json());
+      let parsed: unknown;
+      try {
+        parsed = await req.json();
+      } catch {
+        return new Response("Invalid payment callback body", { status: 400 });
+      }
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+          collectCallbackField(paymentData, key, value);
+        }
+      }
     } else {
       const form = await req.formData();
-      for (const [key, value] of form.entries()) paymentData[key] = String(value);
+      for (const [key, value] of form.entries()) {
+        collectCallbackField(paymentData, key, String(value));
+      }
     }
   } else {
-    for (const [key, value] of url.searchParams.entries()) paymentData[key] = value;
+    for (const [key, value] of url.searchParams.entries()) {
+      collectCallbackField(paymentData, key, value);
+    }
   }
   if (Object.keys(paymentData).length === 0) return new Response("No payment data received", { status: 400 });
   const params = new URLSearchParams(paymentData);
