@@ -210,32 +210,10 @@ export default function RegionalPaymentClient() {
     window.PaypleCpayCallback = window.PaypleCpayCallback || [];
 
     const callback = (response: Record<string, any>) => {
-      const session = sessionStorage.getItem("paymentSessionInfo");
-      if (!session) {
-        window.location.href = "/payment/result";
-        return true;
-      }
-      const parsed = JSON.parse(session) as { userId: string };
-      void invokeFunction("checkout", {
-        action: "verify",
-        userId: parsed.userId,
-        paymentParams: response,
-      })
-        .then((result) =>
-          sessionStorage.setItem(
-            "paymentVerificationResult",
-            JSON.stringify(result),
-          ),
-        )
-        .catch((err) =>
-          sessionStorage.setItem(
-            "paymentVerificationError",
-            JSON.stringify({ message: err?.message || String(err) }),
-          ),
-        )
-        .finally(() => {
-          window.location.href = "/payment/result";
-        });
+      // Keep one verification path. The result page owns checkout verification,
+      // whether Payple returned through this browser callback or the server callback.
+      sessionStorage.setItem("paypleCallbackResponse", JSON.stringify(response));
+      window.location.href = "/payment/result";
       return true;
     };
 
@@ -370,6 +348,13 @@ export default function RegionalPaymentClient() {
       });
       if (!paymentData?.success) {
         throw new Error(paymentData?.message || copy.states.paymentInfoLoading);
+      }
+      if (paymentData?.recovered && paymentData?.result?.success) {
+        sessionStorage.setItem("paymentProcessed", "true");
+        sessionStorage.setItem("paymentResult", JSON.stringify(paymentData.result));
+        sessionStorage.removeItem("paymentSessionInfo");
+        router.push("/payment/result");
+        return;
       }
       if (typeof window.PaypleCpayAuthCheck !== "function") {
         throw new Error(copy.states.paymentScriptLoading);
