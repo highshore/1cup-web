@@ -31,7 +31,8 @@ jobs:
         run: |
           cd scripts/migration
           npm install --package-lock-only --ignore-scripts firebase-admin@14.5.0
-          npm audit fix --package-lock-only --ignore-scripts
+          npm pkg set 'overrides.gaxios.uuid=11.1.1'
+          npm install --package-lock-only --ignore-scripts
 
       - name: Require zero npm audit findings
         shell: bash
@@ -55,7 +56,7 @@ jobs:
           cd scripts/migration
           npm ci --ignore-scripts
           for f in *.mjs; do node --check "$f"; done
-          node -e "Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/auth')]).then(()=>console.log('firebase-admin imports ok'))"
+          node -e "Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/auth'),import('gaxios'),import('uuid')]).then(([,,,g,u])=>{ console.log('firebase-admin/gaxios imports ok'); console.log('uuid sample',u.v4()); })"
 
       - name: Print exact dependency diff
         shell: bash
