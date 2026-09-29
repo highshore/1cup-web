@@ -333,7 +333,7 @@ export default function PaymentResultClient() {
         );
 
         // Verify payment result with the payment Edge Function
-        const resultData = (await invokeFunction("payment", {
+        const resultData = (await invokeFunction("checkout", {
           action: "verify",
           userId,
           paymentParams,
