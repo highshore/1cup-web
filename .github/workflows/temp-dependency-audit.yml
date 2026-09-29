@@ -1,0 +1,63 @@
+name: Temporary dependency security audit
+
+on:
+  push:
+    branches:
+      - chore/security-dependabot-sweep
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Audit root dependency tree
+        shell: bash
+        run: |
+          npm audit --package-lock-only --json > root-audit.json || true
+          npm audit --package-lock-only --omit=dev --json > root-prod-audit.json || true
+
+      - name: Audit migration tooling
+        shell: bash
+        run: |
+          cd scripts/migration
+          npm audit --package-lock-only --json > ../../migration-audit.json || true
+          npm audit --package-lock-only --omit=dev --json > ../../migration-prod-audit.json || true
+
+      - name: Print compact advisory summary
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          for (const file of ['root-audit.json','root-prod-audit.json','migration-audit.json','migration-prod-audit.json']) {
+            const a = JSON.parse(fs.readFileSync(file,'utf8'));
+            console.log('\n### ' + file);
+            console.log('counts=' + JSON.stringify(a.metadata?.vulnerabilities || {}));
+            for (const [name,v] of Object.entries(a.vulnerabilities || {})) {
+              const via = (v.via || []).map(x => typeof x === 'string' ? x : ({
+                source:x.source,name:x.name,title:x.title,severity:x.severity,
+                range:x.range,url:x.url,cwe:x.cwe,cvss:x.cvss
+              }));
+              console.log(JSON.stringify({
+                name,severity:v.severity,isDirect:v.isDirect,
+                range:v.range,nodes:v.nodes,fixAvailable:v.fixAvailable,via
+              }));
+            }
+          }
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-json
+          path: |
+            root-audit.json
+            root-prod-audit.json
+            migration-audit.json
+            migration-prod-audit.json
