@@ -95,7 +95,7 @@ export default function NotificationDropdown({ isTransparent }: { isTransparent:
       if (disposed) return;
 
       channel = supabase
-        .channel(`notification-badge:${conversationId}`, { config: { private: true } })
+        .channel(`conversation:${conversationId}`, { config: { private: true } })
         .on("broadcast", { event: "INSERT" }, (event) => {
           const incoming = messageFromBroadcast(event.payload);
           if (incoming?.conversationId !== conversationId) return;
