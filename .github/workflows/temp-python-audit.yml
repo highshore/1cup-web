@@ -24,7 +24,36 @@ jobs:
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
       - name: Audit
-        shell: bash
+        run: pip-audit -r "${{ matrix.target }}" --desc
+
+  koreapas-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install publisher dependencies
+        run: python -m pip install -r koreapas-publisher/requirements.txt
+      - name: Compile publisher
+        run: python -m compileall -q koreapas-publisher
+      - name: Flask and requests smoke test
+        working-directory: koreapas-publisher
         run: |
-          echo "### ${{ matrix.target }}"
-          pip-audit -r "${{ matrix.target }}" --desc
+          python - <<'PY'
+          import requests
+          import flask
+          import app
+
+          client = app.app.test_client()
+          health = client.get("/")
+          assert health.status_code == 200, health.data
+          assert health.get_json() == {"ok": True, "service": "koreapas-publisher"}
+
+          unauthorized = client.post("/", json={"action": "performance", "posts": []})
+          assert unauthorized.status_code == 401, unauthorized.data
+
+          print("Flask", flask.__version__ if hasattr(flask, "__version__") else "import-ok")
+          print("Requests", requests.__version__)
+          print("publisher smoke ok")
+          PY
