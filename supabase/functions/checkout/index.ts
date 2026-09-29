@@ -204,6 +204,47 @@ async function quote(uid: string, body: Record<string, unknown>) {
   };
 }
 
+async function recoverPendingParticipationPack(uid: string, region: Region) {
+  const a = admin();
+  const { data: orders, error } = await a
+    .from("payment_orders")
+    .select("*")
+    .eq("user_id", uid)
+    .eq("type", "checkout_auth")
+    .eq("product_id", "participation_pack_5")
+    .eq("region", region)
+    .eq("status", "charging")
+    .order("updated_at", { ascending: false })
+    .limit(10);
+  if (error) throw new ApiError(error.message, 500, "recoverable-order-query-failed");
+
+  for (const order of orders ?? []) {
+    const payData = order.payment_result as Record<string, any> | null;
+    if (payData?.PCD_PAY_RST !== "success" || !order.fulfillment_order_number) continue;
+
+    const { data: cancellation, error: cancellationError } = await a
+      .from("payment_cancellations")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("original_order_id", order.fulfillment_order_number)
+      .in("status", ["completed", "completed_pending_credit_reversal"])
+      .order("requested_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (cancellationError) throw new ApiError(cancellationError.message, 500, "cancellation-query-failed");
+    if (cancellation) continue;
+
+    const result = await settleSuccessfulCharge(
+      uid,
+      order,
+      payData,
+      String(order.billing_key_used || ""),
+    );
+    return { orderNumber: String(order.order_number), result };
+  }
+  return null;
+}
+
 async function createPaymentWindow(uid: string, body: Record<string, unknown>) {
   const productId = asProductId(body.productId);
   const region = asRegion(body.region);
@@ -222,6 +263,27 @@ async function createPaymentWindow(uid: string, body: Record<string, unknown>) {
   if (!user) throw new ApiError("회원 정보를 찾을 수 없습니다.", 404, "user-not-found");
   if (product.recurring && user.has_active_subscription) {
     throw new ApiError("이미 30일 이용권을 사용 중입니다.", 409, "already-subscribed");
+  }
+
+  if (productId === "participation_pack_5") {
+    const recovered = await recoverPendingParticipationPack(uid, region);
+    if (recovered) {
+      return {
+        success: true,
+        recovered: true,
+        orderNumber: recovered.orderNumber,
+        result: recovered.result,
+        product: {
+          id: productId,
+          region,
+          price: Number(product.list_amount),
+          listAmount: Number(product.list_amount),
+          discountAmount: 0,
+          credits: product.credit_quantity ?? undefined,
+          validityDays: product.validity_days ?? undefined,
+        },
+      };
+    }
   }
 
   let discountAmount = 0;
@@ -486,11 +548,18 @@ async function verifyPayment(uid: string, body: Record<string, unknown>) {
     throw new ApiError(payData?.PCD_PAY_MSG || "결제에 실패했습니다.", 400, "payple-charge-failed");
   }
 
-  await a.from("payment_orders").update({
+  const { error: persistError } = await a.from("payment_orders").update({
     billing_key_used: billingKey,
     payment_result: payData,
     payple_response: payData,
   }).eq("order_number", order.order_number);
+  if (persistError) {
+    throw new ApiError(
+      "결제는 완료되었지만 결제 결과를 저장하지 못했습니다. 다시 결제하지 말고 고객지원으로 문의해주세요.",
+      500,
+      "payment-result-persist-failed",
+    );
+  }
 
   return await settleSuccessfulCharge(uid, { ...order, status: "charging", billing_key_used: billingKey }, payData, billingKey);
 }
