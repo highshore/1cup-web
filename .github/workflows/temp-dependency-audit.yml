@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  audit-and-autofix:
+  candidate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,57 +18,72 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Baseline audit
-        shell: bash
+      - name: Show candidate versions
         run: |
-          npm audit --package-lock-only --json > root-before.json || true
-          (cd scripts/migration && npm audit --package-lock-only --json > ../../migration-before.json) || true
+          echo "google-auth-library latest=$(npm view google-auth-library version)"
+          echo "speech-sdk latest=$(npm view microsoft-cognitiveservices-speech-sdk version)"
+          echo "firebase-admin latest=$(npm view firebase-admin version)"
+          echo "vercel latest=$(npm view vercel version)"
 
-      - name: Apply non-breaking npm audit fixes
+      - name: Apply root security candidate
         shell: bash
         run: |
           npm audit fix --package-lock-only --ignore-scripts || true
-          (cd scripts/migration && npm audit fix --package-lock-only --ignore-scripts) || true
+          npm install --package-lock-only --ignore-scripts google-auth-library@latest microsoft-cognitiveservices-speech-sdk@latest
+          npm uninstall --package-lock-only --ignore-scripts --save-dev vercel
+          npm pkg set 'scripts.deploy:vercel=npx --yes vercel@latest --prod'
 
-      - name: Audit after non-breaking fixes
+      - name: Apply migration security candidate
+        shell: bash
+        run: |
+          cd scripts/migration
+          npm install --package-lock-only --ignore-scripts firebase-admin@14.5.0
+
+      - name: Audit candidate
         shell: bash
         run: |
           npm audit --package-lock-only --json > root-after.json || true
           npm audit --package-lock-only --omit=dev --json > root-prod-after.json || true
           (cd scripts/migration && npm audit --package-lock-only --json > ../../migration-after.json) || true
-
-      - name: Print result and diff
-        shell: bash
-        run: |
           node <<'NODE'
-          const fs = require('fs');
-          for (const file of ['root-before.json','root-after.json','root-prod-after.json','migration-before.json','migration-after.json']) {
-            const a = JSON.parse(fs.readFileSync(file,'utf8'));
-            console.log('\n### ' + file);
-            console.log('counts=' + JSON.stringify(a.metadata?.vulnerabilities || {}));
-            for (const [name,v] of Object.entries(a.vulnerabilities || {})) {
-              console.log(JSON.stringify({
-                name,severity:v.severity,isDirect:v.isDirect,
-                range:v.range,fixAvailable:v.fixAvailable,
-                via:(v.via||[]).map(x=>typeof x==='string'?x:{source:x.source,name:x.name,title:x.title,severity:x.severity,range:x.range,url:x.url})
-              }));
+          const fs=require('fs');
+          for(const f of ['root-after.json','root-prod-after.json','migration-after.json']){
+            const a=JSON.parse(fs.readFileSync(f,'utf8'));
+            console.log('\n### '+f+' '+JSON.stringify(a.metadata?.vulnerabilities||{}));
+            for(const [name,v] of Object.entries(a.vulnerabilities||{})){
+              console.log(JSON.stringify({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable,via:v.via}));
             }
           }
           NODE
-          echo
-          echo "### git diff"
+
+      - name: Install and validate app
+        shell: bash
+        run: |
+          npm ci --ignore-scripts
+          npx tsc --noEmit
+          npm run build
+
+      - name: Validate migration tooling
+        shell: bash
+        run: |
+          cd scripts/migration
+          npm ci --ignore-scripts
+          for f in *.mjs; do node --check "$f"; done
+          node -e "Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/auth')]).then(()=>console.log('firebase-admin imports ok'))"
+
+      - name: Print dependency diff
+        shell: bash
+        run: |
           git diff -- package.json package-lock.json scripts/migration/package.json scripts/migration/package-lock.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dependency-autofix-candidate
+          name: clean-dependency-candidate
           path: |
             package.json
             package-lock.json
             scripts/migration/package.json
             scripts/migration/package-lock.json
-            root-before.json
             root-after.json
             root-prod-after.json
-            migration-before.json
             migration-after.json
