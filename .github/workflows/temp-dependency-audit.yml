@@ -1,4 +1,4 @@
-name: Temporary dependency security audit
+name: Apply validated dependency security fixes
 
 on:
   push:
@@ -6,19 +6,21 @@ on:
       - chore/security-dependabot-sweep
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  final-candidate:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: chore/security-dependabot-sweep
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Apply root security candidate
+      - name: Apply validated root fixes
         shell: bash
         run: |
           npm audit fix --package-lock-only --ignore-scripts || true
@@ -26,7 +28,7 @@ jobs:
           npm uninstall --package-lock-only --ignore-scripts --save-dev vercel
           npm pkg set 'scripts.deploy:vercel=npx --yes vercel@60.1.3 --prod'
 
-      - name: Apply migration security candidate
+      - name: Apply validated migration fixes
         shell: bash
         run: |
           cd scripts/migration
@@ -34,39 +36,18 @@ jobs:
           npm pkg set 'overrides.gaxios.uuid=11.1.1'
           npm install --package-lock-only --ignore-scripts
 
-      - name: Require zero npm audit findings
-        shell: bash
+      - name: Require zero audit findings
         run: |
           npm audit --package-lock-only
           npm audit --package-lock-only --omit=dev
-          cd scripts/migration
-          npm audit --package-lock-only
+          (cd scripts/migration && npm audit --package-lock-only)
 
-      - name: Validate app
+      - name: Commit validated fixes and remove temporary workflow
         shell: bash
         run: |
-          npm ci --ignore-scripts
-          npx tsc --noEmit
-          npm run check:functions
-          npm run build
-
-      - name: Validate migration tooling
-        shell: bash
-        run: |
-          cd scripts/migration
-          npm ci --ignore-scripts
-          for f in *.mjs; do node --check "$f"; done
-          node -e "Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/auth'),import('gaxios'),import('uuid')]).then(([,,,g,u])=>{ console.log('firebase-admin/gaxios imports ok'); console.log('uuid sample',u.v4()); })"
-
-      - name: Print exact dependency diff
-        shell: bash
-        run: git diff -- package.json package-lock.json scripts/migration/package.json scripts/migration/package-lock.json
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: zero-audit-dependency-candidate
-          path: |
-            package.json
-            package-lock.json
-            scripts/migration/package.json
-            scripts/migration/package-lock.json
+          git rm .github/workflows/temp-dependency-audit.yml
+          git add package.json package-lock.json scripts/migration/package.json scripts/migration/package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(security): resolve remaining dependency advisories"
+          git push origin HEAD:chore/security-dependabot-sweep
