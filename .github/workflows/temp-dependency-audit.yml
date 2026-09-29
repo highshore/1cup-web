@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  audit:
+  audit-and-autofix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,46 +18,57 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Audit root dependency tree
+      - name: Baseline audit
         shell: bash
         run: |
-          npm audit --package-lock-only --json > root-audit.json || true
-          npm audit --package-lock-only --omit=dev --json > root-prod-audit.json || true
+          npm audit --package-lock-only --json > root-before.json || true
+          (cd scripts/migration && npm audit --package-lock-only --json > ../../migration-before.json) || true
 
-      - name: Audit migration tooling
+      - name: Apply non-breaking npm audit fixes
         shell: bash
         run: |
-          cd scripts/migration
-          npm audit --package-lock-only --json > ../../migration-audit.json || true
-          npm audit --package-lock-only --omit=dev --json > ../../migration-prod-audit.json || true
+          npm audit fix --package-lock-only --ignore-scripts || true
+          (cd scripts/migration && npm audit fix --package-lock-only --ignore-scripts) || true
 
-      - name: Print compact advisory summary
+      - name: Audit after non-breaking fixes
+        shell: bash
+        run: |
+          npm audit --package-lock-only --json > root-after.json || true
+          npm audit --package-lock-only --omit=dev --json > root-prod-after.json || true
+          (cd scripts/migration && npm audit --package-lock-only --json > ../../migration-after.json) || true
+
+      - name: Print result and diff
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
-          for (const file of ['root-audit.json','root-prod-audit.json','migration-audit.json','migration-prod-audit.json']) {
+          for (const file of ['root-before.json','root-after.json','root-prod-after.json','migration-before.json','migration-after.json']) {
             const a = JSON.parse(fs.readFileSync(file,'utf8'));
             console.log('\n### ' + file);
             console.log('counts=' + JSON.stringify(a.metadata?.vulnerabilities || {}));
             for (const [name,v] of Object.entries(a.vulnerabilities || {})) {
-              const via = (v.via || []).map(x => typeof x === 'string' ? x : ({
-                source:x.source,name:x.name,title:x.title,severity:x.severity,
-                range:x.range,url:x.url,cwe:x.cwe,cvss:x.cvss
-              }));
               console.log(JSON.stringify({
                 name,severity:v.severity,isDirect:v.isDirect,
-                range:v.range,nodes:v.nodes,fixAvailable:v.fixAvailable,via
+                range:v.range,fixAvailable:v.fixAvailable,
+                via:(v.via||[]).map(x=>typeof x==='string'?x:{source:x.source,name:x.name,title:x.title,severity:x.severity,range:x.range,url:x.url})
               }));
             }
           }
           NODE
+          echo
+          echo "### git diff"
+          git diff -- package.json package-lock.json scripts/migration/package.json scripts/migration/package-lock.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dependency-audit-json
+          name: dependency-autofix-candidate
           path: |
-            root-audit.json
-            root-prod-audit.json
-            migration-audit.json
-            migration-prod-audit.json
+            package.json
+            package-lock.json
+            scripts/migration/package.json
+            scripts/migration/package-lock.json
+            root-before.json
+            root-after.json
+            root-prod-after.json
+            migration-before.json
+            migration-after.json
