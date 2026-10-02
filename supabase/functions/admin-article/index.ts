@@ -333,19 +333,92 @@ const parseModelJson = (
   throw new Error("The " + step + " step returned invalid JSON.");
 };
 
+const paragraphWordCount = (paragraph: string): number =>
+  paragraph.trim().split(/\s+/).filter(Boolean).length;
+
 const splitRefinedParagraphs = (article: string): string[] => {
-  const paragraphs = article
+  const sourceParagraphs = article
     .replace(/\r\n?/g, "\n")
     .split(/\n\s*\n+/)
     .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  if (paragraphs.length < 3 || paragraphs.length > 12) {
+  if (sourceParagraphs.length < 3) {
     throw new Error(
-      "The refined article must contain between 3 and 12 coherent paragraphs.",
+      "The refined article must contain at least 3 coherent paragraphs.",
     );
   }
-  return paragraphs.map((paragraph) => paragraph.slice(0, 1_200));
+
+  // Gemini can preserve source formatting too literally, leaving the article as
+  // many one- or two-sentence fragments. Coalesce adjacent fragments into
+  // reading-sized semantic chunks while preserving their original order.
+  const MIN_STANDALONE_WORDS = 55;
+  const TARGET_PARAGRAPH_WORDS = 95;
+  const MAX_MERGED_WORDS = 180;
+  const TARGET_MAX_PARAGRAPHS = 8;
+  const MIN_PARAGRAPHS = 3;
+
+  const paragraphs: string[] = [];
+  for (let index = 0; index < sourceParagraphs.length; index += 1) {
+    const paragraph = sourceParagraphs[index];
+    const previous = paragraphs.at(-1);
+    if (!previous) {
+      paragraphs.push(paragraph);
+      continue;
+    }
+
+    const previousWords = paragraphWordCount(previous);
+    const currentWords = paragraphWordCount(paragraph);
+    const mergedWords = previousWords + currentWords;
+    const remainingParagraphs = sourceParagraphs.length - index - 1;
+    const countIfMerged = paragraphs.length + remainingParagraphs;
+    const shouldMergeShortFragment =
+      (previousWords < TARGET_PARAGRAPH_WORDS ||
+        currentWords < MIN_STANDALONE_WORDS) &&
+      mergedWords <= MAX_MERGED_WORDS &&
+      countIfMerged >= MIN_PARAGRAPHS;
+
+    if (shouldMergeShortFragment) {
+      paragraphs[paragraphs.length - 1] = previous + " " + paragraph;
+    } else {
+      paragraphs.push(paragraph);
+    }
+  }
+
+  // If the model still returns too many medium-sized blocks, merge the
+  // smallest adjacent pair first until we reach the preferred reading range.
+  while (paragraphs.length > TARGET_MAX_PARAGRAPHS) {
+    let bestIndex = -1;
+    let bestCombinedWords = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < paragraphs.length - 1; index += 1) {
+      const combinedWords =
+        paragraphWordCount(paragraphs[index]) +
+        paragraphWordCount(paragraphs[index + 1]);
+      if (
+        combinedWords <= MAX_MERGED_WORDS &&
+        combinedWords < bestCombinedWords
+      ) {
+        bestIndex = index;
+        bestCombinedWords = combinedWords;
+      }
+    }
+
+    if (bestIndex < 0) break;
+    paragraphs.splice(
+      bestIndex,
+      2,
+      paragraphs[bestIndex] + " " + paragraphs[bestIndex + 1],
+    );
+  }
+
+  if (paragraphs.length < MIN_PARAGRAPHS || paragraphs.length > 12) {
+    throw new Error(
+      "The refined article must contain between 3 and 12 coherent paragraphs after chunk normalization.",
+    );
+  }
+
+  return paragraphs;
 };
 
 type VertexPart = {
@@ -496,7 +569,12 @@ Requirements:
 - Keep the tone natural and readable.
 - Do not invent facts.
 - Keep the article suitable for upper-intermediate to advanced learners.
-- Preserve or create 3 to 12 coherent paragraphs separated by blank lines.
+- Prefer 4 to 8 substantial body paragraphs for a normal-length article. Use 3 only for a genuinely short source, and exceed 8 only when the source is unusually long.
+- Each paragraph should usually contain several related sentences (roughly 80 to 160 words), not a single sentence or tiny fragment.
+- Do not preserve source paragraph breaks mechanically. Merge adjacent short paragraphs when they develop the same idea.
+- Start a new paragraph only for a meaningful shift in topic, evidence, speaker, chronology, or argument.
+- Preserve important factual detail; do not summarize aggressively just to reduce the paragraph count.
+- Separate paragraphs with blank lines.
 - Return JSON with: { "refined_title": "...", "refined_article": "..." }`,
     `Title:\n${title}\n\nURL:\n${sourceUrl}\n\nArticle:\n${rawArticle}`,
     6_000,
@@ -1211,7 +1289,7 @@ const updateArticleProgress = async (
     progress,
     provider: "vertex-ai",
     model: GEMINI_TEXT_MODEL,
-    workflow: "admin-article-ingest-v6",
+    workflow: "admin-article-ingest-v7",
   };
 
   const [articleResult, jobResult] = await Promise.all([
@@ -1258,7 +1336,7 @@ const markArticleFailed = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v6",
+          workflow: "admin-article-ingest-v7",
           error: {
             errorName: details.errorName,
             errorCode: details.errorCode,
@@ -1450,7 +1528,7 @@ const processArticle = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v6",
+          workflow: "admin-article-ingest-v7",
           completedAt,
         },
         updated_at: completedAt,
@@ -1745,7 +1823,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           progress: 5,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v6",
+          workflow: "admin-article-ingest-v7",
         },
       });
     if (articleError) throw new Error(articleError.message);
@@ -1763,7 +1841,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         progress: 5,
         provider: "vertex-ai",
         model: GEMINI_TEXT_MODEL,
-        workflow: "admin-article-ingest-v6",
+        workflow: "admin-article-ingest-v7",
         created_by: uid,
       });
 
