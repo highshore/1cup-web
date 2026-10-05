@@ -110,7 +110,7 @@ create or replace function public.quote_checkout_discount_code(
   p_list_amount numeric
 )
 returns table (
-  found boolean,
+  code_found boolean,
   valid boolean,
   code text,
   discount_amount numeric,
