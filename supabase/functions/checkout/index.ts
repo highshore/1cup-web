@@ -381,6 +381,8 @@ type BillingStatusResult = {
     failedAt: string | null;
   } | null;
   cardName: string | null;
+  retryPending: boolean;
+  lastCardUpdateAt: string | null;
 };
 
 async function billingStatus(uid: string): Promise<BillingStatusResult> {
@@ -397,30 +399,66 @@ async function billingStatus(uid: string): Promise<BillingStatusResult> {
     .from("payment_orders")
     .select("status, type, error_code, error_message, failed_at, completed_at, payment_result, created_at")
     .eq("user_id", uid)
-    .in("type", ["subscription_recurring", "subscription_initial_payment"])
+    .in("type", ["subscription_recurring", "subscription_initial_payment", "billing_method_update"])
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(30);
   if (orderError) throw new ApiError(orderError.message, 500, "billing-status-query-failed");
 
   const rows = orders ?? [];
   const latestRecurring = rows.find((row: any) => row.type === "subscription_recurring") as any | undefined;
+  const latestCompletedCardUpdate = rows.find(
+    (row: any) => row.type === "billing_method_update" && row.status === "completed",
+  ) as any | undefined;
+
+  const latestRecurringFailureAt =
+    latestRecurring?.status === "failed"
+      ? new Date(latestRecurring.failed_at || latestRecurring.created_at || 0).getTime()
+      : 0;
+  const latestCardUpdateAt = latestCompletedCardUpdate
+    ? new Date(latestCompletedCardUpdate.completed_at || latestCompletedCardUpdate.created_at || 0).getTime()
+    : 0;
+
+  // A successful card update after the last failed renewal resolves the old-card problem.
+  // The charge itself has not succeeded yet, so we show "retry pending" rather than
+  // continuing to alarm the member about a failure they already fixed.
+  const unresolvedFailure =
+    latestRecurring?.status === "failed" &&
+    !(latestCardUpdateAt > latestRecurringFailureAt);
+
   let consecutiveFailures = 0;
-  for (const row of rows) {
-    if (row.type !== "subscription_recurring") continue;
-    if (row.status === "failed") {
-      consecutiveFailures += 1;
-      continue;
+  if (unresolvedFailure) {
+    for (const row of rows) {
+      if (row.type !== "subscription_recurring") continue;
+      if (row.status === "failed") {
+        consecutiveFailures += 1;
+        continue;
+      }
+      if (row.status === "completed") break;
     }
-    if (row.status === "completed") break;
   }
 
-  const latestSuccessful = rows.find((row: any) => row.status === "completed") as any | undefined;
+  const latestSuccessfulPayment = rows.find(
+    (row: any) =>
+      row.status === "completed" &&
+      (row.type === "subscription_recurring" || row.type === "subscription_initial_payment"),
+  ) as any | undefined;
+  const cardSource = latestCompletedCardUpdate || latestSuccessfulPayment;
   const cardName =
-    typeof latestSuccessful?.payment_result?.PCD_PAY_CARDNAME === "string"
-      ? latestSuccessful.payment_result.PCD_PAY_CARDNAME
+    typeof cardSource?.payment_result?.PCD_PAY_CARDNAME === "string"
+      ? cardSource.payment_result.PCD_PAY_CARDNAME
       : null;
+
   const hasBillingKey = typeof user.billing_key === "string" && user.billing_key.length > 0;
-  const unresolvedFailure = latestRecurring?.status === "failed";
+  const subscriptionEndAt = user.subscription_end_date
+    ? new Date(user.subscription_end_date as string).getTime()
+    : 0;
+  const retryPending =
+    user.has_active_subscription === true &&
+    user.billing_cancelled !== true &&
+    hasBillingKey &&
+    !unresolvedFailure &&
+    subscriptionEndAt > 0 &&
+    subscriptionEndAt <= Date.now();
 
   return {
     success: true,
@@ -441,6 +479,8 @@ async function billingStatus(uid: string): Promise<BillingStatusResult> {
         }
       : null,
     cardName,
+    retryPending,
+    lastCardUpdateAt: latestCompletedCardUpdate?.completed_at ?? null,
   };
 }
 
