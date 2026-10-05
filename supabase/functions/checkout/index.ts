@@ -492,7 +492,13 @@ async function createBillingMethodUpdateWindow(uid: string, body: Record<string,
     PCD_RST_URL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/checkout/callback`,
     PCD_PAYER_AUTHTYPE: "sms",
     PCD_USER_DEFINE1: uid,
-    PCD_USER_DEFINE2: JSON.stringify({ purpose: "billing_method_update" }),
+    // AUTH registration responses do not reliably echo PCD_PAY_OID. Keep the
+    // server-created order number in Payple's round-tripped user metadata so the
+    // callback can be reconciled even after a full-page redirect on mobile Safari.
+    PCD_USER_DEFINE2: JSON.stringify({
+      purpose: "billing_method_update",
+      orderNumber,
+    }),
     PCD_SIMPLE_FNAME: "payment-result",
   };
 
@@ -508,7 +514,7 @@ async function createBillingMethodUpdateWindow(uid: string, body: Record<string,
     region,
     pricing_version: user.pricing_version || "billing_method_update_v1",
     order_date: now.toISOString(),
-    selected_categories: { purpose: "billing_method_update" },
+    selected_categories: { purpose: "billing_method_update", orderNumber },
   });
   if (insertError) throw new ApiError(insertError.message, 500, "order-create-failed");
 
@@ -579,11 +585,45 @@ async function settleSuccessfulCharge(uid: string, order: any, payData: Record<s
   };
 }
 
+function parsePaymentMetadata(paymentParams: Record<string, any>): Record<string, unknown> {
+  const raw = paymentParams.PCD_USER_DEFINE2;
+  if (typeof raw !== "string" || !raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 async function verifyPayment(uid: string, body: Record<string, unknown>) {
   const paymentParams = body.paymentParams as Record<string, any> | undefined;
   if (!paymentParams) throw new ApiError("결제 결과가 없습니다.", 400, "missing-payment-result");
-  const authorizationOrderNumber = String(paymentParams.PCD_PAY_OID || "");
-  if (!authorizationOrderNumber) throw new ApiError("주문번호가 없습니다.", 400, "missing-order");
+
+  const paymentMetadata = parsePaymentMetadata(paymentParams);
+  const metadataOrderNumber =
+    typeof paymentMetadata.orderNumber === "string"
+      ? paymentMetadata.orderNumber.trim()
+      : "";
+  const sessionOrderNumber =
+    typeof body.orderNumber === "string" ? body.orderNumber.trim() : "";
+
+  // CERT returns PCD_PAY_OID, while Payple AUTH card-registration responses may omit it.
+  // For AUTH, recover the server-created order from round-tripped metadata; the browser
+  // session value is only a final fallback. The DB query below still binds the order to
+  // the authenticated uid, so a caller cannot select another member's order.
+  const authorizationOrderNumber = String(
+    paymentParams.PCD_PAY_OID || metadataOrderNumber || sessionOrderNumber || "",
+  ).trim();
+  if (!authorizationOrderNumber) {
+    throw new ApiError(
+      "카드 등록 결과의 주문번호를 확인할 수 없습니다. 다시 시도해주세요.",
+      400,
+      "missing-order",
+    );
+  }
   if (paymentParams.PCD_PAY_RST !== "success") {
     await admin().from("payment_orders").update({
       status: "failed",
@@ -606,6 +646,14 @@ async function verifyPayment(uid: string, body: Record<string, unknown>) {
   if (!order) throw new ApiError("결제 주문을 찾을 수 없습니다.", 404, "order-not-found");
   if (order.type !== "checkout_auth" && order.type !== "billing_method_update") {
     throw new ApiError("지원하지 않는 결제 주문입니다.", 409, "invalid-order-type");
+  }
+
+  if (order.type === "billing_method_update") {
+    const purpose =
+      typeof paymentMetadata.purpose === "string" ? paymentMetadata.purpose : "";
+    if (purpose && purpose !== "billing_method_update") {
+      throw new ApiError("카드 변경 요청 정보가 일치하지 않습니다.", 409, "billing-update-metadata-mismatch");
+    }
   }
 
   const billingKey = String(paymentParams.PCD_PAYER_ID || paymentParams.PCD_CARD_BILLKEY || order.billing_key_used || "");

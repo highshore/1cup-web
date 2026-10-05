@@ -33,6 +33,40 @@ export const FUNCTIONS_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/
 // Invoke a deployed Edge Function with the caller's session (replaces httpsCallable).
 export async function invokeFunction<T = unknown>(name: string, body?: unknown): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>(name, { body: body ?? {} });
-  if (error) throw error;
+  if (error) {
+    // supabase-js wraps non-2xx Edge Function responses in a generic
+    // "Edge Function returned a non-2xx status code" error. Preserve the actual
+    // JSON response from our functions so members see the actionable message/code.
+    const context = (error as any)?.context;
+    if (context && typeof context.clone === "function") {
+      try {
+        const response = context.clone();
+        const payload = await response.json();
+        const message =
+          typeof payload?.message === "string" && payload.message.trim()
+            ? payload.message.trim()
+            : error.message;
+        const detailed = new Error(message) as Error & {
+          code?: string;
+          status?: number;
+        };
+        if (typeof payload?.errorCode === "string") detailed.code = payload.errorCode;
+        if (typeof context.status === "number") detailed.status = context.status;
+        throw detailed;
+      } catch (parseError) {
+        // If we successfully created a detailed error above, keep it. Otherwise fall
+        // through to the SDK error when the body is not JSON.
+        if (
+          parseError instanceof Error &&
+          parseError.message !== "Unexpected end of JSON input" &&
+          parseError.message !== "Unexpected token '<'"
+        ) {
+          const maybeDetailed = parseError as Error & { code?: string; status?: number };
+          if (maybeDetailed.code || maybeDetailed.status) throw maybeDetailed;
+        }
+      }
+    }
+    throw error;
+  }
   return data as T;
 }

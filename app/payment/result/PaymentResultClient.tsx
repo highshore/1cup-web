@@ -314,27 +314,52 @@ export default function PaymentResultClient() {
           return;
         }
 
-        // Get the payment session info from sessionStorage
+        // Get the payment session info from sessionStorage. Payple AUTH card
+        // registration may omit PCD_PAY_OID, so also recover the order number from
+        // PCD_USER_DEFINE2 or the browser session created before opening Payple.
         const sessionInfo = sessionStorage.getItem("paymentSessionInfo");
-        let userId: string;
-
-        if (!sessionInfo) {
-          // Use the actual legacy user UID from PCD_USER_DEFINE1 (NOT PCD_PAYER_NO,
-          // which is only a sequential number).
-          if (paymentParams.PCD_USER_DEFINE1) {
-            userId = paymentParams.PCD_USER_DEFINE1;
-          } else {
-            throw new Error(
-              "결제 세션 정보와 사용자 ID를 찾을 수 없습니다. 다시 시도해주세요."
-            );
+        let parsedSessionInfo: Record<string, any> = {};
+        if (sessionInfo) {
+          try {
+            parsedSessionInfo = JSON.parse(sessionInfo);
+          } catch {
+            parsedSessionInfo = {};
           }
-        } else {
-          const parsedSessionInfo = JSON.parse(sessionInfo);
-          userId = parsedSessionInfo.userId;
         }
 
-        // CRITICAL: Check if this exact payment has already been processed
-        const paymentOrderId = paymentParams.PCD_PAY_OID;
+        let paymentMetadata: Record<string, any> = {};
+        if (paymentParams.PCD_USER_DEFINE2) {
+          try {
+            const parsed = JSON.parse(paymentParams.PCD_USER_DEFINE2);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              paymentMetadata = parsed;
+            }
+          } catch {
+            paymentMetadata = {};
+          }
+        }
+
+        let userId: string;
+        if (parsedSessionInfo.userId) {
+          userId = parsedSessionInfo.userId;
+        } else if (paymentParams.PCD_USER_DEFINE1) {
+          // Use the actual legacy user UID from PCD_USER_DEFINE1 (NOT PCD_PAYER_NO,
+          // which is only a sequential number).
+          userId = paymentParams.PCD_USER_DEFINE1;
+        } else {
+          throw new Error(
+            "결제 세션 정보와 사용자 ID를 찾을 수 없습니다. 다시 시도해주세요."
+          );
+        }
+
+        const paymentOrderId =
+          paymentParams.PCD_PAY_OID ||
+          (typeof paymentMetadata.orderNumber === "string"
+            ? paymentMetadata.orderNumber
+            : "") ||
+          (typeof parsedSessionInfo.orderNumber === "string"
+            ? parsedSessionInfo.orderNumber
+            : "");
         const processedPayments = JSON.parse(
           sessionStorage.getItem("processedPayments") || "[]"
         );
@@ -350,17 +375,21 @@ export default function PaymentResultClient() {
           }
         }
 
-        // Add this payment to the processed list
-        processedPayments.push(paymentOrderId);
-        sessionStorage.setItem(
-          "processedPayments",
-          JSON.stringify(processedPayments)
-        );
+        // Add this payment to the processed list when we have a stable order id.
+        if (paymentOrderId) {
+          processedPayments.push(paymentOrderId);
+          sessionStorage.setItem(
+            "processedPayments",
+            JSON.stringify(processedPayments)
+          );
+        }
 
-        // Verify payment result through the canonical checkout Edge Function
+        // Verify payment result through the canonical checkout Edge Function.
+        // orderNumber is a fallback for Payple AUTH responses that omit PCD_PAY_OID.
         const resultData = (await invokeFunction("checkout", {
           action: "verify",
           userId,
+          orderNumber: paymentOrderId || undefined,
           paymentParams,
           timestamp: Date.now(),
         })) as PaymentResult;
