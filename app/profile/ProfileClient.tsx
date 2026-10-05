@@ -1164,13 +1164,9 @@ export default function ProfileClient() {
     setError("");
 
     try {
-      // Update user data to reactivate billing
-      await supabase
-        .from("users")
-        .update({
-          billing_cancelled: false, // Reactivate billing
-        })
-        .eq("uid", user.uid);
+      // Billing state is server-owned; reactivate through the narrow self-service RPC.
+      const { error: reactivateError } = await supabase.rpc("reactivate_own_billing");
+      if (reactivateError) throw reactivateError;
 
       // Update local state and recalculate next billing date
       setSubscriptionData((prev) => {
@@ -1247,14 +1243,8 @@ export default function ProfileClient() {
           nextBillingDate: null,
         }));
 
-        // Update user data
-        await supabase
-          .from("users")
-          .update({
-            has_active_subscription: false,
-            subscription_end_date: cancelledAt.toISOString(),
-          })
-          .eq("uid", user.uid);
+        // Subscription state is committed by the payment function. Keep only the local UI
+        // in sync here; the next refresh will read the authoritative server-owned row.
 
         // The "구독 여부" pill renders off userData, not subscriptionData. Without this
         // it kept reading 구독중 next to a 비활성 회원 상태 until the page was reloaded.
