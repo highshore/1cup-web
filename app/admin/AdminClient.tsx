@@ -664,17 +664,10 @@ export default function AdminClient({
       // PostgREST has no batch update with per-row values, so each member is updated
       // individually. RLS (is_admin) is enforced per statement either way.
       for (const user of activeUsers) {
-        const baseDate =
-          resolveToDate(user.subscriptionEndDate) ||
-          resolveToDate(user.subscriptionStartDate) ||
-          new Date();
-        const extendedDate = new Date(baseDate);
-        extendedDate.setDate(extendedDate.getDate() + 14);
-
-        const { error } = await supabase
-          .from("users")
-          .update({ subscription_end_date: extendedDate.toISOString() })
-          .eq("uid", user.id);
+        const { error } = await supabase.rpc("admin_extend_member_subscription", {
+          p_user_id: user.id,
+          p_days: 14,
+        });
         if (error) throw error;
       }
 
