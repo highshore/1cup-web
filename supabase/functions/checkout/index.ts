@@ -141,7 +141,7 @@ async function quoteManagedDiscount(
   });
   if (error) throw new ApiError(error.message, 500, "discount-code-query-failed");
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row?.found) return null;
+  if (!row?.code_found) return null;
   return {
     valid: Boolean(row.valid),
     discountAmount: Number(row.discount_amount || 0),
