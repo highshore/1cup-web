@@ -63,6 +63,7 @@ const QUICK_ACTIONS = [
   ["articles", "/admin/articles"],
   ["shadow", "/admin/shadow"],
   ["marketing", "/admin/marketing"],
+  ["discountCodes", "/admin/discount-codes"],
   ["notifications", "/admin/notifications"],
   ["gifts", "/admin/gifts"],
   ["testCenter", "/admin/test-center"],
