@@ -625,7 +625,7 @@ export function AccountMembershipPanel({
         reason: "User requested stop billing",
       });
       if (!(result as any)?.success) throw new Error((result as any)?.message || "Billing stop failed");
-      await supabase.from("users").update({ billing_cancelled: true }).eq("uid", shell.currentUser!.uid);
+      // The payment function owns billing state. Do not mirror server-owned fields from the browser.
       await shell.refresh();
       shell.setNotice((result as any)?.message || t.profile.stopBillingSuccess);
     } catch (stopError) {
@@ -648,14 +648,7 @@ export function AccountMembershipPanel({
         billingKey: shell.summary.billingKey,
       });
       if (!(result as any)?.success) throw new Error((result as any)?.message || "Cancellation failed");
-      await supabase
-        .from("users")
-        .update({
-          has_active_subscription: false,
-          subscription_end_date: new Date().toISOString(),
-          billing_cancelled: false,
-        })
-        .eq("uid", shell.currentUser!.uid);
+      // Cancellation/refund state is committed by the payment function.
       await shell.refresh();
       shell.setNotice(t.profile.refundSuccess);
     } catch (refundError) {
@@ -667,10 +660,7 @@ export function AccountMembershipPanel({
 
   const reactivateBilling = async () => {
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({ billing_cancelled: false })
-        .eq("uid", shell.currentUser!.uid);
+      const { error } = await supabase.rpc("reactivate_own_billing");
       if (error) throw error;
       await shell.refresh();
       shell.setNotice(t.profile.reactivateSuccess);
