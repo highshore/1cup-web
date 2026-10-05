@@ -45,12 +45,6 @@ type ReferralCodeRow = {
   created_at: string | null;
 };
 
-type UserRow = {
-  uid: string;
-  display_name: string | null;
-  email: string | null;
-};
-
 type FormState = {
   code: string;
   name: string;
@@ -118,7 +112,6 @@ export default function AdminDiscountCodesClient() {
   const [codes, setCodes] = useState<DiscountCodeRow[]>([]);
   const [redemptions, setRedemptions] = useState<RedemptionRow[]>([]);
   const [referrals, setReferrals] = useState<ReferralCodeRow[]>([]);
-  const [users, setUsers] = useState<UserRow[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,18 +122,17 @@ export default function AdminDiscountCodesClient() {
   const load = async () => {
     setLoading(true);
     setNotice(null);
-    const [codeResult, redemptionResult, referralResult, userResult] = await Promise.all([
+    const [codeResult, redemptionResult, referralResult] = await Promise.all([
       supabase.from("discount_codes").select("*").order("created_at", { ascending: false }),
       supabase.from("discount_code_redemptions").select("discount_code,status"),
       supabase
         .from("referral_codes")
         .select("code,active,discount,type,referrer,created_at")
         .order("created_at", { ascending: false }),
-      supabase.from("users").select("uid,display_name,email"),
     ]);
 
     const firstError =
-      codeResult.error || redemptionResult.error || referralResult.error || userResult.error;
+      codeResult.error || redemptionResult.error || referralResult.error;
     if (firstError) {
       console.error("discount code admin load failed", firstError);
       setNotice({ text: copy.loadFailed, error: true });
@@ -149,7 +141,6 @@ export default function AdminDiscountCodesClient() {
     setCodes((codeResult.data ?? []) as DiscountCodeRow[]);
     setRedemptions((redemptionResult.data ?? []) as RedemptionRow[]);
     setReferrals((referralResult.data ?? []) as ReferralCodeRow[]);
-    setUsers((userResult.data ?? []) as UserRow[]);
     setLoading(false);
   };
 
@@ -178,11 +169,6 @@ export default function AdminDiscountCodesClient() {
     return usage;
   }, [redemptions]);
 
-  const usersById = useMemo(
-    () => new Map(users.map((user) => [user.uid, user])),
-    [users],
-  );
-
   const filteredCodes = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return codes;
@@ -193,16 +179,18 @@ export default function AdminDiscountCodesClient() {
     );
   }, [codes, search]);
 
+  const operationalLegacyCodes = useMemo(
+    () => referrals.filter((code) => !code.referrer),
+    [referrals],
+  );
+
   const filteredReferrals = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return referrals;
-    return referrals.filter((code) => {
-      const owner = code.referrer ? usersById.get(code.referrer) : null;
-      return [code.code, owner?.display_name ?? "", owner?.email ?? ""].some((value) =>
-        value.toLowerCase().includes(query),
-      );
-    });
-  }, [referrals, search, usersById]);
+    if (!query) return operationalLegacyCodes;
+    return operationalLegacyCodes.filter((code) =>
+      code.code.toLowerCase().includes(query),
+    );
+  }, [operationalLegacyCodes, search]);
 
   const stats = useMemo(() => {
     const now = Date.now();
@@ -216,9 +204,9 @@ export default function AdminDiscountCodesClient() {
       active,
       consumed: redemptions.filter((row) => row.status === "consumed").length,
       returning: codes.filter((code) => code.eligibility_type === "returning").length,
-      referrals: referrals.length,
+      referrals: operationalLegacyCodes.length,
     };
-  }, [codes, redemptions, referrals]);
+  }, [codes, redemptions, operationalLegacyCodes]);
 
   const setProducts = (product: ProductId) => {
     setForm((current) => ({
@@ -396,6 +384,14 @@ export default function AdminDiscountCodesClient() {
     code.discount_type === "percent"
       ? `${Number(code.discount_value).toLocaleString()}%`
       : `₩${Number(code.discount_value).toLocaleString()}`;
+
+  const formatLegacyDiscount = (code: ReferralCodeRow) => {
+    const value = Number(code.discount ?? 0);
+    if (!Number.isFinite(value) || value <= 0) return copy.noDiscountValue;
+    return code.type === "percent"
+      ? `${value.toLocaleString()}%`
+      : `₩${value.toLocaleString()}`;
+  };
 
   const conditionLabel = (code: DiscountCodeRow) => {
     if (code.eligibility_type === "first_purchase") return copy.eligibility.firstPurchase;
@@ -786,8 +782,9 @@ export default function AdminDiscountCodesClient() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-4 gap-3 text-[12px] max-[900px]:grid-cols-2 max-[520px]:grid-cols-1">
+                  <div className="mt-4 grid grid-cols-5 gap-3 text-[12px] max-[1000px]:grid-cols-2 max-[520px]:grid-cols-1">
                     <div><strong>{copy.columns.condition}</strong><br />{conditionLabel(code)}</div>
+                    <div><strong>{copy.columns.discount}</strong><br />{formatDiscount(code)}</div>
                     <div><strong>{copy.columns.appliesTo}</strong><br />{products} · {regions}</div>
                     <div>
                       <strong>{copy.columns.usage}</strong><br />
@@ -827,27 +824,14 @@ export default function AdminDiscountCodesClient() {
           <div className="text-[13px] font-bold text-black/45">{copy.noReferrals}</div>
         ) : (
           <div className="grid gap-2">
-            {filteredReferrals.map((referral) => {
-              const owner = referral.referrer ? usersById.get(referral.referrer) : null;
-              return (
-                <div
-                  key={referral.code}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/25 px-3.5 py-3"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <code className="font-black">{referral.code}</code>
-                      <span className="text-[11px] font-black text-black/45">
-                        {referral.referrer ? copy.referralMember : copy.referralLegacy}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[11px] font-semibold text-black/50">
-                      {owner
-                        ? [owner.display_name, owner.email].filter(Boolean).join(" · ")
-                        : copy.referralNoOwner}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+            {filteredReferrals.map((referral) => (
+              <div
+                key={referral.code}
+                className="rounded-xl border border-black/25 px-3.5 py-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="font-black">{referral.code}</code>
                     <span
                       className={`rounded-full border border-[#050505] px-2 py-1 text-[11px] font-black ${
                         referral.active === true ? "bg-[#dcfce7]" : "bg-[#fee2e2]"
@@ -855,17 +839,27 @@ export default function AdminDiscountCodesClient() {
                     >
                       {referral.active === true ? copy.status.active : copy.status.disabled}
                     </span>
-                    <button
-                      type="button"
-                      className={secondaryButtonClass}
-                      onClick={() => void toggleReferral(referral)}
-                    >
-                      {referral.active === true ? copy.disable : copy.enable}
-                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={secondaryButtonClass}
+                    onClick={() => void toggleReferral(referral)}
+                  >
+                    {referral.active === true ? copy.disable : copy.enable}
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[12px] max-[520px]:grid-cols-1">
+                  <div>
+                    <strong>{copy.columns.condition}</strong><br />
+                    {copy.eligibility.firstPurchase}
+                  </div>
+                  <div>
+                    <strong>{copy.columns.discount}</strong><br />
+                    {formatLegacyDiscount(referral)}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </section>
