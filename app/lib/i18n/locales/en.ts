@@ -1116,6 +1116,8 @@ const en = {
       referralLegacy: "Legacy code",
       referralNoOwner: "No linked referrer",
       noDiscountValue: "No discount value configured",
+      datePlaceholder: "Not set",
+      clearDate: "Clear date",
       noLimit: "No limit",
       usage: "{used} used / {limit}",
       claimed: "{count} pending",
