@@ -64,6 +64,7 @@ interface PaymentResult {
     PCD_PAY_TOTAL?: string;
     PCD_PAY_WORK?: string;
     PCD_PAY_CODE?: string;
+    PCD_USER_DEFINE2?: string;
     [key: string]: string | undefined;
   };
 }
@@ -80,6 +81,7 @@ export default function PaymentResultClient() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [hasAttemptedProcessing, setHasAttemptedProcessing] = useState(false);
   const isParticipationPack = paymentResult?.productType === "participation_pack_purchase";
+  const isBillingMethodUpdate = paymentResult?.productType === "billing_method_update";
 
   // Prevent back navigation and double payment processing
   useEffect(() => {
@@ -151,10 +153,9 @@ export default function PaymentResultClient() {
   useEffect(() => {
     // Clear sensitive payment data immediately
     const clearPaymentData = () => {
-      sessionStorage.removeItem("paymentSessionInfo");
-      sessionStorage.removeItem("paypleCallbackResponse");
-
-      // Clear any payment-related localStorage
+      // Keep the Payple callback and session metadata until this page has verified the
+      // response. Clearing them on mount races the verification effect, especially when
+      // Payple returns through the browser callback rather than URL parameters.
       localStorage.removeItem("paymentInProgress");
       localStorage.removeItem("paymentAttempts");
     };
@@ -273,10 +274,34 @@ export default function PaymentResultClient() {
 
         // If payment failed, display the error immediately
         if (paymentParams.PCD_PAY_RST !== "success") {
+          let failedProductType: string | undefined;
+          try {
+            const meta = paymentParams.PCD_USER_DEFINE2
+              ? JSON.parse(paymentParams.PCD_USER_DEFINE2)
+              : null;
+            if (meta?.purpose === "billing_method_update") {
+              failedProductType = "billing_method_update";
+            }
+          } catch {
+            // Payple metadata is optional; a malformed value should not hide the failure.
+          }
+          if (!failedProductType) {
+            try {
+              const sessionInfo = JSON.parse(
+                sessionStorage.getItem("paymentSessionInfo") || "{}",
+              );
+              if (sessionInfo?.purpose === "billing_method_update") {
+                failedProductType = "billing_method_update";
+              }
+            } catch {
+              // Ignore stale session metadata.
+            }
+          }
           const failureResult = {
             success: false,
             message: paymentParams.PCD_PAY_MSG || "결제 승인이 실패했습니다.",
             errorCode: paymentParams.PCD_PAY_CODE || "unknown",
+            productType: failedProductType,
           };
 
           // Store failure result
@@ -368,10 +393,22 @@ export default function PaymentResultClient() {
         }
 
         // Store error result
+        let failedProductType: string | undefined;
+        try {
+          const sessionInfo = JSON.parse(
+            sessionStorage.getItem("paymentSessionInfo") || "{}",
+          );
+          if (sessionInfo?.purpose === "billing_method_update") {
+            failedProductType = "billing_method_update";
+          }
+        } catch {
+          // Ignore stale session metadata.
+        }
         const errorResult = {
           success: false,
           message: errorMsg,
           errorCode: err.code || "PROCESSING_ERROR",
+          productType: failedProductType,
         };
         sessionStorage.setItem("paymentResult", JSON.stringify(errorResult));
         setPaymentResult(errorResult);
@@ -389,9 +426,10 @@ export default function PaymentResultClient() {
     sessionStorage.removeItem("paymentResult");
     sessionStorage.removeItem("payment_result_refreshed");
     sessionStorage.removeItem("processedPayments");
+    sessionStorage.removeItem("paymentSessionInfo");
+    sessionStorage.removeItem("paypleCallbackResponse");
 
-    // Navigate to profile
-    router.push("/profile");
+    router.push(isBillingMethodUpdate ? "/profile?section=account" : "/profile");
   };
 
   const handleRetry = () => {
@@ -401,9 +439,10 @@ export default function PaymentResultClient() {
     sessionStorage.removeItem("payment_result_refreshed");
     sessionStorage.removeItem("rawPaymentParams");
     sessionStorage.removeItem("processedPayments");
+    sessionStorage.removeItem("paymentSessionInfo");
+    sessionStorage.removeItem("paypleCallbackResponse");
 
-    // Navigate to payment page
-    router.push("/payment");
+    router.push(isBillingMethodUpdate ? "/profile?section=account" : "/payment");
   };
 
   // Show warning if user tries to leave the page
@@ -456,14 +495,35 @@ export default function PaymentResultClient() {
 
           {paymentResult?.success ? (
             <>
-              <h1 className={titleClass}>{isParticipationPack ? "참여권 구매 완료" : "구독 등록 완료"}</h1>
+              <h1 className={titleClass}>
+                {isBillingMethodUpdate
+                  ? "결제수단 변경 완료"
+                  : isParticipationPack
+                    ? "참여권 구매 완료"
+                    : "구독 등록 완료"}
+              </h1>
               <p className={subtitleClass}>
-                {isParticipationPack
-                  ? `${paymentResult.creditsGranted ?? 5}회 참여권을 구매했습니다. 멤버십은 별도로 유지됩니다.`
-                  : "One Cup English 프리미엄 멤버십에 가입되었습니다"}
+                {isBillingMethodUpdate
+                  ? "새 카드가 다음 자동결제부터 사용됩니다. 현재 멤버십 기간은 그대로 유지됩니다."
+                  : isParticipationPack
+                    ? `${paymentResult.creditsGranted ?? 5}회 참여권을 구매했습니다. 멤버십은 별도로 유지됩니다.`
+                    : "One Cup English 프리미엄 멤버십에 가입되었습니다"}
               </p>
 
-              {isParticipationPack ? (
+              {isBillingMethodUpdate ? (
+                <div className={resultDetailsClass}>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>등록된 결제수단</span>
+                    <span className={detailValueClass}>
+                      {paymentResult.data?.PCD_PAY_CARDNAME || "새 카드"}
+                    </span>
+                  </div>
+                  <div className={detailRowClass}>
+                    <span className={detailLabelClass}>적용 시점</span>
+                    <span className={detailValueClass}>다음 자동결제부터</span>
+                  </div>
+                </div>
+              ) : isParticipationPack ? (
                 <div className={resultDetailsClass}>
                   <div className={detailRowClass}>
                     <span className={detailLabelClass}>현재 잔여 참여권</span>
@@ -522,7 +582,9 @@ export default function PaymentResultClient() {
             </>
           ) : (
             <>
-              <h1 className={titleClass}>구독 등록 실패</h1>
+              <h1 className={titleClass}>
+                {isBillingMethodUpdate ? "결제수단 변경 실패" : "구독 등록 실패"}
+              </h1>
               <p className={subtitleClass}>
                 {paymentResult?.message || "결제 처리 중 오류가 발생했습니다"}
               </p>
