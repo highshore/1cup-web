@@ -103,7 +103,7 @@ async function quoteReferral(uid: string, code: string, product: ProductRow) {
   const a = admin();
   const { data: referral, error } = await a
     .from("referral_codes")
-    .select("code, active, referrer")
+    .select("code, active, referrer, discount, type")
     .eq("code", normalized)
     .maybeSingle();
   if (error) throw new ApiError(error.message, 500, "referral-query-failed");
@@ -116,12 +116,38 @@ async function quoteReferral(uid: string, code: string, product: ProductRow) {
   if (await userHasPaidBefore(uid)) {
     return { valid: false, discountAmount: 0, finalAmount: Number(product.list_amount), message: "추천 코드는 첫 유료 구매에만 사용할 수 있습니다." };
   }
-  const discountAmount = Math.min(Number(product.referral_discount_amount || 0), Number(product.list_amount));
+
+  const { data: generatedOwner, error: generatedOwnerError } = await a
+    .from("users")
+    .select("uid")
+    .eq("referral_code", referral.code)
+    .limit(1)
+    .maybeSingle();
+  if (generatedOwnerError) {
+    throw new ApiError(generatedOwnerError.message, 500, "referral-owner-query-failed");
+  }
+
+  const listAmount = Number(product.list_amount);
+  let discountAmount: number;
+  let message: string;
+  if (generatedOwner) {
+    discountAmount = Math.min(Number(product.referral_discount_amount || 0), listAmount);
+    message = "첫 구매 추천 할인이 적용되었습니다.";
+  } else {
+    const configuredDiscount = Math.max(0, Number(referral.discount || 0));
+    const rawDiscount =
+      referral.type === "percent"
+        ? Math.floor(listAmount * (configuredDiscount / 100))
+        : configuredDiscount;
+    discountAmount = Math.min(rawDiscount, listAmount);
+    message = "운영 할인 코드가 적용되었습니다.";
+  }
+
   return {
     valid: true,
     discountAmount,
-    finalAmount: Number(product.list_amount) - discountAmount,
-    message: "첫 구매 추천 할인이 적용되었습니다.",
+    finalAmount: listAmount - discountAmount,
+    message,
   };
 }
 

@@ -1116,6 +1116,8 @@ const ko = {
       referralLegacy: "기존 코드",
       referralNoOwner: "연결된 추천인 없음",
       noDiscountValue: "설정된 할인값 없음",
+      datePlaceholder: "선택 안 함",
+      clearDate: "날짜 지우기",
       noLimit: "무제한",
       usage: "{used}회 사용 / {limit}",
       claimed: "{count}건 결제 진행 중",
