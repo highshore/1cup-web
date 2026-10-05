@@ -366,6 +366,160 @@ async function createPaymentWindow(uid: string, body: Record<string, unknown>) {
   };
 }
 
+
+type BillingStatusResult = {
+  success: true;
+  hasActiveSubscription: boolean;
+  billingCancelled: boolean;
+  subscriptionEndDate: string | null;
+  hasBillingKey: boolean;
+  needsAttention: boolean;
+  consecutiveFailures: number;
+  lastFailure: {
+    code: string | null;
+    message: string | null;
+    failedAt: string | null;
+  } | null;
+  cardName: string | null;
+};
+
+async function billingStatus(uid: string): Promise<BillingStatusResult> {
+  const a = admin();
+  const { data: user, error: userError } = await a
+    .from("users")
+    .select("has_active_subscription, billing_cancelled, subscription_end_date, billing_key")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (userError) throw new ApiError(userError.message, 500, "user-query-failed");
+  if (!user) throw new ApiError("회원 정보를 찾을 수 없습니다.", 404, "user-not-found");
+
+  const { data: orders, error: orderError } = await a
+    .from("payment_orders")
+    .select("status, type, error_code, error_message, failed_at, completed_at, payment_result, created_at")
+    .eq("user_id", uid)
+    .in("type", ["subscription_recurring", "subscription_initial_payment"])
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (orderError) throw new ApiError(orderError.message, 500, "billing-status-query-failed");
+
+  const rows = orders ?? [];
+  const latestRecurring = rows.find((row: any) => row.type === "subscription_recurring") as any | undefined;
+  let consecutiveFailures = 0;
+  for (const row of rows) {
+    if (row.type !== "subscription_recurring") continue;
+    if (row.status === "failed") {
+      consecutiveFailures += 1;
+      continue;
+    }
+    if (row.status === "completed") break;
+  }
+
+  const latestSuccessful = rows.find((row: any) => row.status === "completed") as any | undefined;
+  const cardName =
+    typeof latestSuccessful?.payment_result?.PCD_PAY_CARDNAME === "string"
+      ? latestSuccessful.payment_result.PCD_PAY_CARDNAME
+      : null;
+  const hasBillingKey = typeof user.billing_key === "string" && user.billing_key.length > 0;
+  const unresolvedFailure = latestRecurring?.status === "failed";
+
+  return {
+    success: true,
+    hasActiveSubscription: user.has_active_subscription === true,
+    billingCancelled: user.billing_cancelled === true,
+    subscriptionEndDate: user.subscription_end_date ?? null,
+    hasBillingKey,
+    needsAttention:
+      user.has_active_subscription === true &&
+      user.billing_cancelled !== true &&
+      (!hasBillingKey || unresolvedFailure),
+    consecutiveFailures,
+    lastFailure: unresolvedFailure
+      ? {
+          code: latestRecurring.error_code ?? null,
+          message: latestRecurring.error_message ?? null,
+          failedAt: latestRecurring.failed_at ?? null,
+        }
+      : null,
+    cardName,
+  };
+}
+
+async function createBillingMethodUpdateWindow(uid: string, body: Record<string, unknown>) {
+  const a = admin();
+  const userEmail = typeof body.userEmail === "string" ? body.userEmail.trim() : "";
+  const userName = typeof body.userName === "string" ? body.userName.trim() : "";
+  const { data: user, error: userError } = await a
+    .from("users")
+    .select("uid, display_name, phone, has_active_subscription, billing_cancelled, plan_price, pricing_version, location")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (userError) throw new ApiError(userError.message, 500, "user-query-failed");
+  if (!user) throw new ApiError("회원 정보를 찾을 수 없습니다.", 404, "user-not-found");
+  if (!user.has_active_subscription) {
+    throw new ApiError(
+      "활성 멤버십이 없습니다. 멤버십을 다시 시작하면서 새 카드를 등록해주세요.",
+      409,
+      "no-active-membership",
+    );
+  }
+
+  const now = new Date();
+  const ymd = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}`;
+  const orderNumber = `OCECARD${ymd}${Math.floor(Math.random() * 1000000).toString().padStart(6, "0")}`;
+  const phone = krPhone((user.phone as string | null) || "");
+  const validPhone = /^01\d{8,9}$/.test(phone) ? phone : "";
+  const displayName = userName || String(user.display_name || "구독자");
+  const planPriceRaw = Number(user.plan_price);
+  const planPrice = Number.isFinite(planPriceRaw) && planPriceRaw > 0 ? planPriceRaw : 4700;
+  const region = user.location === "anam" || user.location === "yeouido" ? user.location : null;
+
+  // Payple documents AUTH as the card-registration-only flow. It returns a new billing
+  // key without approving a charge. The actual recurring charge remains the scheduler's
+  // responsibility, so updating a card never extends the paid period or double-charges.
+  const paymentParams = {
+    clientKey: PAYPLE_CLIENT_KEY,
+    PCD_PAY_TYPE: "card",
+    PCD_PAY_WORK: "AUTH",
+    PCD_CARD_VER: "01",
+    PCD_PAY_GOODS: "One Cup English 정기결제 카드 변경",
+    PCD_PAY_TOTAL: planPrice,
+    PCD_SIMPLE_FLAG: "Y",
+    PCD_PAY_OID: orderNumber,
+    PCD_PAYER_NO: await generateNumericPayerNo(uid),
+    PCD_PAYER_NAME: displayName,
+    PCD_PAYER_EMAIL: userEmail,
+    PCD_PAYER_HP: validPhone,
+    PCD_RST_URL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/checkout/callback`,
+    PCD_PAYER_AUTHTYPE: "sms",
+    PCD_USER_DEFINE1: uid,
+    PCD_USER_DEFINE2: JSON.stringify({ purpose: "billing_method_update" }),
+    PCD_SIMPLE_FNAME: "payment-result",
+  };
+
+  const { error: insertError } = await a.from("payment_orders").insert({
+    order_number: orderNumber,
+    user_id: uid,
+    amount: planPrice,
+    list_amount: planPrice,
+    discount_amount: 0,
+    status: "pending_auth",
+    type: "billing_method_update",
+    product_id: "membership_30d",
+    region,
+    pricing_version: user.pricing_version || "billing_method_update_v1",
+    order_date: now.toISOString(),
+    selected_categories: { purpose: "billing_method_update" },
+  });
+  if (insertError) throw new ApiError(insertError.message, 500, "order-create-failed");
+
+  return {
+    success: true,
+    paymentParams,
+    orderNumber,
+    billingCancelled: user.billing_cancelled === true,
+  };
+}
+
 async function settleSuccessfulCharge(uid: string, order: any, payData: Record<string, any>, billingKey: string) {
   const a = admin();
   if (order.product_id === "participation_pack_5") {
@@ -447,13 +601,62 @@ async function verifyPayment(uid: string, body: Record<string, unknown>) {
     .select("*")
     .eq("order_number", authorizationOrderNumber)
     .eq("user_id", uid)
-    .eq("type", "checkout_auth")
     .maybeSingle();
   if (orderError) throw new ApiError(orderError.message, 500, "order-query-failed");
   if (!order) throw new ApiError("결제 주문을 찾을 수 없습니다.", 404, "order-not-found");
+  if (order.type !== "checkout_auth" && order.type !== "billing_method_update") {
+    throw new ApiError("지원하지 않는 결제 주문입니다.", 409, "invalid-order-type");
+  }
 
   const billingKey = String(paymentParams.PCD_PAYER_ID || paymentParams.PCD_CARD_BILLKEY || order.billing_key_used || "");
   if (!billingKey) throw new ApiError("결제용 빌링키를 확인할 수 없습니다.", 500, "missing-billing-key");
+
+  if (order.type === "billing_method_update") {
+    if (order.status === "completed") {
+      return {
+        success: true,
+        message: "결제수단이 변경되었습니다.",
+        productType: "billing_method_update",
+        data: order.payment_result || paymentParams,
+      };
+    }
+    if (order.status !== "pending_auth") {
+      throw new ApiError("이 카드 변경 요청은 더 이상 사용할 수 없습니다.", 409, "invalid-order-state");
+    }
+
+    const { error: userUpdateError } = await a
+      .from("users")
+      .update({
+        billing_key: billingKey,
+        payment_method: "card",
+      })
+      .eq("uid", uid);
+    if (userUpdateError) throw new ApiError(userUpdateError.message, 500, "billing-key-update-failed");
+
+    const { error: orderUpdateError } = await a
+      .from("payment_orders")
+      .update({
+        status: "completed",
+        billing_key_used: billingKey,
+        payment_method: "card",
+        payment_result: paymentParams,
+        payple_response: paymentParams,
+        error_code: null,
+        error_message: null,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("order_number", order.order_number)
+      .eq("user_id", uid);
+    if (orderUpdateError) throw new ApiError(orderUpdateError.message, 500, "billing-update-order-failed");
+
+    return {
+      success: true,
+      message: "결제수단이 변경되었습니다. 다음 자동결제부터 새 카드가 사용됩니다.",
+      productType: "billing_method_update",
+      data: paymentParams,
+    };
+  }
 
   if (order.status === "completed") {
     if (order.product_id === "participation_pack_5") {
@@ -726,6 +929,7 @@ const CALLBACK_PASSTHROUGH_FIELDS = new Set([
   "PCD_CARD_BILLKEY",
   "PCD_REGULER_FLAG",
   "PCD_USER_DEFINE1",
+  "PCD_USER_DEFINE2",
 ]);
 
 // Payple's own values are short; this only bounds how long a forged redirect can get.
@@ -806,6 +1010,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     switch (action) {
       case "quote": return json(req, await quote(uid, body));
       case "window": return json(req, await createPaymentWindow(uid, body));
+      case "billing-status": return json(req, await billingStatus(uid));
+      case "billing-method-window": return json(req, await createBillingMethodUpdateWindow(uid, body));
       case "verify": return json(req, await verifyPayment(uid, body));
       case "report-failure": return json(req, await reportFailure(uid, body));
       case "participation-refund-quote": return json(req, await participationRefundQuote(uid, body));
