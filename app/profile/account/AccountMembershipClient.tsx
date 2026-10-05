@@ -865,7 +865,7 @@ export function AccountMembershipPanel({
       {manageOpen && (
         <ManageMembershipModal
           status={membershipStatus}
-          nextBilling={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)}
+          nextBilling={nextBillingValue}
           billingCancelled={shell.summary.billingCancelled}
           onClose={() => setManageOpen(false)}
           onStop={() => { setManageOpen(false); setSurvey("stop"); }}
