@@ -103,6 +103,58 @@ function endOfDate(value: string): string | null {
   return value ? new Date(`${value}T23:59:59.999`).toISOString() : null;
 }
 
+function DateField({
+  label,
+  value,
+  placeholder,
+  clearLabel,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  clearLabel: string;
+  onChange: (value: string) => void;
+}) {
+  const displayValue = value ? value.replaceAll("-", ".") : placeholder;
+
+  return (
+    <div className={labelClass}>
+      <span>{label}</span>
+      <div className="relative h-[52px] w-full overflow-hidden rounded-xl border-2 border-[#050505] bg-white">
+        <span
+          className={`pointer-events-none flex h-full items-center px-3.5 pr-12 text-[14px] font-semibold ${
+            value ? "text-[#050505]" : "text-black/45"
+          }`}
+        >
+          {displayValue}
+        </span>
+        <input
+          type="date"
+          className="absolute inset-0 z-10 m-0 h-full min-h-0 w-full cursor-pointer opacity-0"
+          value={value}
+          aria-label={label}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {value ? (
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-[#f5f5f5] text-[18px] font-black leading-none text-black/60"
+            aria-label={clearLabel}
+            onClick={() => onChange("")}
+          >
+            ×
+          </button>
+        ) : (
+          <span className="pointer-events-none absolute right-4 top-1/2 z-20 -translate-y-1/2 text-[14px] font-black text-black/40">
+            ▾
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDiscountCodesClient() {
   const router = useRouter();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
@@ -112,6 +164,7 @@ export default function AdminDiscountCodesClient() {
   const [codes, setCodes] = useState<DiscountCodeRow[]>([]);
   const [redemptions, setRedemptions] = useState<RedemptionRow[]>([]);
   const [referrals, setReferrals] = useState<ReferralCodeRow[]>([]);
+  const [memberGeneratedReferralCodes, setMemberGeneratedReferralCodes] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,17 +175,18 @@ export default function AdminDiscountCodesClient() {
   const load = async () => {
     setLoading(true);
     setNotice(null);
-    const [codeResult, redemptionResult, referralResult] = await Promise.all([
+    const [codeResult, redemptionResult, referralResult, memberCodeResult] = await Promise.all([
       supabase.from("discount_codes").select("*").order("created_at", { ascending: false }),
       supabase.from("discount_code_redemptions").select("discount_code,status"),
       supabase
         .from("referral_codes")
         .select("code,active,discount,type,referrer,created_at")
         .order("created_at", { ascending: false }),
+      supabase.from("users").select("referral_code").not("referral_code", "is", null),
     ]);
 
     const firstError =
-      codeResult.error || redemptionResult.error || referralResult.error;
+      codeResult.error || redemptionResult.error || referralResult.error || memberCodeResult.error;
     if (firstError) {
       console.error("discount code admin load failed", firstError);
       setNotice({ text: copy.loadFailed, error: true });
@@ -141,6 +195,11 @@ export default function AdminDiscountCodesClient() {
     setCodes((codeResult.data ?? []) as DiscountCodeRow[]);
     setRedemptions((redemptionResult.data ?? []) as RedemptionRow[]);
     setReferrals((referralResult.data ?? []) as ReferralCodeRow[]);
+    setMemberGeneratedReferralCodes(
+      (memberCodeResult.data ?? [])
+        .map((row) => String(row.referral_code || "").trim())
+        .filter(Boolean),
+    );
     setLoading(false);
   };
 
@@ -179,10 +238,14 @@ export default function AdminDiscountCodesClient() {
     );
   }, [codes, search]);
 
-  const operationalLegacyCodes = useMemo(
-    () => referrals.filter((code) => !code.referrer),
-    [referrals],
-  );
+  const operationalLegacyCodes = useMemo(() => {
+    const memberCodes = new Set(memberGeneratedReferralCodes.map((code) => code.toLowerCase()));
+    const managedCodes = new Set(codes.map((code) => code.code.toLowerCase()));
+    return referrals.filter((code) => {
+      const normalized = code.code.toLowerCase();
+      return !memberCodes.has(normalized) && !managedCodes.has(normalized);
+    });
+  }, [codes, memberGeneratedReferralCodes, referrals]);
 
   const filteredReferrals = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -631,28 +694,24 @@ export default function AdminDiscountCodesClient() {
         </div>
 
         <div className="mt-5 grid grid-cols-4 gap-4 max-[980px]:grid-cols-2 max-[560px]:grid-cols-1">
-          <label className={labelClass}>
-            {copy.fields.startsAt}
-            <input
-              type="date"
-              className={inputClass}
-              value={form.startsAt}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, startsAt: event.target.value }))
-              }
-            />
-          </label>
-          <label className={labelClass}>
-            {copy.fields.endsAt}
-            <input
-              type="date"
-              className={inputClass}
-              value={form.endsAt}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, endsAt: event.target.value }))
-              }
-            />
-          </label>
+          <DateField
+            label={copy.fields.startsAt}
+            value={form.startsAt}
+            placeholder={copy.datePlaceholder}
+            clearLabel={copy.clearDate}
+            onChange={(value) =>
+              setForm((current) => ({ ...current, startsAt: value }))
+            }
+          />
+          <DateField
+            label={copy.fields.endsAt}
+            value={form.endsAt}
+            placeholder={copy.datePlaceholder}
+            clearLabel={copy.clearDate}
+            onChange={(value) =>
+              setForm((current) => ({ ...current, endsAt: value }))
+            }
+          />
           <label className={labelClass}>
             {copy.fields.maxTotal}
             <input
