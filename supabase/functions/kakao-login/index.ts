@@ -149,7 +149,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return json(req, { error: "internal", message: "Failed to fetch Kakao user info." }, 502);
     }
     kakaoUserInfo = await res.json();
-    console.log("Kakao raw user info for auth user", authId, JSON.stringify(kakaoUserInfo));
   } catch (e) {
     console.error("Error fetching Kakao user info:", e);
     return json(req, { error: "internal", message: "Failed to fetch Kakao user info." }, 502);
@@ -162,6 +161,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
       : null;
   if (!kakaoSub) {
     return json(req, { error: "internal", message: "Kakao profile did not include an id." }, 502);
+  }
+
+  // The Kakao access token in the request body must belong to the SAME Kakao
+  // identity as the authenticated Supabase session. Without this binding, the
+  // reconciliation endpoint would be accepting two independent credentials and
+  // could merge based on whichever Kakao token the caller supplied.
+  const kakaoIdentity = authUser.identities?.find((identity) => identity.provider === "kakao");
+  const identityProviderId =
+    kakaoIdentity && typeof (kakaoIdentity as { provider_id?: unknown }).provider_id === "string"
+      ? String((kakaoIdentity as { provider_id: string }).provider_id)
+      : kakaoIdentity && typeof kakaoIdentity.identity_data?.sub === "string"
+        ? String(kakaoIdentity.identity_data.sub)
+        : null;
+
+  if (!identityProviderId || identityProviderId !== kakaoSub) {
+    console.warn("Rejected Kakao reconciliation with mismatched identity", {
+      authId,
+      hasKakaoIdentity: Boolean(kakaoIdentity),
+    });
+    return json(
+      req,
+      { error: "forbidden", message: "Kakao credential does not match the signed-in account." },
+      403,
+    );
   }
 
   // --- 4. Parse profile fields (faithful to the original) --------------------
