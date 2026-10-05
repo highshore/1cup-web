@@ -78,6 +78,33 @@ const secondaryButtonClass =
 const modalClass =
   "w-full max-w-[540px] border-2 border-[#050505] bg-white p-5 shadow-[6px_6px_0_rgba(5,5,5,0.92)] min-[640px]:rounded-[18px] min-[640px]:p-6";
 
+const PAYPLE_HOST = (process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr").replace(/\/+$/, "");
+const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
+
+type BillingStatusResult = {
+  success: boolean;
+  hasActiveSubscription: boolean;
+  billingCancelled: boolean;
+  subscriptionEndDate: string | null;
+  hasBillingKey: boolean;
+  needsAttention: boolean;
+  consecutiveFailures: number;
+  lastFailure: {
+    code: string | null;
+    message: string | null;
+    failedAt: string | null;
+  } | null;
+  cardName: string | null;
+};
+
+declare global {
+  interface Window {
+    PaypleCpayAuthCheck?: (paymentParams: Record<string, unknown>) => void;
+    $?: unknown;
+    PaypleCpayCallback?: Array<(response: Record<string, any>) => boolean>;
+  }
+}
+
 function interpolate(template: string, values: Record<string, string | number>) {
   return Object.entries(values).reduce(
     (result, [key, value]) => result.replace(`{${key}}`, String(value)),
@@ -371,6 +398,8 @@ export function AccountMembershipPanel({
   const [manageOpen, setManageOpen] = useState(false);
   const [survey, setSurvey] = useState<"stop" | "refund" | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [billingStatus, setBillingStatus] = useState<BillingStatusResult | null>(null);
+  const [changingPaymentMethod, setChangingPaymentMethod] = useState(false);
 
   useEffect(() => {
     if (!shell.currentUser) return;
@@ -406,6 +435,69 @@ export function AccountMembershipPanel({
     };
   }, [shell.currentUser?.uid]);
 
+
+  useEffect(() => {
+    if (!shell.currentUser) return;
+    let active = true;
+    void invokeFunction<BillingStatusResult>("checkout", { action: "billing-status" })
+      .then((result) => {
+        if (active) setBillingStatus(result);
+      })
+      .catch((billingError) => {
+        console.error("Unable to load billing status:", billingError);
+      });
+    return () => {
+      active = false;
+    };
+  }, [shell.currentUser?.uid, shell.summary.subscriptionEndDate?.getTime()]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.PaypleCpayCallback = window.PaypleCpayCallback || [];
+
+    const callback = (response: Record<string, any>) => {
+      sessionStorage.setItem("paypleCallbackResponse", JSON.stringify(response));
+      window.location.href = "/payment/result";
+      return true;
+    };
+    window.PaypleCpayCallback.push(callback);
+
+    const appendPayple = () => {
+      if (document.querySelector(`script[src="${PAYPLE_SDK_SRC}"]`)) return;
+      const script = document.createElement("script");
+      script.src = PAYPLE_SDK_SRC;
+      script.async = true;
+      document.body.appendChild(script);
+    };
+
+    if (!window.$) {
+      const existing = document.querySelector(
+        'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]',
+      ) as HTMLScriptElement | null;
+      if (existing) {
+        if ((existing as any).dataset.loaded === "true") appendPayple();
+        else existing.addEventListener("load", appendPayple, { once: true });
+      } else {
+        const jquery = document.createElement("script");
+        jquery.src = "https://code.jquery.com/jquery-3.6.0.min.js";
+        jquery.async = true;
+        jquery.onload = () => {
+          jquery.dataset.loaded = "true";
+          appendPayple();
+        };
+        document.body.appendChild(jquery);
+      }
+    } else {
+      appendPayple();
+    }
+
+    return () => {
+      window.PaypleCpayCallback = (window.PaypleCpayCallback || []).filter(
+        (item) => item !== callback,
+      );
+    };
+  }, []);
+
   const nextBilling = useMemo(
     () => shell.summary.hasActiveSubscription
       ? nextBillingDate(shell.summary.subscriptionStartDate, shell.summary.billingCancelled)
@@ -419,15 +511,18 @@ export function AccountMembershipPanel({
   // Only leaders have a separately managed membership. Admins use normal paid membership and credit controls.
   const managedMembership = shell.summary.accountStatus === "leader";
   const membershipStatus = shell.membershipActive ? t.profile.active : t.profile.inactive;
+  const billingIssue = Boolean(billingStatus?.needsAttention);
   const membershipBadge = managedMembership
     ? t.profile.managed
     : !shell.summary.hasActiveSubscription
       ? t.profile.inactive
       : shell.summary.billingCancelled
         ? t.profile.billingStopped
-        : daysLeft !== null
-          ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
-          : membershipStatus;
+        : billingIssue
+          ? t.profile.billingAttention
+          : daysLeft !== null
+            ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
+            : membershipStatus;
   const membershipNote = managedMembership
     ? t.profile.leaderManagedNote
     : !shell.summary.hasActiveSubscription
@@ -462,6 +557,54 @@ export function AccountMembershipPanel({
       console.error("Identity linking failed:", linkError);
       shell.setError(locale === "ko" ? "카카오 계정 연결에 실패했습니다. 잠시 후 다시 시도해주세요." : "We couldn’t connect your Kakao account. Please try again shortly.");
       setLinkingIdentity(false);
+    }
+  };
+
+
+  const changePaymentMethod = async () => {
+    if (!shell.currentUser || changingPaymentMethod) return;
+    setChangingPaymentMethod(true);
+    shell.setError(null);
+    shell.setNotice(null);
+    try {
+      sessionStorage.removeItem("paymentProcessed");
+      sessionStorage.removeItem("paymentResult");
+      sessionStorage.removeItem("payment_result_refreshed");
+      sessionStorage.removeItem("processedPayments");
+      sessionStorage.removeItem("paypleCallbackResponse");
+
+      const result = await invokeFunction<any>("checkout", {
+        action: "billing-method-window",
+        userId: shell.currentUser.uid,
+        userEmail: shell.currentUser.email || "",
+        userName: shell.currentUser.displayName || "사용자",
+      });
+      if (!result?.success || !result?.paymentParams) {
+        throw new Error(result?.message || t.profile.paymentMethodUpdateFailed);
+      }
+      if (typeof window.PaypleCpayAuthCheck !== "function") {
+        throw new Error(t.profile.paymentModuleLoading);
+      }
+
+      sessionStorage.setItem(
+        "paymentSessionInfo",
+        JSON.stringify({
+          userId: shell.currentUser.uid,
+          purpose: "billing_method_update",
+          orderNumber: result.orderNumber,
+          timestamp: Date.now(),
+        }),
+      );
+      window.PaypleCpayAuthCheck(result.paymentParams);
+    } catch (paymentMethodError) {
+      console.error("Payment method update failed:", paymentMethodError);
+      shell.setError(
+        paymentMethodError instanceof Error
+          ? paymentMethodError.message
+          : t.profile.paymentMethodUpdateFailed,
+      );
+    } finally {
+      setChangingPaymentMethod(false);
     }
   };
 
@@ -604,7 +747,51 @@ export function AccountMembershipPanel({
               <>
                 <Row icon={CreditCardIcon} label={t.profile.lastPayment} value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
                 <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)} />
+                <Row
+                  icon={CreditCardIcon}
+                  label={t.profile.paymentMethod}
+                  value={
+                    changingPaymentMethod
+                      ? t.profile.changePaymentMethodLoading
+                      : billingStatus?.cardName || t.profile.registeredCard
+                  }
+                  onClick={changingPaymentMethod ? undefined : () => void changePaymentMethod()}
+                />
               </>
+            )}
+
+            {billingIssue && (
+              <div className="mt-4 rounded-[12px] border-2 border-[#b42331] bg-[#fff1f2] p-4 text-[#050505] shadow-[2px_2px_0_rgba(180,35,49,0.22)]">
+                <div className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-none text-[#b42331]" />
+                  <div className="min-w-0">
+                    <strong className="block text-[14px] font-extrabold text-[#b42331]">
+                      {t.profile.billingProblemTitle}
+                    </strong>
+                    <p className="mb-0 mt-1.5 text-[13px] leading-[1.55] text-[#475569]">
+                      {interpolate(t.profile.billingProblemBody, {
+                        count: billingStatus?.consecutiveFailures ?? 1,
+                      })}
+                    </p>
+                    {billingStatus?.lastFailure?.message && (
+                      <p className="mb-0 mt-2 text-[12px] font-semibold leading-[1.5] text-[#7f1d1d]">
+                        {billingStatus.lastFailure.message}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void changePaymentMethod()}
+                      disabled={changingPaymentMethod}
+                      className={`${primaryButtonClass} mt-3`}
+                    >
+                      <CreditCardIcon />
+                      {changingPaymentMethod
+                        ? t.profile.changePaymentMethodLoading
+                        : t.profile.changePaymentMethod}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled && shell.summary.hasActiveSubscription ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
