@@ -27,18 +27,15 @@
 //
 // WHY THIS IS STILL NEEDED WITH THE NATIVE PROVIDER
 // ---------------------------------------------------------------------------
-// handle_new_user() already matches a new auth user against public.users by
-// kakao_id, phone and email. What it cannot do is match on a phone number it never
-// receives: Kakao's OIDC id_token carries `phone_verified` but not the number
-// itself — that lives only in kapi.kakao.com's `kakao_account.phone_number`, even
-// when the consent item is set to 필수 동의. Users who signed up by phone and have
-// no kakao_id on file are therefore invisible to the trigger, and a Kakao sign-in
-// leaves them with a duplicate profile.
+// handle_new_user() is intentionally create-only: a new auth principal is first
+// mapped to its own fresh application profile and never auto-merged from signup
+// metadata. This hook is the proof-bearing Kakao path: it fetches the Kakao profile
+// using the OAuth access token, verifies that token belongs to the same Kakao
+// identity as the authenticated Supabase session, then finds a legacy profile by
+// the provider-owned Kakao id or phone number.
 //
-// This hook closes that gap: fetch the real number with the caller's Kakao access
-// token, find the profile by kakao_id (exact) or phone, and point this auth user's
-// identity link at it. It ADDS a row to user_auth_identities rather than repointing
-// users.auth_id, so the person's other login method keeps working; a stub profile
+// Once proof is established, this hook points this auth user's identity link at the
+// existing profile. The person's other login method keeps working; a stub profile
 // the trigger just created is removed only when nothing references it.
 //
 // public.users columns used:
@@ -149,7 +146,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return json(req, { error: "internal", message: "Failed to fetch Kakao user info." }, 502);
     }
     kakaoUserInfo = await res.json();
-    console.log("Kakao raw user info for auth user", authId, JSON.stringify(kakaoUserInfo));
   } catch (e) {
     console.error("Error fetching Kakao user info:", e);
     return json(req, { error: "internal", message: "Failed to fetch Kakao user info." }, 502);
@@ -162,6 +158,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
       : null;
   if (!kakaoSub) {
     return json(req, { error: "internal", message: "Kakao profile did not include an id." }, 502);
+  }
+
+  // The Kakao access token in the request body must belong to the SAME Kakao
+  // identity as the authenticated Supabase session. Without this binding, the
+  // reconciliation endpoint would be accepting two independent credentials and
+  // could merge based on whichever Kakao token the caller supplied.
+  const kakaoIdentity = authUser.identities?.find((identity) => identity.provider === "kakao");
+  const identityProviderId =
+    kakaoIdentity && typeof (kakaoIdentity as { provider_id?: unknown }).provider_id === "string"
+      ? String((kakaoIdentity as { provider_id: string }).provider_id)
+      : kakaoIdentity && typeof kakaoIdentity.identity_data?.sub === "string"
+        ? String(kakaoIdentity.identity_data.sub)
+        : null;
+
+  if (!identityProviderId || identityProviderId !== kakaoSub) {
+    console.warn("Rejected Kakao reconciliation with mismatched identity", {
+      authId,
+      hasKakaoIdentity: Boolean(kakaoIdentity),
+    });
+    return json(
+      req,
+      { error: "forbidden", message: "Kakao credential does not match the signed-in account." },
+      403,
+    );
   }
 
   // --- 4. Parse profile fields (faithful to the original) --------------------
@@ -177,18 +197,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const normalizedKakaoPhoneE164 = normalizeToE164(kakaoPhoneNumberRaw);
   const normalizedKakaoPhone = toLocalPhone(normalizedKakaoPhoneE164); // 010… for storage
-  console.log("normalizePhoneNumber - input:", kakaoPhoneNumberRaw, "output:", normalizedKakaoPhone);
 
   const nowIso = new Date().toISOString();
 
   // ===========================================================================
   // MERGE — reconcile this Kakao auth user with the person's existing profile.
   //
-  // The native provider already ran handle_new_user(), which matched on kakao_id /
-  // phone / email and linked or created a row. It cannot match a phone the trigger
-  // never saw, though: Kakao's OIDC id_token carries no phone number, only
-  // `phone_verified`. That is why this hook exists — it reads the real number from
-  // kapi.kakao.com and retries the match with it.
+  // The create-only auth trigger has already created a fresh self-mapped profile.
+  // This hook is the only automatic legacy merge path for Kakao, and it runs only
+  // after binding the provider access token to this authenticated Kakao identity.
   // ===========================================================================
 
   // Where this auth user currently points (the trigger always leaves a link).
@@ -201,11 +218,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // The profile this person really owns: kakao_id first (exact), then phone.
   //
-  // Both lookups must EXCLUDE the row this session currently points at. When the
-  // trigger cannot match anyone it creates a fresh row and stamps the kakao_id on it,
-  // so an unfiltered kakao_id search finds that brand-new row, decides the session is
-  // already correct, and never tries the phone — which is the only identifier that can
-  // reach the real profile. That is exactly the duplicate this hook exists to prevent.
+  // Both lookups exclude the fresh self-mapped row this session currently points at,
+  // so only a pre-existing profile can be selected as the merge target.
   //
   // No `auth_id is null` filter either: every migrated row already has an auth_id from
   // the seeded phone identity, so requiring null made the phone path unreachable for
