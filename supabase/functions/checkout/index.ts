@@ -125,6 +125,51 @@ async function quoteReferral(uid: string, code: string, product: ProductRow) {
   };
 }
 
+async function quoteManagedDiscount(
+  uid: string,
+  code: string,
+  productId: ProductId,
+  region: Region,
+  product: ProductRow,
+) {
+  const { data, error } = await admin().rpc("quote_checkout_discount_code", {
+    p_user_id: uid,
+    p_code: code,
+    p_product_id: productId,
+    p_region: region,
+    p_list_amount: Number(product.list_amount),
+  });
+  if (error) throw new ApiError(error.message, 500, "discount-code-query-failed");
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.found) return null;
+  return {
+    valid: Boolean(row.valid),
+    discountAmount: Number(row.discount_amount || 0),
+    finalAmount: Number(row.final_amount ?? product.list_amount),
+    message: String(row.message || "할인 코드를 사용할 수 없습니다."),
+    kind: "discount" as const,
+    code: String(row.code || code).trim(),
+  };
+}
+
+async function quoteCheckoutCode(
+  uid: string,
+  code: string,
+  productId: ProductId,
+  region: Region,
+  product: ProductRow,
+) {
+  const managed = await quoteManagedDiscount(uid, code, productId, region, product);
+  if (managed) return managed;
+
+  const referral = await quoteReferral(uid, code, product);
+  return {
+    ...referral,
+    kind: "referral" as const,
+    code: code.trim(),
+  };
+}
+
 async function getPaypleAuthToken(isCancel = false) {
   const response = await fetch(PAYPLE_AUTH_URL, {
     method: "POST",
@@ -193,14 +238,14 @@ async function quote(uid: string, body: Record<string, unknown>) {
       message: "일반 가격입니다.",
     };
   }
-  const referral = await quoteReferral(uid, code, product);
+  const codeQuote = await quoteCheckoutCode(uid, code, productId, region, product);
   return {
     success: true,
-    validReferral: referral.valid,
+    validReferral: codeQuote.valid,
     listAmount: Number(product.list_amount),
-    discountAmount: referral.discountAmount,
-    finalAmount: referral.finalAmount,
-    message: referral.message,
+    discountAmount: codeQuote.discountAmount,
+    finalAmount: codeQuote.finalAmount,
+    message: codeQuote.message,
   };
 }
 
@@ -289,12 +334,17 @@ async function createPaymentWindow(uid: string, body: Record<string, unknown>) {
   let discountAmount = 0;
   let finalAmount = Number(product.list_amount);
   let appliedReferralCode: string | null = null;
+  let appliedDiscountCode: string | null = null;
   if (referralCode) {
-    const referral = await quoteReferral(uid, referralCode, product);
-    if (!referral.valid) throw new ApiError(referral.message, 400, "invalid-referral");
-    discountAmount = referral.discountAmount;
-    finalAmount = referral.finalAmount;
-    appliedReferralCode = referralCode;
+    const codeQuote = await quoteCheckoutCode(uid, referralCode, productId, region, product);
+    if (!codeQuote.valid) throw new ApiError(codeQuote.message, 400, "invalid-discount-code");
+    discountAmount = codeQuote.discountAmount;
+    finalAmount = codeQuote.finalAmount;
+    if (codeQuote.kind === "discount") {
+      appliedDiscountCode = codeQuote.code;
+    } else {
+      appliedReferralCode = codeQuote.code;
+    }
   }
 
   const now = new Date();
@@ -343,6 +393,7 @@ async function createPaymentWindow(uid: string, body: Record<string, unknown>) {
     region,
     pricing_version: "regional_v2",
     referral_code: appliedReferralCode,
+    discount_code: appliedDiscountCode,
     order_date: now.toISOString(),
     credit_quantity: productId === "participation_pack_5" ? Number(product.credit_quantity || 5) : null,
     credit_valid_until: creditValidUntil,
@@ -764,7 +815,18 @@ async function verifyPayment(uid: string, body: Record<string, unknown>) {
     throw new ApiError("이 주문은 더 이상 결제할 수 없습니다.", 409, "invalid-order-state");
   }
 
-  if (order.referral_code) {
+  if (order.discount_code) {
+    const { error: discountClaimError } = await a.rpc("claim_checkout_discount_code", {
+      p_user_id: uid,
+      p_code: order.discount_code,
+      p_authorization_order_number: order.order_number,
+      p_product_id: order.product_id,
+      p_region: order.region,
+      p_list_amount: Number(order.list_amount || order.amount || 0),
+      p_discount_amount: Number(order.discount_amount || 0),
+    });
+    if (discountClaimError) throw new ApiError(discountClaimError.message, 409, "discount-code-claim-failed");
+  } else if (order.referral_code) {
     const { error: referralClaimError } = await a.rpc("claim_checkout_referral", {
       p_user_id: uid,
       p_referral_code: order.referral_code,
@@ -833,8 +895,16 @@ async function verifyPayment(uid: string, body: Record<string, unknown>) {
       error_message: payData?.PCD_PAY_MSG || "결제 실패",
       failed_at: new Date().toISOString(),
     }).eq("order_number", order.order_number);
-    if (order.referral_code) {
-      await a.rpc("release_checkout_referral", { p_user_id: uid, p_authorization_order_number: order.order_number });
+    if (order.discount_code) {
+      await a.rpc("release_checkout_discount_code", {
+        p_user_id: uid,
+        p_authorization_order_number: order.order_number,
+      });
+    } else if (order.referral_code) {
+      await a.rpc("release_checkout_referral", {
+        p_user_id: uid,
+        p_authorization_order_number: order.order_number,
+      });
     }
     throw new ApiError(payData?.PCD_PAY_MSG || "결제에 실패했습니다.", 400, "payple-charge-failed");
   }
