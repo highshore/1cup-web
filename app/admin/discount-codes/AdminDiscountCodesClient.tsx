@@ -90,6 +90,8 @@ const secondaryButtonClass =
   "rounded-xl border-2 border-[#050505] bg-white px-3.5 py-2 text-[12px] font-black text-[#050505] disabled:cursor-not-allowed disabled:opacity-45";
 const dangerButtonClass =
   "rounded-xl border-2 border-[#050505] bg-[#fee2e2] px-3.5 py-2 text-[12px] font-black text-[#991b1b] disabled:cursor-not-allowed disabled:opacity-45";
+const copyButtonClass =
+  "inline-flex h-8 items-center justify-center rounded-md border border-[#050505] bg-white px-2.5 text-[11px] font-black text-[#050505] active:translate-y-px";
 
 function toDateInput(value: string | null): string {
   return value ? value.slice(0, 10) : "";
@@ -171,6 +173,7 @@ export default function AdminDiscountCodesClient() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [search, setSearch] = useState("");
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -441,6 +444,34 @@ export default function AdminDiscountCodesClient() {
       return;
     }
     await load();
+  };
+
+  const copyCodeToClipboard = async (code: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = code;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("copy command failed");
+      }
+
+      setCopiedCode(code);
+      window.setTimeout(() => {
+        setCopiedCode((current) => (current === code ? null : current));
+      }, 1600);
+    } catch (error) {
+      console.error("discount code copy failed", error);
+      setNotice({ text: copy.copyFailed, error: true });
+    }
   };
 
   const formatDiscount = (code: DiscountCodeRow) =>
@@ -814,6 +845,14 @@ export default function AdminDiscountCodesClient() {
                         <code className="rounded-md bg-[#fff1e9] px-2 py-1 text-[15px] font-black">
                           {code.code}
                         </code>
+                        <button
+                          type="button"
+                          className={copyButtonClass}
+                          aria-label={copy.copyAria.replace("{code}", code.code)}
+                          onClick={() => void copyCodeToClipboard(code.code)}
+                        >
+                          {copiedCode === code.code ? copy.copied : copy.copy}
+                        </button>
                         <span className="rounded-full border border-[#050505] px-2 py-1 text-[11px] font-black">
                           {statusLabel(code)}
                         </span>
@@ -891,6 +930,14 @@ export default function AdminDiscountCodesClient() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <code className="font-black">{referral.code}</code>
+                    <button
+                      type="button"
+                      className={copyButtonClass}
+                      aria-label={copy.copyAria.replace("{code}", referral.code)}
+                      onClick={() => void copyCodeToClipboard(referral.code)}
+                    >
+                      {copiedCode === referral.code ? copy.copied : copy.copy}
+                    </button>
                     <span
                       className={`rounded-full border border-[#050505] px-2 py-1 text-[11px] font-black ${
                         referral.active === true ? "bg-[#dcfce7]" : "bg-[#fee2e2]"
