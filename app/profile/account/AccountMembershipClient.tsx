@@ -95,6 +95,8 @@ type BillingStatusResult = {
     failedAt: string | null;
   } | null;
   cardName: string | null;
+  retryPending: boolean;
+  lastCardUpdateAt: string | null;
 };
 
 declare global {
@@ -110,14 +112,6 @@ function interpolate(template: string, values: Record<string, string | number>) 
     (result, [key, value]) => result.replace(`{${key}}`, String(value)),
     template,
   );
-}
-
-function nextBillingDate(startDate: Date | null, billingCancelled: boolean) {
-  if (!startDate || billingCancelled) return null;
-  const next = new Date(startDate);
-  next.setMonth(next.getMonth() + 1);
-  while (next.getTime() <= Date.now()) next.setMonth(next.getMonth() + 1);
-  return next;
 }
 
 function dateLabel(date: Date | null, locale: string) {
@@ -498,20 +492,28 @@ export function AccountMembershipPanel({
     };
   }, []);
 
-  const nextBilling = useMemo(
-    () => shell.summary.hasActiveSubscription
-      ? nextBillingDate(shell.summary.subscriptionStartDate, shell.summary.billingCancelled)
-      : null,
-    [shell.summary.hasActiveSubscription, shell.summary.subscriptionStartDate, shell.summary.billingCancelled],
-  );
-  const daysLeft = nextBilling
-    ? Math.max(0, Math.ceil((nextBilling.getTime() - Date.now()) / 86400000))
+  // subscription_end_date is the real renewal boundary. Do not invent a future
+  // date by repeatedly adding calendar months to subscription_start_date: during a
+  // failed-renewal grace period that made an overdue Oct 3 charge appear as Nov 3.
+  const renewalDate = shell.summary.hasActiveSubscription
+    ? shell.summary.subscriptionEndDate
+    : null;
+  const daysLeft = renewalDate && renewalDate.getTime() > Date.now()
+    ? Math.max(0, Math.ceil((renewalDate.getTime() - Date.now()) / 86400000))
     : null;
 
   // Only leaders have a separately managed membership. Admins use normal paid membership and credit controls.
   const managedMembership = shell.summary.accountStatus === "leader";
   const membershipStatus = shell.membershipActive ? t.profile.active : t.profile.inactive;
   const billingIssue = Boolean(billingStatus?.needsAttention);
+  const retryPending = Boolean(billingStatus?.retryPending);
+  const nextBillingValue = shell.summary.billingCancelled
+    ? t.profile.stopped
+    : billingIssue
+      ? t.profile.paymentNeedsAttention
+      : retryPending
+        ? t.profile.billingRetryPending
+        : dateLabel(renewalDate, locale);
   const membershipBadge = managedMembership
     ? t.profile.managed
     : !shell.summary.hasActiveSubscription
@@ -520,16 +522,22 @@ export function AccountMembershipPanel({
         ? t.profile.billingStopped
         : billingIssue
           ? t.profile.billingAttention
-          : daysLeft !== null
-            ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
-            : membershipStatus;
+          : retryPending
+            ? t.profile.billingRetryPending
+            : daysLeft !== null
+              ? (locale === "ko" ? `${daysLeft}일 남음` : `${daysLeft} Days Left`)
+              : membershipStatus;
   const membershipNote = managedMembership
     ? t.profile.leaderManagedNote
     : !shell.summary.hasActiveSubscription
       ? t.profile.noPaidMembership
       : shell.summary.billingCancelled
         ? t.profile.billingStoppedNote
-        : t.profile.autoRenewNote;
+        : billingIssue
+          ? t.profile.billingAttentionNote
+          : retryPending
+            ? t.profile.billingRetryPendingNote
+            : t.profile.autoRenewNote;
 
   const reasons = cancellationReasons[locale];
   const refundReasons = [refundLeadReason[locale], ...reasons];
@@ -746,7 +754,7 @@ export function AccountMembershipPanel({
             {shell.summary.hasActiveSubscription && (
               <>
                 <Row icon={CreditCardIcon} label={t.profile.lastPayment} value={dateLabel(shell.summary.subscriptionStartDate, locale)} />
-                <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)} />
+                <Row icon={CreditCardIcon} label={t.profile.nextBilling} value={nextBillingValue} />
                 <Row
                   icon={CreditCardIcon}
                   label={t.profile.paymentMethod}
@@ -794,7 +802,7 @@ export function AccountMembershipPanel({
               </div>
             )}
 
-            <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled && shell.summary.hasActiveSubscription ? "bg-[#fff8dc]" : "bg-[#fffaf6]"}`}>
+            <div className={`mt-4 rounded-[12px] border-2 border-[#050505] px-4 py-3 text-[13px] leading-[1.55] ${shell.summary.billingCancelled && shell.summary.hasActiveSubscription ? "bg-[#fff8dc]" : retryPending ? "bg-[#eef8ff]" : "bg-[#fffaf6]"}`}>
               {membershipNote}
             </div>
 
@@ -857,7 +865,7 @@ export function AccountMembershipPanel({
       {manageOpen && (
         <ManageMembershipModal
           status={membershipStatus}
-          nextBilling={shell.summary.billingCancelled ? t.profile.stopped : dateLabel(nextBilling, locale)}
+          nextBilling={nextBillingValue}
           billingCancelled={shell.summary.billingCancelled}
           onClose={() => setManageOpen(false)}
           onStop={() => { setManageOpen(false); setSurvey("stop"); }}
