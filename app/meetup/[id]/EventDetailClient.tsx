@@ -1037,6 +1037,10 @@ export function EventDetailClient() {
 
   // Use accountStatus from auth context
   const isAdmin = accountStatus === "admin";
+  const hasComplimentaryMeetupAccess =
+    accountStatus === "admin" ||
+    accountStatus === "leader" ||
+    isGdgMember === true;
   const [showAdminDialog, setShowAdminDialog] = useState(false);
   const [dialogTemplateEvent, setDialogTemplateEvent] =
     useState<MeetupEvent | null>(null);
@@ -1795,8 +1799,7 @@ ${meetupUrl}
           // This flag remains a real recurring membership signal. Credits are
           // evaluated independently and never leak into subscription-only UI.
           hasActiveSubscription: hasActiveSubscription === true,
-          isComplimentary:
-            accountStatus === "admin" || accountStatus === "leader" || isGdgMember === true,
+          isComplimentary: hasComplimentaryMeetupAccess,
         });
         setMeetupEntitlement(entitlement);
       } catch (error) {
@@ -2049,7 +2052,7 @@ ${meetupUrl}
         alert(`오류: 참가 취소에 실패했습니다. (${message})`);
       }
     } else {
-      if (!meetupEntitlement?.canJoin) {
+      if (!hasComplimentaryMeetupAccess && !meetupEntitlement?.canJoin) {
         setShowSubscriptionDialog(true);
         return;
       }
@@ -2080,7 +2083,11 @@ ${meetupUrl}
       return;
     }
 
-    if (!meetupEntitlement?.canJoin && role !== "leader") {
+    if (
+      !hasComplimentaryMeetupAccess &&
+      !meetupEntitlement?.canJoin &&
+      role !== "leader"
+    ) {
       setShowSubscriptionDialog(true);
       return;
     }
@@ -2439,7 +2446,11 @@ ${meetupUrl}
       return;
     }
 
-    if (!isCurrentUserParticipant && !meetupEntitlement?.canJoin) {
+    if (
+      !isCurrentUserParticipant &&
+      !hasComplimentaryMeetupAccess &&
+      !meetupEntitlement?.canJoin
+    ) {
       setShowSubscriptionDialog(true);
       return;
     }
@@ -2657,7 +2668,7 @@ ${meetupUrl}
       if (!currentUser) {
         return "로그인하고 참가하기";
       }
-      if (!meetupEntitlement?.canJoin) {
+      if (!hasComplimentaryMeetupAccess && !meetupEntitlement?.canJoin) {
         return "멤버십/참여권 보기";
       }
       return isCurrentUserParticipant ? "취소" : "참가 신청하기";
@@ -2908,9 +2919,11 @@ ${meetupUrl}
 
         {currentUser && !isCurrentUserParticipant && (
           <div style={{ margin: "0.75rem 0", fontSize: "0.9rem", fontWeight: 700, color: "#333" }}>
-            {meetupEntitlement?.source === "subscription"
-              ? "멤버십으로 참여할 수 있습니다."
-              : meetupEntitlement?.source === "credit"
+            {hasComplimentaryMeetupAccess
+              ? "운영 권한으로 참여할 수 있습니다."
+              : meetupEntitlement?.source === "subscription"
+                ? "멤버십으로 참여할 수 있습니다."
+                : meetupEntitlement?.source === "credit"
                 ? `참여권 ${meetupEntitlement.creditBalance}회 보유 · 이번 신청에 1회가 사용됩니다.`
                 : meetupEntitlement?.source === "complimentary"
                   ? "운영 권한으로 참여할 수 있습니다."
