@@ -116,8 +116,20 @@ async function getMember(supabase: Awaited<ReturnType<typeof createServerClientR
   return member?.uid ? String(member.uid) : null;
 }
 
-export async function GET(request: NextRequest) {
-  const deckId = request.nextUrl.searchParams.get("deckId")?.trim();
+// POST, not GET: building the queue creates the member's missing study-card rows, and a
+// GET would let link prefetching or another site's request trigger that write.
+export async function POST(request: NextRequest) {
+  if (request.headers.get("origin") !== request.nextUrl.origin) {
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const deckId = String(body.deckId ?? "").trim();
   if (!deckId) {
     return NextResponse.json({ error: "deckId is required" }, { status: 400 });
   }
