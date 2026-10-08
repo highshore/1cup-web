@@ -362,7 +362,7 @@ export default function HomePageClient({
     memberRotationRef.current = setInterval(() => {
       setActiveMemberIndex((prevIndex) => (prevIndex + 1) % memberProfiles.length);
     }, 5000);
-  }, [memberProfiles.length]);
+  }, []);
 
   const pauseMemberRotation = useCallback(() => {
     if (memberRotationRef.current) {

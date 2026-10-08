@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useEffectEvent } from "react";
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 import "./shadow.css";
 import { supabase } from "../lib/supabase/client";
@@ -465,7 +465,6 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   }, [isRecordingActive]);
 
   // Convert YouTube URL to embed URL using imported utility
-  const convertToEmbedUrlCallback = useCallback(convertToEmbedUrl, []);
 
   // Autoplay effect
   useEffect(() => {
@@ -597,7 +596,46 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
       if (timeUpdateIntervalRef.current)
         clearInterval(timeUpdateIntervalRef.current);
     };
-  }, [convertToEmbedUrlCallback, lessonId]);
+  }, [lessonId]);
+
+  // Highlights and scrolls to the word being spoken. An effect event so the player's
+  // timer compares against the current active word; a captured value made every tick
+  // look like a change and re-scrolled the transcript four times a second.
+  const syncActiveWord = useEffectEvent(() => {
+    if (
+      !playerRef.current ||
+      typeof playerRef.current.getCurrentTime !== "function" ||
+      videoTimestamps.length === 0
+    )
+      return;
+    const currentTime = playerRef.current.getCurrentTime();
+    let newActiveIndex: number | null = null;
+    // Find the first timestamp that matches the current time
+    for (let i = 0; i < videoTimestamps.length; i++) {
+      if (
+        currentTime >= videoTimestamps[i].start &&
+        currentTime <= videoTimestamps[i].end
+      ) {
+        newActiveIndex = i;
+        break;
+      }
+    }
+
+    if (activeTimestampIndex !== newActiveIndex) {
+      setActiveTimestampIndex(newActiveIndex);
+      if (newActiveIndex !== null && transcriptContainerRef.current) {
+        const activeWordElement = transcriptContainerRef.current.children[
+          newActiveIndex
+        ] as HTMLElement;
+        if (activeWordElement) {
+          activeWordElement.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
+        }
+      }
+    }
+  });
 
   useEffect(() => {
     if (!youtubeUrl || youtubeLoading || youtubeError) {
@@ -616,42 +654,6 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
       return;
     }
 
-    const manageTimeUpdates = () => {
-      if (
-        !playerRef.current ||
-        typeof playerRef.current.getCurrentTime !== "function" ||
-        videoTimestamps.length === 0
-      )
-        return;
-      const currentTime = playerRef.current.getCurrentTime();
-      let newActiveIndex: number | null = null;
-      // Find the first timestamp that matches the current time
-      for (let i = 0; i < videoTimestamps.length; i++) {
-        if (
-          currentTime >= videoTimestamps[i].start &&
-          currentTime <= videoTimestamps[i].end
-        ) {
-          newActiveIndex = i;
-          break;
-        }
-      }
-
-      if (activeTimestampIndex !== newActiveIndex) {
-        setActiveTimestampIndex(newActiveIndex);
-        if (newActiveIndex !== null && transcriptContainerRef.current) {
-          const activeWordElement = transcriptContainerRef.current.children[
-            newActiveIndex
-          ] as HTMLElement;
-          if (activeWordElement) {
-            activeWordElement.scrollIntoView({
-              behavior: "smooth",
-              block: "nearest",
-            });
-          }
-        }
-      }
-    };
-
     const onPlayerReady = () => {
       setIsPlayerReady(true);
     };
@@ -663,7 +665,7 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         // Only start interval if there are timestamps to sync with
         if (videoTimestamps.length > 0) {
           timeUpdateIntervalRef.current = window.setInterval(
-            manageTimeUpdates,
+            () => syncActiveWord(),
             250
           ); // Check time frequently
         }
@@ -676,7 +678,7 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           event.data === (window as any).YT.PlayerState.PAUSED ||
           event.data === (window as any).YT.PlayerState.ENDED
         ) {
-          if (videoTimestamps.length > 0) manageTimeUpdates();
+          if (videoTimestamps.length > 0) syncActiveWord();
         }
       }
     };

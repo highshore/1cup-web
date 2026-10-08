@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useEffectEvent, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import "./meetup.css";
@@ -166,15 +166,10 @@ const MeetupClient: React.FC = () => {
       }
     );
 
-    if (loadMoreButtonRef.current) {
-      observer.observe(loadMoreButtonRef.current);
-    }
+    const button = loadMoreButtonRef.current;
+    if (button) observer.observe(button);
 
-    return () => {
-      if (loadMoreButtonRef.current) {
-        observer.unobserve(loadMoreButtonRef.current);
-      }
-    };
+    return () => observer.disconnect();
   }, [hasMore, loadingMore, loadMoreEvents]);
 
   // Load all blog posts
@@ -187,11 +182,16 @@ const MeetupClient: React.FC = () => {
     }
   }, []);
 
-  // Initial load
-  useEffect(() => {
+  // Initial load, once on mount. An effect event so it can call the current loaders:
+  // loadEvents changes with every page of results and must not re-trigger this.
+  const loadInitialContent = useEffectEvent(() => {
     loadEvents(true);
     loadBlogPosts();
-  }, []); // Empty dependency array to run only on mount
+  });
+
+  useEffect(() => {
+    loadInitialContent();
+  }, []);
 
   // Scroll to top when component mounts or when filters change
   useEffect(() => {

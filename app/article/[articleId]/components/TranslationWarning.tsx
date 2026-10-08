@@ -35,10 +35,14 @@ const TranslationWarning: React.FC<TranslationWarningProps> = ({
     setDontShowAgain(e.target.checked);
   };
 
+  // An effect event, so the auto-close sees the current "don't show again" choice
+  // rather than the one from when the warning opened.
+  const autoClose = React.useEffectEvent(() => handleClose());
+
   React.useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
-        handleClose();
+        autoClose();
       }, 8000); // Increased to 8 seconds to give time to read checkbox
 
       return () => clearTimeout(timer);

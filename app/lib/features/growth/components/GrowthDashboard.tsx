@@ -4,6 +4,7 @@ import {
   ChangeEvent,
   FormEvent,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -573,12 +574,18 @@ export default function GrowthDashboard() {
     }
   };
 
+  const loadMoreRunsOnReach = useEffectEvent(() => {
+    void loadMoreRuns();
+  });
+
+  // Re-observing after each page (runs.length) fires again if the sentinel is still
+  // in view, which is what loads the next page.
   useEffect(() => {
     const target = moreRunsRef.current;
     if (!target || !hasMoreRuns) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) void loadMoreRuns();
+        if (entries[0]?.isIntersecting) loadMoreRunsOnReach();
       },
       { rootMargin: "360px" },
     );

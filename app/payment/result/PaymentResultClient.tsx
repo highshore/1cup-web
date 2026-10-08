@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { invokeFunction } from "../../lib/supabase/client";
 
@@ -175,8 +175,10 @@ export default function PaymentResultClient() {
     };
   }, []);
 
-  // Process payment result ONLY ONCE
-  useEffect(() => {
+  // Process payment result ONLY ONCE. The work is an effect event so it reads current
+  // values, while the effect below stays mount-only: re-running it could process the
+  // same payment result twice.
+  const processPaymentResultOnce = useEffectEvent(() => {
     // CRITICAL: Skip processing if already processed OR if we've already attempted processing
     if (isProcessed || hasAttemptedProcessing) {
       return;
@@ -447,6 +449,10 @@ export default function PaymentResultClient() {
     };
 
     processPaymentResult();
+  });
+
+  useEffect(() => {
+    processPaymentResultOnce();
   }, []); // CRITICAL: Empty dependency array to ensure it only runs once
 
   const handleContinue = () => {

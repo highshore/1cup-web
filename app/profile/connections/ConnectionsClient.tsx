@@ -48,8 +48,10 @@ export function ConnectionsPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const currentUid = shell.currentUser?.uid;
+
   useEffect(() => {
-    if (!shell.currentUser) return;
+    if (!currentUid) return;
     let active = true;
     setLoading(true);
     setError("");
@@ -68,7 +70,7 @@ export function ConnectionsPanel({
     return () => {
       active = false;
     };
-  }, [locale, shell.currentUser?.uid, t.profile.connectionLoadFailed]);
+  }, [locale, currentUid, t.profile.connectionLoadFailed]);
 
   return (
     <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
