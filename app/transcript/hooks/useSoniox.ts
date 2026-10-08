@@ -156,11 +156,11 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
 
         const finalizedResults = convertTokensToResults(finalTokens);
         if (finalizedResults.length > 0) {
-          setFinalTranscript((prevFinal) => {
-            const nextFinal = [...prevFinal, ...finalizedResults];
-            finalTranscriptRef.current = nextFinal;
-            return nextFinal;
-          });
+          // The ref mirrors the state on every write, so build from it rather than
+          // writing the ref inside an updater React may run more than once.
+          const nextFinal = [...finalTranscriptRef.current, ...finalizedResults];
+          finalTranscriptRef.current = nextFinal;
+          setFinalTranscript(nextFinal);
         }
 
         // A pause can happen while the provider is finalizing the sentence that
