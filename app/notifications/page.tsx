@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireSignedIn } from "../lib/auth/server_guards";
 import NotificationsClient from "./NotificationsClient";
 
 export const metadata: Metadata = {
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
   description: "Your One Cup English notifications.",
 };
 
-export default function NotificationsPage() {
+export default async function NotificationsPage() {
+  await requireSignedIn("/notifications");
   return <NotificationsClient />;
 }

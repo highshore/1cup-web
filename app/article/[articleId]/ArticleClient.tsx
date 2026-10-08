@@ -1139,6 +1139,9 @@ const Article = () => {
   const MOVEMENT_THRESHOLD_PX = 8;
 
   useEffect(() => {
+    // Moving from one article to another while the first is still loading must not let
+    // the first article's late response replace the second.
+    let cancelled = false;
     const fetchArticle = async () => {
       if (!articleId) return;
 
@@ -1148,6 +1151,7 @@ const Article = () => {
           .select("*")
           .eq("id", articleId)
           .maybeSingle();
+        if (cancelled) return;
 
         if (articleRow) {
           const data = articleFromRow(articleRow as Record<string, unknown>);
@@ -1174,22 +1178,28 @@ const Article = () => {
           setError("Article not found");
         }
       } catch (err) {
+        if (cancelled) return;
         setError("Error fetching article");
         console.error("Error fetching article:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchArticle();
+    return () => {
+      cancelled = true;
+    };
   }, [articleId]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStats = async () => {
       const { data } = await supabase
         .from("article_discussion_stats")
         .select("topic_id, score, upvotes, downvotes")
         .eq("article_id", articleId);
+      if (cancelled) return;
 
       const nextStats: Record<string, DiscussionTopicStats> = {};
       (data ?? []).forEach((row: any) => {
@@ -1221,6 +1231,7 @@ const Article = () => {
       )
       .subscribe();
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
   }, [articleId]);
@@ -1272,6 +1283,9 @@ const Article = () => {
   // Fetch the member's saved dictionary meanings when user changes. The old
   // users.saved_words string array is deliberately no longer part of this flow.
   useEffect(() => {
+    // Signing out (or switching accounts) mid-request must not restore the previous
+    // member's saved words.
+    let cancelled = false;
     const fetchSavedVocabulary = async () => {
       if (!currentUser) {
         setSavedVocabulary([]);
@@ -1283,6 +1297,7 @@ const Article = () => {
           .from("user_vocabulary")
           .select("entry_id, meaning_id")
           .eq("user_id", currentUser.uid);
+        if (cancelled) return;
         if (error) throw error;
         setSavedVocabulary(
           (data || []).map((item: any) => ({
@@ -1292,11 +1307,14 @@ const Article = () => {
         );
       } catch (err) {
         console.error("Error fetching saved vocabulary:", err);
-        setSavedVocabulary([]);
+        if (!cancelled) setSavedVocabulary([]);
       }
     };
 
     fetchSavedVocabulary();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser]);
 
   useEffect(() => {

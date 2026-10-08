@@ -16,7 +16,6 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import { useRouter } from "next/navigation";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -788,7 +787,6 @@ function brandRank(brandName: string): number {
 export default function AdminGiftsClient() {
   const { t, locale } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const copy = t.admin.gifts;
 
   const [data, setData] = useState<AdminGiftsData | null>(null);
@@ -835,17 +833,11 @@ export default function AdminGiftsClient() {
   }, [copy.loadError]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth");
-      return;
-    }
-    if (accountStatus !== "admin") {
-      router.replace("/");
-      return;
-    }
+    // app/admin/layout.tsx has already redirected non-admins on the server; this only
+    // waits for the browser session so RLS sees it.
+    if (authLoading || !currentUser || accountStatus !== "admin") return;
     void load();
-  }, [accountStatus, authLoading, currentUser, load, router]);
+  }, [accountStatus, authLoading, currentUser, load]);
 
   useEffect(() => {
     setMmsTitle((current) => current || copy.defaultMmsTitle);

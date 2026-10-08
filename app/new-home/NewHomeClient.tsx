@@ -645,6 +645,8 @@ export default function NewHomeClient({
   // a Realtime subscription: one channel per home visitor made realtime.list_changes the
   // dominant database cost, and the event detail page stays live for anyone who opens it.
   useEffect(() => {
+    let active = true;
+
     // Helper to fetch user profiles for events
     const loadUserProfiles = async (events: MeetupEvent[]) => {
       const allUids = new Set<string>();
@@ -656,6 +658,7 @@ export default function NewHomeClient({
       if (allUids.size > 0) {
         try {
           const profiles = await fetchUserProfiles(Array.from(allUids));
+          if (!active) return;
           const profileMap: Record<string, UserProfile> = {};
           profiles.forEach(p => {
             profileMap[p.uid] = p;
@@ -667,7 +670,6 @@ export default function NewHomeClient({
       }
     };
 
-    let active = true;
     setLoadingEvent(true);
 
     fetchUpcomingMeetupEvents()
@@ -832,7 +834,7 @@ export default function NewHomeClient({
         console.error("Failed to fetch live home stats:", error);
         if (!ignore) {
           const fallback = await fetchClientFallbackStats();
-          if (fallback) {
+          if (fallback && !ignore) {
             setHomeStats(fallback);
           }
         }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ElementType } from "react";
-import { useRouter } from "next/navigation";
 import {
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
@@ -127,7 +126,6 @@ async function loadKakaoSdk(): Promise<void> {
 }
 
 export function useProfileShellData() {
-  const router = useRouter();
   const { locale, t } = useI18n();
   const { currentUser, isLoading: authLoading } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary>(emptySummary);
@@ -183,13 +181,11 @@ export function useProfileShellData() {
   }, [currentUser, t.profile.profileLoadFailed]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace(`/auth?redirect=${encodeURIComponent("/profile")}`);
-      return;
-    }
+    // app/profile/page.tsx sends signed-out visitors to /auth on the server; this only
+    // waits for the browser session before loading.
+    if (authLoading || !currentUser) return;
     void refresh();
-  }, [authLoading, currentUser, refresh, router]);
+  }, [authLoading, currentUser, refresh]);
 
   useEffect(() => {
     if (!notice) return;

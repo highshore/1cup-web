@@ -484,6 +484,7 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   }, [audioToAutoplay]);
 
   useEffect(() => {
+    let cancelled = false;
     const segmentSentences = (
       timestamps: VideoTimestamp[]
     ): SentenceForAssessment[] => {
@@ -546,6 +547,9 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           .select("*")
           .eq("id", lessonId)
           .maybeSingle();
+        // Switching lessons mid-load must not drop the previous lesson's video and
+        // sentences into the new one.
+        if (cancelled) return;
         if (error) throw error;
         if (data) {
           if (data && data.youtube_url) {
@@ -579,13 +583,17 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           );
       } catch (error: any) {
         console.error("Shadow data fetch error:", error);
-        setYoutubeError(`Failed to load video data: ${error.message}`);
+        if (!cancelled) setYoutubeError(`Failed to load video data: ${error.message}`);
       } finally {
-        setYoutubeLoading(false);
+        if (!cancelled) setYoutubeLoading(false);
       }
     };
     fetchYoutubeDataAndSegment();
     return () => {
+      cancelled = true;
+      // The cancelled load will not clear its own spinner; the next lesson's load turns
+      // it back on in the same render.
+      setYoutubeLoading(false);
       if (timeUpdateIntervalRef.current)
         clearInterval(timeUpdateIntervalRef.current);
     };

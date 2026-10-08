@@ -133,20 +133,29 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       return;
     }
 
+    // When this avatar is reused for a different member (lists re-sort, rows recycle),
+    // the previous member's profile must not arrive late and show the wrong face/name.
+    let cancelled = false;
     const loadUserProfile = async () => {
       try {
         setLoading(true);
         setImageError(false); // Reset image error state on UID change
         const fetchedProfile = await fetchUserProfile(uid);
-        setUserProfile(fetchedProfile);
+        if (!cancelled) setUserProfile(fetchedProfile);
       } catch (error) {
         console.error(`Error loading user profile for ${uid}:`, error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     if (uid) loadUserProfile();
     else setLoading(false);
+    return () => {
+      cancelled = true;
+      // The cancelled load will not clear its own spinner, so clear it here; a load
+      // that replaces it turns the spinner back on in the same render.
+      setLoading(false);
+    };
   }, [uid, profile]);
 
   useEffect(() => {

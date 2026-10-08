@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
@@ -92,7 +91,6 @@ function formatDate(value: string | null, locale: string): string | null {
 }
 
 export default function AdminShadowClient() {
-  const router = useRouter();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
   const { t, locale } = useI18n();
   const copy = t.admin.shadow;
@@ -108,17 +106,11 @@ export default function AdminShadowClient() {
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth");
-      return;
-    }
-    if (accountStatus !== "admin") {
-      router.replace("/");
-      return;
-    }
+    // app/admin/layout.tsx has already redirected non-admins on the server; this only
+    // waits for the browser session so RLS sees it.
+    if (authLoading || !currentUser || accountStatus !== "admin") return;
     setAuthorized(true);
-  }, [accountStatus, authLoading, currentUser, router]);
+  }, [accountStatus, authLoading, currentUser]);
 
   const load = useCallback(async () => {
     try {

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../lib/contexts/auth_context";
@@ -56,16 +55,11 @@ function formatNotificationTime(value: string, locale: "en" | "ko"): string {
 export default function NotificationsClient() {
   const { currentUser, isLoading: isAuthLoading } = useAuth();
   const { locale, t } = useI18n();
-  const router = useRouter();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUnavailable, setIsUnavailable] = useState(false);
   const notificationIdsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!isAuthLoading && !currentUser) router.replace("/auth?redirect=/notifications");
-  }, [currentUser, isAuthLoading, router]);
 
   const loadNotifications = useCallback(async () => {
     if (!currentUser) return;

@@ -87,15 +87,9 @@ export default function AdminDashboardClient() {
   const [totalEvents, setTotalEvents] = useState(0);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth");
-      return;
-    }
-    if (accountStatus !== "admin") {
-      router.replace("/");
-      return;
-    }
+    // app/admin/layout.tsx has already redirected anyone who is not an admin, on the
+    // server; this only waits for the browser session so RLS sees it.
+    if (authLoading || !currentUser || accountStatus !== "admin") return;
 
     let active = true;
     const load = async () => {
@@ -137,7 +131,7 @@ export default function AdminDashboardClient() {
     return () => {
       active = false;
     };
-  }, [accountStatus, authLoading, currentUser, router]);
+  }, [accountStatus, authLoading, currentUser]);
 
   const stats = useMemo<DashboardStats>(() => {
     if (loading) return EMPTY_STATS;

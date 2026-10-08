@@ -1788,6 +1788,9 @@ ${meetupUrl}
 
   // useEffect hooks
   useEffect(() => {
+    // This re-runs as the session fills in (user, then subscription flags). An earlier
+    // run resolving last would show a paying member "no access" until they reload.
+    let cancelled = false;
     const loadMeetupEntitlement = async () => {
       if (!currentUser) {
         setMeetupEntitlement(null);
@@ -1801,16 +1804,21 @@ ${meetupUrl}
           hasActiveSubscription: hasActiveSubscription === true,
           isComplimentary: hasComplimentaryMeetupAccess,
         });
-        setMeetupEntitlement(entitlement);
+        if (!cancelled) setMeetupEntitlement(entitlement);
       } catch (error) {
         console.error("Error checking meetup entitlement:", error);
-        setMeetupEntitlement({ canJoin: false, source: "none", creditBalance: 0 });
+        if (!cancelled) {
+          setMeetupEntitlement({ canJoin: false, source: "none", creditBalance: 0 });
+        }
       } finally {
-        setEntitlementLoading(false);
+        if (!cancelled) setEntitlementLoading(false);
       }
     };
 
     void loadMeetupEntitlement();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser, accountStatus, hasActiveSubscription, isGdgMember]);
 
   useEffect(() => {
@@ -1848,14 +1856,15 @@ ${meetupUrl}
   }, [event]);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchArticles = async () => {
       if (event && event.articles && event.articles.length > 0) {
         try {
           const articles = await fetchArticlesByIds(event.articles);
-          setArticleTopics(articles);
+          if (!cancelled) setArticleTopics(articles);
         } catch (error) {
           console.error("Error fetching articles for topics:", error);
-          setArticleTopics([]);
+          if (!cancelled) setArticleTopics([]);
         }
       } else {
         setArticleTopics([]);
@@ -1863,9 +1872,13 @@ ${meetupUrl}
     };
 
     fetchArticles();
+    return () => {
+      cancelled = true;
+    };
   }, [event]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadExistingSeating = async () => {
       const isLocalhost =
         typeof window !== "undefined" &&
@@ -1874,6 +1887,7 @@ ${meetupUrl}
       if (event && (isAdmin || isLeader || isLocalhost)) {
         try {
           const savedSeating = await loadSeatingArrangement();
+          if (cancelled) return;
           if (savedSeating) {
             setSeatingAssignments(savedSeating.assignments);
             setShowSeatingTable(true);
@@ -1884,7 +1898,7 @@ ${meetupUrl}
         } catch (error) {
           console.error("Error loading existing seating arrangement:", error);
           // In localhost mode, still show the seating section even if loading fails
-          if (isLocalhost) {
+          if (isLocalhost && !cancelled) {
             setShowSeatingTable(true);
           }
         }
@@ -1892,6 +1906,9 @@ ${meetupUrl}
     };
 
     loadExistingSeating();
+    return () => {
+      cancelled = true;
+    };
   }, [event, isAdmin, accountStatus]);
 
   useEffect(() => {

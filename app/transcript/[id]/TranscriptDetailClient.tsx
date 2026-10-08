@@ -2993,6 +2993,7 @@ Respond in JSON format:
                   .select("*")
                   .eq("id", transcriptInfo.articleId)
                   .maybeSingle();
+                if (cancelled) return;
 
                 if (articleData) {
                   setArticleData(articleData as ArticleData);
@@ -3016,6 +3017,7 @@ Respond in JSON format:
                 const userProfiles = await fetchUserProfiles(
                   transcriptInfo.leaderUids
                 );
+                if (cancelled) return;
                 userProfiles.forEach((profile) => {
                   if (
                     profile.displayName &&
@@ -3035,6 +3037,7 @@ Respond in JSON format:
               console.log("[Keywords] Keywords loaded state set to true");
             } catch (error) {
               console.error("Error initializing keywords:", error);
+              if (cancelled) return;
               // Even if there's an error, mark keywords as loaded so recording can proceed
               console.log(
                 "[Keywords] Error occurred, but marking keywords as loaded anyway"
@@ -3055,6 +3058,9 @@ Respond in JSON format:
               ];
               if (allUids.length > 0) {
                 const userDetailsWithPhone = await fetchUserDetails(allUids);
+                // Leaving for another transcript mid-request must not put this one's
+                // participants on it.
+                if (cancelled) return;
                 const enhancedProfiles = userDetailsWithPhone.map((user) => ({
                   uid: user.uid,
                   displayName: user.displayName,

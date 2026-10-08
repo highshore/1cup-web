@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import AdminClient from "../AdminClient";
+import AdminMembersClient from "./AdminMembersClient";
 
 export const metadata: Metadata = {
   title: "Members - Admin - OneCup English",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminMembersPage() {
-  return <AdminClient section="members" />;
+  return <AdminMembersClient />;
 }

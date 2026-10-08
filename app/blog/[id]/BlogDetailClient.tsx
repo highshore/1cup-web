@@ -96,6 +96,7 @@ export default function BlogDetailClient({
       return;
     }
 
+    let cancelled = false;
     const loadPost = async () => {
       if (!postId) {
         setError("포스트 ID가 없습니다.");
@@ -110,6 +111,7 @@ export default function BlogDetailClient({
         const postData = isAdmin
           ? await fetchBlogPost(postId)
           : await fetchPublishedBlogPost(postId);
+        if (cancelled) return;
 
         if (!postData) {
           setError("포스트를 찾을 수 없습니다.");
@@ -118,13 +120,19 @@ export default function BlogDetailClient({
         }
       } catch (err) {
         console.error("Failed to fetch blog post:", err);
-        setError("포스트를 불러오는데 실패했습니다.");
+        if (!cancelled) setError("포스트를 불러오는데 실패했습니다.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadPost();
+    return () => {
+      cancelled = true;
+      // The cancelled load will not clear its own spinner, and the next run may keep the
+      // server-rendered post without loading (an admin signing out), so clear it here.
+      setLoading(false);
+    };
   }, [postId, isAdmin, initialPost]);
 
   const handleBack = () => {

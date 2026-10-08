@@ -564,7 +564,7 @@ export default function HomePageClient({
         console.error("Failed to fetch live home stats:", error);
         if (!ignore) {
           const fallback = await fetchClientFallbackStats();
-          if (fallback) {
+          if (fallback && !ignore) {
             setHomeStats(fallback);
           }
         }
@@ -592,21 +592,29 @@ export default function HomePageClient({
       return;
     }
 
+    let cancelled = false;
     const loadClosestEvent = async () => {
       try {
         setLoadingEvent(true);
         const upcomingEvents = await fetchUpcomingMeetupEvents();
+        if (cancelled) return;
         if (upcomingEvents.length > 0) {
           setClosestEvent(upcomingEvents[0]);
         }
       } catch (error) {
         console.error("Failed to fetch upcoming meetups for hero:", error);
-        setClosestEvent(null);
+        if (!cancelled) setClosestEvent(null);
       } finally {
-        setLoadingEvent(false);
+        if (!cancelled) setLoadingEvent(false);
       }
     };
     loadClosestEvent();
+    return () => {
+      cancelled = true;
+      // The cancelled load will not clear its own spinner, and the next run may take
+      // the server-provided events without loading, so clear it here.
+      setLoadingEvent(false);
+    };
   }, [initialUpcomingEvents]);
 
   const toggleFAQ = (index: number) => {

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ComponentProps, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowPathIcon, ArrowRightIcon, ChartBarIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
@@ -81,7 +80,6 @@ function mediaReady(set: ExamSetSummary) {
 }
 
 export default function ExamCenterClient() {
-  const router = useRouter();
   const { currentUser, accountStatus, isLoading } = useAuth();
   const { t } = useI18n();
   const [workspace, setWorkspace] = useState<ExamCenterOverview | null>(null);
@@ -100,9 +98,6 @@ export default function ExamCenterClient() {
     }
   }, [t.examCenter.workspaceLoadFailed]);
 
-  useEffect(() => {
-    if (!isLoading && (!currentUser || accountStatus !== "admin")) router.replace("/");
-  }, [accountStatus, currentUser, isLoading, router]);
 
   useEffect(() => {
     if (currentUser && accountStatus === "admin") void refresh();
