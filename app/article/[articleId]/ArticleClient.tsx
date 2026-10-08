@@ -1035,15 +1035,20 @@ const PaywallDescription = tw(
 
 const GUEST_PARAGRAPH_LIMIT = 2;
 
+// Reads the article id from the route. The page itself lives in ArticleContent so its
+// hooks always run in the same order; returning early here, before any of them, is safe.
 const Article = () => {
   const params = useParams();
   const articleId = params.articleId as string;
 
-  // Early return if no articleId
   if (!articleId) {
     return <ErrorContainer>Article ID not found</ErrorContainer>;
   }
 
+  return <ArticleContent articleId={articleId} />;
+};
+
+const ArticleContent = ({ articleId }: { articleId: string }) => {
   const { currentUser, accountStatus, hasActiveSubscription } = useAuth();
   const { t } = useI18n();
   const isAdmin = accountStatus === "admin";
