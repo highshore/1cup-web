@@ -153,25 +153,31 @@ export default function DiscountCodeForm({
     const normalizedCode = form.code.trim().toUpperCase();
     const payload = toDiscountCodePayload(form);
 
-    const result = editingCode
-      ? await supabase.from("discount_codes").update(payload).eq("code", editingCode)
-      : await supabase
-          .from("discount_codes")
-          .insert({ code: normalizedCode, ...payload });
+    try {
+      const result = editingCode
+        ? await supabase.from("discount_codes").update(payload).eq("code", editingCode)
+        : await supabase
+            .from("discount_codes")
+            .insert({ code: normalizedCode, ...payload });
 
-    if (result.error) {
-      console.error("discount code save failed", result.error);
-      onNotice({ text: result.error.message || copy.saveFailed, error: true });
+      if (result.error) {
+        console.error("discount code save failed", result.error);
+        onNotice({ text: result.error.message || copy.saveFailed, error: true });
+        return;
+      }
+
+      onNotice({
+        text: editingCode ? copy.updated : copy.created,
+        error: false,
+      });
+      // The parent resets (remounts) this form and reloads the lists.
+      await onSaved();
+    } catch (error) {
+      console.error("discount code save failed", error);
+      onNotice({ text: copy.saveFailed, error: true });
+    } finally {
       setSaving(false);
-      return;
     }
-
-    onNotice({
-      text: editingCode ? copy.updated : copy.created,
-      error: false,
-    });
-    // The parent resets (remounts) this form and reloads the lists.
-    await onSaved();
   };
 
   return (

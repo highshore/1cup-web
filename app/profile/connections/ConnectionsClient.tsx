@@ -11,6 +11,11 @@ import {
 } from "../../lib/features/profile/services/profile_connections";
 import type { ProfileShellData } from "../ProfileShell";
 
+const CONNECTED_DATE_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { month: "short", year: "numeric" }),
+  en: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }),
+};
+
 function initials(name: string) {
   return (
     name
@@ -100,10 +105,7 @@ export function ConnectionsPanel({
         <div className="mt-6 grid gap-4">
           {friends.map((friend) => {
             const connectedDate = friend.connectedAt
-              ? new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-                  month: "short",
-                  year: "numeric",
-                }).format(new Date(friend.connectedAt))
+              ? CONNECTED_DATE_FORMAT[locale].format(new Date(friend.connectedAt))
               : null;
             return (
               <Link

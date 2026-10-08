@@ -18,6 +18,7 @@ import type {
 } from "react";
 
 import { useAuth } from "../../lib/contexts/auth_context";
+import type { getDictionary } from "../../lib/i18n";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   getAdminGiftsClient,
@@ -32,6 +33,7 @@ import type {
   AdminGiftFavorite,
   AdminGiftHistoryItem,
   AdminGiftProduct,
+  AdminGiftRecipient,
   AdminGiftsData,
 } from "../../lib/features/gifts/types";
 
@@ -57,6 +59,8 @@ type ParagraphProps = HTMLAttributes<HTMLParagraphElement>;
 type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 type InputProps = InputHTMLAttributes<HTMLInputElement>;
+type GiftsCopy = ReturnType<typeof getDictionary>["admin"]["gifts"];
+type CatalogSort = "price-asc" | "price-desc" | "name";
 
 function Page({ className = "", ...rest }: SectionProps) {
   return (
@@ -66,6 +70,27 @@ function Page({ className = "", ...rest }: SectionProps) {
     />
   );
 }
+
+const MONEY_OPTIONS: Intl.NumberFormatOptions = {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+};
+const MONEY_FORMAT = {
+  ko: new Intl.NumberFormat("ko-KR", MONEY_OPTIONS),
+  en: new Intl.NumberFormat("en-US", MONEY_OPTIONS),
+};
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+const DATE_TIME_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", DATE_TIME_OPTIONS),
+  en: new Intl.DateTimeFormat("en-US", DATE_TIME_OPTIONS),
+};
 
 function Stack({ className = "", ...rest }: DivProps) {
   return <div {...rest} className={`grid gap-5 ${className}`} />;
@@ -784,8 +809,669 @@ function brandRank(brandName: string): number {
   return index === -1 ? FEATURED_BRAND_NAMES.length : index;
 }
 
-export default function AdminGiftsClient() {
+// A typed-in phone number is one recipient; an empty field is none.
+function customRecipientCount(phone: string): number {
+  return phone.trim() ? 1 : 0;
+}
+
+// Why nothing can be sent yet: the provider is not configured, or no product is chosen.
+function sendBlockedReason(
+  data: AdminGiftsData | null,
+  product: AdminGiftProduct | null,
+  copy: GiftsCopy,
+): string | null {
+  if (!data?.configured) return data?.configurationError || copy.providerNeedsSetup;
+  if (!product) return copy.productRequired;
+  return null;
+}
+
+// Money (KRW) and timestamp formatting in the admin's locale.
+function useGiftFormat() {
   const { t, locale } = useI18n();
+  const unavailable = t.admin.gifts.unavailable;
+  const formatMoney = (value: number | null) =>
+    value === null ? unavailable : MONEY_FORMAT[locale].format(value);
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return DATE_TIME_FORMAT[locale].format(date);
+  };
+  return { formatMoney, formatDate };
+}
+
+// Whether the gift provider is configured, the prepaid balance, and a refresh button.
+function ProviderStatus({
+  data,
+  isRefreshing,
+  onRefresh,
+  copy,
+}: {
+  data: AdminGiftsData | null;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  copy: GiftsCopy;
+}) {
+  const { formatMoney } = useGiftFormat();
+  return (
+    <ProviderInfo>
+      <Pill $tone={data?.configured ? "ok" : "error"}>
+        {data?.configured ? copy.providerReady : copy.providerNeedsSetup}
+      </Pill>
+      <Balance>
+        {copy.balanceLabel}: {formatMoney(data?.balance ?? null)}
+      </Balance>
+      {data?.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
+      <SecondaryButton type="button" onClick={onRefresh} disabled={isRefreshing}>
+        <ArrowPathIcon />
+        {copy.refresh}
+      </SecondaryButton>
+    </ProviderInfo>
+  );
+}
+
+// One-click picks for products the admins starred in the catalog.
+function FavoritePicks({
+  favorites,
+  disabled,
+  onPick,
+  copy,
+}: {
+  favorites: AdminGiftFavorite[];
+  disabled: boolean;
+  onPick: (goodsCode: string) => void;
+  copy: GiftsCopy;
+}) {
+  if (favorites.length === 0) return null;
+  return (
+    <>
+      <FieldHint>{copy.quickPicks}</FieldHint>
+      <FavoriteQuickPicks>
+        {favorites.map((favorite) => (
+          <FavoriteQuickPick
+            key={favorite.goodsCode}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPick(favorite.goodsCode)}
+            title={favorite.goodsName}
+          >
+            <FavoriteQuickImage>
+              {favorite.imageUrl ? <img src={favorite.imageUrl} alt="" /> : <StarSolidIcon />}
+            </FavoriteQuickImage>
+            <FavoriteQuickText>{favorite.goodsName}</FavoriteQuickText>
+          </FavoriteQuickPick>
+        ))}
+      </FavoriteQuickPicks>
+    </>
+  );
+}
+
+// The product that will be sent: image, brand, purchase/list price, state and validity.
+function SelectedProduct({ product, copy }: { product: AdminGiftProduct; copy: GiftsCopy }) {
+  const { formatMoney } = useGiftFormat();
+  const hasDiscount = product.salePrice !== null && product.discountPrice !== product.salePrice;
+  return (
+    <ProductCard>
+      <ProductImage>
+        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
+      </ProductImage>
+      <div>
+        <ProductName>{product.goodsName}</ProductName>
+        <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
+        <ProductMeta>
+          {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
+          {hasDiscount ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}` : ""}
+        </ProductMeta>
+        <ProductMeta>
+          {copy.productState}: {product.state || copy.unavailable}
+          {product.limitDay !== null
+            ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
+            : ""}
+        </ProductMeta>
+      </div>
+    </ProductCard>
+  );
+}
+
+// Choose the gift: browse the catalog, use a starred favorite, or enter a goods code,
+// then show the chosen product.
+function GiftProductChooser({
+  canBrowse,
+  isBrandLoading,
+  onOpenCatalog,
+  favorites,
+  isLookingUp,
+  onPickFavorite,
+  goodsCode,
+  onGoodsCodeChange,
+  onLookup,
+  product,
+  copy,
+}: {
+  canBrowse: boolean;
+  isBrandLoading: boolean;
+  onOpenCatalog: () => void;
+  favorites: AdminGiftFavorite[];
+  isLookingUp: boolean;
+  onPickFavorite: (goodsCode: string) => void;
+  goodsCode: string;
+  onGoodsCodeChange: (goodsCode: string) => void;
+  onLookup: () => void;
+  product: AdminGiftProduct | null;
+  copy: GiftsCopy;
+}) {
+  return (
+    <>
+      <Field>
+        {copy.productCodeLabel}
+        <ProductActions>
+          <SecondaryButton
+            type="button"
+            disabled={!canBrowse || isBrandLoading}
+            onClick={onOpenCatalog}
+          >
+            <MagnifyingGlassIcon />
+            {copy.lookupProduct}
+          </SecondaryButton>
+        </ProductActions>
+        <FavoritePicks
+          favorites={favorites}
+          disabled={isLookingUp}
+          onPick={onPickFavorite}
+          copy={copy}
+        />
+        <ManualLookup>
+          <summary>{copy.manualProductCode}</summary>
+          <ManualLookupRow>
+            <Input
+              value={goodsCode}
+              onChange={(event) => onGoodsCodeChange(event.target.value.toUpperCase())}
+              placeholder={copy.productCodePlaceholder}
+              autoCapitalize="characters"
+            />
+            <SecondaryButton
+              type="button"
+              disabled={!canBrowse || isLookingUp || !goodsCode.trim()}
+              onClick={onLookup}
+            >
+              <MagnifyingGlassIcon />
+              {isLookingUp ? copy.lookingUp : copy.lookupByCode}
+            </SecondaryButton>
+          </ManualLookupRow>
+        </ManualLookup>
+      </Field>
+
+      {product && <SelectedProduct product={product} copy={copy} />}
+    </>
+  );
+}
+
+// One member in the recipient list; members without a phone, or past the batch limit,
+// cannot be ticked.
+function GiftRecipientOption({
+  recipient,
+  isSelected,
+  limitReached,
+  onToggle,
+  copy,
+}: {
+  recipient: AdminGiftRecipient;
+  isSelected: boolean;
+  limitReached: boolean;
+  onToggle: () => void;
+  copy: GiftsCopy;
+}) {
+  const name = recipientName(recipient, copy.memberFallback);
+  const disabled = !recipient.hasPhone || (!isSelected && limitReached);
+  return (
+    <RecipientRow $selected={isSelected} $disabled={disabled}>
+      <input type="checkbox" checked={isSelected} disabled={disabled} onChange={onToggle} />
+      <Avatar>
+        {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
+      </Avatar>
+      <RecipientText>
+        <RecipientName>{name}</RecipientName>
+        <RecipientMeta>{recipient.maskedPhone || copy.noPhone}</RecipientMeta>
+      </RecipientText>
+    </RecipientRow>
+  );
+}
+
+// Either a custom phone number or up to MAX_BATCH_RECIPIENTS members, searchable.
+function GiftRecipientPicker({
+  recipients,
+  matchingRecipients,
+  search,
+  onSearchChange,
+  isCustomRecipient,
+  onChooseCustom,
+  selectedRecipientIds,
+  onToggle,
+  recipientCount,
+  copy,
+}: {
+  recipients: AdminGiftRecipient[];
+  matchingRecipients: AdminGiftRecipient[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  isCustomRecipient: boolean;
+  onChooseCustom: () => void;
+  selectedRecipientIds: string[];
+  onToggle: (recipientId: string) => void;
+  recipientCount: number;
+  copy: GiftsCopy;
+}) {
+  const limitReached = selectedRecipientIds.length >= MAX_BATCH_RECIPIENTS;
+  return (
+    <Field as="div">
+      {copy.recipientLabel}
+      <MemberPicker>
+        <SearchWrap>
+          <MagnifyingGlassIcon />
+          <SearchInput
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={copy.searchRecipients}
+          />
+        </SearchWrap>
+        <RecipientList>
+          <RecipientRow $selected={isCustomRecipient}>
+            <input
+              type="radio"
+              name="gift-recipient"
+              checked={isCustomRecipient}
+              onChange={onChooseCustom}
+            />
+            <Avatar>+</Avatar>
+            <RecipientText>
+              <RecipientName>{copy.customRecipient}</RecipientName>
+            </RecipientText>
+          </RecipientRow>
+          {matchingRecipients.length === 0 ? (
+            <EmptyRecipients>{copy.noRecipients}</EmptyRecipients>
+          ) : (
+            matchingRecipients.map((recipient) => (
+              <GiftRecipientOption
+                key={recipient.id}
+                recipient={recipient}
+                isSelected={selectedRecipientIds.includes(recipient.id)}
+                limitReached={limitReached}
+                onToggle={() => onToggle(recipient.id)}
+                copy={copy}
+              />
+            ))
+          )}
+        </RecipientList>
+      </MemberPicker>
+      {recipients.some((recipient) => !recipient.hasPhone) && (
+        <FieldHint>{copy.noPhoneHint}</FieldHint>
+      )}
+      <FieldHint>
+        {copy.recipientSelectedCount.replace("{count}", String(recipientCount))}
+        {" · "}
+        {copy.recipientLimit.replace("{count}", String(MAX_BATCH_RECIPIENTS))}
+      </FieldHint>
+    </Field>
+  );
+}
+
+// Send result messages (or why sending is unavailable) and the send button.
+function GiftSendBar({
+  error,
+  success,
+  disabledReason,
+  isSending,
+  recipientCount,
+  onSend,
+  copy,
+}: {
+  error: string | null;
+  success: string | null;
+  disabledReason: string | null;
+  isSending: boolean;
+  recipientCount: number;
+  onSend: () => void;
+  copy: GiftsCopy;
+}) {
+  const showDisabledReason = !error && !success && disabledReason;
+  return (
+    <SubmitRow>
+      <div>
+        {error && <InlineStatus $error>{error}</InlineStatus>}
+        {success && <InlineStatus>{success}</InlineStatus>}
+        {showDisabledReason && <InlineStatus $error>{disabledReason}</InlineStatus>}
+      </div>
+      <SendButton type="button" disabled={isSending || Boolean(disabledReason)} onClick={onSend}>
+        {isSending ? copy.sending : copy.sendGift.replace("{count}", String(recipientCount))}
+      </SendButton>
+    </SubmitRow>
+  );
+}
+
+function GiftHistoryEntry({ gift, copy }: { gift: AdminGiftHistoryItem; copy: GiftsCopy }) {
+  const { formatMoney, formatDate } = useGiftFormat();
+  return (
+    <HistoryRow>
+      <HistoryPrimary>{formatDate(gift.createdAt)}</HistoryPrimary>
+      <div>
+        <HistoryPrimary>{gift.recipientName || copy.customRecipient}</HistoryPrimary>
+        <HistorySecondary>{gift.recipientPhoneMasked || copy.unavailable}</HistorySecondary>
+      </div>
+      <div>
+        <HistoryPrimary>{gift.goodsName}</HistoryPrimary>
+        <HistorySecondary>{gift.brandName || gift.goodsCode}</HistorySecondary>
+      </div>
+      <HistoryPrimary>{formatMoney(gift.purchasePrice)}</HistoryPrimary>
+      <div>
+        <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
+        {gift.providerMessage && gift.status !== "sent" && (
+          <ProviderError>{gift.providerMessage}</ProviderError>
+        )}
+      </div>
+      <div>
+        <HistoryPrimary>{gift.orderNo || copy.unavailable}</HistoryPrimary>
+        <HistorySecondary>{copy.trId}: {gift.trId}</HistorySecondary>
+      </div>
+    </HistoryRow>
+  );
+}
+
+// Every gift sent so far, with provider status and order references.
+function GiftHistory({ history, copy }: { history: AdminGiftHistoryItem[]; copy: GiftsCopy }) {
+  if (history.length === 0) return <EmptyState>{copy.historyEmpty}</EmptyState>;
+  return (
+    <HistoryWrap>
+      <HistoryTable>
+        <HistoryHeaderRow>
+          <div>{copy.historyDate}</div>
+          <div>{copy.historyRecipient}</div>
+          <div>{copy.historyProduct}</div>
+          <div>{copy.historyAmount}</div>
+          <div>{copy.historyStatus}</div>
+          <div>{copy.historyReference}</div>
+        </HistoryHeaderRow>
+        {history.map((gift) => (
+          <GiftHistoryEntry key={gift.id} gift={gift} copy={copy} />
+        ))}
+      </HistoryTable>
+    </HistoryWrap>
+  );
+}
+
+// Brand list in the catalog's left panel.
+function CatalogBrands({
+  isLoading,
+  brands,
+  selectedBrandCode,
+  onSelect,
+  copy,
+}: {
+  isLoading: boolean;
+  brands: AdminGiftBrand[];
+  selectedBrandCode: string | null;
+  onSelect: (brandCode: string) => void;
+  copy: GiftsCopy;
+}) {
+  if (isLoading) return <EmptyState>{copy.brandLoading}</EmptyState>;
+  if (brands.length === 0) return <EmptyState>{copy.brandEmpty}</EmptyState>;
+  return (
+    <>
+      {brands.map((brand) => (
+        <BrandButton
+          key={brand.brandCode}
+          type="button"
+          $selected={brand.brandCode === selectedBrandCode}
+          onClick={() => onSelect(brand.brandCode)}
+        >
+          {brand.brandName}
+        </BrandButton>
+      ))}
+    </>
+  );
+}
+
+// One product tile; products not on sale can be seen and starred but not chosen.
+function CatalogProductTile({
+  product,
+  isSelected,
+  onSelect,
+  isFavorite,
+  isFavoriteUpdating,
+  onToggleFavorite,
+  copy,
+}: {
+  product: AdminGiftProduct;
+  isSelected: boolean;
+  onSelect: () => void;
+  isFavorite: boolean;
+  isFavoriteUpdating: boolean;
+  onToggleFavorite: () => void;
+  copy: GiftsCopy;
+}) {
+  const { formatMoney } = useGiftFormat();
+  const unavailable = product.state !== "SALE";
+  return (
+    <CatalogProduct
+      role="button"
+      tabIndex={unavailable ? -1 : 0}
+      aria-disabled={unavailable}
+      $selected={isSelected}
+      $disabled={unavailable}
+      onClick={() => {
+        if (!unavailable) onSelect();
+      }}
+      onKeyDown={(event) => {
+        if (!unavailable && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <FavoriteToggle
+        type="button"
+        $active={isFavorite}
+        disabled={isFavoriteUpdating}
+        aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleFavorite();
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        {isFavorite ? <StarSolidIcon /> : <StarOutlineIcon />}
+      </FavoriteToggle>
+      <CatalogImage>
+        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
+      </CatalogImage>
+      <CatalogText>
+        <CatalogName>{product.goodsName}</CatalogName>
+        <CatalogMeta>{product.goodsCode}</CatalogMeta>
+        <CatalogMeta>
+          {formatMoney(product.discountPrice ?? product.salePrice)}
+          {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
+        </CatalogMeta>
+      </CatalogText>
+    </CatalogProduct>
+  );
+}
+
+type CatalogProductsProps = {
+  selectedBrand: AdminGiftBrand | null;
+  products: AdminGiftProduct[];
+  isProductsLoading: boolean;
+  hasProducts: boolean;
+  error: string | null;
+  onRetry: () => void;
+  selectedCode: string | null;
+  onSelectCode: (goodsCode: string) => void;
+  favoriteCodes: Set<string>;
+  favoriteUpdatingCode: string | null;
+  onToggleFavorite: (product: AdminGiftProduct) => void;
+  copy: GiftsCopy;
+};
+
+// The chosen brand's products, or the prompt / loading / error state in their place.
+function CatalogProducts({
+  selectedBrand,
+  products,
+  isProductsLoading,
+  hasProducts,
+  error,
+  onRetry,
+  selectedCode,
+  onSelectCode,
+  favoriteCodes,
+  favoriteUpdatingCode,
+  onToggleFavorite,
+  copy,
+}: CatalogProductsProps) {
+  if (!selectedBrand) return <EmptyState>{copy.catalogChooseBrand}</EmptyState>;
+  if (isProductsLoading && !hasProducts) return <EmptyState>{copy.catalogLoading}</EmptyState>;
+  if (error) {
+    return (
+      <>
+        <InlineStatus $error>{error}</InlineStatus>
+        <div style={{ marginTop: "0.8rem" }}>
+          <SecondaryButton type="button" onClick={onRetry}>
+            <ArrowPathIcon />
+            {copy.retry}
+          </SecondaryButton>
+        </div>
+      </>
+    );
+  }
+  if (products.length === 0) return <EmptyState>{copy.catalogEmpty}</EmptyState>;
+  return (
+    <CatalogGrid>
+      {products.map((product) => (
+        <CatalogProductTile
+          key={product.goodsCode}
+          product={product}
+          isSelected={selectedCode === product.goodsCode}
+          onSelect={() => onSelectCode(product.goodsCode)}
+          isFavorite={favoriteCodes.has(product.goodsCode)}
+          isFavoriteUpdating={favoriteUpdatingCode === product.goodsCode}
+          onToggleFavorite={() => onToggleFavorite(product)}
+          copy={copy}
+        />
+      ))}
+    </CatalogGrid>
+  );
+}
+
+// Brand → product browser for picking the gift; Escape and the backdrop close it.
+function GiftCatalogModal({
+  brandSearch,
+  onBrandSearchChange,
+  isBrandLoading,
+  brands,
+  onSelectBrand,
+  sort,
+  onSortChange,
+  isChoosing,
+  onChoose,
+  onClose,
+  ...productsProps
+}: CatalogProductsProps & {
+  brandSearch: string;
+  onBrandSearchChange: (value: string) => void;
+  isBrandLoading: boolean;
+  brands: AdminGiftBrand[];
+  onSelectBrand: (brandCode: string) => void;
+  sort: CatalogSort;
+  onSortChange: (sort: CatalogSort) => void;
+  isChoosing: boolean;
+  onChoose: () => void;
+  onClose: () => void;
+}) {
+  const { selectedBrand, products, isProductsLoading, selectedCode, copy } = productsProps;
+  const status = !selectedBrand
+    ? copy.catalogChooseBrand
+    : isProductsLoading
+      ? copy.catalogLoading
+      : copy.catalogAvailableCount.replace("{count}", String(products.length));
+
+  return (
+    <ModalBackdrop role="presentation" onMouseDown={onClose}>
+      <ModalCard
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gift-catalog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <ModalHeader>
+          <div>
+            <ModalTitle id="gift-catalog-title">{copy.catalogTitle}</ModalTitle>
+            <ModalDescription>{copy.catalogDescription}</ModalDescription>
+          </div>
+          <IconButton type="button" onClick={onClose} aria-label={copy.catalogClose}>
+            <XMarkIcon />
+          </IconButton>
+        </ModalHeader>
+
+        <CatalogBody>
+          <BrandPanel>
+            <CatalogTools>
+              <CatalogSearch>
+                <MagnifyingGlassIcon />
+                <CatalogSearchInput
+                  value={brandSearch}
+                  onChange={(event) => onBrandSearchChange(event.target.value)}
+                  placeholder={copy.brandSearchPlaceholder}
+                />
+              </CatalogSearch>
+            </CatalogTools>
+            <BrandList>
+              <CatalogBrands
+                isLoading={isBrandLoading}
+                brands={brands}
+                selectedBrandCode={selectedBrand?.brandCode ?? null}
+                onSelect={onSelectBrand}
+                copy={copy}
+              />
+            </BrandList>
+          </BrandPanel>
+
+          <CatalogItems>
+            {selectedBrand && (
+              <CatalogItemsHeader>
+                <CatalogBrandName>{selectedBrand.brandName}</CatalogBrandName>
+                <SortSelect
+                  value={sort}
+                  onChange={(event) => onSortChange(event.target.value as CatalogSort)}
+                  aria-label={copy.sortProducts}
+                >
+                  <option value="name">{copy.sortName}</option>
+                  <option value="price-asc">{copy.sortPriceAsc}</option>
+                  <option value="price-desc">{copy.sortPriceDesc}</option>
+                </SortSelect>
+              </CatalogItemsHeader>
+            )}
+            <CatalogProducts {...productsProps} />
+          </CatalogItems>
+        </CatalogBody>
+
+        <CatalogFooter>
+          <CatalogStatus>{status}</CatalogStatus>
+          <CatalogActions>
+            <SecondaryButton type="button" onClick={onClose}>
+              {copy.catalogClose}
+            </SecondaryButton>
+            <SendButton
+              type="button"
+              disabled={!selectedCode || isChoosing || isProductsLoading}
+              onClick={onChoose}
+            >
+              {isChoosing ? copy.lookingUp : copy.catalogChoose}
+            </SendButton>
+          </CatalogActions>
+        </CatalogFooter>
+      </ModalCard>
+    </ModalBackdrop>
+  );
+}
+
+export default function AdminGiftsClient() {
+  const { t } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
   const copy = t.admin.gifts;
 
@@ -803,7 +1489,7 @@ export default function AdminGiftsClient() {
   const [brandProducts, setBrandProducts] = useState<AdminGiftProduct[] | null>(null);
   const [isBrandProductsLoading, setIsBrandProductsLoading] = useState(false);
   const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
-  const [catalogSort, setCatalogSort] = useState<"price-asc" | "price-desc" | "name">("name");
+  const [catalogSort, setCatalogSort] = useState<CatalogSort>("name");
   const [favoriteUpdatingCode, setFavoriteUpdatingCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isCustomRecipient, setIsCustomRecipient] = useState(true);
@@ -895,35 +1581,11 @@ export default function AdminGiftsClient() {
     [data?.favorites],
   );
   const recipientCount = isCustomRecipient
-    ? (customPhone.trim() ? 1 : 0)
+    ? customRecipientCount(customPhone)
     : selectedRecipientIds.length;
+  const sendDisabledReason = sendBlockedReason(data, product, copy);
 
-  const sendDisabledReason = !data?.configured
-    ? data?.configurationError || copy.providerNeedsSetup
-    : !product
-      ? copy.productRequired
-      : null;
-
-  const formatMoney = (value: number | null) =>
-    value === null
-      ? copy.unavailable
-      : new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
-          style: "currency",
-          currency: "KRW",
-          maximumFractionDigits: 0,
-        }).format(value);
-
-  const formatDate = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  };
+  const { formatMoney } = useGiftFormat();
 
   const lookupProduct = async () => {
     setIsLookingUp(true);
@@ -1164,19 +1826,7 @@ export default function AdminGiftsClient() {
                 <CardTitle>{copy.sendCardTitle}</CardTitle>
                 <CardDescription>{copy.sendCardDescription}</CardDescription>
               </div>
-              <ProviderInfo>
-                <Pill $tone={data?.configured ? "ok" : "error"}>
-                  {data?.configured ? copy.providerReady : copy.providerNeedsSetup}
-                </Pill>
-                <Balance>
-                  {copy.balanceLabel}: {formatMoney(data?.balance ?? null)}
-                </Balance>
-                {data?.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
-                <SecondaryButton type="button" onClick={() => void load()} disabled={isLoading}>
-                  <ArrowPathIcon />
-                  {copy.refresh}
-                </SecondaryButton>
-              </ProviderInfo>
+              <ProviderStatus data={data} isRefreshing={isLoading} onRefresh={() => void load()} copy={copy} />
             </CardHeader>
             <CardBody>
               <Notice>
@@ -1189,154 +1839,35 @@ export default function AdminGiftsClient() {
 
               <FormGrid>
                 <FormColumn>
-                  <Field>
-                    {copy.productCodeLabel}
-                    <ProductActions>
-                      <SecondaryButton
-                        type="button"
-                        disabled={!data?.configured || isBrandLoading}
-                        onClick={openCatalog}
-                      >
-                        <MagnifyingGlassIcon />
-                        {copy.lookupProduct}
-                      </SecondaryButton>
-                    </ProductActions>
-                    {(data?.favorites ?? []).length > 0 && (
-                      <>
-                        <FieldHint>{copy.quickPicks}</FieldHint>
-                        <FavoriteQuickPicks>
-                          {(data?.favorites ?? []).map((favorite) => (
-                            <FavoriteQuickPick
-                              key={favorite.goodsCode}
-                              type="button"
-                              disabled={isLookingUp}
-                              onClick={() => void useProduct(favorite.goodsCode)}
-                              title={favorite.goodsName}
-                            >
-                              <FavoriteQuickImage>
-                                {favorite.imageUrl ? <img src={favorite.imageUrl} alt="" /> : <StarSolidIcon />}
-                              </FavoriteQuickImage>
-                              <FavoriteQuickText>{favorite.goodsName}</FavoriteQuickText>
-                            </FavoriteQuickPick>
-                          ))}
-                        </FavoriteQuickPicks>
-                      </>
-                    )}
-                    <ManualLookup>
-                      <summary>{copy.manualProductCode}</summary>
-                      <ManualLookupRow>
-                        <Input
-                          value={goodsCode}
-                          onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
-                          placeholder={copy.productCodePlaceholder}
-                          autoCapitalize="characters"
-                        />
-                        <SecondaryButton
-                          type="button"
-                          disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
-                          onClick={() => void lookupProduct()}
-                        >
-                          <MagnifyingGlassIcon />
-                          {isLookingUp ? copy.lookingUp : copy.lookupByCode}
-                        </SecondaryButton>
-                      </ManualLookupRow>
-                    </ManualLookup>
-                  </Field>
+                  <GiftProductChooser
+                    canBrowse={Boolean(data?.configured)}
+                    isBrandLoading={isBrandLoading}
+                    onOpenCatalog={openCatalog}
+                    favorites={data?.favorites ?? []}
+                    isLookingUp={isLookingUp}
+                    onPickFavorite={(code) => void useProduct(code)}
+                    goodsCode={goodsCode}
+                    onGoodsCodeChange={setGoodsCode}
+                    onLookup={() => void lookupProduct()}
+                    product={product}
+                    copy={copy}
+                  />
 
-                  {product && (
-                    <ProductCard>
-                      <ProductImage>
-                        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
-                      </ProductImage>
-                      <div>
-                        <ProductName>{product.goodsName}</ProductName>
-                        <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
-                        <ProductMeta>
-                          {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
-                          {product.salePrice !== null && product.discountPrice !== product.salePrice
-                            ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}`
-                            : ""}
-                        </ProductMeta>
-                        <ProductMeta>
-                          {copy.productState}: {product.state || copy.unavailable}
-                          {product.limitDay !== null
-                            ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
-                            : ""}
-                        </ProductMeta>
-                      </div>
-                    </ProductCard>
-                  )}
-
-                  <Field as="div">
-                    {copy.recipientLabel}
-                    <MemberPicker>
-                      <SearchWrap>
-                        <MagnifyingGlassIcon />
-                        <SearchInput
-                          value={recipientSearch}
-                          onChange={(event) => setRecipientSearch(event.target.value)}
-                          placeholder={copy.searchRecipients}
-                        />
-                      </SearchWrap>
-                      <RecipientList>
-                        <RecipientRow $selected={isCustomRecipient}>
-                          <input
-                            type="radio"
-                            name="gift-recipient"
-                            checked={isCustomRecipient}
-                            onChange={() => {
-                              setIsCustomRecipient(true);
-                              setSelectedRecipientIds([]);
-                            }}
-                          />
-                          <Avatar>+</Avatar>
-                          <RecipientText>
-                            <RecipientName>{copy.customRecipient}</RecipientName>
-                          </RecipientText>
-                        </RecipientRow>
-                        {matchingRecipients.length === 0 ? (
-                          <EmptyRecipients>{copy.noRecipients}</EmptyRecipients>
-                        ) : (
-                          matchingRecipients.map((recipient) => {
-                            const name = recipientName(recipient, copy.memberFallback);
-                            const isSelected = selectedRecipientIds.includes(recipient.id);
-                            const selectionLimitReached =
-                              !isSelected && selectedRecipientIds.length >= MAX_BATCH_RECIPIENTS;
-                            const disabled = !recipient.hasPhone || selectionLimitReached;
-                            return (
-                              <RecipientRow
-                                key={recipient.id}
-                                $selected={isSelected}
-                                $disabled={disabled}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  disabled={disabled}
-                                  onChange={() => toggleRecipient(recipient.id)}
-                                />
-                                <Avatar>
-                                  {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
-                                </Avatar>
-                                <RecipientText>
-                                  <RecipientName>{name}</RecipientName>
-                                  <RecipientMeta>{recipient.maskedPhone || copy.noPhone}</RecipientMeta>
-                                </RecipientText>
-                              </RecipientRow>
-                            );
-                          })
-                        )}
-                      </RecipientList>
-                    </MemberPicker>
-                    {recipients.some((recipient) => !recipient.hasPhone) && (
-                      <FieldHint>{copy.noPhoneHint}</FieldHint>
-                    )}
-                    <FieldHint>
-                      {copy.recipientSelectedCount.replace("{count}", String(recipientCount))}
-                      {" · "}
-                      {copy.recipientLimit.replace("{count}", String(MAX_BATCH_RECIPIENTS))}
-                    </FieldHint>
-                  </Field>
+                  <GiftRecipientPicker
+                    recipients={recipients}
+                    matchingRecipients={matchingRecipients}
+                    search={recipientSearch}
+                    onSearchChange={setRecipientSearch}
+                    isCustomRecipient={isCustomRecipient}
+                    onChooseCustom={() => {
+                      setIsCustomRecipient(true);
+                      setSelectedRecipientIds([]);
+                    }}
+                    selectedRecipientIds={selectedRecipientIds}
+                    onToggle={toggleRecipient}
+                    recipientCount={recipientCount}
+                    copy={copy}
+                  />
 
                   {isCustomRecipient && (
                     <TwoColumns>
@@ -1384,24 +1915,15 @@ export default function AdminGiftsClient() {
                 </FormColumn>
               </FormGrid>
 
-              <SubmitRow>
-                <div>
-                  {sendError && <InlineStatus $error>{sendError}</InlineStatus>}
-                  {sendSuccess && <InlineStatus>{sendSuccess}</InlineStatus>}
-                  {!sendError && !sendSuccess && sendDisabledReason && (
-                    <InlineStatus $error>{sendDisabledReason}</InlineStatus>
-                  )}
-                </div>
-                <SendButton
-                  type="button"
-                  disabled={isSending || Boolean(sendDisabledReason)}
-                  onClick={() => void submit()}
-                >
-                  {isSending
-                    ? copy.sending
-                    : copy.sendGift.replace("{count}", String(recipientCount))}
-                </SendButton>
-              </SubmitRow>
+              <GiftSendBar
+                error={sendError}
+                success={sendSuccess}
+                disabledReason={sendDisabledReason}
+                isSending={isSending}
+                recipientCount={recipientCount}
+                onSend={() => void submit()}
+                copy={copy}
+              />
             </CardBody>
           </Card>
 
@@ -1413,218 +1935,37 @@ export default function AdminGiftsClient() {
               </div>
             </CardHeader>
             <CardBody>
-              {(data?.history ?? []).length === 0 ? (
-                <EmptyState>{copy.historyEmpty}</EmptyState>
-              ) : (
-                <HistoryWrap>
-                  <HistoryTable>
-                    <HistoryHeaderRow>
-                      <div>{copy.historyDate}</div>
-                      <div>{copy.historyRecipient}</div>
-                      <div>{copy.historyProduct}</div>
-                      <div>{copy.historyAmount}</div>
-                      <div>{copy.historyStatus}</div>
-                      <div>{copy.historyReference}</div>
-                    </HistoryHeaderRow>
-                    {(data?.history ?? []).map((gift) => (
-                      <HistoryRow key={gift.id}>
-                        <HistoryPrimary>{formatDate(gift.createdAt)}</HistoryPrimary>
-                        <div>
-                          <HistoryPrimary>{gift.recipientName || copy.customRecipient}</HistoryPrimary>
-                          <HistorySecondary>{gift.recipientPhoneMasked || copy.unavailable}</HistorySecondary>
-                        </div>
-                        <div>
-                          <HistoryPrimary>{gift.goodsName}</HistoryPrimary>
-                          <HistorySecondary>{gift.brandName || gift.goodsCode}</HistorySecondary>
-                        </div>
-                        <HistoryPrimary>{formatMoney(gift.purchasePrice)}</HistoryPrimary>
-                        <div>
-                          <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
-                          {gift.providerMessage && gift.status !== "sent" && (
-                            <ProviderError>{gift.providerMessage}</ProviderError>
-                          )}
-                        </div>
-                        <div>
-                          <HistoryPrimary>{gift.orderNo || copy.unavailable}</HistoryPrimary>
-                          <HistorySecondary>{copy.trId}: {gift.trId}</HistorySecondary>
-                        </div>
-                      </HistoryRow>
-                    ))}
-                  </HistoryTable>
-                </HistoryWrap>
-              )}
+              <GiftHistory history={data?.history ?? []} copy={copy} />
             </CardBody>
           </Card>
         </Stack>
       )}
 
       {isCatalogOpen && (
-        <ModalBackdrop role="presentation" onMouseDown={() => setIsCatalogOpen(false)}>
-          <ModalCard
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="gift-catalog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <ModalHeader>
-              <div>
-                <ModalTitle id="gift-catalog-title">{copy.catalogTitle}</ModalTitle>
-                <ModalDescription>{copy.catalogDescription}</ModalDescription>
-              </div>
-              <IconButton type="button" onClick={() => setIsCatalogOpen(false)} aria-label={copy.catalogClose}>
-                <XMarkIcon />
-              </IconButton>
-            </ModalHeader>
-
-            <CatalogBody>
-              <BrandPanel>
-                <CatalogTools>
-                  <CatalogSearch>
-                    <MagnifyingGlassIcon />
-                    <CatalogSearchInput
-                      value={brandSearch}
-                      onChange={(event) => setBrandSearch(event.target.value)}
-                      placeholder={copy.brandSearchPlaceholder}
-                    />
-                  </CatalogSearch>
-                </CatalogTools>
-                <BrandList>
-                  {isBrandLoading ? (
-                    <EmptyState>{copy.brandLoading}</EmptyState>
-                  ) : matchingBrands.length === 0 ? (
-                    <EmptyState>{copy.brandEmpty}</EmptyState>
-                  ) : (
-                    matchingBrands.map((brand) => (
-                      <BrandButton
-                        key={brand.brandCode}
-                        type="button"
-                        $selected={brand.brandCode === selectedBrandCode}
-                        onClick={() => selectBrand(brand.brandCode)}
-                      >
-                        {brand.brandName}
-                      </BrandButton>
-                    ))
-                  )}
-                </BrandList>
-              </BrandPanel>
-
-              <CatalogItems>
-                {selectedBrand && (
-                  <CatalogItemsHeader>
-                    <CatalogBrandName>{selectedBrand.brandName}</CatalogBrandName>
-                    <SortSelect
-                      value={catalogSort}
-                      onChange={(event) =>
-                        setCatalogSort(event.target.value as "price-asc" | "price-desc" | "name")
-                      }
-                      aria-label={copy.sortProducts}
-                    >
-                      <option value="name">{copy.sortName}</option>
-                      <option value="price-asc">{copy.sortPriceAsc}</option>
-                      <option value="price-desc">{copy.sortPriceDesc}</option>
-                    </SortSelect>
-                  </CatalogItemsHeader>
-                )}
-                {!selectedBrand ? (
-                  <EmptyState>{copy.catalogChooseBrand}</EmptyState>
-                ) : isBrandProductsLoading && !brandProducts ? (
-                  <EmptyState>{copy.catalogLoading}</EmptyState>
-                ) : catalogError ? (
-                  <>
-                    <InlineStatus $error>{catalogError}</InlineStatus>
-                    <div style={{ marginTop: "0.8rem" }}>
-                      <SecondaryButton
-                        type="button"
-                        onClick={() => selectedBrandCode ? selectBrand(selectedBrandCode) : void loadBrands()}
-                      >
-                        <ArrowPathIcon />
-                        {copy.retry}
-                      </SecondaryButton>
-                    </div>
-                  </>
-                ) : matchingCatalogProducts.length === 0 ? (
-                  <EmptyState>{copy.catalogEmpty}</EmptyState>
-                ) : (
-                  <CatalogGrid>
-                    {matchingCatalogProducts.map((catalogProduct) => {
-                      const unavailable = catalogProduct.state !== "SALE";
-                      return (
-                        <CatalogProduct
-                          key={catalogProduct.goodsCode}
-                          role="button"
-                          tabIndex={unavailable ? -1 : 0}
-                          aria-disabled={unavailable}
-                          $selected={catalogSelectedCode === catalogProduct.goodsCode}
-                          $disabled={unavailable}
-                          onClick={() => {
-                            if (!unavailable) setCatalogSelectedCode(catalogProduct.goodsCode);
-                          }}
-                          onKeyDown={(event) => {
-                            if (!unavailable && (event.key === "Enter" || event.key === " ")) {
-                              event.preventDefault();
-                              setCatalogSelectedCode(catalogProduct.goodsCode);
-                            }
-                          }}
-                        >
-                          <FavoriteToggle
-                            type="button"
-                            $active={favoriteCodes.has(catalogProduct.goodsCode)}
-                            disabled={favoriteUpdatingCode === catalogProduct.goodsCode}
-                            aria-label={
-                              favoriteCodes.has(catalogProduct.goodsCode)
-                                ? copy.removeFavorite
-                                : copy.addFavorite
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void toggleFavorite(catalogProduct);
-                            }}
-                            onKeyDown={(event) => event.stopPropagation()}
-                          >
-                            {favoriteCodes.has(catalogProduct.goodsCode) ? <StarSolidIcon /> : <StarOutlineIcon />}
-                          </FavoriteToggle>
-                          <CatalogImage>
-                            {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
-                          </CatalogImage>
-                          <CatalogText>
-                            <CatalogName>{catalogProduct.goodsName}</CatalogName>
-                            <CatalogMeta>{catalogProduct.goodsCode}</CatalogMeta>
-                            <CatalogMeta>
-                              {formatMoney(catalogProduct.discountPrice ?? catalogProduct.salePrice)}
-                              {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
-                            </CatalogMeta>
-                          </CatalogText>
-                        </CatalogProduct>
-                      );
-                    })}
-                  </CatalogGrid>
-                )}
-              </CatalogItems>
-            </CatalogBody>
-
-            <CatalogFooter>
-              <CatalogStatus>
-                {!selectedBrand
-                  ? copy.catalogChooseBrand
-                  : isBrandProductsLoading
-                    ? copy.catalogLoading
-                    : copy.catalogAvailableCount.replace("{count}", String(matchingCatalogProducts.length))}
-              </CatalogStatus>
-              <CatalogActions>
-                <SecondaryButton type="button" onClick={() => setIsCatalogOpen(false)}>
-                  {copy.catalogClose}
-                </SecondaryButton>
-                <SendButton
-                  type="button"
-                  disabled={!catalogSelectedCode || isLookingUp || isBrandProductsLoading}
-                  onClick={() => void selectCatalogProduct()}
-                >
-                  {isLookingUp ? copy.lookingUp : copy.catalogChoose}
-                </SendButton>
-              </CatalogActions>
-            </CatalogFooter>
-          </ModalCard>
-        </ModalBackdrop>
+        <GiftCatalogModal
+          brandSearch={brandSearch}
+          onBrandSearchChange={setBrandSearch}
+          isBrandLoading={isBrandLoading}
+          brands={matchingBrands}
+          selectedBrand={selectedBrand}
+          onSelectBrand={selectBrand}
+          sort={catalogSort}
+          onSortChange={setCatalogSort}
+          products={matchingCatalogProducts}
+          isProductsLoading={isBrandProductsLoading}
+          hasProducts={Boolean(brandProducts)}
+          error={catalogError}
+          onRetry={() => (selectedBrandCode ? selectBrand(selectedBrandCode) : void loadBrands())}
+          selectedCode={catalogSelectedCode}
+          onSelectCode={setCatalogSelectedCode}
+          favoriteCodes={favoriteCodes}
+          favoriteUpdatingCode={favoriteUpdatingCode}
+          onToggleFavorite={(catalogProduct) => void toggleFavorite(catalogProduct)}
+          isChoosing={isLookingUp}
+          onChoose={() => void selectCatalogProduct()}
+          onClose={() => setIsCatalogOpen(false)}
+          copy={copy}
+        />
       )}
     </Page>
   );

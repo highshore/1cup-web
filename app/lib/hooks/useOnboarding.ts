@@ -23,19 +23,25 @@ export function useOnboarding() {
       }
 
       setIsLoading(true);
-      const { data, error } = await supabase.rpc("current_user_row");
-      if (!active) return;
+      try {
+        const { data, error } = await supabase.rpc("current_user_row");
+        if (!active) return;
 
-      if (error) {
-        console.error("Unable to check member onboarding:", error.message);
-        // Never block a member from the app when this optional presentation layer
-        // cannot read its status.
-        setShouldShow(false);
-      } else {
-        const profile = Array.isArray(data) ? data[0] : data;
-        setShouldShow(!profile?.onboarding_completed_at);
+        if (error) {
+          console.error("Unable to check member onboarding:", error.message);
+          // Never block a member from the app when this optional presentation layer
+          // cannot read its status.
+          setShouldShow(false);
+        } else {
+          const profile = Array.isArray(data) ? data[0] : data;
+          setShouldShow(!profile?.onboarding_completed_at);
+        }
+      } catch (error) {
+        console.error("Unable to check member onboarding:", error);
+        if (active) setShouldShow(false);
+      } finally {
+        if (active) setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
     void checkOnboarding();

@@ -4,14 +4,17 @@ import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ButtonHTMLAttributes,
+  Dispatch,
   HTMLAttributes,
   InputHTMLAttributes,
   LabelHTMLAttributes,
   SelectHTMLAttributes,
+  SetStateAction,
   TextareaHTMLAttributes,
 } from "react";
 
 import { useAuth } from "../../lib/contexts/auth_context";
+import type { getDictionary } from "../../lib/i18n";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   createNotificationTemplateClient,
@@ -36,6 +39,7 @@ type ParagraphProps = HTMLAttributes<HTMLParagraphElement>;
 type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 type InputProps = InputHTMLAttributes<HTMLInputElement>;
+type NotificationsCopy = ReturnType<typeof getDictionary>["admin"]["notifications"];
 
 function Page({ className = "", ...rest }: SectionProps) {
   return (
@@ -67,6 +71,18 @@ function Card({ className = "", ...rest }: SectionProps) {
 function CardHeader({ className = "", ...rest }: DivProps) {
   return <div {...rest} className={`px-[1.35rem] pt-[1.35rem] ${className}`} />;
 }
+
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+const DATE_TIME_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", DATE_TIME_OPTIONS),
+  en: new Intl.DateTimeFormat("en-US", DATE_TIME_OPTIONS),
+};
 
 function CardTitle({ className = "", ...rest }: HeadingProps) {
   return <h2 {...rest} className={`m-0 text-[#050505] text-[1rem] font-black ${className}`} />;
@@ -454,8 +470,267 @@ function initials(value: string): string {
   return value.slice(0, 1).toUpperCase() || "1";
 }
 
+// Searchable checklist of members, shown when the audience is "selected members".
+function RecipientPicker({
+  recipients,
+  search,
+  onSearchChange,
+  selectedIds,
+  onToggle,
+  copy,
+}: {
+  recipients: AdminNotificationRecipient[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  selectedIds: string[];
+  onToggle: (recipientId: string) => void;
+  copy: NotificationsCopy;
+}) {
+  return (
+    <MemberPicker>
+      <SearchWrap>
+        <MagnifyingGlassIcon />
+        <SearchInput
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder={copy.searchMembers}
+        />
+      </SearchWrap>
+      <RecipientList>
+        {recipients.length === 0 ? (
+          <EmptyMembers>{copy.noMembers}</EmptyMembers>
+        ) : (
+          recipients.map((recipient) => {
+            const name = displayName(recipient, copy.memberFallback);
+            return (
+              <RecipientRow key={recipient.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(recipient.id)}
+                  onChange={() => onToggle(recipient.id)}
+                />
+                <Avatar>
+                  {recipient.photoUrl ? (
+                    <img src={recipient.photoUrl} alt="" />
+                  ) : (
+                    initials(name)
+                  )}
+                </Avatar>
+                <RecipientName>{name}</RecipientName>
+              </RecipientRow>
+            );
+          })
+        )}
+      </RecipientList>
+    </MemberPicker>
+  );
+}
+
+const SCHEDULE_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+// Recurring send time (hour, minute, weekdays) for the selected template.
+function TemplateSchedule({
+  enabled,
+  onEnabledChange,
+  schedule,
+  onScheduleChange,
+  canSave,
+  onSave,
+  copy,
+}: {
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  schedule: NotificationTemplateSchedule;
+  onScheduleChange: Dispatch<SetStateAction<NotificationTemplateSchedule>>;
+  canSave: boolean;
+  onSave: () => void;
+  copy: NotificationsCopy;
+}) {
+  const toggleWeekday = (day: number) => {
+    onScheduleChange((current) => ({
+      ...current,
+      daysOfWeek: current.daysOfWeek.includes(day)
+        ? current.daysOfWeek.filter((value) => value !== day)
+        : [...current.daysOfWeek, day].sort((a, b) => a - b),
+    }));
+  };
+
+  return (
+    <SchedulePanel>
+      <ScheduleHeader>
+        <ScheduleTitle>{copy.templateSchedule}</ScheduleTitle>
+        <SwitchLabel>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(event) => onEnabledChange(event.target.checked)}
+          />
+          {copy.scheduleEnabled}
+        </SwitchLabel>
+      </ScheduleHeader>
+      <ScheduleFields>
+        <Field>
+          {copy.scheduleHour}
+          <Select
+            value={schedule.hour}
+            onChange={(event) => onScheduleChange((current) => ({ ...current, hour: Number(event.target.value) }))}
+          >
+            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hour.toString().padStart(2, "0")}</option>)}
+          </Select>
+        </Field>
+        <Field>
+          {copy.scheduleMinute}
+          <Select
+            value={schedule.minute}
+            onChange={(event) => onScheduleChange((current) => ({ ...current, minute: Number(event.target.value) }))}
+          >
+            {SCHEDULE_MINUTES.map((minute) => <option key={minute} value={minute}>{minute.toString().padStart(2, "0")}</option>)}
+          </Select>
+        </Field>
+      </ScheduleFields>
+      <WeekdayRow>
+        {copy.weekdays.map((day, index) => (
+          <WeekdayButton
+            key={day}
+            type="button"
+            $active={schedule.daysOfWeek.includes(index)}
+            onClick={() => toggleWeekday(index)}
+            aria-pressed={schedule.daysOfWeek.includes(index)}
+          >
+            {day}
+          </WeekdayButton>
+        ))}
+      </WeekdayRow>
+      <ScheduleActions>
+        <QuietButton type="button" disabled={!canSave} onClick={onSave}>
+          {copy.saveSchedule}
+        </QuietButton>
+      </ScheduleActions>
+    </SchedulePanel>
+  );
+}
+
+// Previously sent campaigns, newest first as the server returns them.
+function CampaignHistory({
+  campaigns,
+  copy,
+}: {
+  campaigns: AdminNotificationCampaign[];
+  copy: NotificationsCopy;
+}) {
+  const { locale } = useI18n();
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return DATE_TIME_FORMAT[locale].format(date);
+  };
+
+  if (campaigns.length === 0) return <EmptyMembers>{copy.historyEmpty}</EmptyMembers>;
+
+  return (
+    <HistoryList>
+      {campaigns.map((campaign) => (
+        <HistoryItem key={campaign.id}>
+          <HistoryTitle>{campaign.title}</HistoryTitle>
+          <HistoryBody>{campaign.body}</HistoryBody>
+          <HistoryMeta>
+            {copy.historyMeta
+              .replace("{audience}", copy.audienceLabels[campaign.audience])
+              .replace("{delivered}", String(campaign.deliveredCount))
+              .replace("{total}", String(campaign.recipientCount))}
+          </HistoryMeta>
+          <HistoryMeta>{formatDate(campaign.createdAt)}</HistoryMeta>
+        </HistoryItem>
+      ))}
+    </HistoryList>
+  );
+}
+
+// How the notification will read for members, with placeholders while fields are empty.
+function NotificationPreview({
+  title,
+  body,
+  actionLabel,
+  copy,
+}: {
+  title: string;
+  body: string;
+  actionLabel: string;
+  copy: NotificationsCopy;
+}) {
+  return (
+    <Preview aria-live="polite">
+      <PreviewLabel>{copy.preview}</PreviewLabel>
+      <PreviewTitle>{title.trim() || copy.titlePlaceholder}</PreviewTitle>
+      <PreviewBody>{body.trim() || copy.messagePlaceholder}</PreviewBody>
+      {actionLabel.trim() && <PreviewAction>{actionLabel.trim()}</PreviewAction>}
+    </Preview>
+  );
+}
+
+// Send/save status messages and the send button with the current recipient count.
+function SendBar({
+  error,
+  success,
+  isSending,
+  recipientCount,
+  onSend,
+  copy,
+}: {
+  error: string | null;
+  success: string | null;
+  isSending: boolean;
+  recipientCount: number;
+  onSend: () => void;
+  copy: NotificationsCopy;
+}) {
+  return (
+    <SubmitRow>
+      <div>
+        {error && <InlineStatus $error>{error}</InlineStatus>}
+        {success && <InlineStatus>{success}</InlineStatus>}
+      </div>
+      <SendButton type="button" onClick={onSend} disabled={isSending}>
+        {isSending ? copy.sending : copy.send.replace("{count}", String(recipientCount))}
+      </SendButton>
+    </SubmitRow>
+  );
+}
+
+// Saves the current draft (audience, content, schedule) as a new named template.
+function SaveTemplateField({
+  name,
+  onNameChange,
+  isSaving,
+  onSave,
+  copy,
+}: {
+  name: string;
+  onNameChange: (name: string) => void;
+  isSaving: boolean;
+  onSave: () => void;
+  copy: NotificationsCopy;
+}) {
+  return (
+    <Field>
+      {copy.newTemplateName}
+      <TemplateBar>
+        <Input
+          value={name}
+          maxLength={120}
+          onChange={(event) => onNameChange(event.target.value)}
+          placeholder={copy.newTemplatePlaceholder}
+        />
+        <QuietButton type="button" disabled={isSaving || !name.trim()} onClick={onSave}>
+          {isSaving ? copy.savingTemplate : copy.saveTemplate}
+        </QuietButton>
+      </TemplateBar>
+    </Field>
+  );
+}
+
 export default function AdminNotificationsClient() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
   const copy = t.admin.notifications;
 
@@ -560,15 +835,6 @@ export default function AdminNotificationsClient() {
     setActionUrl(template.actionUrl ?? "");
     setTemplateScheduleEnabled(template.scheduleEnabled);
     setTemplateSchedule(template.schedule);
-  };
-
-  const toggleWeekday = (day: number) => {
-    setTemplateSchedule((current) => ({
-      ...current,
-      daysOfWeek: current.daysOfWeek.includes(day)
-        ? current.daysOfWeek.filter((value) => value !== day)
-        : [...current.daysOfWeek, day].sort((a, b) => a - b),
-    }));
   };
 
   const saveTemplate = async () => {
@@ -703,18 +969,6 @@ export default function AdminNotificationsClient() {
     }
   };
 
-  const formatDate = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  };
-
   if (authLoading || (!data && isLoading && !loadError)) {
     return <LoadingState>{copy.loading}</LoadingState>;
   }
@@ -792,42 +1046,14 @@ export default function AdminNotificationsClient() {
               </Field>
 
               {audience === "selected_members" && (
-                <MemberPicker>
-                  <SearchWrap>
-                    <MagnifyingGlassIcon />
-                    <SearchInput
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder={copy.searchMembers}
-                    />
-                  </SearchWrap>
-                  <RecipientList>
-                    {matchingRecipients.length === 0 ? (
-                      <EmptyMembers>{copy.noMembers}</EmptyMembers>
-                    ) : (
-                      matchingRecipients.map((recipient) => {
-                        const name = displayName(recipient, copy.memberFallback);
-                        return (
-                          <RecipientRow key={recipient.id}>
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(recipient.id)}
-                              onChange={() => toggleRecipient(recipient.id)}
-                            />
-                            <Avatar>
-                              {recipient.photoUrl ? (
-                                <img src={recipient.photoUrl} alt="" />
-                              ) : (
-                                initials(name)
-                              )}
-                            </Avatar>
-                            <RecipientName>{name}</RecipientName>
-                          </RecipientRow>
-                        );
-                      })
-                    )}
-                  </RecipientList>
-                </MemberPicker>
+                <RecipientPicker
+                  recipients={matchingRecipients}
+                  search={search}
+                  onSearchChange={setSearch}
+                  selectedIds={selectedIds}
+                  onToggle={toggleRecipient}
+                  copy={copy}
+                />
               )}
 
               <TwoColumns>
@@ -851,89 +1077,34 @@ export default function AdminNotificationsClient() {
                 </Field>
               </TwoColumns>
 
-              <SchedulePanel>
-                <ScheduleHeader>
-                  <ScheduleTitle>{copy.templateSchedule}</ScheduleTitle>
-                  <SwitchLabel>
-                    <input
-                      type="checkbox"
-                      checked={templateScheduleEnabled}
-                      onChange={(event) => setTemplateScheduleEnabled(event.target.checked)}
-                    />
-                    {copy.scheduleEnabled}
-                  </SwitchLabel>
-                </ScheduleHeader>
-                <ScheduleFields>
-                  <Field>
-                    {copy.scheduleHour}
-                    <Select
-                      value={templateSchedule.hour}
-                      onChange={(event) => setTemplateSchedule((current) => ({ ...current, hour: Number(event.target.value) }))}
-                    >
-                      {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hour.toString().padStart(2, "0")}</option>)}
-                    </Select>
-                  </Field>
-                  <Field>
-                    {copy.scheduleMinute}
-                    <Select
-                      value={templateSchedule.minute}
-                      onChange={(event) => setTemplateSchedule((current) => ({ ...current, minute: Number(event.target.value) }))}
-                    >
-                      {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) => <option key={minute} value={minute}>{minute.toString().padStart(2, "0")}</option>)}
-                    </Select>
-                  </Field>
-                </ScheduleFields>
-                <WeekdayRow>
-                  {copy.weekdays.map((day, index) => (
-                    <WeekdayButton
-                      key={day}
-                      type="button"
-                      $active={templateSchedule.daysOfWeek.includes(index)}
-                      onClick={() => toggleWeekday(index)}
-                      aria-pressed={templateSchedule.daysOfWeek.includes(index)}
-                    >
-                      {day}
-                    </WeekdayButton>
-                  ))}
-                </WeekdayRow>
-                <ScheduleActions>
-                  <QuietButton type="button" disabled={!selectedTemplateId || isSavingTemplate} onClick={() => void saveTemplateSchedule()}>
-                    {copy.saveSchedule}
-                  </QuietButton>
-                </ScheduleActions>
-              </SchedulePanel>
+              <TemplateSchedule
+                enabled={templateScheduleEnabled}
+                onEnabledChange={setTemplateScheduleEnabled}
+                schedule={templateSchedule}
+                onScheduleChange={setTemplateSchedule}
+                canSave={Boolean(selectedTemplateId) && !isSavingTemplate}
+                onSave={() => void saveTemplateSchedule()}
+                copy={copy}
+              />
 
-              <Field>
-                {copy.newTemplateName}
-                <TemplateBar>
-                  <Input
-                    value={templateName}
-                    maxLength={120}
-                    onChange={(event) => setTemplateName(event.target.value)}
-                    placeholder={copy.newTemplatePlaceholder}
-                  />
-                  <QuietButton type="button" disabled={isSavingTemplate || !templateName.trim()} onClick={() => void saveTemplate()}>
-                    {isSavingTemplate ? copy.savingTemplate : copy.saveTemplate}
-                  </QuietButton>
-                </TemplateBar>
-              </Field>
+              <SaveTemplateField
+                name={templateName}
+                onNameChange={setTemplateName}
+                isSaving={isSavingTemplate}
+                onSave={() => void saveTemplate()}
+                copy={copy}
+              />
 
-              <Preview aria-live="polite">
-                <PreviewLabel>{copy.preview}</PreviewLabel>
-                <PreviewTitle>{title.trim() || copy.titlePlaceholder}</PreviewTitle>
-                <PreviewBody>{body.trim() || copy.messagePlaceholder}</PreviewBody>
-                {actionLabel.trim() && <PreviewAction>{actionLabel.trim()}</PreviewAction>}
-              </Preview>
+              <NotificationPreview title={title} body={body} actionLabel={actionLabel} copy={copy} />
 
-              <SubmitRow>
-                <div>
-                  {sendError && <InlineStatus $error>{sendError}</InlineStatus>}
-                  {sendSuccess && <InlineStatus>{sendSuccess}</InlineStatus>}
-                </div>
-                <SendButton type="button" onClick={() => void submit()} disabled={isSending}>
-                  {isSending ? copy.sending : copy.send.replace("{count}", String(recipientCount))}
-                </SendButton>
-              </SubmitRow>
+              <SendBar
+                error={sendError}
+                success={sendSuccess}
+                isSending={isSending}
+                recipientCount={recipientCount}
+                onSend={() => void submit()}
+                copy={copy}
+              />
             </CardBody>
             <DeliveryNote>{copy.deliveryNote}</DeliveryNote>
           </Card>
@@ -944,25 +1115,7 @@ export default function AdminNotificationsClient() {
               <CardDescription>{copy.historyDescription}</CardDescription>
             </CardHeader>
             <CardBody>
-              {(data?.campaigns ?? []).length === 0 ? (
-                <EmptyMembers>{copy.historyEmpty}</EmptyMembers>
-              ) : (
-                <HistoryList>
-                  {(data?.campaigns ?? []).map((campaign: AdminNotificationCampaign) => (
-                    <HistoryItem key={campaign.id}>
-                      <HistoryTitle>{campaign.title}</HistoryTitle>
-                      <HistoryBody>{campaign.body}</HistoryBody>
-                      <HistoryMeta>
-                        {copy.historyMeta
-                          .replace("{audience}", copy.audienceLabels[campaign.audience])
-                          .replace("{delivered}", String(campaign.deliveredCount))
-                          .replace("{total}", String(campaign.recipientCount))}
-                      </HistoryMeta>
-                      <HistoryMeta>{formatDate(campaign.createdAt)}</HistoryMeta>
-                    </HistoryItem>
-                  ))}
-                </HistoryList>
-              )}
+              <CampaignHistory campaigns={data?.campaigns ?? []} copy={copy} />
             </CardBody>
           </Card>
         </Layout>

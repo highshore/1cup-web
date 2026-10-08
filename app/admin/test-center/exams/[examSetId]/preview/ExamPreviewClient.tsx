@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { useAuth } from "../../../../../lib/contexts/auth_context";
 import { loadExamSet } from "../../../../../lib/features/exam/services/exam_admin_client";
@@ -50,6 +51,9 @@ function responseTime(seconds: number) {
 function isRecordingState(stage: SpeakingState) {
   return stage === "listen_repeat_recording" || stage === "interview_recording";
 }
+function isPromptState(stage: SpeakingState) {
+  return stage === "listen_repeat_playing" || stage === "interview_question_playing";
+}
 function narrationScreenCopy(id: ExamNarration["cue_key"]) {
   if (id === "section_intro")
     return { eyebrow: "SPEAKING SECTION", title: "Speaking" };
@@ -81,6 +85,428 @@ function isReadyForPreview(examSet: ExamSetDetail) {
 }
 function stopStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
+}
+
+function PreviewFrame({ children }: { children: ReactNode }) {
+  return (
+    <main className="speaking-preview">
+      <div className="preview-assessment-bar">1CUP ENGLISH</div>
+      {children}
+    </main>
+  );
+}
+
+function PreviewLocked({ examSetId }: { examSetId: string }) {
+  return (
+    <PreviewFrame>
+      <div className="preview-message">
+        <p className="preview-kicker">TEST PREVIEW LOCKED</p>
+        <h1>Finish all media first.</h1>
+        <p>
+          The continuous run unlocks when the shared narration, sentence
+          audio and masks, and interviewer videos are ready.
+        </p>
+        <Link href={`/admin/test-center/exams/${examSetId}`}>
+          Return to item inspection
+        </Link>
+      </div>
+    </PreviewFrame>
+  );
+}
+
+function WelcomeScreen({
+  title,
+  microphoneError,
+  onBegin,
+}: {
+  title: string;
+  microphoneError: string;
+  onBegin: () => void;
+}) {
+  return (
+    <section className="preview-welcome">
+      <div className="preview-welcome-card">
+        <p className="preview-kicker">TOEFL SPEAKING PRACTICE</p>
+        <h1>{title}</h1>
+        <p className="preview-lead">
+          This is one uninterrupted run: seven Listen and Repeat responses
+          followed by four Take an Interview responses.
+        </p>
+        <dl className="preview-overview">
+          <div>
+            <dt>Responses</dt>
+            <dd>11</dd>
+          </div>
+          <div>
+            <dt>Preparation</dt>
+            <dd>None</dd>
+          </div>
+          <div>
+            <dt>Recording</dt>
+            <dd>Automatic</dd>
+          </div>
+        </dl>
+        <div className="preview-instructions">
+          <strong>Before you begin</strong>
+          <p>
+            Use headphones and allow microphone access. Prompts play once
+            only. Recording starts immediately after each prompt and stops
+            automatically.
+          </p>
+        </div>
+        {microphoneError && (
+          <p className="preview-error" role="alert">
+            {microphoneError}
+          </p>
+        )}
+        <button className="preview-primary" onClick={onBegin}>
+          Begin speaking section
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// A narrated instruction screen; Next unlocks once the narration has played through.
+function NarrationScreen({
+  narration,
+  playbackState,
+  narrationComplete,
+  audioRef,
+  onReplay,
+  onNext,
+  onEnded,
+  onError,
+}: {
+  narration: ExamNarration;
+  playbackState: PlaybackState;
+  narrationComplete: boolean;
+  audioRef: RefObject<HTMLAudioElement | null>;
+  onReplay: () => void;
+  onNext: () => void;
+  onEnded: () => void;
+  onError: () => void;
+}) {
+  const screen = narrationScreenCopy(narration.cue_key);
+  return (
+    <section className="preview-welcome">
+      <div className="preview-welcome-card preview-section-intro">
+        <p className="preview-kicker">{screen.eyebrow}</p>
+        <h1>{screen.title}</h1>
+        <p className="preview-lead">{narration.script}</p>
+        {narration.cue_key === "section_intro" ? (
+          <dl
+            className="preview-task-types"
+            aria-label="Speaking task types"
+          >
+            <div>
+              <dt>Listen and Repeat</dt>
+              <dd>
+                Listen to a short sentence and repeat it exactly once.
+              </dd>
+            </div>
+            <div>
+              <dt>Take an Interview</dt>
+              <dd>
+                Answer an interviewer&apos;s questions in the time
+                allowed.
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+        <div className="preview-audio-status">
+          <span
+            className={playbackState === "playing" ? "is-playing" : ""}
+          />
+          {playbackState === "playing"
+            ? "Audio is playing"
+            : "Preparing audio"}
+        </div>
+        {playbackState === "blocked" && (
+          <button className="preview-secondary" onClick={onReplay}>
+            Enable audio to continue
+          </button>
+        )}
+        <div className="preview-narration-actions">
+          <button
+            className="preview-primary"
+            disabled={!narrationComplete}
+            onClick={onNext}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      <audio
+        ref={audioRef}
+        src={narration.audio_url ?? undefined}
+        onEnded={onEnded}
+        onError={onError}
+      />
+    </section>
+  );
+}
+
+// The interviewer video: the question while it plays, then a looping nod while the
+// candidate answers.
+function InterviewerStage({
+  item,
+  interviewer,
+  isRecording,
+  playbackState,
+  videoRef,
+  onPromptEnded,
+  onReplay,
+  onPlaybackChange,
+}: {
+  item: ExamItem;
+  interviewer: ExamSetDetail["interviewer"];
+  isRecording: boolean;
+  playbackState: PlaybackState;
+  videoRef: RefObject<HTMLVideoElement | null>;
+  onPromptEnded: () => void;
+  onReplay: () => void;
+  onPlaybackChange: (state: PlaybackState) => void;
+}) {
+  return (
+    <div
+      className={`preview-interviewer-stage ${isRecording ? "is-listening" : ""}`}
+    >
+      {isRecording ? (
+        <video
+          autoPlay
+          key={`${item.id}-listening`}
+          className="preview-nodding-video is-playing"
+          loop
+          muted
+          playsInline
+          preload="auto"
+          poster={interviewer.image_url ?? undefined}
+          src={interviewer.video_url ?? undefined}
+          onPlaying={() => onPlaybackChange("playing")}
+          onError={() => onPlaybackChange("blocked")}
+        />
+      ) : (
+        <video
+          key={item.id}
+          ref={videoRef}
+          autoPlay
+          className={
+            playbackState === "playing" ? "is-playing" : undefined
+          }
+          playsInline
+          preload="auto"
+          poster={interviewer.image_url ?? undefined}
+          src={item.video_url ?? undefined}
+          onEnded={onPromptEnded}
+          onCanPlay={() => {
+            const video = videoRef.current;
+            if (video?.paused && video.currentTime === 0) {
+              onReplay();
+            }
+          }}
+          onPlaying={() => onPlaybackChange("playing")}
+          onError={() => onPlaybackChange("blocked")}
+        />
+      )}
+    </div>
+  );
+}
+
+// Countdown and microphone level while recording; a waiting state before.
+function ResponseTimer({
+  isRecording,
+  secondsRemaining,
+  inputLevel,
+}: {
+  isRecording: boolean;
+  secondsRemaining: number;
+  inputLevel: number;
+}) {
+  return (
+    <div
+      className={`preview-response-panel ${isRecording ? "is-recording" : ""}`}
+    >
+      {isRecording ? (
+        <>
+          <p className="preview-response-label">Response time</p>
+          <div className="preview-response-readout">
+            <span className="preview-response-dot is-recording" />
+            <strong className="preview-countdown">
+              {responseTime(secondsRemaining)}
+            </strong>
+          </div>
+          <div
+            className="preview-volume-meter"
+            aria-label="Recording level"
+            role="status"
+          >
+            <span className="preview-volume-bars" aria-hidden="true">
+              {Array.from({ length: 6 }, (_, index) => (
+                <i
+                  className={
+                    inputLevel >= (index + 1) / 6
+                      ? "is-active"
+                      : undefined
+                  }
+                  key={index}
+                />
+              ))}
+            </span>
+            <span>Recording</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="preview-response-label">Response time</p>
+          <div className="preview-response-readout">
+            <span className="preview-response-dot" />
+            <strong>Waiting</strong>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function responseHeading(item: ExamItem, isRecording: boolean) {
+  if (isRecording) return "Speak now.";
+  return item.module === "listen_repeat"
+    ? "Listen and repeat once."
+    : "Listen to the interviewer.";
+}
+
+// One timed response: the prompt (sentence audio over an image, or the interviewer
+// video), then recording with a countdown.
+function ResponseScreen({
+  item,
+  interviewer,
+  responseNumber,
+  responseTotal,
+  isRecording,
+  playbackState,
+  secondsRemaining,
+  inputLevel,
+  sentenceAudioRef,
+  questionVideoRef,
+  onVisualLoaded,
+  onPromptEnded,
+  onReplay,
+  onPlaybackChange,
+}: {
+  item: ExamItem;
+  interviewer: ExamSetDetail["interviewer"];
+  responseNumber: number;
+  responseTotal: number;
+  isRecording: boolean;
+  playbackState: PlaybackState;
+  secondsRemaining: number;
+  inputLevel: number;
+  sentenceAudioRef: RefObject<HTMLAudioElement | null>;
+  questionVideoRef: RefObject<HTMLVideoElement | null>;
+  onVisualLoaded: () => void;
+  onPromptEnded: () => void;
+  onReplay: () => void;
+  onPlaybackChange: (state: PlaybackState) => void;
+}) {
+  return (
+    <section className="preview-task-shell">
+      <div
+        className="preview-progress"
+        aria-label={`Response ${responseNumber} of 11`}
+      >
+        <span
+          style={{
+            width: `${(responseNumber / responseTotal) * 100}%`,
+          }}
+        />
+      </div>
+      <div className="preview-task-heading">
+        <p className="preview-kicker">
+          RESPONSE {responseNumber} OF {responseTotal}
+        </p>
+        <h1>{responseHeading(item, isRecording)}</h1>
+      </div>
+      <div className="preview-prompt-area">
+        {item.module === "listen_repeat" ? (
+          <>
+            <figure className="preview-segmentation">
+              <Image
+                src={item.image_url!}
+                alt="Listen and Repeat task illustration"
+                width={1200}
+                height={900}
+                priority
+                sizes="(max-width: 780px) calc(100vw - 48px), 710px"
+                onLoad={onVisualLoaded}
+              />
+            </figure>
+            <audio
+              ref={sentenceAudioRef}
+              src={item.audio_url ?? undefined}
+              onEnded={onPromptEnded}
+            />
+          </>
+        ) : (
+          <InterviewerStage
+            item={item}
+            interviewer={interviewer}
+            isRecording={isRecording}
+            playbackState={playbackState}
+            videoRef={questionVideoRef}
+            onPromptEnded={onPromptEnded}
+            onReplay={onReplay}
+            onPlaybackChange={onPlaybackChange}
+          />
+        )}
+      </div>
+      <ResponseTimer
+        isRecording={isRecording}
+        secondsRemaining={secondsRemaining}
+        inputLevel={inputLevel}
+      />
+      {playbackState === "blocked" && (
+        <div className="preview-playback-help">
+          <p>This prompt needs browser permission before it can begin.</p>
+          <button className="preview-secondary" onClick={onReplay}>
+            Enable audio to continue
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CompleteScreen({
+  examSetId,
+  onRestart,
+}: {
+  examSetId: string;
+  onRestart: () => void;
+}) {
+  return (
+    <section className="preview-welcome">
+      <div className="preview-welcome-card preview-complete">
+        <p className="preview-kicker">PRACTICE COMPLETE</p>
+        <h1>Speaking section finished.</h1>
+        <p className="preview-lead">
+          You completed all 11 timed responses. Your recordings were
+          captured for this practice session.
+        </p>
+        <div className="preview-complete-actions">
+          <button className="preview-primary" onClick={onRestart}>
+            Run again
+          </button>
+          <Link
+            className="preview-secondary preview-link-button"
+            href={`/admin/test-center/exams/${examSetId}`}
+          >
+            Review media
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default function ExamPreviewClient({
@@ -329,314 +755,58 @@ export default function ExamPreviewClient({
   }, [stopInputMeter]);
   if (isLoading || !examSet)
     return (
-      <main className="speaking-preview">
-        <div className="preview-assessment-bar">1CUP ENGLISH</div>
+      <PreviewFrame>
         <div className="preview-loading">
           {loadError || "Loading saved speaking test…"}
         </div>
-      </main>
+      </PreviewFrame>
     );
   if (!isReadyForPreview(examSet))
-    return (
-      <main className="speaking-preview">
-        <div className="preview-assessment-bar">1CUP ENGLISH</div>
-        <div className="preview-message">
-          <p className="preview-kicker">TEST PREVIEW LOCKED</p>
-          <h1>Finish all media first.</h1>
-          <p>
-            The continuous run unlocks when the shared narration, sentence
-            audio and masks, and interviewer videos are ready.
-          </p>
-          <Link href={`/admin/test-center/exams/${examSetId}`}>
-            Return to item inspection
-          </Link>
-        </div>
-      </main>
-    );
+    return <PreviewLocked examSetId={examSetId} />;
   const responseNumber = Math.min(responseIndex + 1, responses.length);
-  const promptIsPlaying =
-    stage === "listen_repeat_playing" || stage === "interview_question_playing";
+  const promptIsPlaying = isPromptState(stage);
   return (
-    <main className="speaking-preview">
-      <div className="preview-assessment-bar">1CUP ENGLISH</div>
+    <PreviewFrame>
       {stage === "welcome" && (
-        <section className="preview-welcome">
-          <div className="preview-welcome-card">
-            <p className="preview-kicker">TOEFL SPEAKING PRACTICE</p>
-            <h1>{examSet.title}</h1>
-            <p className="preview-lead">
-              This is one uninterrupted run: seven Listen and Repeat responses
-              followed by four Take an Interview responses.
-            </p>
-            <dl className="preview-overview">
-              <div>
-                <dt>Responses</dt>
-                <dd>11</dd>
-              </div>
-              <div>
-                <dt>Preparation</dt>
-                <dd>None</dd>
-              </div>
-              <div>
-                <dt>Recording</dt>
-                <dd>Automatic</dd>
-              </div>
-            </dl>
-            <div className="preview-instructions">
-              <strong>Before you begin</strong>
-              <p>
-                Use headphones and allow microphone access. Prompts play once
-                only. Recording starts immediately after each prompt and stops
-                automatically.
-              </p>
-            </div>
-            {microphoneError && (
-              <p className="preview-error" role="alert">
-                {microphoneError}
-              </p>
-            )}
-            <button
-              className="preview-primary"
-              onClick={() => void startExam()}
-            >
-              Begin speaking section
-            </button>
-          </div>
-        </section>
+        <WelcomeScreen
+          title={examSet.title}
+          microphoneError={microphoneError}
+          onBegin={() => void startExam()}
+        />
       )}
       {activeNarration && (
-        <section className="preview-welcome">
-          <div className="preview-welcome-card preview-section-intro">
-            <p className="preview-kicker">
-              {narrationScreenCopy(activeNarration.cue_key).eyebrow}
-            </p>
-            <h1>{narrationScreenCopy(activeNarration.cue_key).title}</h1>
-            <p className="preview-lead">{activeNarration.script}</p>
-            {activeNarration.cue_key === "section_intro" ? (
-              <dl
-                className="preview-task-types"
-                aria-label="Speaking task types"
-              >
-                <div>
-                  <dt>Listen and Repeat</dt>
-                  <dd>
-                    Listen to a short sentence and repeat it exactly once.
-                  </dd>
-                </div>
-                <div>
-                  <dt>Take an Interview</dt>
-                  <dd>
-                    Answer an interviewer&apos;s questions in the time
-                    allowed.
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-            <div className="preview-audio-status">
-              <span
-                className={playbackState === "playing" ? "is-playing" : ""}
-              />
-              {playbackState === "playing"
-                ? "Audio is playing"
-                : "Preparing audio"}
-            </div>
-            {playbackState === "blocked" && (
-              <button
-                className="preview-secondary"
-                onClick={() => void playCurrentMedia()}
-              >
-                Enable audio to continue
-              </button>
-            )}
-            <div className="preview-narration-actions">
-              <button
-                className="preview-primary"
-                disabled={!narrationComplete}
-                onClick={advanceNarration}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-          <audio
-            ref={narrationAudioRef}
-            src={activeNarration.audio_url ?? undefined}
-            onEnded={finishNarration}
-            onError={() => setPlaybackState("blocked")}
-          />
-        </section>
+        <NarrationScreen
+          narration={activeNarration}
+          playbackState={playbackState}
+          narrationComplete={narrationComplete}
+          audioRef={narrationAudioRef}
+          onReplay={() => void playCurrentMedia()}
+          onNext={advanceNarration}
+          onEnded={finishNarration}
+          onError={() => setPlaybackState("blocked")}
+        />
       )}
       {(promptIsPlaying || isRecording) && activeItem && (
-        <section className="preview-task-shell">
-          <div
-            className="preview-progress"
-            aria-label={`Response ${responseNumber} of 11`}
-          >
-            <span
-              style={{
-                width: `${(responseNumber / responses.length) * 100}%`,
-              }}
-            />
-          </div>
-          <div className="preview-task-heading">
-            <p className="preview-kicker">
-              RESPONSE {responseNumber} OF {responses.length}
-            </p>
-            <h1>
-              {isRecording
-                ? "Speak now."
-                : activeItem.module === "listen_repeat"
-                  ? "Listen and repeat once."
-                  : "Listen to the interviewer."}
-            </h1>
-          </div>
-          <div className="preview-prompt-area">
-            {activeItem.module === "listen_repeat" ? (
-              <>
-                <figure className="preview-segmentation">
-                  <Image
-                    src={activeItem.image_url!}
-                    alt="Listen and Repeat task illustration"
-                    width={1200}
-                    height={900}
-                    priority
-                    sizes="(max-width: 780px) calc(100vw - 48px), 710px"
-                    onLoad={() => setLoadedVisualItemId(activeItem.id)}
-                  />
-                </figure>
-                <audio
-                  ref={sentenceAudioRef}
-                  src={activeItem.audio_url ?? undefined}
-                  onEnded={startResponseRecording}
-                />
-              </>
-            ) : (
-              <>
-                <div
-                  className={`preview-interviewer-stage ${isRecording ? "is-listening" : ""}`}
-                >
-                  {isRecording ? (
-                    <video
-                      autoPlay
-                      key={`${activeItem.id}-listening`}
-                      className="preview-nodding-video is-playing"
-                      loop
-                      muted
-                      playsInline
-                      preload="auto"
-                      poster={examSet.interviewer.image_url ?? undefined}
-                      src={examSet.interviewer.video_url ?? undefined}
-                      onPlaying={() => setPlaybackState("playing")}
-                      onError={() => setPlaybackState("blocked")}
-                    />
-                  ) : (
-                    <video
-                      key={activeItem.id}
-                      ref={questionVideoRef}
-                      autoPlay
-                      className={
-                        playbackState === "playing" ? "is-playing" : undefined
-                      }
-                      playsInline
-                      preload="auto"
-                      poster={examSet.interviewer.image_url ?? undefined}
-                      src={activeItem.video_url ?? undefined}
-                      onEnded={startResponseRecording}
-                      onCanPlay={() => {
-                        const video = questionVideoRef.current;
-                        if (video?.paused && video.currentTime === 0) {
-                          void playCurrentMedia();
-                        }
-                      }}
-                      onPlaying={() => setPlaybackState("playing")}
-                      onError={() => setPlaybackState("blocked")}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <div
-            className={`preview-response-panel ${isRecording ? "is-recording" : ""}`}
-          >
-            {isRecording ? (
-              <>
-                <p className="preview-response-label">Response time</p>
-                <div className="preview-response-readout">
-                  <span className="preview-response-dot is-recording" />
-                  <strong className="preview-countdown">
-                    {responseTime(secondsRemaining)}
-                  </strong>
-                </div>
-                <div
-                  className="preview-volume-meter"
-                  aria-label="Recording level"
-                  role="status"
-                >
-                  <span className="preview-volume-bars" aria-hidden="true">
-                    {Array.from({ length: 6 }, (_, index) => (
-                      <i
-                        className={
-                          inputLevel >= (index + 1) / 6
-                            ? "is-active"
-                            : undefined
-                        }
-                        key={index}
-                      />
-                    ))}
-                  </span>
-                  <span>Recording</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="preview-response-label">Response time</p>
-                <div className="preview-response-readout">
-                  <span className="preview-response-dot" />
-                  <strong>Waiting</strong>
-                </div>
-              </>
-            )}
-          </div>
-          {playbackState === "blocked" && (
-            <div className="preview-playback-help">
-              <p>This prompt needs browser permission before it can begin.</p>
-              <button
-                className="preview-secondary"
-                onClick={() => void playCurrentMedia()}
-              >
-                Enable audio to continue
-              </button>
-            </div>
-          )}
-        </section>
+        <ResponseScreen
+          item={activeItem}
+          interviewer={examSet.interviewer}
+          responseNumber={responseNumber}
+          responseTotal={responses.length}
+          isRecording={isRecording}
+          playbackState={playbackState}
+          secondsRemaining={secondsRemaining}
+          inputLevel={inputLevel}
+          sentenceAudioRef={sentenceAudioRef}
+          questionVideoRef={questionVideoRef}
+          onVisualLoaded={() => setLoadedVisualItemId(activeItem.id)}
+          onPromptEnded={startResponseRecording}
+          onReplay={() => void playCurrentMedia()}
+          onPlaybackChange={setPlaybackState}
+        />
       )}
       {stage === "complete" && (
-        <section className="preview-welcome">
-          <div className="preview-welcome-card preview-complete">
-            <p className="preview-kicker">PRACTICE COMPLETE</p>
-            <h1>Speaking section finished.</h1>
-            <p className="preview-lead">
-              You completed all 11 timed responses. Your recordings were
-              captured for this practice session.
-            </p>
-            <div className="preview-complete-actions">
-              <button
-                className="preview-primary"
-                onClick={() => void startExam()}
-              >
-                Run again
-              </button>
-              <Link
-                className="preview-secondary preview-link-button"
-                href={`/admin/test-center/exams/${examSetId}`}
-              >
-                Review media
-              </Link>
-            </div>
-          </div>
-        </section>
+        <CompleteScreen examSetId={examSetId} onRestart={() => void startExam()} />
       )}
-    </main>
+    </PreviewFrame>
   );
 }

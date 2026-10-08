@@ -101,17 +101,22 @@ export function Loading({ className = "", children, ...rest }: UiProps) {
   return <div className={`grid min-h-[60vh] place-items-center text-[#7c6a62] text-[14px] font-[650] ${className}`} {...rest}>{children}</div>;
 }
 
-export function ExamAvatar({ interviewer, large = false }: { interviewer: Pick<ExamInterviewer, "name" | "avatar_key" | "image_url">; large?: boolean }) {
-  const initials = interviewer.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  const seed = interviewer.avatar_key;
-  const hair = seed.includes("elena") || seed.includes("sofia") ? "#3c2823" : seed.includes("robert") || seed.includes("noah") ? "#2c2420" : "#263142";
-  const outfit = seed.includes("elena") ? "#f5e7ca" : seed.includes("robert") ? "#383a40" : seed.includes("david") ? "#141414" : "#d6e7d5";
-  const background = [
+// A drawn head-and-shoulders placeholder, with hair and outfit colours keyed to the
+// built-in interviewer the avatar key names.
+function placeholderPortrait(avatarKey: string): string {
+  const hair = avatarKey.includes("elena") || avatarKey.includes("sofia") ? "#3c2823" : avatarKey.includes("robert") || avatarKey.includes("noah") ? "#2c2420" : "#263142";
+  const outfit = avatarKey.includes("elena") ? "#f5e7ca" : avatarKey.includes("robert") ? "#383a40" : avatarKey.includes("david") ? "#141414" : "#d6e7d5";
+  return [
     "radial-gradient(circle at 50% 34%, #f6c9a9 0 15%, transparent 15.6%)",
     `radial-gradient(circle at 50% 33%, ${hair} 0 23%, transparent 23.6%)`,
     `radial-gradient(ellipse at 50% 110%, ${outfit} 0 46%, transparent 46.5%)`,
     "linear-gradient(135deg, #f4e8d2, #d6a18c)",
   ].join(", ");
+}
+
+export function ExamAvatar({ interviewer, large = false }: { interviewer: Pick<ExamInterviewer, "name" | "avatar_key" | "image_url">; large?: boolean }) {
+  const initials = interviewer.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const background = placeholderPortrait(interviewer.avatar_key);
   return <div
     className={`relative grid flex-none place-items-center overflow-hidden [&_img]:object-cover ${large ? "aspect-[16/10] w-full rounded-none" : "aspect-square w-11 rounded-full"}`}
     style={{ background }}

@@ -123,6 +123,11 @@ function dateLabel(date: Date | null, locale: string) {
   }).format(date);
 }
 
+const HISTORY_DATE_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" }),
+  en: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }),
+};
+
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <section className="rounded-[16px] border-2 border-[#050505] bg-white p-4 shadow-[3px_3px_0_rgba(5,5,5,0.92)] sm:p-5">
@@ -817,7 +822,7 @@ export function AccountMembershipPanel({
                   key={entry.id}
                   icon={TicketIcon}
                   label={`${entry.amount > 0 ? `+${entry.amount}` : entry.amount} · ${historyLabel(entry)}`}
-                  value={new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { month: "short", day: "numeric" }).format(new Date(entry.created_at))}
+                  value={HISTORY_DATE_FORMAT[locale].format(new Date(entry.created_at))}
                 />
               ))
             ) : (

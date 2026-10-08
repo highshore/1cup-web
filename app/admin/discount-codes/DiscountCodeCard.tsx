@@ -20,6 +20,12 @@ interface DiscountCodeCardProps {
 
 // One managed discount code: status, discount, eligibility, usage against its limit, and
 // its validity window, with copy / edit / enable-disable / delete actions.
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+const DATE_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", DATE_OPTIONS),
+  en: new Intl.DateTimeFormat("en-US", DATE_OPTIONS),
+};
+
 export default function DiscountCodeCard({
   code,
   usage,
@@ -58,11 +64,7 @@ export default function DiscountCodeCard({
 
   const formatDate = (value: string | null) => {
     if (!value) return copy.noLimit;
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(value));
+    return DATE_FORMAT[locale].format(new Date(value));
   };
 
   const products = (code.applies_to_products ?? [])

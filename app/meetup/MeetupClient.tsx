@@ -24,6 +24,28 @@ import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 
+// Korean spells out the month and weekday on a 24-hour clock; English abbreviates them.
+const MEETUP_DATE_TIME_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }),
+  en: new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }),
+};
+
 const meetupTheme = {
   text: "#050505",
   muted: "rgba(5, 5, 5, 0.66)",
@@ -213,15 +235,7 @@ const MeetupClient: React.FC = () => {
     const date = new Date(`${meetup.date}T${meetup.time}`);
     if (Number.isNaN(date.getTime())) return "";
 
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      year: "numeric",
-      month: locale === "ko" ? "long" : "short",
-      day: "numeric",
-      weekday: locale === "ko" ? "long" : "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: locale !== "ko",
-    }).format(date);
+    return MEETUP_DATE_TIME_FORMAT[locale].format(date);
   };
 
   const renderBlogPosts = () => {
