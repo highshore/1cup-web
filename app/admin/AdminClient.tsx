@@ -459,19 +459,19 @@ export default function AdminClient({
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [usersData, feedbackData, applicationsData, eventsCount, articlesData] =
+      // Articles are not loaded here: only the "articles" section shows them, and its own
+      // effect fetches them. Loading the full table for members/marketing cost ~650ms a visit.
+      const [usersData, feedbackData, applicationsData, eventsCount] =
         await Promise.all([
           fetchUsers(),
           fetchFeedback(),
           fetchApplications(),
           fetchEventsCount(),
-          fetchArticles(),
         ]);
 
       setUsers(usersData);
       setFeedback(feedbackData);
       setApplications(applicationsData);
-      setArticles(articlesData);
       calculateStats(usersData, eventsCount);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -579,7 +579,7 @@ export default function AdminClient({
     try {
       const { data, error } = await supabase
         .from("articles")
-        .select("*")
+        .select("id,title,timestamp,created_at,publication_status,processing")
         .order("timestamp", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return sortArticles((data || []).map((row: any) => toArticleData(row)));

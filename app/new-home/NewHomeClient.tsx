@@ -9,7 +9,7 @@ import "./new-home.css";
 // Imports for Meetup Event Display
 import { useRouter } from "next/navigation";
 import { MeetupEvent } from "../lib/features/meetup/types/meetup_types";
-import { subscribeToUpcomingEvents } from "../lib/features/meetup/services/meetup_service";
+import { fetchUpcomingMeetupEvents } from "../lib/features/meetup/services/meetup_service";
 import { fetchUserProfiles, UserProfile } from "../lib/features/meetup/services/user_service";
 import {
   formatEventDateTime,
@@ -640,9 +640,10 @@ export default function NewHomeClient({
     initialUpcomingEvents || []
   );
 
-  // The server render is intentionally only the first paint. Subscribe immediately so
-  // the hero card always reflects the same Supabase meetup and participant rows as the
-  // event detail page, including joins made after the page was built.
+  // The server render is intentionally only the first paint. Refetch once on mount so
+  // the hero card reflects joins made after the page was built. This is deliberately not
+  // a Realtime subscription: one channel per home visitor made realtime.list_changes the
+  // dominant database cost, and the event detail page stays live for anyone who opens it.
   useEffect(() => {
     // Helper to fetch user profiles for events
     const loadUserProfiles = async (events: MeetupEvent[]) => {
@@ -669,17 +670,23 @@ export default function NewHomeClient({
     let active = true;
     setLoadingEvent(true);
 
-    const unsubscribe = subscribeToUpcomingEvents((events) => {
-      if (!active) return;
-      setUpcomingEvents(events);
-      setClosestEvent(events[0] ?? null);
-      setLoadingEvent(false);
-      void loadUserProfiles(events);
-    });
+    fetchUpcomingMeetupEvents()
+      .then((events) => {
+        if (!active) return;
+        setUpcomingEvents(events);
+        setClosestEvent(events[0] ?? null);
+        void loadUserProfiles(events);
+      })
+      .catch((error) => {
+        // Keep the server-rendered events rather than blanking the hero card.
+        console.error("Failed to refresh upcoming meetups:", error);
+      })
+      .finally(() => {
+        if (active) setLoadingEvent(false);
+      });
 
     return () => {
       active = false;
-      unsubscribe();
     };
   }, [initialUpcomingEvents]);
 
