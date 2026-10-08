@@ -150,6 +150,11 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   type SectionKey = "announcements" | "information" | "reviews";
   type ArrowState = { left: boolean; right: boolean };
   const announcementsRef = useRef<HTMLDivElement | null>(null);
+  // Loads overlap: the first load starts before the session is known (published posts
+  // only) and another starts once the viewer turns out to be an admin (drafts too). If
+  // the first finished last it would hide the admin's drafts, so only the most recently
+  // started load may write.
+  const latestLoadRef = useRef(0);
   const informationRef = useRef<HTMLDivElement | null>(null);
   const reviewsRef = useRef<HTMLDivElement | null>(null);
   const [scrollDisabled, setScrollDisabled] = useState<
@@ -213,9 +218,12 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
 
   // Re-fetch when admin status changes
   useEffect(() => {
-    if (isAdmin) {
-      loadBlogPosts();
-    }
+    if (!isAdmin) return;
+    loadBlogPosts();
+    // Losing admin (sign-out) retires the in-flight admin load.
+    return () => {
+      latestLoadRef.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
@@ -240,6 +248,8 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   }, [announcements.length, information.length, reviews.length]);
 
   const loadBlogPosts = async () => {
+    const loadId = ++latestLoadRef.current;
+    const isStale = () => loadId !== latestLoadRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -248,6 +258,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       const posts = isAdmin
         ? await fetchAllBlogPosts()
         : await fetchBlogPosts();
+      if (isStale()) return;
 
       // Debug: Log blog posts
       console.log(
@@ -261,9 +272,9 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       setBlogPosts(posts);
     } catch (err) {
       console.error("Failed to fetch blog posts:", err);
-      setError("블로그 포스트를 불러오는데 실패했습니다.");
+      if (!isStale()) setError("블로그 포스트를 불러오는데 실패했습니다.");
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
   };
 

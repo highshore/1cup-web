@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../../../../lib/contexts/auth_context";
@@ -89,7 +88,6 @@ export default function ExamPreviewClient({
 }: {
   examSetId: string;
 }) {
-  const router = useRouter();
   const { currentUser, accountStatus, isLoading } = useAuth();
   const [examSet, setExamSet] = useState<ExamSetDetail | null>(null);
   const [stage, setStage] = useState<SpeakingState>("welcome");
@@ -156,10 +154,6 @@ export default function ExamPreviewClient({
     [stopInputMeter],
   );
 
-  useEffect(() => {
-    if (!isLoading && (!currentUser || accountStatus !== "admin"))
-      router.replace("/");
-  }, [accountStatus, currentUser, isLoading, router]);
   useEffect(() => {
     if (!currentUser || accountStatus !== "admin") return;
     void loadExamSet(examSetId)

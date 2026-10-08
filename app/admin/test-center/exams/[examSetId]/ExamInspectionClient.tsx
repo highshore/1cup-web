@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ComponentProps, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeftIcon, CheckIcon, PlayIcon, RocketLaunchIcon } from "@heroicons/react/24/outline";
@@ -127,7 +126,6 @@ function itemReady(item: ExamItem) {
 }
 
 export default function ExamInspectionClient({ examSetId }: { examSetId: string }) {
-  const router = useRouter();
   const { currentUser, accountStatus, isLoading } = useAuth();
   const { t } = useI18n();
   const [examSet, setExamSet] = useState<ExamSetDetail | null>(null);
@@ -145,9 +143,6 @@ export default function ExamInspectionClient({ examSetId }: { examSetId: string 
     }
   }, [examSetId, t.examCenter.workspaceLoadFailed]);
 
-  useEffect(() => {
-    if (!isLoading && (!currentUser || accountStatus !== "admin")) router.replace("/");
-  }, [accountStatus, currentUser, isLoading, router]);
 
   useEffect(() => {
     if (currentUser && accountStatus === "admin") void refresh();

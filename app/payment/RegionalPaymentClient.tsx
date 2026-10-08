@@ -180,12 +180,16 @@ export default function RegionalPaymentClient() {
   }, [searchParams]);
 
   useEffect(() => {
+    // This runs once before the session is known and again once it is; the earlier,
+    // signed-out run must not finish last and overwrite the member's subscription state.
+    let cancelled = false;
     void (async () => {
       try {
         const result = await invokeFunction<{
           success: boolean;
           products: PaymentProduct[];
         }>("checkout", { action: "products" });
+        if (cancelled) return;
         setProducts(result.products || []);
         if (currentUser) {
           const { data } = await supabase
@@ -193,16 +197,21 @@ export default function RegionalPaymentClient() {
             .select("has_active_subscription")
             .eq("uid", currentUser.uid)
             .maybeSingle();
+          if (cancelled) return;
           setAlreadySubscribed(Boolean(data?.has_active_subscription));
         }
       } catch (err) {
+        if (cancelled) return;
         setError(
           err instanceof Error ? err.message : copy.states.loadFailed,
         );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [copy.states.loadFailed, currentUser]);
 
   useEffect(() => {

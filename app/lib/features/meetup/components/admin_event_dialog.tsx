@@ -817,6 +817,9 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
 
   // Fetch available articles when dialog opens
   useEffect(() => {
+    // Closing and reopening the dialog quickly must not let the earlier request's
+    // articles land on top of the newer one.
+    let cancelled = false;
     const fetchAvailableArticles = async () => {
       if (isOpen) {
         setLoadingArticles(true);
@@ -825,20 +828,27 @@ const AdminEventDialog: React.FC<AdminEventDialogProps> = ({
         setHasMoreArticles(true);
         try {
           const result = await fetchRecentArticles(10);
+          if (cancelled) return;
           setAvailableArticles(result.articles);
           setLastArticleDoc(result.lastDoc);
           setHasMoreArticles(result.hasMore);
         } catch (error) {
           console.error("Error fetching articles:", error);
+          if (cancelled) return;
           setAvailableArticles([]);
           setHasMoreArticles(false);
         } finally {
-          setLoadingArticles(false);
+          if (!cancelled) setLoadingArticles(false);
         }
       }
     };
 
     fetchAvailableArticles();
+    return () => {
+      cancelled = true;
+      // Closing mid-load cancels the request, which then will not clear its own spinner.
+      setLoadingArticles(false);
+    };
   }, [isOpen]);
 
   // Load more articles for infinite scroll

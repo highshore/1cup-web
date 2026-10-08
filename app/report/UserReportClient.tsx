@@ -15,18 +15,7 @@ export default function UserReportClient() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<any[]>([]);
 
-  // Guard: only allow current user (or admin in future) to access
-  useEffect(() => {
-    if (!currentUser) {
-      router.push("/auth?redirect=/report/user" + (uidParam ? `?uid=${uidParam}` : ""));
-      return;
-    }
-    const targetUid = uidParam || currentUser.uid;
-    if (targetUid !== currentUser.uid) {
-      // Non-owner access blocked for now
-      router.push("/profile");
-    }
-  }, [router, uidParam, currentUser]);
+  // Sign-in and owner-only access are enforced by app/report/user/page.tsx on the server.
 
   // Load user's reports
   useEffect(() => {

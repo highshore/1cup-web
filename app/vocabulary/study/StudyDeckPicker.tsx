@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -133,7 +132,6 @@ function mapDeck(row: Record<string, unknown>): Deck {
 }
 
 export default function StudyDeckPicker() {
-  const router = useRouter();
   const { currentUser, isLoading: authLoading } = useAuth();
   const { locale } = useI18n();
   const copy = copyByLocale[locale];
@@ -188,13 +186,10 @@ export default function StudyDeckPicker() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth?redirect=%2Fvocabulary%2Fstudy");
-      return;
-    }
+    // app/vocabulary/study/page.tsx sends signed-out visitors to /auth on the server.
+    if (authLoading || !currentUser) return;
     void loadDecks();
-  }, [authLoading, currentUser, loadDecks, router]);
+  }, [authLoading, currentUser, loadDecks]);
 
   const publicSuggestions = useMemo(() => {
     const ownIds = new Set(ownDecks.map((deck) => deck.id));

@@ -266,13 +266,10 @@ export default function VocabularyHomeClient() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth?redirect=%2Fvocabulary");
-      return;
-    }
+    // app/vocabulary/page.tsx sends signed-out visitors to /auth on the server.
+    if (authLoading || !currentUser) return;
     void load();
-  }, [authLoading, currentUser, load, router]);
+  }, [authLoading, currentUser, load]);
 
   const myDecks = useMemo(() => {
     const seen = new Set<string>();
