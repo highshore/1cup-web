@@ -822,6 +822,11 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
   }, []);
 
   useEffect(() => {
+    // The poll and give-up timers below only run while another copy of the script is
+    // still loading; leaving the page must stop them too.
+    let checkTimer: ReturnType<typeof setInterval> | null = null;
+    let giveUpTimer: ReturnType<typeof setTimeout> | null = null;
+
     const loadNaverMapsAPI = () => {
       // Check if API is already loaded
       if (
@@ -848,20 +853,20 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
       );
       if (existingScript) {
         // Set up a fallback timer to check if API becomes available
-        const checkTimer = setInterval(() => {
+        checkTimer = setInterval(() => {
           if (
             window.naver &&
             window.naver.maps &&
             typeof window.naver.maps.Map === "function"
           ) {
             setIsApiReady(true);
-            clearInterval(checkTimer);
+            if (checkTimer) clearInterval(checkTimer);
           }
         }, 500);
 
         // Give up after 10 seconds
-        setTimeout(() => {
-          clearInterval(checkTimer);
+        giveUpTimer = setTimeout(() => {
+          if (checkTimer) clearInterval(checkTimer);
           if (!window.naver || !window.naver.maps) {
             setLoadError("Timeout loading Naver Maps API");
           }
@@ -887,6 +892,8 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
     loadNaverMapsAPI();
 
     return () => {
+      if (checkTimer) clearInterval(checkTimer);
+      if (giveUpTimer) clearTimeout(giveUpTimer);
       // Cleanup global callbacks
       delete window.initNaverMaps;
       delete window.navermap_authFailure;
@@ -897,6 +904,11 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
     if (!isApiReady || !mapRef.current || loadError || !componentMounted) {
       return;
     }
+
+    // A changed location re-runs this effect; the previous map and its click
+    // listeners must go before a new map is drawn into the same element.
+    let map: { destroy?: () => void } | null = null;
+    const listeners: unknown[] = [];
 
     try {
       // Validate coordinates
@@ -919,7 +931,7 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
         mapDataControl: false,
       };
 
-      const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+      map = new window.naver.maps.Map(mapRef.current, mapOptions);
 
       // Create custom marker
       const marker = new window.naver.maps.Marker({
@@ -956,8 +968,10 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
       };
 
       if (window.naver.maps.Event) {
-        window.naver.maps.Event.addListener(marker, "click", handleMapClick);
-        window.naver.maps.Event.addListener(map, "click", handleMapClick);
+        listeners.push(
+          window.naver.maps.Event.addListener(marker, "click", handleMapClick),
+          window.naver.maps.Event.addListener(map, "click", handleMapClick),
+        );
       }
 
       setMapLoaded(true);
@@ -968,6 +982,11 @@ const NaverMapComponent: React.FC<NaverMapProps> = ({
         }`
       );
     }
+
+    return () => {
+      if (listeners.length > 0) window.naver?.maps?.Event?.removeListener(listeners);
+      if (typeof map?.destroy === "function") map.destroy();
+    };
   }, [
     isApiReady,
     latitude,

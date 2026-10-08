@@ -399,7 +399,7 @@ const LibraryPage: React.FC = () => {
 
   // Update scroll states when content changes
   useEffect(() => {
-    setTimeout(() => {
+    const rowsTimer = setTimeout(() => {
       // Initialize video scroll states for current tab content
       setScrollStates(
         new Array(filteredVideos.length).fill({
@@ -418,7 +418,11 @@ const LibraryPage: React.FC = () => {
     );
 
     // Initialize tab scroll state
-    setTimeout(() => updateTabScrollState(), 100);
+    const tabsTimer = setTimeout(() => updateTabScrollState(), 100);
+    return () => {
+      clearTimeout(rowsTimer);
+      clearTimeout(tabsTimer);
+    };
   }, [activeTab, difficultyFilter, filteredVideos.length]);
 
   // Close dropdown when clicking outside
