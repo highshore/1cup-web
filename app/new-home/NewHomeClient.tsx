@@ -249,7 +249,19 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
   const spotsTaken = meetup.leaders.length + meetup.participants.length;
   const spotsTotal = meetup.max_participants;
   const spotsLeft = Math.max(0, spotsTotal - spotsTaken);
-  const isUrgent = spotsLeft <= 5; // Urgency threshold
+  const lockStatus = isEventLocked(meetup);
+  const isFull = lockStatus.reason === "full";
+  const isClosed = lockStatus.isLocked && !isFull;
+  const isUrgent = !lockStatus.isLocked && spotsLeft > 0 && spotsLeft <= 5;
+  const availabilityLabel = isFull
+    ? t.meetup.status.full
+    : lockStatus.reason === "started"
+      ? t.meetup.status.inProgress
+      : isClosed
+        ? t.meetup.status.closed
+        : isUrgent
+          ? t.home.meetupCard.almostFull
+          : `${spotsTaken}/${spotsTotal} ${t.home.meetupCard.filled}`;
 
   return (
     <div
@@ -272,7 +284,7 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
         />
         <div className="absolute top-3 left-3 bg-[rgba(255,255,255,0.95)] py-1 px-[0.6rem] rounded-full text-[0.7rem] font-bold text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center gap-[0.35rem] [&_span]:shadow-[0_0_0_2px_rgba(255,255,255,0.5)] [&_svg]:w-[13px] [&_svg]:h-[13px] max-[768px]:hidden">
           <SparklesIcon />
-          {t.home.meetupCard.join}
+          {lockStatus.isLocked ? availabilityLabel : t.home.meetupCard.join}
         </div>
       </div>
       <div className="flex-1 p-4 flex flex-col gap-3 bg-white max-[768px]:min-w-0 max-[768px]:p-[clamp(0.78rem,2.9vw,0.95rem)] max-[768px]:gap-[clamp(0.48rem,1.8vw,0.62rem)] max-[768px]:justify-center">
@@ -302,21 +314,27 @@ const HeroScrollCard = ({ meetup, maxAvatars = 5, onNavigate, userProfilesMap }:
            </div>
            <button
              className={`inline-flex items-center justify-center gap-2 min-h-[38px] py-[0.55rem] px-[0.9rem] rounded-full border-2 border-[#050505] [font-family:inherit] text-[0.82rem] font-extrabold cursor-pointer [transition:background-color_160ms_ease,border-color_160ms_ease,color_160ms_ease,transform_160ms_ease] whitespace-nowrap shrink-0 max-w-[58%] overflow-hidden text-ellipsis shadow-none hover:border-[#050505] hover:[transform:translateY(-1px)] hover:shadow-none active:[transform:translateY(0)] max-[768px]:min-h-8 max-[768px]:py-[0.38rem] max-[768px]:px-[0.7rem] max-[768px]:text-[clamp(0.68rem,2.45vw,0.76rem)] max-[768px]:max-w-[62%] ${
-               isUrgent
-                 ? "bg-[#fff8dc] text-[#050505] hover:bg-white"
-                 : "bg-[#050505] text-white hover:bg-[#050505]"
+               isFull
+                 ? "bg-[#fee2e2] text-[#991b1b] hover:bg-[#fee2e2]"
+                 : isClosed
+                   ? "bg-[#e5e7eb] text-[#374151] hover:bg-[#e5e7eb]"
+                   : isUrgent
+                     ? "bg-[#fff8dc] text-[#050505] hover:bg-white"
+                     : "bg-[#050505] text-white hover:bg-[#050505]"
              }`}
            >
              <span
                className={`inline-block flex-none w-[7px] h-[7px] rounded-full ${
-                 isUrgent
-                   ? "bg-[#e11d48] shadow-[0_0_0_3px_rgba(225,29,72,0.13)]"
-                   : "bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.16)]"
+                 isFull
+                   ? "bg-[#b91c1c] shadow-[0_0_0_3px_rgba(185,28,28,0.13)]"
+                   : isClosed
+                     ? "bg-[#6b7280] shadow-[0_0_0_3px_rgba(107,114,128,0.13)]"
+                     : isUrgent
+                       ? "bg-[#e11d48] shadow-[0_0_0_3px_rgba(225,29,72,0.13)]"
+                       : "bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.16)]"
                }`}
              />
-             {isUrgent
-               ? t.home.meetupCard.almostFull
-               : `${spotsTaken}/${spotsTotal} ${t.home.meetupCard.filled}`}
+             {availabilityLabel}
            </button>
         </div>
       </div>
