@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useEffectEvent, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase, invokeFunction } from "../../lib/supabase/client";
 import { useAuth } from "../../lib/contexts/auth_context";
@@ -1143,6 +1143,14 @@ const ArticleContent = ({ articleId }: { articleId: string }) => {
   const isTouchPressRef = useRef(false);
   const MOVEMENT_THRESHOLD_PX = 8;
 
+  // Called from the article fetch below; an effect event reads the current word
+  // caches without making the article fetch re-run when they change.
+  const prefetchWordDetails = useEffectEvent((words: string[]) => {
+    words.forEach((word) => {
+      fetchWordDetails(word);
+    });
+  });
+
   useEffect(() => {
     // Moving from one article to another while the first is still loading must not let
     // the first article's late response replace the second.
@@ -1175,9 +1183,7 @@ const ArticleContent = ({ articleId }: { articleId: string }) => {
 
           // Prefetch word details for all keywords
           if (data.keywords && data.keywords.length > 0) {
-            data.keywords.forEach((word) => {
-              fetchWordDetails(word);
-            });
+            prefetchWordDetails(data.keywords);
           }
         } else {
           setError("Article not found");

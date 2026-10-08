@@ -1184,6 +1184,285 @@ interface UserSpeakingReport {
   };
 }
 
+// Pure helpers: they use only their arguments, so they live outside the component.
+// Helper functions for formatting names
+const isValidDisplayName = (displayName?: string): boolean => {
+  if (!displayName) return false;
+  const userPattern = /^User [a-zA-Z0-9]{6}$/;
+  return !userPattern.test(displayName);
+};
+
+const formatParticipantDisplay = (user: EnhancedUserProfile): string => {
+  const validName = isValidDisplayName(user.displayName);
+  if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
+
+  return `${user.displayName} (${user.phoneLast4 || "****"})`;
+};
+
+const formatLeaderDisplay = (user: EnhancedUserProfile): string => {
+  const validName = isValidDisplayName(user.displayName);
+  return validName ? user.displayName! : "익명";
+};
+
+// Analysis helper functions (defined before the useMemo to avoid hoisting issues)
+const getComplexityLevel = (score: number) => {
+  if (score >= 80) return "C6+";
+  if (score >= 70) return "C5";
+  if (score >= 60) return "C4";
+  if (score >= 50) return "C3";
+  if (score >= 40) return "C2";
+  return "C1";
+};
+
+const getAccuracyLevel = (score: number) => {
+  if (score >= 85) return "A6+";
+  if (score >= 75) return "A5";
+  if (score >= 65) return "A4";
+  if (score >= 55) return "A3";
+  if (score >= 45) return "A2";
+  return "A1";
+};
+
+const getFluencyLevel = (score: number) => {
+  if (score >= 80) return "F6+";
+  if (score >= 70) return "F5";
+  if (score >= 60) return "F4";
+  if (score >= 50) return "F3";
+  if (score >= 40) return "F2";
+  return "F1";
+};
+
+const getComplexityDescription = (level: string, score: number) => {
+  if (level.includes("6+"))
+    return "상위 25% 수준 - 주제에 대해 길고 분명하게 전달할 만큼의 어휘력 보유";
+  if (level.includes("5")) return "고급 수준 - 다양하고 정교한 어휘 구사";
+  if (level.includes("4"))
+    return "중상급 수준 - 적절한 어휘 선택과 문장 구성";
+  if (level.includes("3")) return "중급 수준 - 기본적인 복잡성 표현 가능";
+  return "초급 수준 - 단순한 어휘와 문장 구조 사용";
+};
+
+const getAccuracyDescription = (level: string, score: number) => {
+  if (level.includes("6+"))
+    return "상위 20% 수준 - 복잡한 문법 구조 혼합 사용, 고급 문법에서 간헐적 실수";
+  if (level.includes("5"))
+    return "고급 수준 - 대부분의 문법 구조를 정확하게 사용";
+  if (level.includes("4"))
+    return "중상급 수준 - 기본 문법은 안정적, 복잡한 구조에서 실수";
+  if (level.includes("3")) return "중급 수준 - 문법적 정확성에 개선 여지";
+  return "초급 수준 - 기본 문법 학습 필요";
+};
+
+const getFluencyDescription = (level: string, score: number) => {
+  if (level.includes("6+"))
+    return "상위 20% 수준 - 불편함 없이 영어 대화 가능, 자연스러운 속도와 흐름";
+  if (level.includes("5"))
+    return "고급 수준 - 대체로 자연스러운 말하기, 가끔 망설임";
+  if (level.includes("4"))
+    return "중상급 수준 - 의사소통 가능하나 간헐적 정체";
+  if (level.includes("3"))
+    return "중급 수준 - 말하기 속도와 유창함 개선 필요";
+  return "초급 수준 - 말하기 연습과 속도 향상 필요";
+};
+
+// Analysis functions (defined before the useMemo that uses them)
+const analyzeComplexity = (text: string, metrics: any) => {
+  const words = text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+
+  // Vocabulary difficulty (basic heuristic - can be enhanced with AI)
+  const complexWords = words.filter((word) => word.length > 6).length;
+  const vocabularyDifficulty =
+    words.length > 0 ? (complexWords / words.length) * 100 : 0;
+
+  // Sentence variety (simple heuristic)
+  const avgSentenceLength =
+    sentences.length > 0 ? words.length / sentences.length : 0;
+  const sentenceVariety = Math.min((avgSentenceLength / 15) * 100, 100);
+
+  // Vocabulary diversity (already calculated)
+  const vocabularyDiversity = metrics.lexicalDiversity || 0;
+
+  // Overall complexity score (weighted average)
+  const complexityScore = Math.round(
+    vocabularyDifficulty * 0.4 +
+      sentenceVariety * 0.3 +
+      vocabularyDiversity * 0.3
+  );
+
+  const level = getComplexityLevel(complexityScore);
+  const description = getComplexityDescription(level, complexityScore);
+
+  return {
+    score: complexityScore,
+    level,
+    description,
+    details: {
+      vocabularyDifficulty: Math.round(vocabularyDifficulty),
+      sentenceVariety: Math.round(sentenceVariety),
+      vocabularyDiversity: Math.round(vocabularyDiversity),
+    },
+  };
+};
+
+const analyzeAccuracy = (text: string) => {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+
+  // Basic grammar error detection (placeholder - will be enhanced with AI)
+  const commonErrors = [
+    /\ba\s+[aeiou]/gi, // a + vowel sound
+    /\ban\s+[^aeiou]/gi, // an + consonant sound
+    /\bdon't\s+never\b/gi, // double negative
+    /\bmore\s+better\b/gi, // double comparative
+    /\bmuch\s+many\b/gi, // countable/uncountable confusion
+  ];
+
+  let errorCount = 0;
+  commonErrors.forEach((pattern) => {
+    const matches = text.match(pattern);
+    if (matches) errorCount += matches.length;
+  });
+
+  // Calculate accuracy score
+  const errorRate = words.length > 0 ? (errorCount / words.length) * 100 : 0;
+  const accuracyScore = Math.max(0, Math.round(100 - errorRate * 10));
+
+  const level = getAccuracyLevel(accuracyScore);
+  const description = getAccuracyDescription(level, accuracyScore);
+
+  return {
+    score: accuracyScore,
+    level,
+    description,
+    details: {
+      totalWords: words.length,
+      detectedErrors: errorCount,
+      errorRate: Math.round(errorRate * 100) / 100,
+    },
+  };
+};
+
+const analyzeFluency = (text: string, metrics: any) => {
+  const words = text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+
+  // Filler words detection
+  const fillerWords = [
+    "um",
+    "uh",
+    "er",
+    "ah",
+    "like",
+    "you know",
+    "actually",
+    "basically",
+  ];
+  const fillerCount = words.filter((word) =>
+    fillerWords.some((filler) => word.includes(filler))
+  ).length;
+
+  // Word repetition analysis
+  const wordCounts = words.reduce((acc: Record<string, number>, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {});
+
+  const repetitions = Object.values(wordCounts).filter(
+    (count) => count > 2
+  ).length;
+
+  // Speaking rate analysis (from existing metrics)
+  const avgSpeakingRate =
+    metrics.totalWords && metrics.totalSpeakingTime
+      ? (metrics.totalWords / metrics.totalSpeakingTime) * 60
+      : 0; // words per minute
+
+  // Calculate fluency score
+  const fillerPenalty =
+    words.length > 0 ? (fillerCount / words.length) * 30 : 0;
+  const repetitionPenalty =
+    words.length > 0 ? (repetitions / words.length) * 20 : 0;
+  const rateScore = Math.min((avgSpeakingRate / 150) * 50, 50); // optimal rate ~150 WPM
+
+  const fluencyScore = Math.max(
+    0,
+    Math.round(100 - fillerPenalty - repetitionPenalty + rateScore - 50)
+  );
+
+  const level = getFluencyLevel(fluencyScore);
+  const description = getFluencyDescription(level, fluencyScore);
+
+  return {
+    score: fluencyScore,
+    level,
+    description,
+    details: {
+      speakingRate: Math.round(avgSpeakingRate),
+      fillerWords: fillerCount,
+      repetitions,
+      fillerPercentage:
+        words.length > 0 ? Math.round((fillerCount / words.length) * 100) : 0,
+    },
+  };
+};
+
+// Fallback analysis function (uses existing local analysis)
+type TranscriptSegment = { alternatives?: Array<{ speaker?: string; content?: string }> };
+
+const generateFallbackAnalysis = (
+  calculateSpeakingMetrics: Record<string, unknown>,
+  filteredFinalTranscript: TranscriptSegment[],
+) => {
+  const speakerAnalysis: Record<string, any> = {};
+
+  Object.keys(calculateSpeakingMetrics).forEach((speaker) => {
+    const speakerSegments = filteredFinalTranscript.filter(
+      (result) => result.alternatives?.[0]?.speaker === speaker
+    );
+
+    const allText = speakerSegments
+      .map((result) => result.alternatives?.[0]?.content || "")
+      .join(" ");
+
+    if (!allText.trim()) {
+      speakerAnalysis[speaker] = {
+        complexity: {
+          score: 0,
+          level: "N/A",
+          description: "Insufficient data",
+        },
+        accuracy: {
+          score: 0,
+          level: "N/A",
+          description: "Insufficient data",
+        },
+        fluency: { score: 0, level: "N/A", description: "Insufficient data" },
+      };
+      return;
+    }
+
+    // Use existing local analysis as fallback
+    const complexity = analyzeComplexity(
+      allText,
+      calculateSpeakingMetrics[speaker]
+    );
+    const accuracy = analyzeAccuracy(allText);
+    const fluency = analyzeFluency(
+      allText,
+      calculateSpeakingMetrics[speaker]
+    );
+
+    speakerAnalysis[speaker] = { complexity, accuracy, fluency };
+  });
+
+  return speakerAnalysis;
+};
+
 export default function TranscriptDetailClient() {
   const params = useParams();
   const router = useRouter();
@@ -1353,25 +1632,6 @@ export default function TranscriptDetailClient() {
         phoneLast4: "",
       }));
     }
-  };
-
-  // Helper functions for formatting names
-  const isValidDisplayName = (displayName?: string): boolean => {
-    if (!displayName) return false;
-    const userPattern = /^User [a-zA-Z0-9]{6}$/;
-    return !userPattern.test(displayName);
-  };
-
-  const formatParticipantDisplay = (user: EnhancedUserProfile): string => {
-    const validName = isValidDisplayName(user.displayName);
-    if (!validName) return `익명 (${user.phoneLast4 || "****"})`;
-
-    return `${user.displayName} (${user.phoneLast4 || "****"})`;
-  };
-
-  const formatLeaderDisplay = (user: EnhancedUserProfile): string => {
-    const validName = isValidDisplayName(user.displayName);
-    return validName ? user.displayName! : "익명";
   };
 
   // Helper function to determine if a word is punctuation or should be attached to previous word
@@ -1579,7 +1839,7 @@ export default function TranscriptDetailClient() {
   }, [finalSnippets, partialSnippets]);
 
   // Speaker display info function
-  const getSpeakerDisplayInfo = (speakerId: string) => {
+  const getSpeakerDisplayInfo = useCallback((speakerId: string) => {
     const participantUid = speakerMappings[speakerId];
     if (participantUid) {
       const participant = participants.find((p) => p.uid === participantUid);
@@ -1606,7 +1866,7 @@ export default function TranscriptDetailClient() {
       isAssigned: false,
       isLeader: false,
     };
-  };
+  }, [speakerMappings, participants]);
 
   // Filter snippets based on hideUnidentifiedSpeakers setting
   const filteredDisplaySnippets = useMemo(() => {
@@ -1618,12 +1878,7 @@ export default function TranscriptDetailClient() {
       const speakerInfo = getSpeakerDisplayInfo(snippet.speaker);
       return speakerInfo.isAssigned;
     });
-  }, [
-    displaySnippets,
-    hideUnidentifiedSpeakers,
-    speakerMappings,
-    participants,
-  ]);
+  }, [displaySnippets, hideUnidentifiedSpeakers, getSpeakerDisplayInfo]);
 
   const conversationItems = useMemo(() => {
     const sortedMessages = [...copilotMessages].sort(
@@ -1863,213 +2118,6 @@ export default function TranscriptDetailClient() {
     };
   }, [calculateSpeakingMetrics, displayLabelForSpeaker]);
 
-  // Analysis helper functions (defined before the useMemo to avoid hoisting issues)
-  const getComplexityLevel = (score: number) => {
-    if (score >= 80) return "C6+";
-    if (score >= 70) return "C5";
-    if (score >= 60) return "C4";
-    if (score >= 50) return "C3";
-    if (score >= 40) return "C2";
-    return "C1";
-  };
-
-  const getAccuracyLevel = (score: number) => {
-    if (score >= 85) return "A6+";
-    if (score >= 75) return "A5";
-    if (score >= 65) return "A4";
-    if (score >= 55) return "A3";
-    if (score >= 45) return "A2";
-    return "A1";
-  };
-
-  const getFluencyLevel = (score: number) => {
-    if (score >= 80) return "F6+";
-    if (score >= 70) return "F5";
-    if (score >= 60) return "F4";
-    if (score >= 50) return "F3";
-    if (score >= 40) return "F2";
-    return "F1";
-  };
-
-  const getComplexityDescription = (level: string, score: number) => {
-    if (level.includes("6+"))
-      return "상위 25% 수준 - 주제에 대해 길고 분명하게 전달할 만큼의 어휘력 보유";
-    if (level.includes("5")) return "고급 수준 - 다양하고 정교한 어휘 구사";
-    if (level.includes("4"))
-      return "중상급 수준 - 적절한 어휘 선택과 문장 구성";
-    if (level.includes("3")) return "중급 수준 - 기본적인 복잡성 표현 가능";
-    return "초급 수준 - 단순한 어휘와 문장 구조 사용";
-  };
-
-  const getAccuracyDescription = (level: string, score: number) => {
-    if (level.includes("6+"))
-      return "상위 20% 수준 - 복잡한 문법 구조 혼합 사용, 고급 문법에서 간헐적 실수";
-    if (level.includes("5"))
-      return "고급 수준 - 대부분의 문법 구조를 정확하게 사용";
-    if (level.includes("4"))
-      return "중상급 수준 - 기본 문법은 안정적, 복잡한 구조에서 실수";
-    if (level.includes("3")) return "중급 수준 - 문법적 정확성에 개선 여지";
-    return "초급 수준 - 기본 문법 학습 필요";
-  };
-
-  const getFluencyDescription = (level: string, score: number) => {
-    if (level.includes("6+"))
-      return "상위 20% 수준 - 불편함 없이 영어 대화 가능, 자연스러운 속도와 흐름";
-    if (level.includes("5"))
-      return "고급 수준 - 대체로 자연스러운 말하기, 가끔 망설임";
-    if (level.includes("4"))
-      return "중상급 수준 - 의사소통 가능하나 간헐적 정체";
-    if (level.includes("3"))
-      return "중급 수준 - 말하기 속도와 유창함 개선 필요";
-    return "초급 수준 - 말하기 연습과 속도 향상 필요";
-  };
-
-  // Analysis functions (defined before the useMemo that uses them)
-  const analyzeComplexity = (text: string, metrics: any) => {
-    const words = text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 0);
-    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-
-    // Vocabulary difficulty (basic heuristic - can be enhanced with AI)
-    const complexWords = words.filter((word) => word.length > 6).length;
-    const vocabularyDifficulty =
-      words.length > 0 ? (complexWords / words.length) * 100 : 0;
-
-    // Sentence variety (simple heuristic)
-    const avgSentenceLength =
-      sentences.length > 0 ? words.length / sentences.length : 0;
-    const sentenceVariety = Math.min((avgSentenceLength / 15) * 100, 100);
-
-    // Vocabulary diversity (already calculated)
-    const vocabularyDiversity = metrics.lexicalDiversity || 0;
-
-    // Overall complexity score (weighted average)
-    const complexityScore = Math.round(
-      vocabularyDifficulty * 0.4 +
-        sentenceVariety * 0.3 +
-        vocabularyDiversity * 0.3
-    );
-
-    const level = getComplexityLevel(complexityScore);
-    const description = getComplexityDescription(level, complexityScore);
-
-    return {
-      score: complexityScore,
-      level,
-      description,
-      details: {
-        vocabularyDifficulty: Math.round(vocabularyDifficulty),
-        sentenceVariety: Math.round(sentenceVariety),
-        vocabularyDiversity: Math.round(vocabularyDiversity),
-      },
-    };
-  };
-
-  const analyzeAccuracy = (text: string) => {
-    const words = text.split(/\s+/).filter((w) => w.length > 0);
-
-    // Basic grammar error detection (placeholder - will be enhanced with AI)
-    const commonErrors = [
-      /\ba\s+[aeiou]/gi, // a + vowel sound
-      /\ban\s+[^aeiou]/gi, // an + consonant sound
-      /\bdon't\s+never\b/gi, // double negative
-      /\bmore\s+better\b/gi, // double comparative
-      /\bmuch\s+many\b/gi, // countable/uncountable confusion
-    ];
-
-    let errorCount = 0;
-    commonErrors.forEach((pattern) => {
-      const matches = text.match(pattern);
-      if (matches) errorCount += matches.length;
-    });
-
-    // Calculate accuracy score
-    const errorRate = words.length > 0 ? (errorCount / words.length) * 100 : 0;
-    const accuracyScore = Math.max(0, Math.round(100 - errorRate * 10));
-
-    const level = getAccuracyLevel(accuracyScore);
-    const description = getAccuracyDescription(level, accuracyScore);
-
-    return {
-      score: accuracyScore,
-      level,
-      description,
-      details: {
-        totalWords: words.length,
-        detectedErrors: errorCount,
-        errorRate: Math.round(errorRate * 100) / 100,
-      },
-    };
-  };
-
-  const analyzeFluency = (text: string, metrics: any) => {
-    const words = text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 0);
-
-    // Filler words detection
-    const fillerWords = [
-      "um",
-      "uh",
-      "er",
-      "ah",
-      "like",
-      "you know",
-      "actually",
-      "basically",
-    ];
-    const fillerCount = words.filter((word) =>
-      fillerWords.some((filler) => word.includes(filler))
-    ).length;
-
-    // Word repetition analysis
-    const wordCounts = words.reduce((acc: Record<string, number>, word) => {
-      acc[word] = (acc[word] || 0) + 1;
-      return acc;
-    }, {});
-
-    const repetitions = Object.values(wordCounts).filter(
-      (count) => count > 2
-    ).length;
-
-    // Speaking rate analysis (from existing metrics)
-    const avgSpeakingRate =
-      metrics.totalWords && metrics.totalSpeakingTime
-        ? (metrics.totalWords / metrics.totalSpeakingTime) * 60
-        : 0; // words per minute
-
-    // Calculate fluency score
-    const fillerPenalty =
-      words.length > 0 ? (fillerCount / words.length) * 30 : 0;
-    const repetitionPenalty =
-      words.length > 0 ? (repetitions / words.length) * 20 : 0;
-    const rateScore = Math.min((avgSpeakingRate / 150) * 50, 50); // optimal rate ~150 WPM
-
-    const fluencyScore = Math.max(
-      0,
-      Math.round(100 - fillerPenalty - repetitionPenalty + rateScore - 50)
-    );
-
-    const level = getFluencyLevel(fluencyScore);
-    const description = getFluencyDescription(level, fluencyScore);
-
-    return {
-      score: fluencyScore,
-      level,
-      description,
-      details: {
-        speakingRate: Math.round(avgSpeakingRate),
-        fillerWords: fillerCount,
-        repetitions,
-        fillerPercentage:
-          words.length > 0 ? Math.round((fillerCount / words.length) * 100) : 0,
-      },
-    };
-  };
-
   // Async Qualitative Analysis with OpenAI GPT-4o-mini
   const generateQualitativeAnalysis = useCallback(async () => {
     if (
@@ -2127,7 +2175,10 @@ export default function TranscriptDetailClient() {
     } catch (error) {
       console.error("Error generating qualitative analysis:", error);
       // Fallback to basic analysis if API fails
-      const fallbackAnalysis = generateFallbackAnalysis();
+      const fallbackAnalysis = generateFallbackAnalysis(
+        calculateSpeakingMetrics,
+        filteredFinalTranscript,
+      );
       setQualitativeAnalysis(fallbackAnalysis);
     } finally {
       setIsLoadingQualitativeAnalysis(false);
@@ -2191,53 +2242,6 @@ Respond in JSON format:
         }`
       );
     }
-  };
-
-  // Fallback analysis function (uses existing local analysis)
-  const generateFallbackAnalysis = () => {
-    const speakerAnalysis: Record<string, any> = {};
-
-    Object.keys(calculateSpeakingMetrics).forEach((speaker) => {
-      const speakerSegments = filteredFinalTranscript.filter(
-        (result) => result.alternatives?.[0]?.speaker === speaker
-      );
-
-      const allText = speakerSegments
-        .map((result) => result.alternatives?.[0]?.content || "")
-        .join(" ");
-
-      if (!allText.trim()) {
-        speakerAnalysis[speaker] = {
-          complexity: {
-            score: 0,
-            level: "N/A",
-            description: "Insufficient data",
-          },
-          accuracy: {
-            score: 0,
-            level: "N/A",
-            description: "Insufficient data",
-          },
-          fluency: { score: 0, level: "N/A", description: "Insufficient data" },
-        };
-        return;
-      }
-
-      // Use existing local analysis as fallback
-      const complexity = analyzeComplexity(
-        allText,
-        calculateSpeakingMetrics[speaker]
-      );
-      const accuracy = analyzeAccuracy(allText);
-      const fluency = analyzeFluency(
-        allText,
-        calculateSpeakingMetrics[speaker]
-      );
-
-      speakerAnalysis[speaker] = { complexity, accuracy, fluency };
-    });
-
-    return speakerAnalysis;
   };
 
   // Check microphone permission on component mount
@@ -2646,7 +2650,9 @@ Respond in JSON format:
     }
   };
 
-  const toggleRecording = useCallback(async () => {
+  // A plain handler (it's only used as onClick): memoizing it on four values left
+  // handleStartRecording reading state from an older render.
+  const toggleRecording = async () => {
     if (isStarting || isStopping) return;
 
     if (isRecording) {
@@ -2658,7 +2664,7 @@ Respond in JSON format:
     } else {
       await handleStartRecording();
     }
-  }, [isRecording, isPaused, isStarting, isStopping]);
+  };
 
   // Sync pause state with ref for audio processing callback
   useEffect(() => {
@@ -3125,7 +3131,8 @@ Respond in JSON format:
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [transcriptId]);
+    // setSavedSonioxTranscript is memoized in useSoniox with no dependencies, so it is stable.
+  }, [transcriptId, setSavedSonioxTranscript]);
 
   // Load reports when transcript data is available
   useEffect(() => {

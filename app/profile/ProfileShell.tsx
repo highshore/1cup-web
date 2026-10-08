@@ -126,7 +126,7 @@ async function loadKakaoSdk(): Promise<void> {
 }
 
 export function useProfileShellData() {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { currentUser, isLoading: authLoading } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary>(emptySummary);
   const [creditBalance, setCreditBalance] = useState(0);
@@ -292,7 +292,7 @@ export function useProfileShellData() {
     } finally {
       setReferralBusy(false);
     }
-  }, [currentUser, summary.referralCode, locale, t.profile]);
+  }, [currentUser, summary.referralCode, t.profile]);
 
   return {
     currentUser,

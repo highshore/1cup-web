@@ -197,7 +197,10 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ sentences }) => {
   // Load Lottie animation
   useEffect(() => {
     fetch("/animations/complete.json")
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
       .then((data) => setWelcomeAnimation(data))
       .catch((error) => console.error("Error loading animation:", error));
   }, []);

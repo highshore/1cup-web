@@ -400,8 +400,14 @@ export function AccountMembershipPanel({
   const [billingStatus, setBillingStatus] = useState<BillingStatusResult | null>(null);
   const [changingPaymentMethod, setChangingPaymentMethod] = useState(false);
 
+  // These effects key on the signed-in member's id, not the user object's identity.
+  const currentUid = shell.currentUser?.uid;
+  const { setCreditBalance } = shell;
+  // Billing status is re-read when a renewal or cancellation moves the end date.
+  const subscriptionEndTime = shell.summary.subscriptionEndDate?.getTime();
+
   useEffect(() => {
-    if (!shell.currentUser) return;
+    if (!currentUid) return;
     void supabase.auth.getUserIdentities().then(({ data }) => {
       setIdentities(
         (data?.identities ?? []).map((identity) => ({
@@ -419,7 +425,7 @@ export function AccountMembershipPanel({
     ])
       .then(([balance, rows]) => {
         if (!active) return;
-        shell.setCreditBalance(balance);
+        setCreditBalance(balance);
         setHistory(rows as CreditHistoryItem[]);
       })
       .catch((creditError) => {
@@ -432,11 +438,11 @@ export function AccountMembershipPanel({
     return () => {
       active = false;
     };
-  }, [shell.currentUser?.uid]);
+  }, [currentUid, setCreditBalance]);
 
 
   useEffect(() => {
-    if (!shell.currentUser) return;
+    if (!currentUid) return;
     let active = true;
     void invokeFunction<BillingStatusResult>("checkout", { action: "billing-status" })
       .then((result) => {
@@ -448,7 +454,7 @@ export function AccountMembershipPanel({
     return () => {
       active = false;
     };
-  }, [shell.currentUser?.uid, shell.summary.subscriptionEndDate?.getTime()]);
+  }, [currentUid, subscriptionEndTime]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

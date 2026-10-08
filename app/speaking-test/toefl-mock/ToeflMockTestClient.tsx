@@ -655,7 +655,7 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
     if (step.kind === "email") setWritingSeconds(7 * 60);
     if (step.kind === "discussion") setWritingSeconds(10 * 60);
     if (step.kind === "speaking_record") setSpeakingSeconds(step.responseSeconds ?? 45);
-  }, [step?.id]);
+  }, [step?.id, step?.kind, step?.responseSeconds]);
 
   useEffect(() => {
     if (!step) return;

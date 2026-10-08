@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useEffectEvent, useRef, useMemo } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import "./event-detail.css";
@@ -1838,7 +1838,7 @@ ${meetupUrl}
     return () => {
       cancelled = true;
     };
-  }, [currentUser, accountStatus, hasActiveSubscription, isGdgMember]);
+  }, [currentUser, hasActiveSubscription, hasComplimentaryMeetupAccess]);
 
   useEffect(() => {
     if (!eventId) {
@@ -1896,6 +1896,11 @@ ${meetupUrl}
     };
   }, [event]);
 
+  // An effect event: the loader reads the current event without being a dependency.
+  const loadSavedSeating = useEffectEvent(() => loadSeatingArrangement());
+
+  // Runs again whenever the event, admin status or role changes, so an admin confirmed
+  // after the event has loaded still gets the saved seating.
   useEffect(() => {
     let cancelled = false;
     const loadExistingSeating = async () => {
@@ -1905,7 +1910,7 @@ ${meetupUrl}
       const isLeader = accountStatus === "leader";
       if (event && (isAdmin || isLeader || isLocalhost)) {
         try {
-          const savedSeating = await loadSeatingArrangement();
+          const savedSeating = await loadSavedSeating();
           if (cancelled) return;
           if (savedSeating) {
             setSeatingAssignments(savedSeating.assignments);
@@ -1929,34 +1934,6 @@ ${meetupUrl}
       cancelled = true;
     };
   }, [event, isAdmin, accountStatus]);
-
-  useEffect(() => {
-    const loadSeatingOnAdminConfirmed = async () => {
-      const isLocalhost =
-        typeof window !== "undefined" &&
-        window.location.hostname === "localhost";
-      const isLeader = accountStatus === "leader";
-      if (
-        (isAdmin || isLeader || isLocalhost) &&
-        event &&
-        seatingAssignments.length === 0 &&
-        !showSeatingTable
-      ) {
-        try {
-          const savedSeating = await loadSeatingArrangement();
-          if (savedSeating) {
-            setSeatingAssignments(savedSeating.assignments);
-            setShowSeatingTable(true);
-          }
-        } catch (error) {
-          console.error("Error in late seating load:", error);
-        }
-      }
-    };
-
-    const timeoutId = setTimeout(loadSeatingOnAdminConfirmed, 500);
-    return () => clearTimeout(timeoutId);
-  }, [isAdmin, accountStatus]);
 
   useEffect(() => {
     const calculatePositionAndCheckFloat = () => {

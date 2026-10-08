@@ -398,24 +398,23 @@ const LibraryPage: React.FC = () => {
   }
 
   // Update scroll states when content changes
+  const rowCount = filteredVideos.length;
+
   useEffect(() => {
     const rowsTimer = setTimeout(() => {
       // Initialize video scroll states for current tab content
       setScrollStates(
-        new Array(filteredVideos.length).fill({
+        new Array(rowCount).fill({
           canScrollLeft: false,
           canScrollRight: true,
         })
       );
 
-      filteredVideos.forEach((_, rowIndex) => {
+      for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
         updateVideoScrollState(rowIndex);
-      });
+      }
     }, 100);
-    videoContainersRef.current = videoContainersRef.current.slice(
-      0,
-      filteredVideos.length
-    );
+    videoContainersRef.current = videoContainersRef.current.slice(0, rowCount);
 
     // Initialize tab scroll state
     const tabsTimer = setTimeout(() => updateTabScrollState(), 100);
@@ -423,7 +422,7 @@ const LibraryPage: React.FC = () => {
       clearTimeout(rowsTimer);
       clearTimeout(tabsTimer);
     };
-  }, [activeTab, difficultyFilter, filteredVideos.length]);
+  }, [activeTab, difficultyFilter, rowCount]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
