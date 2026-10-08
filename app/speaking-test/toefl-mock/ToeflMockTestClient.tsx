@@ -697,21 +697,25 @@ export default function ToeflMockTestClient({ onExit }: { onExit: () => void }) 
 
   useEffect(() => {
     if (mode !== "exam" || step?.kind !== "speaking_record") return;
+    // Count down here, not inside the state updater: React may run an updater twice,
+    // which scheduled the advance twice and skipped the next question.
+    let remaining = step.responseSeconds ?? 45;
+    let advanceTimer: number | undefined;
     const timer = window.setInterval(() => {
-      setSpeakingSeconds((value) => {
-        if (value <= 1) {
-          window.clearInterval(timer);
-          window.setTimeout(() => {
-            setVolumeOpen(false);
-            setStepIndex((current) => Math.min(current + 1, steps.length - 1));
-          }, 120);
-          return 0;
-        }
-        return value - 1;
-      });
+      remaining = Math.max(0, remaining - 1);
+      setSpeakingSeconds(remaining);
+      if (remaining > 0) return;
+      window.clearInterval(timer);
+      advanceTimer = window.setTimeout(() => {
+        setVolumeOpen(false);
+        setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+      }, 120);
     }, 1000);
-    return () => window.clearInterval(timer);
-  }, [mode, step?.id, step?.kind, steps.length]);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(advanceTimer);
+    };
+  }, [mode, step?.id, step?.kind, step?.responseSeconds, steps.length]);
 
   const startMock = () => {
     setCompleted(false);

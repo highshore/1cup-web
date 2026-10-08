@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import "./meetup.css";
@@ -63,12 +63,26 @@ const emptyStateClass =
 const sectionTitleClass =
   "mx-0 mt-6 mb-3 text-[1.4rem] font-extrabold leading-[1.25] text-[#333] max-[768px]:mt-5 max-[768px]:mb-2.5 max-[768px]:text-[1.3rem]";
 
+const eventDateTime = (event: MeetupEvent) => new Date(`${event.date}T${event.time}`);
+
+// Upcoming events soonest first, past events most recent first.
+function splitByDate(events: MeetupEvent[]) {
+  const now = new Date();
+  const upcomingEvents: MeetupEvent[] = [];
+  const pastEvents: MeetupEvent[] = [];
+  events.forEach((event) => {
+    if (eventDateTime(event) >= now) upcomingEvents.push(event);
+    else pastEvents.push(event);
+  });
+  upcomingEvents.sort((a, b) => eventDateTime(a).getTime() - eventDateTime(b).getTime());
+  pastEvents.sort((a, b) => eventDateTime(b).getTime() - eventDateTime(a).getTime());
+  return { upcomingEvents, pastEvents };
+}
+
 const MeetupClient: React.FC = () => {
   const router = useRouter();
   const { locale, t } = useI18n();
   const [allEvents, setAllEvents] = useState<MeetupEvent[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<MeetupEvent[]>([]);
-  const [pastEvents, setPastEvents] = useState<MeetupEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,37 +106,7 @@ const MeetupClient: React.FC = () => {
     locationFilter === "all" || eventRegion(event) === locationFilter;
 
   // Helper function to convert MeetupEvent date and time to Date object
-  const getEventDateTime = (event: MeetupEvent): Date => {
-    return new Date(`${event.date}T${event.time}`);
-  };
-
-  // Separate events into upcoming and past
-  const categorizeEvents = useCallback((events: MeetupEvent[]) => {
-    const now = new Date();
-    const upcoming: MeetupEvent[] = [];
-    const past: MeetupEvent[] = [];
-
-    events.forEach((event) => {
-      if (getEventDateTime(event) >= now) {
-        upcoming.push(event);
-      } else {
-        past.push(event);
-      }
-    });
-
-    // Sort upcoming events by date (ascending)
-    upcoming.sort(
-      (a, b) => getEventDateTime(a).getTime() - getEventDateTime(b).getTime()
-    );
-
-    // Sort past events by date (descending - most recent first)
-    past.sort(
-      (a, b) => getEventDateTime(b).getTime() - getEventDateTime(a).getTime()
-    );
-
-    setUpcomingEvents(upcoming);
-    setPastEvents(past);
-  }, []);
+  const { upcomingEvents, pastEvents } = useMemo(() => splitByDate(allEvents), [allEvents]);
 
   // Load initial events
   const loadEvents = useCallback(
@@ -143,13 +127,8 @@ const MeetupClient: React.FC = () => {
 
         if (reset) {
           setAllEvents(result.events);
-          categorizeEvents(result.events);
         } else {
-          setAllEvents((prevEvents) => {
-            const newAllEvents = [...prevEvents, ...result.events];
-            categorizeEvents(newAllEvents);
-            return newAllEvents;
-          });
+          setAllEvents((prevEvents) => [...prevEvents, ...result.events]);
         }
 
         setLastDoc(result.lastDoc);
@@ -162,7 +141,7 @@ const MeetupClient: React.FC = () => {
         setLoadingMore(false);
       }
     },
-    [lastDoc, categorizeEvents]
+    [lastDoc]
   );
 
   // Load more events
