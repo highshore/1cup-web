@@ -1649,7 +1649,7 @@ export default function AdminGiftsClient() {
       });
   };
 
-  const useProduct = async (goodsCode: string, closeCatalog = false) => {
+  const chooseProduct = async (goodsCode: string, closeCatalog = false) => {
     setIsLookingUp(true);
     setSendError(null);
     setSendSuccess(null);
@@ -1701,7 +1701,7 @@ export default function AdminGiftsClient() {
 
   const selectCatalogProduct = async () => {
     if (!catalogSelectedCode) return;
-    await useProduct(catalogSelectedCode, true);
+    await chooseProduct(catalogSelectedCode, true);
   };
 
   const toggleRecipient = (recipientId: string) => {
@@ -1845,7 +1845,7 @@ export default function AdminGiftsClient() {
                     onOpenCatalog={openCatalog}
                     favorites={data?.favorites ?? []}
                     isLookingUp={isLookingUp}
-                    onPickFavorite={(code) => void useProduct(code)}
+                    onPickFavorite={(code) => void chooseProduct(code)}
                     goodsCode={goodsCode}
                     onGoodsCodeChange={setGoodsCode}
                     onLookup={() => void lookupProduct()}
