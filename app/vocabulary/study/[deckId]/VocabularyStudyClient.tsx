@@ -326,7 +326,12 @@ export default function VocabularyStudyClient({ deckId }: { deckId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/vocabulary/study/queue?deckId=${encodeURIComponent(deckId)}`, { cache: "no-store" });
+      const response = await fetch("/api/vocabulary/study/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deckId }),
+        cache: "no-store",
+      });
       if (response.status === 401) {
         router.replace(`/auth?redirect=${encodeURIComponent(`/vocabulary/study/${deckId}`)}`);
         return;
