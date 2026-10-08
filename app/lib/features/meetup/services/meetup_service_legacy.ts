@@ -298,15 +298,15 @@ export const fetchMeetupEvents = async (
   }
 };
 
+const MONTH_LABEL = new Intl.DateTimeFormat("en-US", { month: "long" });
+
 export const fetchMeetupLeaderboards = async (
   limitCount: number = 5
 ): Promise<MeetupLeaderboards> => {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const monthLabel = new Intl.DateTimeFormat("en-US", {
-    month: "long",
-  }).format(now);
+  const monthLabel = MONTH_LABEL.format(now);
 
   try {
     const [

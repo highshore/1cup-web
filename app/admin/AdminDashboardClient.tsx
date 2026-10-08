@@ -94,37 +94,43 @@ export default function AdminDashboardClient() {
     let active = true;
     const load = async () => {
       setLoading(true);
-      const [usersResult, eventsResult] = await Promise.all([
-        supabase
-          .from("users")
-          .select("account_status, has_active_subscription, billing_cancelled, subscription_start_date, subscription_end_date, created_at")
-          .eq("is_placeholder", false),
-        supabase.from("meetups").select("*", { count: "exact", head: true }),
-      ]);
+      try {
+        const [usersResult, eventsResult] = await Promise.all([
+          supabase
+            .from("users")
+            .select("account_status, has_active_subscription, billing_cancelled, subscription_start_date, subscription_end_date, created_at")
+            .eq("is_placeholder", false),
+          supabase.from("meetups").select("*", { count: "exact", head: true }),
+        ]);
 
-      if (!active) return;
-      if (usersResult.error) {
-        console.error("Error loading admin dashboard users:", usersResult.error);
-        setUsers([]);
-      } else {
-        setUsers(
-          (usersResult.data ?? []).map((row) => ({
-            accountStatus: row.account_status ?? null,
-            hasActiveSubscription: row.has_active_subscription === true,
-            billingCancelled: row.billing_cancelled === true,
-            subscriptionStartDate: row.subscription_start_date ?? null,
-            subscriptionEndDate: row.subscription_end_date ?? null,
-            createdAt: row.created_at ?? null,
-          })),
-        );
+        if (!active) return;
+        if (usersResult.error) {
+          console.error("Error loading admin dashboard users:", usersResult.error);
+          setUsers([]);
+        } else {
+          setUsers(
+            (usersResult.data ?? []).map((row) => ({
+              accountStatus: row.account_status ?? null,
+              hasActiveSubscription: row.has_active_subscription === true,
+              billingCancelled: row.billing_cancelled === true,
+              subscriptionStartDate: row.subscription_start_date ?? null,
+              subscriptionEndDate: row.subscription_end_date ?? null,
+              createdAt: row.created_at ?? null,
+            })),
+          );
+        }
+        if (eventsResult.error) {
+          console.error("Error loading admin dashboard meetup count:", eventsResult.error);
+          setTotalEvents(0);
+        } else {
+          setTotalEvents(eventsResult.count ?? 0);
+        }
+      } catch (error) {
+        // A thrown request (offline, aborted) must not leave the dashboard spinning.
+        console.error("Error loading admin dashboard:", error);
+      } finally {
+        if (active) setLoading(false);
       }
-      if (eventsResult.error) {
-        console.error("Error loading admin dashboard meetup count:", eventsResult.error);
-        setTotalEvents(0);
-      } else {
-        setTotalEvents(eventsResult.count ?? 0);
-      }
-      setLoading(false);
     };
 
     void load();

@@ -164,6 +164,50 @@ function processingLabel(article: ArticleData, copy: ArticlesCopy) {
   }
 }
 
+// Ingest state for one article: published (or legacy with no status), failed, or in progress.
+function articleProgress(article: ArticleData) {
+  const isReady = !article.publicationStatus || article.publicationStatus === "published";
+  const isFailed = article.publicationStatus === "failed";
+  const progress = Math.max(0, Math.min(100, article.processing?.progress ?? (isReady ? 100 : 5)));
+  const tone: ArticleStatus = isFailed ? "failed" : isReady ? "published" : "processing";
+  return { isReady, isFailed, progress, tone };
+}
+
+// Status pill, progress bar while ingesting, and the failure reason when ingest failed.
+function ArticleProgressFooter({ article, copy }: { article: ArticleData; copy: ArticlesCopy }) {
+  const { locale } = useI18n();
+  const { isReady, isFailed, progress, tone } = articleProgress(article);
+  const status = processingLabel(article, copy);
+  const isProcessing = !isReady && !isFailed;
+  const failure = isFailed ? article.processing : undefined;
+
+  return (
+    <ArticleFooter>
+      <ArticleStatus $tone={tone}>
+        {isProcessing
+          ? copy.processingProgress
+              .replace("{status}", status)
+              .replace("{progress}", String(progress))
+          : status}
+      </ArticleStatus>
+      {!isReady && (
+        <>
+          <ProgressTrack><ProgressFill $progress={progress} $failed={isFailed} /></ProgressTrack>
+          <Hint>{copy.availableWhenReady}</Hint>
+        </>
+      )}
+      {failure?.errorMessage && (
+        <ErrorDetail>
+          {locale === "ko" ? "실패 원인" : "Failure"}: {failure.errorMessage}
+          {failure.failedStage
+            ? ` (${locale === "ko" ? "단계" : "stage"}: ${failure.failedStage})`
+            : ""}
+        </ErrorDetail>
+      )}
+    </ArticleFooter>
+  );
+}
+
 interface AdminArticleCardProps {
   article: ArticleData;
   deleting: boolean;
@@ -183,10 +227,7 @@ export default function AdminArticleCard({ article, deleting, onOpen, onDelete }
 
   const primaryTitle = article.titleEnglish || article.titleKorean || copy.untitled;
   const showKorean = article.titleKorean && article.titleKorean !== article.titleEnglish;
-  const isReady = !article.publicationStatus || article.publicationStatus === "published";
-  const isFailed = article.publicationStatus === "failed";
-  const progress = Math.max(0, Math.min(100, article.processing?.progress ?? (isReady ? 100 : 5)));
-  const tone: ArticleStatus = isFailed ? "failed" : isReady ? "published" : "processing";
+  const { isReady } = articleProgress(article);
 
   return (
     <ArticleCard>
@@ -205,29 +246,7 @@ export default function AdminArticleCard({ article, deleting, onOpen, onDelete }
           </ArticleMeta>
         </ArticleHeader>
         {showKorean && <ArticleSubtitle>{article.titleKorean}</ArticleSubtitle>}
-        <ArticleFooter>
-          <ArticleStatus $tone={tone}>
-            {!isReady && !isFailed
-              ? copy.processingProgress
-                  .replace("{status}", processingLabel(article, copy))
-                  .replace("{progress}", String(progress))
-              : processingLabel(article, copy)}
-          </ArticleStatus>
-          {!isReady && (
-            <>
-              <ProgressTrack><ProgressFill $progress={progress} $failed={isFailed} /></ProgressTrack>
-              <Hint>{copy.availableWhenReady}</Hint>
-            </>
-          )}
-          {isFailed && article.processing?.errorMessage && (
-            <ErrorDetail>
-              {locale === "ko" ? "실패 원인" : "Failure"}: {article.processing.errorMessage}
-              {article.processing.failedStage
-                ? ` (${locale === "ko" ? "단계" : "stage"}: ${article.processing.failedStage})`
-                : ""}
-            </ErrorDetail>
-          )}
-        </ArticleFooter>
+        <ArticleProgressFooter article={article} copy={copy} />
       </ArticleOpenButton>
       <ArticleActions>
         <DeleteButton

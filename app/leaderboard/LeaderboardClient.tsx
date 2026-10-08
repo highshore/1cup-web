@@ -20,6 +20,19 @@ import {
 } from "../lib/features/celebration/services/celebration_service";
 import CelebrationEditor from "../lib/features/celebration/components/CelebrationEditor";
 
+const MONTH_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { month: "long" }),
+  en: new Intl.DateTimeFormat("en-US", { month: "long" }),
+};
+const ACHIEVED_AT_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }),
+  en: new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long" }),
+};
+const JOINED_AT_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" }),
+  en: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }),
+};
+
 const leaderboardTitleClass =
   "m-0 mb-[0.6rem] inline-flex items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[0.62rem] py-[0.28rem] text-[clamp(0.82rem,1.6vw,0.92rem)] font-black leading-[1.25] text-[#050505] [word-break:keep-all]";
 
@@ -51,10 +64,7 @@ export default function LeaderboardClient() {
     );
   };
 
-  const monthLabel = new Intl.DateTimeFormat(
-    locale === "ko" ? "ko-KR" : "en-US",
-    { month: "long" }
-  ).format(new Date());
+  const monthLabel = MONTH_FORMAT[locale].format(new Date());
 
   const loadLeaderboards = useCallback(async () => {
     try {
@@ -134,10 +144,7 @@ export default function LeaderboardClient() {
     if (!achievedAt) return "";
     const date = new Date(achievedAt);
     if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      year: "numeric",
-      month: "long",
-    }).format(date);
+    return ACHIEVED_AT_FORMAT[locale].format(date);
   };
 
   const formatMeetupCount = (count: number) => {
@@ -152,10 +159,7 @@ export default function LeaderboardClient() {
     const date = new Date(joinedAt);
     if (Number.isNaN(date.getTime())) return "";
 
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      month: "short",
-      day: "numeric",
-    }).format(date);
+    return JOINED_AT_FORMAT[locale].format(date);
   };
 
   const formatMonthlyRate = (rate: number) => {
