@@ -5,16 +5,19 @@ rules_version = '2';
 // no client reads or writes this bucket through rules any more. Uploads and
 // deletes now happen only through the Admin SDK / console, which bypasses rules.
 //
-// Reads stay open because the legacy article images are referenced by public
-// download URL from the article pages. Client writes are denied outright — the
+// Fetching a single object stays open because the legacy article images are
+// referenced by public download URL from the article pages. Listing is denied: a
+// download URL names its object, so nothing needs to enumerate the bucket, and an
+// open list would let anyone discover every file in it. Client writes are denied
+// outright — the
 // previous `allow write: if request.auth != null` on `/{allPaths=**}` let any
 // account in the Firebase project overwrite or add any object in the bucket,
 // which is authentication standing in for authorization.
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
+      allow get: if true;
+      allow list, write: if false;
     }
   }
 }

@@ -314,8 +314,13 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
 
   useEffect(() => {
     return () => {
+      // A socket still connecting would otherwise open after unmount, send the key and
+      // stay open with nobody reading it, so close it in either state.
       const socket = socketRef.current;
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (
+        socket &&
+        (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)
+      ) {
         socket.close();
       }
       finishStream();

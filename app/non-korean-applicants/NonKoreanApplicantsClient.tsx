@@ -316,7 +316,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
   const page = t.nonKoreanApplicants;
   const application = page.application;
   const copy = locale === "ko" ? pageCopy.ko : pageCopy.en;
-  const authHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
+  const signInHref = "/auth?redirect=%2Fnon-korean-applicants%23application";
   const meetupMetric = approximateMetric(stats?.totalMeetups, 80);
   const memberMetric = approximateMetric(stats?.totalMembers, 70);
   const hasLegacyNationality = Boolean(nationality && !COUNTRY_OPTIONS.includes(nationality));
@@ -432,7 +432,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
                   {page.hero.primaryCta} →
                 </Link>
               ) : (
-                <Link className={primaryButtonClass} href={authHref}>
+                <Link className={primaryButtonClass} href={signInHref}>
                   {page.hero.primaryCta} →
                 </Link>
               )}
@@ -641,7 +641,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
               ) : (
                 <div className="mt-7 rounded-[18px] border border-[#dbdbd6] bg-[#fbfbfa] p-5">
                   <p className="m-0 text-[0.84rem] font-[700] leading-[1.55] text-[#64748b]">{application.signInHint}</p>
-                  <Link className={`${primaryButtonClass} mt-5 w-full`} href={authHref}>
+                  <Link className={`${primaryButtonClass} mt-5 w-full`} href={signInHref}>
                     {application.signInCta} →
                   </Link>
                 </div>
@@ -682,7 +682,7 @@ export default function NonKoreanApplicantsClient({ stats }: NonKoreanApplicants
                 {copy.applyNow}
               </Link>
             ) : (
-              <Link className={primaryButtonClass} href={authHref}>
+              <Link className={primaryButtonClass} href={signInHref}>
                 {copy.applyNow}
               </Link>
             )}

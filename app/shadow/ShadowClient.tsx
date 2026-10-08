@@ -739,6 +739,9 @@ const ShadowClient: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         console.log("[Cleanup] Closing Azure PushStream on unmount.");
         azurePushStreamRef.current.close();
       }
+      // Leaving mid-recording must not keep the OpenAI transcription session open.
+      openaiWebSocketRef.current?.close();
+      openaiWebSocketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

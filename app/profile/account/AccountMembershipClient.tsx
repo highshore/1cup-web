@@ -469,10 +469,15 @@ export function AccountMembershipPanel({
       document.body.appendChild(script);
     };
 
+    // A jQuery tag already on the page (but jQuery not ready) may still be loading;
+    // Payple is appended when it finishes, unless this component has gone by then.
+    const existing = window.$
+      ? null
+      : (document.querySelector(
+          'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]',
+        ) as HTMLScriptElement | null);
+
     if (!window.$) {
-      const existing = document.querySelector(
-        'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]',
-      ) as HTMLScriptElement | null;
       if (existing) {
         if ((existing as any).dataset.loaded === "true") appendPayple();
         else existing.addEventListener("load", appendPayple, { once: true });
@@ -491,6 +496,7 @@ export function AccountMembershipPanel({
     }
 
     return () => {
+      existing?.removeEventListener("load", appendPayple);
       window.PaypleCpayCallback = (window.PaypleCpayCallback || []).filter(
         (item) => item !== callback,
       );
