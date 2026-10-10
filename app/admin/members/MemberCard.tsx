@@ -15,7 +15,7 @@ import type { MembershipLocation, UserData } from "./useAdminMembersData";
 
 const userCardClass = `flex flex-col items-stretch p-4 border-[1.5px] border-[#050505] rounded-[10px] ${cardHoverLift}`;
 
-const userInfoClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(180px,1.6fr)_minmax(90px,.6fr)_minmax(155px,1fr)_minmax(110px,.8fr)_minmax(88px,.6fr)] lg:items-center";
+const userInfoClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(180px,1.5fr)_minmax(84px,.6fr)_minmax(150px,1fr)_minmax(135px,.9fr)_minmax(110px,.75fr)_minmax(80px,.6fr)] lg:items-center";
 
 const creditInspectorClass =
   "grid gap-2 w-full mt-3 pt-3 border-t border-t-[rgba(5,5,5,0.15)] text-[12px]";
@@ -74,6 +74,14 @@ export default function MemberCard({
   const [amount, setAmount] = useState("1");
   const [reason, setReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  const billingOngoing = !!user.hasActiveSubscription && !user.billingCancelled;
+  const lastPaid = billingOngoing ? user.lastMembershipPayment : undefined;
+  const formatKrw = (value: number) =>
+    new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
+      style: "currency",
+      currency: "KRW",
+      maximumFractionDigits: 0,
+    }).format(value);
 
   const formatDate = (value?: Date | string, pattern: "yyyy.MM.dd" | "yyyy.MM.dd HH:mm" = "yyyy.MM.dd") =>
     formatAdminDate(value, pattern, locale, t.admin.dashboard.unavailable);
@@ -173,6 +181,30 @@ export default function MemberCard({
           {user.subscriptionEndDate && (user.hasActiveSubscription || user.hasPurchasedMembership) && (
             <span className={userDateClass}>
               {copy.endDate.replace("{date}", formatDate(user.subscriptionEndDate))}
+            </span>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-col items-start gap-1">
+          <span className="text-[11px] font-bold text-[#050505]/55">{copy.lastPaymentLabel}</span>
+          {!billingOngoing ? (
+            <span className="text-[13px] font-semibold text-[#050505]/35">—</span>
+          ) : user.purchaseHistoryLoaded === false ? (
+            <span className="text-[12px] font-semibold text-[#b45309]">{copy.purchaseUnavailable}</span>
+          ) : lastPaid ? (
+            <>
+              <strong className="text-[18px] leading-tight font-black tabular-nums text-[#050505]">
+                {formatKrw(lastPaid.amount)}
+              </strong>
+              <span className="text-[11px] text-[#050505]/60">
+                {lastPaid.type === "subscription_recurring" ? copy.paymentRecurring : copy.paymentInitial}
+                {" / "}
+                {formatDate(lastPaid.completedAt)}
+              </span>
+            </>
+          ) : (
+            <span className="text-[12px] font-semibold text-[#050505]/55">
+              {copy.noCompletedPayment}
             </span>
           )}
         </div>
