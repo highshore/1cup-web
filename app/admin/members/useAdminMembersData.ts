@@ -7,6 +7,12 @@ import { supabase } from "../../lib/supabase/client";
 
 export type MembershipLocation = "yeouido" | "anam";
 
+export interface CompletedMembershipPayment {
+  amount: number;
+  completedAt: string;
+  type: "subscription_initial_payment" | "subscription_recurring";
+}
+
 export interface UserData {
   id: string;
   email?: string;
@@ -23,6 +29,7 @@ export interface UserData {
   hasPurchasedMembership?: boolean;
   hasPurchasedParticipationPack?: boolean;
   purchaseHistoryLoaded?: boolean;
+  lastMembershipPayment?: CompletedMembershipPayment;
 }
 
 export interface FeedbackData {
@@ -47,13 +54,21 @@ export interface NonKoreanApplication {
 // Completed payment records distinguish purchases from granted or unused credits.
 // Older recurring membership orders have no product_id, so identify by payment type.
 // Fetch in pages to avoid silently dropping purchases at the PostgREST row cap.
-async function fetchPurchasedProducts(): Promise<Map<string, { membership: boolean; pack: boolean }>> {
-  const byUser = new Map<string, { membership: boolean; pack: boolean }>();
+async function fetchPurchasedProducts(): Promise<Map<string, {
+  membership: boolean;
+  pack: boolean;
+  lastMembershipPayment?: CompletedMembershipPayment;
+}>> {
+  const byUser = new Map<string, {
+    membership: boolean;
+    pack: boolean;
+    lastMembershipPayment?: CompletedMembershipPayment;
+  }>();
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase
       .from("payment_orders")
-      .select("user_id, type")
+      .select("user_id, type, amount, completed_at")
       .eq("status", "completed")
       .in("type", [
         "subscription_initial_payment",
@@ -66,8 +81,26 @@ async function fetchPurchasedProducts(): Promise<Map<string, { membership: boole
     for (const order of data ?? []) {
       if (!order.user_id) continue;
       const current = byUser.get(order.user_id) ?? { membership: false, pack: false };
-      if (order.type === "participation_pack_purchase") current.pack = true;
-      else current.membership = true;
+      if (order.type === "participation_pack_purchase") {
+        current.pack = true;
+      } else {
+        current.membership = true;
+        // Only trust completed payment amounts: these include actual discounts.
+        // Keep the most recent membership charge, whether initial or renewal.
+        const paidAmount = Number(order.amount);
+        const paidAt = order.completed_at;
+        const paymentTime = typeof paidAt === "string" ? Date.parse(paidAt) : NaN;
+        if (Number.isFinite(paidAmount) && paidAmount >= 0 && Number.isFinite(paymentTime)) {
+          const previous = current.lastMembershipPayment;
+          if (!previous || paymentTime >= Date.parse(previous.completedAt)) {
+            current.lastMembershipPayment = {
+              amount: paidAmount,
+              completedAt: paidAt,
+              type: order.type as CompletedMembershipPayment["type"],
+            };
+          }
+        }
+      }
       byUser.set(order.user_id, current);
     }
     if ((data ?? []).length < pageSize) break;
@@ -109,6 +142,7 @@ export async function fetchUsers(): Promise<UserData[]> {
         hasPurchasedMembership: purchases?.get(row.uid)?.membership ?? false,
         hasPurchasedParticipationPack: purchases?.get(row.uid)?.pack ?? false,
         purchaseHistoryLoaded: purchases !== null,
+        lastMembershipPayment: purchases?.get(row.uid)?.lastMembershipPayment,
       }))
       .filter((user) => !user.isPlaceholder);
   } catch (error) {

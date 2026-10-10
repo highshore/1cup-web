@@ -34,7 +34,7 @@ const loadingSpinnerClass = "flex justify-center items-center p-10 text-[rgba(5,
 
 type MembersTab = "members" | "feedback" | "applicants";
 type PurchaseFilter = "all" | "membership" | "pass" | "both" | "none";
-type SubscriptionFilter = "all" | "active" | "cancelled" | "ended" | "none";
+type SubscriptionFilter = "all" | "active" | "ongoing" | "cancelled" | "ended" | "none";
 
 function matchesPurchase(user: UserData, filter: PurchaseFilter): boolean {
   if (filter === "all") return true;
@@ -47,6 +47,7 @@ function matchesPurchase(user: UserData, filter: PurchaseFilter): boolean {
 function matchesSubscription(user: UserData, filter: SubscriptionFilter): boolean {
   if (filter === "all") return true;
   if (filter === "active") return !!user.hasActiveSubscription;
+  if (filter === "ongoing") return !!user.hasActiveSubscription && !user.billingCancelled;
   if (filter === "cancelled") return !!user.hasActiveSubscription && !!user.billingCancelled;
   if (filter === "ended") return !user.hasActiveSubscription && !!user.hasPurchasedMembership;
   return !user.hasActiveSubscription && !user.hasPurchasedMembership;
@@ -241,6 +242,7 @@ export default function AdminMembersClient() {
                 >
                   <option value="all">{copy.subscriptionAll}</option>
                   <option value="active">{copy.subscriptionActive}</option>
+                  <option value="ongoing">{copy.subscriptionOngoing}</option>
                   <option value="cancelled">{copy.subscriptionCancelled}</option>
                   <option value="ended" disabled={!hasPurchaseData}>{copy.subscriptionEnded}</option>
                   <option value="none" disabled={!hasPurchaseData}>{copy.subscriptionNone}</option>
