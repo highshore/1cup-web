@@ -15,7 +15,7 @@ import type { MembershipLocation, UserData } from "./useAdminMembersData";
 
 const userCardClass = `flex flex-col items-stretch p-4 border-[1.5px] border-[#050505] rounded-[10px] ${cardHoverLift}`;
 
-const userInfoClass = "flex-1 grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center";
+const userInfoClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(180px,1.6fr)_minmax(90px,.6fr)_minmax(155px,1fr)_minmax(110px,.8fr)_minmax(88px,.6fr)] lg:items-center";
 
 const creditInspectorClass =
   "grid gap-2 w-full mt-3 pt-3 border-t border-t-[rgba(5,5,5,0.15)] text-[12px]";
@@ -25,8 +25,11 @@ const creditControlsClass =
   "[&_input]:min-w-0 [&_input]:border [&_input]:border-[#050505] [&_input]:rounded-[6px] [&_input]:py-1.5 [&_input]:px-2 [&_input]:[font:inherit] " +
   "[&_button]:border [&_button]:border-[#050505] [&_button]:rounded-[6px] [&_button]:bg-white [&_button]:py-1.5 [&_button]:px-2 [&_button]:[font:inherit] [&_button]:font-extrabold [&_button]:cursor-pointer";
 
-const userStatusClass = (active: boolean) =>
-  `${statusPillClass} ${active ? "bg-[#dcfce7]" : "bg-[#fee2e2]"}`;
+const userStatusClass = (active: boolean, purchasedMembership: boolean) =>
+  [
+    statusPillClass,
+    active ? "bg-[#dcfce7]" : purchasedMembership ? "bg-[#fff0d8]" : "bg-[#f3f4f6]",
+  ].join(" ");
 
 const locationStatusClass = (location: MembershipLocation) =>
   `${statusPillClass} ${location === "yeouido" ? "bg-[#dbeafe]" : "bg-[#ffedd5]"}`;
@@ -133,7 +136,24 @@ export default function MemberCard({
       <div className={userInfoClass}>
         <div>
           <div className={userNameClass}>{user.displayName || copy.noName}</div>
-          <div className={userEmailClass}>{user.email}</div>
+          <div className={"break-all " + userEmailClass}>{user.email}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {user.purchaseHistoryLoaded === false ? (
+              <span className={userStatusClass(false, false)}>{copy.purchaseUnavailable}</span>
+            ) : (
+              <>
+                {user.hasPurchasedMembership && (
+                  <span className={statusPillClass + " bg-[#ffe8dd]"}>{copy.purchasedMembership}</span>
+                )}
+                {user.hasPurchasedParticipationPack && (
+                  <span className={statusPillClass + " bg-[#e1f3ff]"}>{copy.purchasedPass}</span>
+                )}
+                {!user.hasPurchasedMembership && !user.hasPurchasedParticipationPack && (
+                  <span className={statusPillClass + " bg-[#f3f4f6]"}>{copy.noPurchases}</span>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div>
@@ -142,25 +162,37 @@ export default function MemberCard({
           </div>
         </div>
 
-        <div className={userStatusClass(!!user.hasActiveSubscription)}>
-          {user.hasActiveSubscription ? copy.active : copy.inactive}
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-[11px] font-bold text-[#050505]/55">{copy.membershipStatusLabel}</span>
+          <div className={userStatusClass(!!user.hasActiveSubscription, !!user.hasPurchasedMembership)}>
+            {user.hasActiveSubscription
+              ? copy.membershipActive
+              : user.purchaseHistoryLoaded === false ? copy.purchaseUnavailable
+                : user.hasPurchasedMembership ? copy.membershipEnded : copy.membershipNone}
+          </div>
+          {user.subscriptionEndDate && (user.hasActiveSubscription || user.hasPurchasedMembership) && (
+            <span className={userDateClass}>
+              {copy.endDate.replace("{date}", formatDate(user.subscriptionEndDate))}
+            </span>
+          )}
         </div>
 
         <div>
-          {user.billingCancelled && (
-            <div style={{ fontSize: "11px", color: "#dc2626", fontWeight: "500" }}>
-              {copy.billingStopped}
-            </div>
+          <div className="text-[11px] font-bold text-[#050505]/55">{copy.creditBalanceLabel}</div>
+          <div className="mt-1 text-[18px] font-black text-[#050505]">
+            {user.participationCreditBalance ?? 0}<span className="ml-1 text-[12px] font-bold">{copy.creditUnit}</span>
+          </div>
+          {user.hasActiveSubscription && user.billingCancelled && (
+            <div className="text-[11px] font-semibold text-[#b45309]">{copy.billingStopped}</div>
           )}
         </div>
 
         <div className={userDateClass}>{formatDate(user.createdAt)}</div>
       </div>
       <div className={creditInspectorClass}>
-        <strong>회차 참여권: {user.participationCreditBalance ?? 0}회</strong>
         <div className={creditControlsClass}>
           <button type="button" onClick={toggle}>
-            {expanded ? "내역 닫기" : "내역 보기"}
+            {expanded ? copy.creditHideHistory : copy.creditShowHistory}
           </button>
           {expanded && (
             <>
