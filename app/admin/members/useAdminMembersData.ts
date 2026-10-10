@@ -20,6 +20,9 @@ export interface UserData {
   location: MembershipLocation;
   isPlaceholder?: boolean;
   participationCreditBalance?: number;
+  hasPurchasedMembership?: boolean;
+  hasPurchasedParticipationPack?: boolean;
+  purchaseHistoryLoaded?: boolean;
 }
 
 export interface FeedbackData {
@@ -41,11 +44,47 @@ export interface NonKoreanApplication {
   createdAt: string;
 }
 
+// Completed payment records distinguish purchases from granted or unused credits.
+// Older recurring membership orders have no product_id, so identify by payment type.
+// Fetch in pages to avoid silently dropping purchases at the PostgREST row cap.
+async function fetchPurchasedProducts(): Promise<Map<string, { membership: boolean; pack: boolean }>> {
+  const byUser = new Map<string, { membership: boolean; pack: boolean }>();
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("payment_orders")
+      .select("user_id, type")
+      .eq("status", "completed")
+      .in("type", [
+        "subscription_initial_payment",
+        "subscription_recurring",
+        "participation_pack_purchase",
+      ])
+      .order("order_number", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    for (const order of data ?? []) {
+      if (!order.user_id) continue;
+      const current = byUser.get(order.user_id) ?? { membership: false, pack: false };
+      if (order.type === "participation_pack_purchase") current.pack = true;
+      else current.membership = true;
+      byUser.set(order.user_id, current);
+    }
+    if ((data ?? []).length < pageSize) break;
+  }
+  return byUser;
+}
+
 export async function fetchUsers(): Promise<UserData[]> {
   try {
-    const [{ data, error }, { data: balances, error: balanceError }] = await Promise.all([
+    const [{ data, error }, { data: balances, error: balanceError }, purchases] = await Promise.all([
       supabase.from("users").select("*").order("created_at", { ascending: false }),
       supabase.from("participation_credit_balances").select("user_id, balance"),
+      fetchPurchasedProducts().catch((error) => {
+        // Never mistake an unavailable payment history for a member with no purchases.
+        console.error("Error fetching member purchases:", error);
+        return null;
+      }),
     ]);
     if (error) throw error;
     if (balanceError) throw balanceError;
@@ -67,6 +106,9 @@ export async function fetchUsers(): Promise<UserData[]> {
         location: (row.location === "yeouido" ? "yeouido" : "anam") as MembershipLocation,
         isPlaceholder: row.is_placeholder === true,
         participationCreditBalance: balanceByUser.get(row.uid) ?? 0,
+        hasPurchasedMembership: purchases?.get(row.uid)?.membership ?? false,
+        hasPurchasedParticipationPack: purchases?.get(row.uid)?.pack ?? false,
+        purchaseHistoryLoaded: purchases !== null,
       }))
       .filter((user) => !user.isPlaceholder);
   } catch (error) {
