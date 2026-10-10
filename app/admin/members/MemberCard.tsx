@@ -12,6 +12,7 @@ import {
   userNameClass,
 } from "./shared";
 import type { MembershipLocation, UserData } from "./useAdminMembersData";
+import { getMemberBillingStatus, type MemberBillingStatus } from "./membershipStatus";
 
 const userCardClass = `flex flex-col items-stretch p-4 border-[1.5px] border-[#050505] rounded-[10px] ${cardHoverLift}`;
 
@@ -25,10 +26,12 @@ const creditControlsClass =
   "[&_input]:min-w-0 [&_input]:border [&_input]:border-[#050505] [&_input]:rounded-[6px] [&_input]:py-1.5 [&_input]:px-2 [&_input]:[font:inherit] " +
   "[&_button]:border [&_button]:border-[#050505] [&_button]:rounded-[6px] [&_button]:bg-white [&_button]:py-1.5 [&_button]:px-2 [&_button]:[font:inherit] [&_button]:font-extrabold [&_button]:cursor-pointer";
 
-const userStatusClass = (active: boolean, purchasedMembership: boolean) =>
+const userStatusClass = (status: MemberBillingStatus) =>
   [
     statusPillClass,
-    active ? "bg-[#dcfce7]" : purchasedMembership ? "bg-[#fff0d8]" : "bg-[#f3f4f6]",
+    status === "ongoing" ? "bg-[#dcfce7]" :
+    status === "stopped_active" || status === "stopped_ended" ? "bg-[#ffedd5]" :
+    status === "ended" ? "bg-[#f3f4f6]" : "bg-[#f8fafc]",
   ].join(" ");
 
 const locationStatusClass = (location: MembershipLocation) =>
@@ -74,7 +77,8 @@ export default function MemberCard({
   const [amount, setAmount] = useState("1");
   const [reason, setReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
-  const billingOngoing = !!user.hasActiveSubscription && !user.billingCancelled;
+  const membershipStatus = getMemberBillingStatus(user);
+  const billingOngoing = membershipStatus === "ongoing";
   const lastPaid = billingOngoing ? user.lastMembershipPayment : undefined;
   const formatKrw = (value: number) =>
     new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
@@ -147,7 +151,7 @@ export default function MemberCard({
           <div className={"break-all " + userEmailClass}>{user.email}</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {user.purchaseHistoryLoaded === false ? (
-              <span className={userStatusClass(false, false)}>{copy.purchaseUnavailable}</span>
+              <span className={statusPillClass + " bg-[#f3f4f6]"}>{copy.purchaseUnavailable}</span>
             ) : (
               <>
                 {user.hasPurchasedMembership && (
@@ -172,13 +176,28 @@ export default function MemberCard({
 
         <div className="flex flex-col items-start gap-1">
           <span className="text-[11px] font-bold text-[#050505]/55">{copy.membershipStatusLabel}</span>
-          <div className={userStatusClass(!!user.hasActiveSubscription, !!user.hasPurchasedMembership)}>
-            {user.hasActiveSubscription
-              ? copy.membershipActive
-              : user.purchaseHistoryLoaded === false ? copy.purchaseUnavailable
-                : user.hasPurchasedMembership ? copy.membershipEnded : copy.membershipNone}
+          <div className={userStatusClass(membershipStatus)}>
+            {membershipStatus === "ongoing"
+              ? copy.membershipOngoing
+              : membershipStatus === "stopped_active" || membershipStatus === "stopped_ended"
+                ? copy.membershipBillingStopped
+                : membershipStatus === "ended"
+                  ? copy.membershipEnded
+                  : membershipStatus === "unknown"
+                    ? copy.purchaseUnavailable
+                    : copy.membershipNone}
           </div>
-          {user.subscriptionEndDate && (user.hasActiveSubscription || user.hasPurchasedMembership) && (
+          {membershipStatus === "stopped_active" && (
+            <span className="text-[11px] font-bold text-[#9a3412]">
+              {copy.membershipAccessRemaining}
+            </span>
+          )}
+          {membershipStatus === "stopped_ended" && (
+            <span className="text-[11px] font-bold text-[#9a3412]">
+              {copy.membershipStoppedExpired}
+            </span>
+          )}
+          {user.subscriptionEndDate && membershipStatus !== "none" && membershipStatus !== "unknown" && (
             <span className={userDateClass}>
               {copy.endDate.replace("{date}", formatDate(user.subscriptionEndDate))}
             </span>
@@ -214,9 +233,6 @@ export default function MemberCard({
           <div className="mt-1 text-[18px] font-black text-[#050505]">
             {user.participationCreditBalance ?? 0}<span className="ml-1 text-[12px] font-bold">{copy.creditUnit}</span>
           </div>
-          {user.hasActiveSubscription && user.billingCancelled && (
-            <div className="text-[11px] font-semibold text-[#b45309]">{copy.billingStopped}</div>
-          )}
         </div>
 
         <div className={userDateClass}>{formatDate(user.createdAt)}</div>
