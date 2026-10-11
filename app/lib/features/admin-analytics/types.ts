@@ -1,4 +1,5 @@
-export type AnalyticsRange = "month" | "lastMonth" | "3m" | "12m";
+export type AnalyticsRange = "day" | "week" | "month" | "year" | "custom";
+export type AnalyticsComparison = "previous" | "yearAgo" | "none";
 
 export type MonthlyAnalytics = {
   month: string;
@@ -22,6 +23,9 @@ export type RetentionCohort = {
 export type AdminAnalyticsData = {
   range: {
     id: AnalyticsRange;
+    comparison: AnalyticsComparison;
+    comparisonFrom: string | null;
+    comparisonTo: string | null;
     from: string;
     to: string;
     partial: boolean;
