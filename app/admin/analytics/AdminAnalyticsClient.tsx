@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownTrayIcon,
@@ -108,6 +108,7 @@ export default function AdminAnalyticsClient() {
   };
   const [tab, setTab] = useState<Tab>("overview");
   const [refreshToken, setRefreshToken] = useState(0);
+  const lastRefreshToken = useRef(0);
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -118,7 +119,10 @@ export default function AdminAnalyticsClient() {
     setLoading(true);
     setError(false);
     const query = new URLSearchParams({ range, from: selectedWindow.from, to: selectedWindow.to, compare: comparison });
-    if (refreshToken > 0) query.set("refresh", "1");
+    if (refreshToken !== lastRefreshToken.current) {
+      query.set("refresh", "1");
+      lastRefreshToken.current = refreshToken;
+    }
     fetch("/api/admin/analytics?" + query.toString(), {
       cache: "no-store",
       signal: abortController.signal,
