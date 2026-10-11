@@ -17,6 +17,8 @@ const adminAnalytics = {
     partialNote: "The current period is not complete. Growth is compared with the preceding full period.",
     allTimesKst: "Dates are based on Korea Standard Time (KST).",
     period: "Date range",
+    periodModes: { day: "Daily", week: "Weekly", month: "Monthly", year: "Yearly", custom: "Custom" },
+    startDate: "Start date", endDate: "End date", previous: "Previous period", next: "Next period", compareLabel: "Compare with", comparePrevious: "Previous period", compareYearAgo: "Same period last year", compareNone: "No comparison",
     ranges: {
       month: "This month",
       lastMonth: "Last month",
@@ -111,6 +113,8 @@ const adminAnalytics = {
     partialNote: "이번 달은 집계가 진행 중입니다. 성장률은 이전의 전체 기간과 비교합니다.",
     allTimesKst: "날짜 기준은 한국시간(KST)입니다.",
     period: "조회 기간",
+    periodModes: { day: "일간", week: "주간", month: "월간", year: "연간", custom: "직접 설정" },
+    startDate: "시작일", endDate: "종료일", previous: "이전 기간", next: "다음 기간", compareLabel: "비교 기간", comparePrevious: "이전 기간", compareYearAgo: "전년 동기", compareNone: "비교 안 함",
     ranges: {
       month: "이번 달",
       lastMonth: "지난달",
