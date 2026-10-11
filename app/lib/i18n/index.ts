@@ -1,3 +1,4 @@
+import adminAnalytics from "./admin_analytics";
 import adminGifts from "./admin_gifts";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
@@ -42,9 +43,11 @@ const dictionaries = {
         sections: {
           ...en.admin.dashboard.sections,
           gifts: adminGifts.en.dashboardSection,
+          analytics: adminAnalytics.en.dashboardSection,
         },
       },
       gifts: adminGifts.en.gifts,
+      analytics: adminAnalytics.en,
     },
   },
   ko: {
@@ -81,9 +84,11 @@ const dictionaries = {
         sections: {
           ...ko.admin.dashboard.sections,
           gifts: adminGifts.ko.dashboardSection,
+          analytics: adminAnalytics.ko.dashboardSection,
         },
       },
       gifts: adminGifts.ko.gifts,
+      analytics: adminAnalytics.ko,
     },
   },
 };
