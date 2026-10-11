@@ -59,6 +59,7 @@ const statSubtextClass = "mt-1 text-[rgba(5,5,5,0.6)] text-[12px]";
 const loadingClass = "p-10 text-[rgba(5,5,5,0.6)] font-bold text-center";
 
 const QUICK_ACTIONS = [
+  ["analytics", "/admin/analytics"],
   ["members", "/admin/members"],
   ["articles", "/admin/articles"],
   ["shadow", "/admin/shadow"],
