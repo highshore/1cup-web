@@ -118,6 +118,7 @@ export default function AdminAnalyticsClient() {
     setLoading(true);
     setError(false);
     const query = new URLSearchParams({ range, from: selectedWindow.from, to: selectedWindow.to, compare: comparison });
+    if (refreshToken > 0) query.set("refresh", "1");
     fetch("/api/admin/analytics?" + query.toString(), {
       cache: "no-store",
       signal: abortController.signal,
@@ -371,6 +372,11 @@ export default function AdminAnalyticsClient() {
               </select>
             </label>
           </div>
+          {data?.freshness && !loading && (
+            <span className="self-center text-[11px] font-semibold text-[#888]">
+              {locale === "ko" ? "조회 시각" : "Retrieved"}: {new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(data.freshness.fetchedAt))} KST
+            </span>
+          )}
           <button type="button" onClick={refresh} disabled={loading} className={buttonClass} aria-label={copy.refresh}>
             <ArrowPathIcon className={"h-4 w-4 " + (loading ? "animate-spin" : "")}/>{copy.refresh}
           </button>
