@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownTrayIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ArrowLeftIcon,
   ArrowPathIcon,
   ArrowTrendingUpIcon,
@@ -27,18 +29,35 @@ import type { ChartOptions } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
 
 import { useI18n } from "../../lib/i18n/I18nProvider";
-import type { AdminAnalyticsData, AnalyticsRange } from "../../lib/features/admin-analytics/types";
+import type { AdminAnalyticsData, AnalyticsRange, AnalyticsComparison } from "../../lib/features/admin-analytics/types";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
 
 type Tab = "overview" | "revenue" | "customers" | "operations";
 
-const rangeOptions: Array<{ id: AnalyticsRange; label: "month" | "lastMonth" | "threeMonths" | "year" }> = [
-  { id: "month", label: "month" },
-  { id: "lastMonth", label: "lastMonth" },
-  { id: "3m", label: "threeMonths" },
-  { id: "12m", label: "year" },
-];
+const rangeOptions: AnalyticsRange[] = ["day", "week", "month", "year", "custom"];
+const KST = 9 * 3600000;
+function kstToday() { return new Date(Date.now() + KST).toISOString().slice(0, 10); }
+function formatDate(d: Date) { return d.toISOString().slice(0, 10); }
+function dateWindow(mode: AnalyticsRange, anchor: string) {
+  const d = new Date(anchor + "T00:00:00Z");
+  if (mode === "week") d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  if (mode === "month") d.setUTCDate(1);
+  if (mode === "year") { d.setUTCMonth(0); d.setUTCDate(1); }
+  const start = formatDate(d);
+  if (mode === "week") d.setUTCDate(d.getUTCDate() + 6);
+  if (mode === "month") { d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); }
+  if (mode === "year") { d.setUTCFullYear(d.getUTCFullYear() + 1); d.setUTCDate(0); }
+  return { from: start, to: formatDate(d) };
+}
+function shiftAnchor(anchor: string, mode: AnalyticsRange, amount: number) {
+  const d = new Date(anchor + "T00:00:00Z");
+  if (mode === "day") d.setUTCDate(d.getUTCDate() + amount);
+  if (mode === "week") d.setUTCDate(d.getUTCDate() + amount * 7);
+  if (mode === "month") d.setUTCMonth(d.getUTCMonth() + amount);
+  if (mode === "year") d.setUTCFullYear(d.getUTCFullYear() + amount);
+  return formatDate(d);
+}
 const tabs: Tab[] = ["overview", "revenue", "customers", "operations"];
 const panelClass = "min-w-0 rounded-2xl border border-[#e9e8e5] bg-white p-4 shadow-[0_3px_18px_rgba(0,0,0,0.035)] sm:p-6";
 const eyebrowClass = "text-[10px] font-black uppercase tracking-[0.15em] text-[#f47a4a]";
@@ -77,6 +96,16 @@ export default function AdminAnalyticsClient() {
   const { t, locale } = useI18n();
   const copy = t.admin.analytics;
   const [range, setRange] = useState<AnalyticsRange>("month");
+  const [anchor, setAnchor] = useState(kstToday);
+  const [customFrom, setCustomFrom] = useState(kstToday);
+  const [customTo, setCustomTo] = useState(kstToday);
+  const [comparison, setComparison] = useState<AnalyticsComparison>("previous");
+  const selectedWindow = range === "custom" ? { from: customFrom, to: customTo } : dateWindow(range, anchor);
+  const invalidWindow = selectedWindow.from > selectedWindow.to || selectedWindow.from > kstToday();
+  const changeRange = (next: AnalyticsRange) => {
+    if (next === "custom" && range !== "custom") { setCustomFrom(selectedWindow.from); setCustomTo(selectedWindow.to); }
+    setRange(next);
+  };
   const [tab, setTab] = useState<Tab>("overview");
   const [refreshToken, setRefreshToken] = useState(0);
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
@@ -85,9 +114,11 @@ export default function AdminAnalyticsClient() {
 
   useEffect(() => {
     const abortController = new AbortController();
+    if (invalidWindow) { setLoading(false); setError(true); return () => abortController.abort(); }
     setLoading(true);
     setError(false);
-    fetch("/api/admin/analytics?range=" + encodeURIComponent(range), {
+    const query = new URLSearchParams({ range, from: selectedWindow.from, to: selectedWindow.to, compare: comparison });
+    fetch("/api/admin/analytics?" + query.toString(), {
       cache: "no-store",
       signal: abortController.signal,
       credentials: "same-origin",
@@ -111,7 +142,7 @@ export default function AdminAnalyticsClient() {
       });
 
     return () => abortController.abort();
-  }, [range, refreshToken]);
+  }, [range, selectedWindow.from, selectedWindow.to, comparison, invalidWindow, refreshToken]);
 
   const currency = useCallback((amount: number) =>
     new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
@@ -309,18 +340,37 @@ export default function AdminAnalyticsClient() {
           <p className={"m-0 mt-2 " + mutedClass}>{copy.subtitle}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="flex flex-col gap-1 text-[11px] font-bold text-[#737373]">
-            {copy.period}
-            <select
-              className="h-10 min-w-[130px] rounded-xl border border-[#dedede] bg-white px-3 text-[12px] font-bold text-[#222] focus:outline-[#f47a4a]"
-              value={range}
-              onChange={(event) => setRange(event.target.value as AnalyticsRange)}
-            >
+          <div className="w-full space-y-2 sm:w-auto">
+            <div className="flex flex-wrap gap-1 rounded-xl bg-[#f5f5f5] p-1">
               {rangeOptions.map((option) => (
-                <option key={option.id} value={option.id}>{copy.ranges[option.label]}</option>
+                <button key={option} type="button" onClick={() => changeRange(option)}
+                  className={"rounded-lg px-3 py-2 text-[12px] font-bold " + (range === option ? "bg-white text-[#171717] shadow-sm" : "text-[#777]")}>
+                  {copy.periodModes[option]}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+            {range === "custom" ? (
+              <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                <input type="date" aria-label={copy.startDate} value={customFrom} max={kstToday()} onChange={(e) => setCustomFrom(e.target.value)} className={buttonClass}/>
+                <span>–</span>
+                <input type="date" aria-label={copy.endDate} value={customTo} min={customFrom} max={kstToday()} onChange={(e) => setCustomTo(e.target.value)} className={buttonClass}/>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-[#e9e9e9] bg-white px-2">
+                <button type="button" aria-label={copy.previous} onClick={() => setAnchor((v) => shiftAnchor(v, range, -1))} className="p-2"><ChevronLeftIcon className="h-4 w-4"/></button>
+                <span className="text-[12px] font-bold">{selectedWindow.from} ~ {selectedWindow.to}</span>
+                <button type="button" aria-label={copy.next} disabled={selectedWindow.to >= kstToday()} onClick={() => setAnchor((v) => shiftAnchor(v, range, 1))} className="p-2 disabled:opacity-25"><ChevronRightIcon className="h-4 w-4"/></button>
+              </div>
+            )}
+            <label className="flex items-center justify-between gap-2 text-[12px] font-semibold text-[#777]">
+              {copy.compareLabel}
+              <select value={comparison} onChange={(e) => setComparison(e.target.value as AnalyticsComparison)} className={buttonClass}>
+                <option value="previous">{copy.comparePrevious}</option>
+                <option value="yearAgo">{copy.compareYearAgo}</option>
+                <option value="none">{copy.compareNone}</option>
+              </select>
+            </label>
+          </div>
           <button type="button" onClick={refresh} disabled={loading} className={buttonClass} aria-label={copy.refresh}>
             <ArrowPathIcon className={"h-4 w-4 " + (loading ? "animate-spin" : "")}/>{copy.refresh}
           </button>
