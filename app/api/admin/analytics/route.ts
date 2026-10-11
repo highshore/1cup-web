@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createServerClientRSC } from "../../../lib/supabase/server";
@@ -13,6 +14,17 @@ const validDate = (value: string | null) => {
   return Number.isFinite(timestamp) && new Date(timestamp + 9 * 3600000).toISOString().slice(0, 10) === value;
 };
 
+// Server-side aggregate snapshots, keyed by range and comparison.
+const historicalSnapshot = unstable_cache(
+  async (range: AnalyticsRange, from: string, to: string, compare: AnalyticsComparison) => getAdminAnalytics(range, from, to, compare),
+  ["onecup-historical-analytics-v1"],
+  { revalidate: 86400, tags: ["admin-analytics"] },
+);
+const recentSnapshot = unstable_cache(
+  async (range: AnalyticsRange, from: string, to: string, compare: AnalyticsComparison) => getAdminAnalytics(range, from, to, compare),
+  ["onecup-recent-analytics-v1"],
+  { revalidate: 60, tags: ["admin-analytics"] },
+);
 export async function GET(request: NextRequest) {
   const noStore = { "Cache-Control": "private, no-store, max-age=0" };
   try {
@@ -47,8 +59,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid date range." }, { status: 400, headers: noStore });
     }
     const comparison: AnalyticsComparison = compare === "yearAgo" || compare === "none" ? compare : "previous";
-    const data = await getAdminAnalytics(range, from!, to!, comparison);
-    return NextResponse.json(data, { headers: noStore });
+    const force = request.nextUrl.searchParams.get("refresh") === "1";
+    const todayKst = new Date(now + 9 * 3600000).toISOString().slice(0, 10);
+    const historical = to! < todayKst;
+    const data = force
+      ? await getAdminAnalytics(range, from!, to!, comparison)
+      : historical
+        ? await historicalSnapshot(range, from!, to!, comparison)
+        : await recentSnapshot(range, from!, to!, comparison);
+    return NextResponse.json({
+      ...data,
+      freshness: { source: force ? "live" : historical ? "historical-cache" : "recent-cache",
+        fetchedAt: new Date().toISOString(), ttlSeconds: force ? 0 : historical ? 86400 : 60 },
+    }, { headers: noStore });
   } catch (error) {
     console.error("[admin analytics] Failed to build dashboard:", error);
     return NextResponse.json({ error: "Analytics are temporarily unavailable." }, { status: 500, headers: noStore });
