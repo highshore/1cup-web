@@ -76,7 +76,7 @@ async function readAll(
     if (secondaryOrder) query = query.order(secondaryOrder, { ascending: true });
     const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
     if (error) throw new Error("Admin analytics query failed for " + table + ": " + error.message);
-    collected.push(...((data ?? []) as DbRow[]));
+    collected.push(...((data ?? []) as unknown as DbRow[]));
     if ((data ?? []).length < PAGE_SIZE) break;
   }
   return collected;
