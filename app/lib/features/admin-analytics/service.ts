@@ -1,5 +1,5 @@
 import { admin } from "../../supabase/server";
-import type { AdminAnalyticsData, AnalyticsRange, MonthlyAnalytics, RetentionCohort } from "./types";
+import type { AdminAnalyticsData, AnalyticsRange, AnalyticsComparison, MonthlyAnalytics, RetentionCohort } from "./types";
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -82,20 +82,19 @@ async function readAll(
   return collected;
 }
 
-export async function getAdminAnalytics(range: AnalyticsRange): Promise<AdminAnalyticsData> {
+export async function getAdminAnalytics(range: AnalyticsRange, fromDate: string, toDate: string, comparison: AnalyticsComparison): Promise<AdminAnalyticsData> {
   const now = Date.now();
   const localNow = new Date(now + KST_OFFSET_MS);
   const year = localNow.getUTCFullYear();
   const month = localNow.getUTCMonth();
-
-  const from = range === "lastMonth"
-    ? monthStart(year, month - 1)
-    : monthStart(year, month - (range === "3m" ? 2 : range === "12m" ? 11 : 0));
-  const until = range === "lastMonth" ? monthStart(year, month) : now;
-  const previousFrom = range === "lastMonth"
-    ? monthStart(year, month - 2)
-    : monthStart(year, month - (range === "3m" ? 5 : range === "12m" ? 23 : 1));
-  const previousUntil = from;
+  // Dates are YYYY-MM-DD in Korea. toDate is inclusive in the UI.
+  const from = Date.parse(fromDate + "T00:00:00+09:00");
+  const until = Math.min(Date.parse(toDate + "T00:00:00+09:00") + DAY_MS, now);
+  const span = until - from;
+  const previousFrom = comparison === "previous" ? from - span
+    : comparison === "yearAgo" ? Date.parse(String(Number(fromDate.slice(0, 4)) - 1) + fromDate.slice(4) + "T00:00:00+09:00") : 0;
+  const previousUntil = comparison === "previous" ? from
+    : comparison === "yearAgo" ? previousFrom + span : 0;
 
   // Service-role reads are never called before the route verifies the logged-in
   // administrator against the server-owned users.account_status field.
@@ -159,7 +158,7 @@ export async function getAdminAnalytics(range: AnalyticsRange): Promise<AdminAna
   const refundTotal = total(currentRefunds);
   const netRevenue = grossRevenue - refundTotal;
   const previousNetRevenue = total(previousPayments) - total(previousRefunds);
-  const growthPercent = previousNetRevenue > 0
+  const growthPercent = comparison !== "none" && previousNetRevenue > 0
     ? Math.round(((netRevenue - previousNetRevenue) / previousNetRevenue) * 1000) / 10
     : null;
 
@@ -261,9 +260,12 @@ export async function getAdminAnalytics(range: AnalyticsRange): Promise<AdminAna
   return {
     range: {
       id: range,
+      comparison,
+      comparisonFrom: comparison === "none" ? null : new Date(previousFrom).toISOString(),
+      comparisonTo: comparison === "none" ? null : new Date(previousUntil).toISOString(),
       from: new Date(from).toISOString(),
       to: new Date(until).toISOString(),
-      partial: range !== "lastMonth",
+      partial: until >= now,
     },
     summary: {
       grossRevenue,
