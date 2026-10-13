@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownTrayIcon,
@@ -108,6 +108,7 @@ export default function AdminAnalyticsClient() {
   };
   const [tab, setTab] = useState<Tab>("overview");
   const [refreshToken, setRefreshToken] = useState(0);
+  const lastRefreshToken = useRef(0);
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -118,6 +119,10 @@ export default function AdminAnalyticsClient() {
     setLoading(true);
     setError(false);
     const query = new URLSearchParams({ range, from: selectedWindow.from, to: selectedWindow.to, compare: comparison });
+    if (refreshToken !== lastRefreshToken.current) {
+      query.set("refresh", "1");
+      lastRefreshToken.current = refreshToken;
+    }
     fetch("/api/admin/analytics?" + query.toString(), {
       cache: "no-store",
       signal: abortController.signal,
@@ -371,6 +376,11 @@ export default function AdminAnalyticsClient() {
               </select>
             </label>
           </div>
+          {data?.freshness && !loading && (
+            <span className="self-center text-[11px] font-semibold text-[#888]">
+              {locale === "ko" ? "조회 시각" : "Retrieved"}: {new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(data.freshness.fetchedAt))} KST
+            </span>
+          )}
           <button type="button" onClick={refresh} disabled={loading} className={buttonClass} aria-label={copy.refresh}>
             <ArrowPathIcon className={"h-4 w-4 " + (loading ? "animate-spin" : "")}/>{copy.refresh}
           </button>

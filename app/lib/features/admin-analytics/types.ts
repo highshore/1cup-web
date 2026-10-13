@@ -61,6 +61,7 @@ export type AdminAnalyticsData = {
     occupancyPercent: number | null;
     cancellationPercent: number | null;
   };
+  freshness?: { source: "live" | "historical-cache" | "recent-cache"; fetchedAt: string; ttlSeconds: number };
   months: MonthlyAnalytics[];
   cohorts: RetentionCohort[];
 };
