@@ -26,29 +26,24 @@ async function getMeetupsForSitemap(): Promise<MeetupEvent[]> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
   const entries: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: `${SITE_URL}/meetup`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${SITE_URL}/blog`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/exam-center`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.8,
     },

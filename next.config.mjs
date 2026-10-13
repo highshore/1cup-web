@@ -15,6 +15,11 @@ const nextConfig = {
       { protocol: "https", hostname: "hetiycbotgjeluteicyk.supabase.co" },
     ],
   },
+  async headers() {
+    return ["admin", "auth", "profile", "messages", "notifications", "payment", "vocabulary", "report"].map((root) => ({
+      source: `/${root}/:path*`, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+    }));
+  },
   async redirects() {
     return [
       { source: "/home", destination: "/", permanent: true },
