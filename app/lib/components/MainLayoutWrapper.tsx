@@ -13,6 +13,8 @@ export default function MainLayoutWrapper({
   const pathname = usePathname();
   const isHomePage = pathname === "/";
   const isArticlePage = pathname.startsWith("/article/");
+  // Newsletter pages draw their own full-bleed sections.
+  const isNewsletterPage = pathname.startsWith("/newsletter");
   const isPaymentPage = pathname === "/payment";
   const isNonKoreanApplicantPage = pathname === "/non-korean-applicants";
   const isExamCenterPage = pathname === "/exam-center";
@@ -23,6 +25,7 @@ export default function MainLayoutWrapper({
   const isFullWidth =
     isHomePage ||
     isArticlePage ||
+    isNewsletterPage ||
     isPaymentPage ||
     isNonKoreanApplicantPage ||
     isExamCenterPage ||
