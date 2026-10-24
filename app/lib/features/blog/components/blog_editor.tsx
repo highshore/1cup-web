@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
 import { colors } from "../../../constants/colors";
 import { BlogPost } from "../types/blog_types";
 import {
@@ -8,443 +7,75 @@ import {
 } from "../services/blog_image_service";
 import { DocumentTextIcon, PhotoIcon } from "@heroicons/react/24/outline";
 
-// Using shared colors
+// Using shared colors (via Tailwind theme tokens)
 
-const EditorOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  overflow-y: auto;
-`;
+const inputClasses =
+  "w-full p-3 border border-line rounded text-[1rem] text-ink bg-white [transition:all_0.2s_ease] box-border [font-family:inherit] focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,102,0,0.1)] placeholder:text-ink-light max-[768px]:p-2.5 max-[768px]:text-[0.9rem]";
 
-const EditorContainer = styled.div`
-  background: white;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 800px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+const selectClasses =
+  "w-full p-3 border border-line rounded text-[1rem] text-ink bg-white [transition:all_0.2s_ease] box-border [font-family:inherit] focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,102,0,0.1)] max-[768px]:p-2.5 max-[768px]:text-[0.9rem]";
 
-  @media (max-width: 768px) {
-    max-height: 95vh;
-    border-radius: 6px;
-  }
-`;
+const labelClasses =
+  "block mb-2 font-semibold text-ink text-[0.9rem] [font-family:inherit] max-[768px]:text-[0.85rem]";
 
-const EditorHeader = styled.div`
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid ${colors.border};
-  background: ${colors.primaryPale};
-  border-radius: 8px 8px 0 0;
+const formGroupClasses = "mb-6 max-[768px]:mb-5";
 
-  @media (max-width: 768px) {
-    padding: 1.25rem 1.5rem;
-    border-radius: 6px 6px 0 0;
-  }
-`;
+const buttonBaseClasses =
+  "px-6 py-3 rounded text-[0.9rem] font-semibold [font-family:inherit] cursor-pointer [transition:all_0.2s_ease] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed max-[768px]:px-6 max-[768px]:py-[0.875rem] max-[768px]:text-[0.85rem] max-[768px]:justify-center";
 
-const EditorTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
-  margin: 0;
-  font-family: inherit;
+const primaryButtonClasses = `${buttonBaseClasses} border-none bg-accent text-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] enabled:hover:bg-accent-hover enabled:hover:[transform:translateY(-1px)] enabled:hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]`;
 
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
+const secondaryButtonClasses = `${buttonBaseClasses} bg-transparent text-ink-medium border border-line enabled:hover:bg-primary-pale enabled:hover:border-accent enabled:hover:text-accent`;
 
-const EditorForm = styled.form`
-  padding: 2rem;
+function HelpText({
+  style,
+  children,
+}: {
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="text-ink-light text-[0.85rem] mt-2 leading-[1.4]"
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 1.5rem;
-  }
-`;
+function ContentImageButton({
+  children,
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className="px-3 py-2 bg-primary-pale text-ink border-none rounded-md text-[0.8rem] font-semibold cursor-pointer [transition:all_0.2s_ease] flex items-center gap-[0.375rem] [&_svg]:w-4 [&_svg]:h-4 hover:bg-accent hover:text-white disabled:opacity-60 disabled:cursor-not-allowed max-[768px]:px-[0.6rem] max-[768px]:py-[0.4rem] max-[768px]:text-[0.75rem]"
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-
-  @media (max-width: 768px) {
-    margin-bottom: 1.25rem;
-  }
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: ${colors.text.dark};
-  font-size: 0.9rem;
-  font-family: inherit;
-
-  @media (max-width: 768px) {
-    font-size: 0.85rem;
-  }
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-size: 1rem;
-  color: ${colors.text.dark};
-  background: white;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
-  }
-
-  &::placeholder {
-    color: ${colors.text.light};
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    font-size: 0.9rem;
-  }
-`;
-
-const ContentEditor = styled.textarea`
-  width: 100%;
-  min-height: 300px;
-  padding: 1rem;
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-size: 1rem;
-  color: ${colors.text.dark};
-  background: white;
-  transition: all 0.2s ease;
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.6;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
-  }
-
-  &::placeholder {
-    color: ${colors.text.light};
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem;
-    font-size: 0.9rem;
-    min-height: 250px;
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-size: 1rem;
-  color: ${colors.text.dark};
-  background: white;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.accent};
-    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem;
-    font-size: 0.9rem;
-  }
-`;
-
-const TagsInput = styled(Input)`
-  &::placeholder {
-    color: ${colors.text.light};
-  }
-`;
-
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid ${colors.border};
-
-  @media (max-width: 768px) {
-    flex-direction: column-reverse;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding-top: 1.25rem;
-  }
-`;
-
-const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.875rem 1.5rem;
-    font-size: 0.85rem;
-    justify-content: center;
-  }
-`;
-
-const PrimaryButton = styled(Button)`
-  background: ${colors.accent};
-  color: white;
-  box-shadow: 0 2px 4px ${colors.shadow};
-
-  &:hover:not(:disabled) {
-    background: ${colors.accentHover};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px ${colors.shadow};
-  }
-`;
-
-const SecondaryButton = styled(Button)`
-  background: transparent;
-  color: ${colors.text.medium};
-  border: 1px solid ${colors.border};
-
-  &:hover:not(:disabled) {
-    background: ${colors.primaryPale};
-    border-color: ${colors.accent};
-    color: ${colors.accent};
-  }
-`;
-
-const FileInput = styled.input`
-  display: none;
-`;
-
-const FileInputLabel = styled.label`
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background: ${colors.primaryPale};
-  color: ${colors.text.dark};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: ${colors.primaryLight};
-    color: white;
-    border-color: ${colors.primaryLight};
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.85rem;
-  }
-`;
-
-const ImagePreview = styled.div`
-  margin-top: 1rem;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid ${colors.border};
-  max-width: 300px;
-
-  img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  @media (max-width: 768px) {
-    max-width: 100%;
-  }
-`;
-
-const UploadProgress = styled.div`
-  margin-top: 0.5rem;
-  color: ${colors.text.medium};
-  font-size: 0.85rem;
-`;
-
-const ErrorMessage = styled.div`
-  color: #dc2626;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-`;
-
-const HelpText = styled.div`
-  color: ${colors.text.light};
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-  line-height: 1.4;
-`;
-
-const ContentImageControls = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    gap: 0.375rem;
-  }
-`;
-
-const FormattingControls = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-  padding: 0.5rem;
-  background: ${colors.primaryBg};
-  border-radius: 8px;
-
-  @media (max-width: 768px) {
-    gap: 0.4rem;
-    padding: 0.4rem;
-  }
-`;
-
-const FormatButton = styled.button<{ $active?: boolean }>`
-  background: ${(props) => (props.$active ? colors.accent : "white")};
-  color: ${(props) => (props.$active ? "white" : colors.text.dark)};
-  border: 1px solid ${colors.border};
-  border-radius: 6px;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: "Noto Sans KR", sans-serif;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-
-  &:hover {
-    background: ${(props) =>
-      props.$active ? colors.primaryLight : colors.primaryPale};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.3rem 0.5rem;
-    font-size: 0.8rem;
-  }
-`;
-
-const FeaturedImageUploadSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const ContentImageButton = styled.button`
-  padding: 0.5rem 0.75rem;
-  background: ${colors.primaryPale};
-  color: ${colors.text.dark};
-  border: none;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  &:hover {
-    background: ${colors.accent};
-    color: white;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 768px) {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
-  }
-`;
-
-const RemoveImageButton = styled.button`
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: #dc2626;
-    transform: scale(1.1);
-  }
-`;
+function FormatButton({
+  $active,
+  children,
+  ...rest
+}: { $active?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      className={`${
+        $active
+          ? "bg-accent text-white hover:bg-primary-light"
+          : "bg-white text-ink hover:bg-primary-pale"
+      } border border-line rounded-md px-[0.6rem] py-[0.4rem] text-[0.85rem] font-semibold [font-family:'Noto_Sans_KR',sans-serif] cursor-pointer [transition:all_0.2s_ease] flex items-center gap-[0.3rem] disabled:opacity-50 disabled:cursor-not-allowed max-[768px]:px-2 max-[768px]:py-[0.3rem] max-[768px]:text-[0.8rem]`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface BlogEditorProps {
   post: BlogPost | null;
@@ -785,16 +416,23 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
   };
 
   return (
-    <EditorOverlay onClick={handleOverlayClick}>
-      <EditorContainer>
-        <EditorHeader>
-          <EditorTitle>{post ? "포스트 편집" : "새 포스트 작성"}</EditorTitle>
-        </EditorHeader>
+    <div
+      onClick={handleOverlayClick}
+      className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-[1000] p-4 overflow-y-auto"
+    >
+      <div className="bg-white rounded-lg w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-[0_20px_40px_rgba(0,0,0,0.15)] [font-family:-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,'Helvetica_Neue',Arial,sans-serif] max-[768px]:max-h-[95vh] max-[768px]:rounded-md">
+        <div className="py-6 px-8 border-b border-line bg-primary-pale rounded-t-lg max-[768px]:py-5 max-[768px]:px-6 max-[768px]:rounded-t-md">
+          <h2 className="text-[1.5rem] font-semibold text-ink m-0 [font-family:inherit] max-[768px]:text-[1.25rem]">
+            {post ? "포스트 편집" : "새 포스트 작성"}
+          </h2>
+        </div>
 
-        <EditorForm onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label htmlFor="title">제목 *</Label>
-            <Input
+        <form onSubmit={handleSubmit} className="p-8 max-[768px]:p-6">
+          <div className={formGroupClasses}>
+            <label htmlFor="title" className={labelClasses}>
+              제목 *
+            </label>
+            <input
               id="title"
               name="title"
               type="text"
@@ -802,26 +440,32 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
               onChange={handleChange}
               placeholder="블로그 포스트 제목을 입력하세요"
               required
+              className={inputClasses}
             />
             <HelpText>제목은 100자 이내로 작성해주세요.</HelpText>
-          </FormGroup>
+          </div>
 
-          <FormGroup>
-            <Label htmlFor="excerpt">요약</Label>
-            <Input
+          <div className={formGroupClasses}>
+            <label htmlFor="excerpt" className={labelClasses}>
+              요약
+            </label>
+            <input
               id="excerpt"
               name="excerpt"
               type="text"
               value={formData.excerpt}
               onChange={handleChange}
               placeholder="포스트의 간단한 요약을 작성하세요 (선택사항)"
+              className={inputClasses}
             />
             <HelpText>요약은 300자 이내로 작성해주세요.</HelpText>
-          </FormGroup>
+          </div>
 
-          <FormGroup>
-            <Label htmlFor="content">내용 *</Label>
-            <ContentImageControls>
+          <div className={formGroupClasses}>
+            <label htmlFor="content" className={labelClasses}>
+              내용 *
+            </label>
+            <div className="flex gap-2 mb-2 flex-wrap max-[768px]:gap-[0.375rem]">
               <ContentImageButton
                 type="button"
                 onClick={handleInsertHeader}
@@ -842,8 +486,8 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
                 헤더는 '# ' 형식으로, 이미지는 마크다운 형식으로 커서 위치에
                 삽입됩니다
               </HelpText>
-            </ContentImageControls>
-            <FormattingControls>
+            </div>
+            <div className="flex gap-2 items-center mb-2 flex-wrap p-2 bg-primary-bg rounded-lg max-[768px]:gap-[0.4rem] max-[768px]:p-[0.4rem]">
               <FormatButton
                 type="button"
                 onClick={() => handleFormatText("bold")}
@@ -867,55 +511,65 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
                 텍스트를 선택한 후 버튼을 클릭하거나, 버튼을 클릭하여 서식을
                 삽입하세요
               </HelpText>
-            </FormattingControls>
-            <ContentEditor
+            </div>
+            <textarea
               id="content"
               name="content"
               value={formData.content}
               onChange={handleChange}
               placeholder="여기에 블로그 포스트 내용을 작성하세요..."
               required
+              className="w-full min-h-[300px] p-4 border border-line rounded text-[1rem] text-ink bg-white [transition:all_0.2s_ease] resize-y [font-family:inherit] leading-[1.6] box-border focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_rgba(255,102,0,0.1)] placeholder:text-ink-light max-[768px]:p-[0.875rem] max-[768px]:text-[0.9rem] max-[768px]:min-h-[250px]"
             />
             <HelpText>내용은 최소 100자 이상 작성해주세요.</HelpText>
 
-            <FileInput
+            <input
               ref={contentImageInputRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,image/webp"
               onChange={handleContentImageUpload}
+              className="hidden"
             />
-          </FormGroup>
+          </div>
 
-          <FormRow>
-            <FormGroup>
-              <Label htmlFor="status">상태</Label>
-              <Select
+          <div className="grid grid-cols-[1fr_1fr] gap-4 max-[768px]:grid-cols-[1fr] max-[768px]:gap-3">
+            <div className={formGroupClasses}>
+              <label htmlFor="status" className={labelClasses}>
+                상태
+              </label>
+              <select
                 id="status"
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
+                className={selectClasses}
               >
                 <option value="draft">초안</option>
                 <option value="published">발행</option>
-              </Select>
-            </FormGroup>
+              </select>
+            </div>
 
-            <FormGroup>
-              <Label htmlFor="category">카테고리</Label>
-              <Select
+            <div className={formGroupClasses}>
+              <label htmlFor="category" className={labelClasses}>
+                카테고리
+              </label>
+              <select
                 id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
+                className={selectClasses}
               >
                 <option value="announcement">announcement</option>
                 <option value="review">review</option>
                 <option value="info">info</option>
-              </Select>
-            </FormGroup>
+              </select>
+            </div>
 
-            <FormGroup>
-              <Label htmlFor="featured">Featured</Label>
+            <div className={formGroupClasses}>
+              <label htmlFor="featured" className={labelClasses}>
+                Featured
+              </label>
               <div
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
@@ -930,70 +584,91 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
                   상단 Featured 섹션에 노출
                 </span>
               </div>
-            </FormGroup>
+            </div>
 
-            <FormGroup>
-              <Label>대표 이미지</Label>
-              <FeaturedImageUploadSection>
-                <FileInputLabel htmlFor="featured-image">
+            <div className={formGroupClasses}>
+              <label className={labelClasses}>대표 이미지</label>
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="featured-image"
+                  className="inline-block px-6 py-3 bg-primary-pale text-ink border border-line rounded text-[0.9rem] font-medium [font-family:inherit] cursor-pointer [transition:all_0.2s_ease] hover:bg-primary-light hover:text-white hover:border-primary-light max-[768px]:px-5 max-[768px]:py-2.5 max-[768px]:text-[0.85rem]"
+                >
                   파일 선택
-                </FileInputLabel>
+                </label>
 
                 {formData.featuredImage && (
-                  <ImagePreview>
+                  <div className="mt-4 rounded overflow-hidden border border-line max-w-[300px] [&_img]:w-full [&_img]:h-auto [&_img]:block max-[768px]:max-w-full">
                     <img
                       src={formData.featuredImage}
                       alt="대표 이미지 미리보기"
                     />
-                    <RemoveImageButton
+                    <button
                       type="button"
                       onClick={handleRemoveFeaturedImage}
                       title="이미지 제거"
+                      className="bg-[#ef4444] text-white border-none rounded-full w-6 h-6 cursor-pointer text-[12px] flex items-center justify-center [transition:all_0.2s_ease] hover:bg-[#dc2626] hover:[transform:scale(1.1)]"
                     >
                       ✕
-                    </RemoveImageButton>
-                  </ImagePreview>
+                    </button>
+                  </div>
                 )}
 
-                <FileInput
+                <input
                   id="featured-image"
                   ref={featuredImageInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={handleFeaturedImageUpload}
+                  className="hidden"
                 />
-              </FeaturedImageUploadSection>
-            </FormGroup>
-          </FormRow>
+              </div>
+            </div>
+          </div>
 
-          <FormGroup>
-            <Label htmlFor="tags">태그</Label>
-            <TagsInput
+          <div className={formGroupClasses}>
+            <label htmlFor="tags" className={labelClasses}>
+              태그
+            </label>
+            <input
               id="tags"
               name="tags"
               type="text"
               value={formData.tags}
               onChange={handleChange}
               placeholder="태그를 쉼표로 구분하여 입력하세요 (예: 영어학습, 비즈니스, 팁)"
+              className={inputClasses}
             />
             <HelpText>
               태그는 쉼표(,)로 구분하여 입력해주세요. 독자들이 관련 포스트를
               찾는데 도움이 됩니다.
             </HelpText>
-          </FormGroup>
+          </div>
 
-          {uploadError && <ErrorMessage>{uploadError}</ErrorMessage>}
-          {uploadProgress && <UploadProgress>{uploadProgress}</UploadProgress>}
+          {uploadError && (
+            <div className="text-[#dc2626] text-[0.85rem] mt-2">
+              {uploadError}
+            </div>
+          )}
+          {uploadProgress && (
+            <div className="mt-2 text-ink-medium text-[0.85rem]">
+              {uploadProgress}
+            </div>
+          )}
 
-          <ButtonGroup>
-            <SecondaryButton
+          <div className="flex gap-4 justify-end mt-8 pt-6 border-t border-line max-[768px]:flex-col-reverse max-[768px]:gap-3 max-[768px]:mt-6 max-[768px]:pt-5">
+            <button
               type="button"
               onClick={onCancel}
               disabled={uploading}
+              className={secondaryButtonClasses}
             >
               취소
-            </SecondaryButton>
-            <PrimaryButton type="submit" disabled={saving || uploading}>
+            </button>
+            <button
+              type="submit"
+              disabled={saving || uploading}
+              className={primaryButtonClasses}
+            >
               {saving
                 ? "저장 중..."
                 : uploading
@@ -1001,10 +676,10 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
                 : post
                 ? "수정하기"
                 : "발행하기"}
-            </PrimaryButton>
-          </ButtonGroup>
-        </EditorForm>
-      </EditorContainer>
-    </EditorOverlay>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };

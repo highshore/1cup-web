@@ -15,6 +15,8 @@ const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-lite-image";
 const GOOGLE_CLOUD_PROJECT =
   Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
 const GENERATED_IMAGE_BUCKET = "assets";
+const MIN_KEY_VOCABULARY_ITEMS = 5;
+const MAX_KEY_VOCABULARY_ITEMS = 12;
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
@@ -331,19 +333,92 @@ const parseModelJson = (
   throw new Error("The " + step + " step returned invalid JSON.");
 };
 
+const paragraphWordCount = (paragraph: string): number =>
+  paragraph.trim().split(/\s+/).filter(Boolean).length;
+
 const splitRefinedParagraphs = (article: string): string[] => {
-  const paragraphs = article
+  const sourceParagraphs = article
     .replace(/\r\n?/g, "\n")
     .split(/\n\s*\n+/)
     .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  if (paragraphs.length < 3 || paragraphs.length > 12) {
+  if (sourceParagraphs.length < 3) {
     throw new Error(
-      "The refined article must contain between 3 and 12 coherent paragraphs.",
+      "The refined article must contain at least 3 coherent paragraphs.",
     );
   }
-  return paragraphs.map((paragraph) => paragraph.slice(0, 1_200));
+
+  // Gemini can preserve source formatting too literally, leaving the article as
+  // many one- or two-sentence fragments. Coalesce adjacent fragments into
+  // reading-sized semantic chunks while preserving their original order.
+  const MIN_STANDALONE_WORDS = 55;
+  const TARGET_PARAGRAPH_WORDS = 95;
+  const MAX_MERGED_WORDS = 180;
+  const TARGET_MAX_PARAGRAPHS = 8;
+  const MIN_PARAGRAPHS = 3;
+
+  const paragraphs: string[] = [];
+  for (let index = 0; index < sourceParagraphs.length; index += 1) {
+    const paragraph = sourceParagraphs[index];
+    const previous = paragraphs.at(-1);
+    if (!previous) {
+      paragraphs.push(paragraph);
+      continue;
+    }
+
+    const previousWords = paragraphWordCount(previous);
+    const currentWords = paragraphWordCount(paragraph);
+    const mergedWords = previousWords + currentWords;
+    const remainingParagraphs = sourceParagraphs.length - index - 1;
+    const countIfMerged = paragraphs.length + remainingParagraphs;
+    const shouldMergeShortFragment =
+      (previousWords < TARGET_PARAGRAPH_WORDS ||
+        currentWords < MIN_STANDALONE_WORDS) &&
+      mergedWords <= MAX_MERGED_WORDS &&
+      countIfMerged >= MIN_PARAGRAPHS;
+
+    if (shouldMergeShortFragment) {
+      paragraphs[paragraphs.length - 1] = previous + " " + paragraph;
+    } else {
+      paragraphs.push(paragraph);
+    }
+  }
+
+  // If the model still returns too many medium-sized blocks, merge the
+  // smallest adjacent pair first until we reach the preferred reading range.
+  while (paragraphs.length > TARGET_MAX_PARAGRAPHS) {
+    let bestIndex = -1;
+    let bestCombinedWords = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < paragraphs.length - 1; index += 1) {
+      const combinedWords =
+        paragraphWordCount(paragraphs[index]) +
+        paragraphWordCount(paragraphs[index + 1]);
+      if (
+        combinedWords <= MAX_MERGED_WORDS &&
+        combinedWords < bestCombinedWords
+      ) {
+        bestIndex = index;
+        bestCombinedWords = combinedWords;
+      }
+    }
+
+    if (bestIndex < 0) break;
+    paragraphs.splice(
+      bestIndex,
+      2,
+      paragraphs[bestIndex] + " " + paragraphs[bestIndex + 1],
+    );
+  }
+
+  if (paragraphs.length < MIN_PARAGRAPHS || paragraphs.length > 12) {
+    throw new Error(
+      "The refined article must contain between 3 and 12 coherent paragraphs after chunk normalization.",
+    );
+  }
+
+  return paragraphs;
 };
 
 type VertexPart = {
@@ -355,34 +430,66 @@ type VertexGenerateContentResponse = {
   candidates?: Array<{ content?: { parts?: VertexPart[] } }>;
 };
 
+const MAX_VERTEX_ATTEMPTS = 5;
+const RETRYABLE_VERTEX_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+const sleep = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const vertexRetryDelayMs = (
+  attempt: number,
+  retryAfter: string | null,
+): number => {
+  const exponentialDelay = Math.min(1_000 * 2 ** (attempt - 1), 8_000);
+  let retryAfterDelay = 0;
+
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      retryAfterDelay = seconds * 1_000;
+    } else {
+      const retryAt = Date.parse(retryAfter);
+      if (Number.isFinite(retryAt)) {
+        retryAfterDelay = Math.max(0, retryAt - Date.now());
+      }
+    }
+  }
+
+  const jitter = Math.random() * 500;
+  return Math.min(Math.max(exponentialDelay, retryAfterDelay) + jitter, 30_000);
+};
+
 const vertexGenerateContent = async (
   model: string,
   body: Record<string, unknown>,
 ): Promise<VertexGenerateContentResponse> => {
   const accessToken = await vertexAccessToken();
-  const response = await fetch(
+  const url =
     "https://aiplatform.googleapis.com/v1/projects/" +
-      GOOGLE_CLOUD_PROJECT +
-      "/locations/" +
-      VERTEX_LOCATION +
-      "/publishers/google/models/" +
-      model +
-      ":generateContent",
-    {
+    GOOGLE_CLOUD_PROJECT +
+    "/locations/" +
+    VERTEX_LOCATION +
+    "/publishers/google/models/" +
+    model +
+    ":generateContent";
+  const requestBody = JSON.stringify(body);
+
+  for (let attempt = 1; attempt <= MAX_VERTEX_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + accessToken,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
-    },
-  );
+      body: requestBody,
+    });
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    error?: { message?: string; status?: string };
-  } & VertexGenerateContentResponse;
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string; status?: string };
+    } & VertexGenerateContentResponse;
 
-  if (!response.ok) {
+    if (response.ok) return payload;
+
     const error = new Error(
       "Vertex AI " +
         response.status +
@@ -391,10 +498,23 @@ const vertexGenerateContent = async (
     ) as Error & { status?: number; code?: string };
     error.status = response.status;
     error.code = "vertex-ai";
-    throw error;
+
+    const canRetry =
+      RETRYABLE_VERTEX_STATUSES.has(response.status) &&
+      attempt < MAX_VERTEX_ATTEMPTS;
+    if (!canRetry) throw error;
+
+    const delayMs = vertexRetryDelayMs(
+      attempt,
+      response.headers.get("retry-after"),
+    );
+    console.warn(
+      `Vertex AI ${response.status}; retrying attempt ${attempt + 1}/${MAX_VERTEX_ATTEMPTS} in ${Math.round(delayMs)}ms.`,
+    );
+    await sleep(delayMs);
   }
 
-  return payload;
+  throw new Error("Vertex AI request exhausted retry attempts.");
 };
 
 const geminiText = (response: VertexGenerateContentResponse): string =>
@@ -449,7 +569,12 @@ Requirements:
 - Keep the tone natural and readable.
 - Do not invent facts.
 - Keep the article suitable for upper-intermediate to advanced learners.
-- Preserve or create 3 to 12 coherent paragraphs separated by blank lines.
+- Prefer 4 to 8 substantial body paragraphs for a normal-length article. Use 3 only for a genuinely short source, and exceed 8 only when the source is unusually long.
+- Each paragraph should usually contain several related sentences (roughly 80 to 160 words), not a single sentence or tiny fragment.
+- Do not preserve source paragraph breaks mechanically. Merge adjacent short paragraphs when they develop the same idea.
+- Start a new paragraph only for a meaningful shift in topic, evidence, speaker, chronology, or argument.
+- Preserve important factual detail; do not summarize aggressively just to reduce the paragraph count.
+- Separate paragraphs with blank lines.
 - Return JSON with: { "refined_title": "...", "refined_article": "..." }`,
     `Title:\n${title}\n\nURL:\n${sourceUrl}\n\nArticle:\n${rawArticle}`,
     6_000,
@@ -517,6 +642,7 @@ Requirements:
 const extractC1Vocabulary = async (
   refinedTitle: string,
   paragraphs: string[],
+  excludedTerms: string[] = [],
 ): Promise<AdvancedVocabularyItem[]> => {
   const output = await generateJson(
     "advanced vocabulary extraction",
@@ -527,7 +653,12 @@ Requirements:
 - Include only items that are genuinely useful or notable.
 - Avoid trivial words.
 - Return 5 to 12 items.
-- The "term" must be normalized to its dictionary or base form, not the inflected surface form from the article.
+- Prefer established dictionary headwords and common lexicalized expressions over one-off descriptive phrases.
+${
+      excludedTerms.length
+        ? `- Do not return any of these previously attempted terms: ${excludedTerms.join(", ")}.\n`
+        : ""
+    }- The "term" must be normalized to its dictionary or base form, not the inflected surface form from the article.
 - Prefer the canonical original expression without tense or aspect inflection.
 - For verbs and verbal phrases, remove past tense and -ing forms when possible.
 - Keep multi-word expressions and phrasal verbs together.
@@ -1158,7 +1289,7 @@ const updateArticleProgress = async (
     progress,
     provider: "vertex-ai",
     model: GEMINI_TEXT_MODEL,
-    workflow: "admin-article-ingest-v5",
+    workflow: "admin-article-ingest-v7",
   };
 
   const [articleResult, jobResult] = await Promise.all([
@@ -1205,7 +1336,7 @@ const markArticleFailed = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v7",
           error: {
             errorName: details.errorName,
             errorCode: details.errorCode,
@@ -1271,17 +1402,57 @@ const processArticle = async (
     const summary = await summarizeArticle(refined.title, paragraphs);
 
     await progress("extractingVocabulary", 45);
-    const advancedVocabulary = await extractC1Vocabulary(
+    let advancedVocabulary = await extractC1Vocabulary(
       refined.title,
       paragraphs,
     );
-    const dictionaryVocabulary = await resolveVocabularyFromDictionary(
+    let dictionaryVocabulary = await resolveVocabularyFromDictionary(
       db,
       advancedVocabulary,
     );
-    if (dictionaryVocabulary.items.length < 5) {
-      throw new Error(
-        "The shared dictionary did not resolve at least five advanced vocabulary items.",
+
+    // A sparse dictionary match should not make the entire article fail. Ask the
+    // model for one fresh set of alternatives, then publish with however many
+    // canonical dictionary meanings we can safely resolve.
+    if (dictionaryVocabulary.items.length < MIN_KEY_VOCABULARY_ITEMS) {
+      const excludedTerms = advancedVocabulary.map((item) => item.term);
+      try {
+        const supplementalVocabulary = await extractC1Vocabulary(
+          refined.title,
+          paragraphs,
+          excludedTerms,
+        );
+        const seenTerms = new Set(
+          advancedVocabulary.map((item) => normalizeDictionaryTerm(item.term)),
+        );
+        const uniqueSupplemental = supplementalVocabulary.filter((item) => {
+          const normalized = normalizeDictionaryTerm(item.term);
+          if (!normalized || seenTerms.has(normalized)) return false;
+          seenTerms.add(normalized);
+          return true;
+        });
+        advancedVocabulary = [...advancedVocabulary, ...uniqueSupplemental];
+        dictionaryVocabulary = await resolveVocabularyFromDictionary(
+          db,
+          advancedVocabulary,
+        );
+      } catch (error) {
+        console.warn(
+          "Unable to supplement advanced vocabulary; continuing with resolved dictionary items:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    dictionaryVocabulary = {
+      items: dictionaryVocabulary.items.slice(0, MAX_KEY_VOCABULARY_ITEMS),
+      mappings: dictionaryVocabulary.mappings
+        .slice(0, MAX_KEY_VOCABULARY_ITEMS)
+        .map((mapping, index) => ({ ...mapping, source_order: index })),
+    };
+    if (dictionaryVocabulary.items.length < MIN_KEY_VOCABULARY_ITEMS) {
+      console.warn(
+        `Only ${dictionaryVocabulary.items.length} advanced vocabulary item(s) resolved from the shared dictionary; continuing article publication.`,
       );
     }
 
@@ -1357,7 +1528,7 @@ const processArticle = async (
           progress: 100,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v7",
           completedAt,
         },
         updated_at: completedAt,
@@ -1376,16 +1547,18 @@ const processArticle = async (
     if (clearVocabularyError) {
       throw new Error(clearVocabularyError.message);
     }
-    const { error: vocabularyError } = await db
-      .from("article_vocabulary")
-      .insert(
-        dictionaryVocabulary.mappings.map((mapping) => ({
-          article_id: articleId,
-          ...mapping,
-        })),
-      );
-    if (vocabularyError) {
-      throw new Error(vocabularyError.message);
+    if (dictionaryVocabulary.mappings.length) {
+      const { error: vocabularyError } = await db
+        .from("article_vocabulary")
+        .insert(
+          dictionaryVocabulary.mappings.map((mapping) => ({
+            article_id: articleId,
+            ...mapping,
+          })),
+        );
+      if (vocabularyError) {
+        throw new Error(vocabularyError.message);
+      }
     }
 
     const jobResult = await db
@@ -1650,7 +1823,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           progress: 5,
           provider: "vertex-ai",
           model: GEMINI_TEXT_MODEL,
-          workflow: "admin-article-ingest-v5",
+          workflow: "admin-article-ingest-v7",
         },
       });
     if (articleError) throw new Error(articleError.message);
@@ -1668,7 +1841,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         progress: 5,
         provider: "vertex-ai",
         model: GEMINI_TEXT_MODEL,
-        workflow: "admin-article-ingest-v5",
+        workflow: "admin-article-ingest-v7",
         created_by: uid,
       });
 

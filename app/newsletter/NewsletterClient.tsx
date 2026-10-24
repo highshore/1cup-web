@@ -1,23 +1,22 @@
 "use client";
 
-import styled from "styled-components";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
-import TrackCard from "../lib/features/newsletter/components/TrackCard";
 import AuthorSection from "../lib/features/newsletter/components/AuthorSection";
 import ExpressionMarquee from "../lib/features/newsletter/components/ExpressionMarquee";
 import KakaoDemo from "../lib/features/newsletter/components/KakaoDemo";
 import LoopVideo from "../lib/features/newsletter/components/LoopVideo";
+import TrackCard from "../lib/features/newsletter/components/TrackCard";
 import {
   AccentLines,
   BrandBar,
-  cardStyles,
+  ButtonLink,
+  cardClass,
   Chip,
+  cn,
   Container,
   Description,
-  OutlineLink,
   Page,
-  PrimaryLink,
   Section,
   SectionHeader,
   SectionTitle,
@@ -28,350 +27,10 @@ import {
   NEWSLETTER_LAUNCH_DISCOUNT_ENDS_AT,
   NEWSLETTER_MONTHLY_PRICE_KRW,
   NEWSLETTER_TRACKS,
-  newsletterColors as c,
 } from "../lib/features/newsletter/constants";
 
-const Hero = styled.section`
-  border-bottom: 2px solid ${c.ink};
-  background: ${c.cream};
-  color: ${c.heading};
-  padding: clamp(4rem, 9vw, 6.5rem) 0;
-`;
-
-const HeroInner = styled(Container)`
-  display: grid;
-  align-items: center;
-  gap: 3rem;
-
-  @media (min-width: 900px) {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  }
-`;
-
-const HeroCopy = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-
-  @media (max-width: 899px) {
-    align-items: center;
-    text-align: center;
-  }
-`;
-
-const HeroDemo = styled.div`
-  display: flex;
-  justify-content: center;
-`;
-
-const MediaSplit = styled(Container)`
-  display: grid;
-  align-items: center;
-  gap: 2rem;
-
-  @media (min-width: 900px) {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 3.5rem;
-  }
-`;
-
-const VideoFrame = styled.div`
-  overflow: hidden;
-  aspect-ratio: 16 / 10;
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  background: ${c.surface};
-  box-shadow: 6px 6px 0 ${c.orange};
-`;
-
-const MediaCopy = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-
-  @media (max-width: 899px) {
-    align-items: center;
-    text-align: center;
-  }
-`;
-
-const MarqueeHeader = styled(Container)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1.75rem;
-  text-align: center;
-`;
-
-const HeroTitle = styled.h1`
-  margin: 0;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(2.1rem, 5vw, 3.1rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  color: ${c.heading};
-`;
-
-const HeroDescription = styled.p`
-  max-width: 28rem;
-  margin: 1.2rem 0 0;
-  color: ${c.body};
-  font-size: clamp(0.98rem, 1.5vw, 1.08rem);
-  font-weight: 560;
-  line-height: 1.65;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  margin-top: 2rem;
-
-  @media (max-width: 899px) {
-    flex-direction: column;
-    align-self: stretch;
-  }
-`;
-
-const Notice = styled.div`
-  border-bottom: 2px solid ${c.ink};
-  background: ${c.cream};
-  padding: 1rem 0;
-
-  @media (max-width: 768px) {
-    text-align: center;
-  }
-`;
-
-const NoticeTitle = styled.p`
-  margin: 0 0 0.25rem;
-  font-size: 0.96rem;
-  font-weight: 900;
-  color: ${c.ink};
-`;
-
-const TrackGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
-`;
-
-const Steps = styled.ol`
-  display: grid;
-  gap: 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  @media (min-width: 769px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-`;
-
-const Step = styled.li`
-  ${cardStyles}
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.25rem;
-`;
-
-const StepNumber = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 2px solid ${c.ink};
-  border-radius: 50%;
-  background: ${c.orange};
-  color: ${c.ink};
-  font-size: 0.96rem;
-  font-weight: 900;
-`;
-
-const StepTitle = styled.p`
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 900;
-  line-height: 1.4;
-  color: ${c.heading};
-`;
-
-const StepNote = styled(SmallText)`
-  margin-top: 1.5rem;
-
-  @media (max-width: 768px) {
-    text-align: center;
-  }
-`;
-
-// Same treatment as the production stats card (orange, ink border, ink shadow).
-const MemberCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  border: 2px solid ${c.ink};
-  border-radius: 1.2rem;
-  background: ${c.orange};
-  color: ${c.ink};
-  padding: 2.4rem 1.4rem;
-  box-shadow: 7px 7px 0 ${c.ink};
-  text-align: center;
-
-  @media (min-width: 900px) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2.25rem;
-    padding: 2.75rem 3rem;
-    text-align: left;
-  }
-`;
-
-const MemberEyebrow = styled.p`
-  margin: 0 0 0.5rem;
-  font-size: 0.82rem;
-  font-weight: 900;
-`;
-
-const MemberTitle = styled.h2`
-  margin: 0;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
-  font-weight: 900;
-  line-height: 1.2;
-  color: ${c.ink};
-`;
-
-const MemberDescription = styled.p`
-  max-width: 30rem;
-  margin: 0.75rem 0 0;
-  font-size: 0.96rem;
-  font-weight: 650;
-  line-height: 1.6;
-  color: rgba(5, 5, 5, 0.78);
-`;
-
-const MemberCta = styled(PrimaryLink)`
-  flex-shrink: 0;
-  align-self: center;
-  box-shadow: 4px 4px 0 ${c.ink};
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      box-shadow: 6px 6px 0 ${c.ink};
-    }
-  }
-`;
-
-const MemberEligible = styled.p`
-  flex-shrink: 0;
-  margin: 0;
-  max-width: 16rem;
-  font-size: 0.96rem;
-  font-weight: 900;
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 2.25rem 1.5rem;
-  border: 1px solid ${c.line};
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: center;
-`;
-
-const EmptyTitle = styled.p`
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  color: ${c.heading};
-`;
-
-// Follows the reviews section on the same background, so skip the doubled top padding.
-const FaqSection = styled(Section)`
-  padding-top: 0;
-`;
-
-const FaqList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-`;
-
-// Matches the production FAQ (app/new-home/sections/FaqSection.tsx), using <details>.
-const FaqItem = styled.details`
-  overflow: hidden;
-  border: 1px solid ${c.line};
-  border-radius: 16px;
-  background: #ffffff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    border-color: ${c.ink};
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-
-  summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.5rem;
-    font-size: 1.05rem;
-    font-weight: 600;
-    line-height: 1.5;
-    color: #1f2937;
-    cursor: pointer;
-    list-style: none;
-  }
-
-  summary::-webkit-details-marker {
-    display: none;
-  }
-
-  summary span {
-    flex-shrink: 0;
-    font-size: 1.4rem;
-    font-weight: 400;
-    color: ${c.ink};
-    transition: transform 0.25s ease;
-  }
-
-  &[open] summary span {
-    transform: rotate(45deg);
-  }
-
-  p {
-    margin: 0;
-    padding: 0 1.5rem 1.5rem;
-    font-size: 0.95rem;
-    line-height: 1.7;
-    color: #6b7280;
-  }
-
-  @media (max-width: 768px) {
-    summary {
-      padding: 1.2rem;
-      font-size: 0.95rem;
-    }
-
-    p {
-      padding: 0 1.2rem 1.2rem;
-      font-size: 0.9rem;
-    }
-  }
-`;
-
-const OperatedBy = styled(SmallText)`
-  margin-top: 2rem;
-  text-align: center;
-`;
+const memberCtaClass =
+  "shrink-0 self-center shadow-[4px_4px_0_#050505] [@media(hover:hover)]:hover:shadow-[6px_6px_0_#050505]";
 
 export default function NewsletterClient() {
   const { t, locale } = useI18n();
@@ -380,38 +39,41 @@ export default function NewsletterClient() {
   const price = formatKrw(NEWSLETTER_MONTHLY_PRICE_KRW);
 
   const launchEndsAt = NEWSLETTER_LAUNCH_DISCOUNT_ENDS_AT;
-  const showLaunchNotice =
-    launchEndsAt !== null && launchEndsAt.getTime() > Date.now();
+  const showLaunchNotice = launchEndsAt !== null && launchEndsAt.getTime() > Date.now();
 
   return (
     <Page>
       <BrandBar />
 
-      <Hero>
-        <HeroInner>
-          <HeroCopy>
+      <section className="border-b-2 border-[#050505] bg-[#fff8dc] py-[clamp(4rem,9vw,6.5rem)] text-[#0f172a]">
+        <Container className="grid items-center gap-12 min-[900px]:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="flex flex-col items-start max-[899px]:items-center max-[899px]:text-center">
             <Chip>{copy.eyebrow}</Chip>
-            <HeroTitle>
+            <h1 className="m-0 font-['Noto_Sans_KR',sans-serif] text-[clamp(2.1rem,5vw,3.1rem)] font-black leading-[1.18] tracking-[0] text-[#0f172a]">
               <AccentLines text={copy.title} />
-            </HeroTitle>
-            <HeroDescription>{copy.description}</HeroDescription>
-            <Actions>
-              <PrimaryLink href="#tracks">{copy.chooseTrack}</PrimaryLink>
-              <OutlineLink href="/newsletter/business#sample">
+            </h1>
+            <p className="m-0 mt-[1.2rem] max-w-[28rem] text-[clamp(0.98rem,1.5vw,1.08rem)] font-[560] leading-[1.65] text-[#475569]">
+              {copy.description}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-[0.9rem] max-[899px]:flex-col max-[899px]:self-stretch">
+              <ButtonLink variant="primary" href="#tracks">
+                {copy.chooseTrack}
+              </ButtonLink>
+              <ButtonLink variant="outline" href="/newsletter/business#sample">
                 {copy.viewSample}
-              </OutlineLink>
-            </Actions>
-          </HeroCopy>
-          <HeroDemo>
+              </ButtonLink>
+            </div>
+          </div>
+          <div className="flex justify-center">
             <KakaoDemo />
-          </HeroDemo>
-        </HeroInner>
-      </Hero>
+          </div>
+        </Container>
+      </section>
 
       {showLaunchNotice && launchEndsAt && (
-        <Notice>
+        <div className="border-b-2 border-[#050505] bg-[#fff8dc] py-4 max-[768px]:text-center">
           <Container>
-            <NoticeTitle>
+            <p className="m-0 mb-1 text-[0.96rem] font-black text-[#050505]">
               {copy.launchNotice.replace(
                 "{deadline}",
                 launchEndsAt.toLocaleString(locale === "ko" ? "ko-KR" : "en-US", {
@@ -423,130 +85,147 @@ export default function NewsletterClient() {
                   timeZone: "Asia/Seoul",
                 }),
               )}
-            </NoticeTitle>
-            <SmallText $color={c.body}>{copy.launchNoticeDetail}</SmallText>
+            </p>
+            <SmallText className="text-[#475569]">{copy.launchNoticeDetail}</SmallText>
           </Container>
-        </Notice>
+        </div>
       )}
 
       <Section>
-        <MediaSplit>
-          <VideoFrame>
-            <LoopVideo
-              src="/assets/newsletter/coffee-loop.mp4"
-              poster="/assets/newsletter/coffee-poster.jpg"
-            />
-          </VideoFrame>
-          <MediaCopy>
+        <Container className="grid items-center gap-8 min-[900px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] min-[900px]:gap-14">
+          <div className="aspect-[16/10] overflow-hidden rounded-[14px] border-2 border-[#050505] bg-[#f3f3f1] shadow-[6px_6px_0_#f47a4a]">
+            <LoopVideo src="/assets/newsletter/coffee-loop.mp4" poster="/assets/newsletter/coffee-poster.jpg" />
+          </div>
+          <div className="flex flex-col items-start max-[899px]:items-center max-[899px]:text-center">
             <Chip>{copy.coffeeEyebrow}</Chip>
             <SectionTitle>
               <AccentLines text={copy.coffeeTitle} />
             </SectionTitle>
             <Description>{copy.coffeeDescription}</Description>
-          </MediaCopy>
-        </MediaSplit>
+          </div>
+        </Container>
       </Section>
 
-      <Section id="tracks" $background={c.surface}>
+      <Section id="tracks" tone="surface">
         <Container>
           <SectionHeader>
             <Chip>{copy.tracksEyebrow}</Chip>
             <SectionTitle>{copy.tracksTitle}</SectionTitle>
             <Description>{copy.tracksDescription}</Description>
           </SectionHeader>
-          <TrackGrid>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
             {NEWSLETTER_TRACKS.map((track) => (
               <TrackCard key={track} track={track} />
             ))}
-          </TrackGrid>
+          </div>
         </Container>
       </Section>
 
       <Section>
-        <MarqueeHeader>
+        <Container className="mb-7 flex flex-col items-center text-center">
           <Chip>{copy.marqueeEyebrow}</Chip>
           <SectionTitle>
             <AccentLines text={copy.marqueeTitle} />
           </SectionTitle>
-        </MarqueeHeader>
+        </Container>
         <ExpressionMarquee />
       </Section>
 
-      <AuthorSection background={c.cream} />
+      <AuthorSection tone="cream" />
 
-      <Section $background={c.surface}>
+      <Section tone="surface">
         <Container>
           <SectionHeader>
             <Chip>{copy.howEyebrow}</Chip>
             <SectionTitle>{copy.howTitle}</SectionTitle>
           </SectionHeader>
-          <Steps>
+          <ol className="m-0 grid list-none gap-5 p-0 min-[769px]:grid-cols-3">
             {copy.howSteps.map((step, index) => (
-              <Step key={step.title}>
-                <StepNumber>{index + 1}</StepNumber>
-                <StepTitle>{step.title}</StepTitle>
+              <li key={step.title} className={cn(cardClass, "flex flex-col gap-3 p-5")}>
+                <span className="inline-flex size-9 items-center justify-center rounded-full border-2 border-[#050505] bg-[#f47a4a] text-[0.96rem] font-black text-[#050505]">
+                  {index + 1}
+                </span>
+                <p className="m-0 text-[1.05rem] font-black leading-[1.4] text-[#0f172a]">{step.title}</p>
                 <SmallText>{step.description.replace("{price}", price)}</SmallText>
-              </Step>
+              </li>
             ))}
-          </Steps>
-          <StepNote>{copy.howNote}</StepNote>
+          </ol>
+          <SmallText className="mt-6 max-[768px]:text-center">{copy.howNote}</SmallText>
         </Container>
       </Section>
 
       <Section>
         <Container>
-          <MemberCard>
+          {/* Same treatment as the production stats card (orange, ink border, ink shadow). */}
+          <div className="flex flex-col gap-5 rounded-[1.2rem] border-2 border-[#050505] bg-[#f47a4a] px-[1.4rem] py-[2.4rem] text-center text-[#050505] shadow-[7px_7px_0_#050505] min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between min-[900px]:gap-9 min-[900px]:px-12 min-[900px]:py-11 min-[900px]:text-left">
             <div>
-              <MemberEyebrow>{copy.memberEyebrow}</MemberEyebrow>
-              <MemberTitle>{copy.memberTitle}</MemberTitle>
-              <MemberDescription>{copy.memberDescription}</MemberDescription>
+              <p className="m-0 mb-2 text-[0.82rem] font-black">{copy.memberEyebrow}</p>
+              <h2 className="m-0 font-['Noto_Sans_KR',sans-serif] text-[clamp(1.45rem,2.4vw,1.85rem)] font-black leading-[1.2] text-[#050505]">
+                {copy.memberTitle}
+              </h2>
+              <p className="m-0 mt-3 max-w-[30rem] text-[0.96rem] font-[650] leading-[1.6] text-[rgba(5,5,5,0.78)]">
+                {copy.memberDescription}
+              </p>
             </div>
             {!currentUser ? (
-              <MemberCta
+              <ButtonLink
+                variant="primary"
+                className={memberCtaClass}
                 href={`/auth?redirect=${encodeURIComponent("/newsletter")}`}
               >
                 {copy.memberLogin}
-              </MemberCta>
+              </ButtonLink>
             ) : hasActiveSubscription ? (
-              <MemberEligible>{copy.memberEligible}</MemberEligible>
+              <p className="m-0 max-w-[16rem] shrink-0 text-[0.96rem] font-black">{copy.memberEligible}</p>
             ) : (
-              <MemberCta href="/payment">{copy.memberJoin}</MemberCta>
+              <ButtonLink variant="primary" className={memberCtaClass} href="/payment">
+                {copy.memberJoin}
+              </ButtonLink>
             )}
-          </MemberCard>
+          </div>
         </Container>
       </Section>
 
-      <Section $background={c.surfaceAlt}>
+      <Section tone="surfaceAlt">
         <Container>
           <SectionHeader>
             <SectionTitle>{copy.reviewsTitle}</SectionTitle>
           </SectionHeader>
-          <EmptyState>
-            <EmptyTitle>{copy.reviewsEmptyTitle}</EmptyTitle>
+          <div className="flex flex-col items-center gap-[0.375rem] rounded-2xl border border-[#e5e7eb] bg-white px-6 py-9 text-center">
+            <p className="m-0 text-base font-extrabold text-[#0f172a]">{copy.reviewsEmptyTitle}</p>
             <SmallText>{copy.reviewsEmptyDescription}</SmallText>
-          </EmptyState>
+          </div>
         </Container>
       </Section>
 
-      <FaqSection $background={c.surfaceAlt}>
+      {/* Follows the reviews section on the same background, so skip the doubled top padding. */}
+      <Section tone="surfaceAlt" className="pt-0">
         <Container>
           <SectionHeader>
             <SectionTitle>{copy.faqTitle}</SectionTitle>
           </SectionHeader>
-          <FaqList>
+          {/* Matches the production FAQ (app/new-home/sections/FaqSection.tsx), using <details>. */}
+          <div className="flex flex-col gap-[1.2rem]">
             {copy.faq.map((item) => (
-              <FaqItem key={item.q}>
-                <summary>
+              <details
+                key={item.q}
+                className="nl-faq overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white [transition:border-color_0.2s_ease,box-shadow_0.2s_ease] hover:border-[#050505] hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6 text-[1.05rem] font-semibold leading-[1.5] text-[#1f2937] max-[768px]:p-[1.2rem] max-[768px]:text-[0.95rem]">
                   {item.q}
-                  <span aria-hidden>+</span>
+                  <span aria-hidden className="nl-faq-plus shrink-0 text-[1.4rem] font-normal text-[#050505] [transition:transform_0.25s_ease]">
+                    +
+                  </span>
                 </summary>
-                <p>{item.a}</p>
-              </FaqItem>
+                <p className="m-0 px-6 pb-6 text-[0.95rem] leading-[1.7] text-[#6b7280] max-[768px]:px-[1.2rem] max-[768px]:pb-[1.2rem] max-[768px]:text-[0.9rem]">
+                  {item.a}
+                </p>
+              </details>
             ))}
-          </FaqList>
-          <OperatedBy>{t.newsletter.brand.operatedBy}</OperatedBy>
+          </div>
+          <SmallText className="mt-8 text-center">{t.newsletter.brand.operatedBy}</SmallText>
         </Container>
-      </FaqSection>
+      </Section>
     </Page>
   );
 }

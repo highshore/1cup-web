@@ -1,238 +1,15 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import styled, { keyframes } from "styled-components";
 import { useRouter } from "next/navigation";
 import { ArrowUpRightIcon } from "@heroicons/react/24/outline";
 import { HomeTopicArticle, fetchHomeTopicsClient } from "../services/topics_service_client";
 import { useI18n } from "../../../i18n/I18nProvider";
-
-const MOBILE_NAV_GUTTER = "1rem";
+import "./home.css";
 
 interface TopicsShowcaseProps {
   topics: HomeTopicArticle[];
 }
-
-const Section = styled.section`
-  position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  padding: clamp(3.5rem, 7vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
-  background: #f47a4a;
-  color: #050505;
-  overflow: hidden;
-`;
-
-const SectionHeader = styled.div`
-  max-width: 960px;
-  margin: 0 auto clamp(2rem, 4vw, 3rem);
-  padding: 0 clamp(1.25rem, 4vw, 1.5rem);
-  text-align: left;
-
-  @media (max-width: 768px) {
-    text-align: center;
-    padding: 0 ${MOBILE_NAV_GUTTER};
-  }
-`;
-
-const SectionTitle = styled.h2`
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
-  font-weight: 900;
-  color: #050505;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  font-family: "Noto Sans KR", sans-serif;
-
-  @media (max-width: 768px) {
-    text-align: center;
-  }
-`;
-
-const Highlight = styled.span`
-  color: #050505;
-`;
-
-const CarouselShell = styled.div`
-  position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  padding: 0 0 2rem; /* Remove horizontal padding, keep bottom */
-`;
-
-const CarouselViewport = styled.div`
-  width: 100%;
-  overflow: visible;
-`;
-
-const autoScroll = keyframes`
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
-`;
-
-const AutoScrollWrapper = styled.div`
-  width: 100%;
-  overflow: hidden;
-  position: relative;
-  contain: layout paint style;
-  transform: translateZ(0);
-
-  &:hover > div {
-    animation-play-state: paused;
-  }
-`;
-
-const AutoScrollStrip = styled.div<{ $duration: number }>`
-  display: flex;
-  gap: clamp(0.85rem, 3vw, 1.5rem);
-  animation: ${autoScroll} ${({ $duration }) => $duration}s linear infinite;
-  animation-play-state: running;
-  min-width: max-content;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-  }
-`;
-
-const TopicCard = styled.div`
-  position: relative;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  overflow: hidden;
-  cursor: pointer;
-  scroll-snap-align: start;
-  transition: transform 220ms ease;
-  flex: 0 0 clamp(240px, 26vw, 320px);
-  aspect-ratio: 1 / 1;
-  isolation: isolate;
-  background: #fff8dc;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-  contain: paint;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-
-  &:hover {
-    transform: perspective(900px) rotateY(-3deg) translateY(-2px);
-    box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(5, 5, 5, 0) 22%, rgba(5, 5, 5, 0.82) 100%);
-    opacity: 0.9;
-    transition: opacity 200ms ease;
-    pointer-events: none;
-    z-index: 3;
-  }
-
-  @media (max-width: 640px) {
-    flex-basis: min(78vw, 300px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.88);
-  }
-`;
-
-const TopicImage = styled.img`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-`;
-
-const TopicImagePlaceholder = styled.div`
-  position: absolute;
-  inset: 0;
-  background: #fff8dc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  z-index: 0;
-`;
-
-const TopicContent = styled.div`
-  position: relative;
-  z-index: 4;
-  padding: clamp(1rem, 2.5vw, 1.3rem);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  height: 100%;
-
-  @media (max-width: 640px) {
-    padding: 1rem;
-  }
-`;
-
-const TopicTitle = styled.h3`
-  margin: 0;
-  font-size: clamp(1rem, 2.2vw, 1.15rem);
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: #ffffff;
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.32);
-
-  @media (max-width: 640px) {
-    font-size: 0.98rem;
-    line-height: 1.32;
-    -webkit-line-clamp: 3;
-  }
-`;
-
-const ClickHint = styled.span`
-  margin-top: 0.6rem;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 200ms ease, transform 200ms ease;
-
-  svg {
-    width: 0.95rem;
-    height: 0.95rem;
-  }
-
-  ${TopicCard}:hover & {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  @media (max-width: 640px) {
-    opacity: 0.92;
-    transform: none;
-    font-size: 0.74rem;
-  }
-`;
-
-const LoadingState = styled.div`
-  text-align: center;
-  padding: 2rem;
-  color: #050505;
-  font-size: 1rem;
-`;
 
 export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcaseProps) {
   const router = useRouter();
@@ -270,33 +47,36 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
 
   // Always render the section
   return (
-    <Section>
-      <SectionHeader>
-        <SectionTitle>
+    <section className="relative w-screen ml-[calc(50%-50vw)] overflow-hidden bg-[#f47a4a] pt-[clamp(3.5rem,7vw,5rem)] pb-[clamp(4rem,8vw,6rem)] text-[#050505]">
+      <div className="mx-auto mb-[clamp(2rem,4vw,3rem)] max-w-page px-[clamp(1.25rem,4vw,1.5rem)] text-left max-[768px]:px-4 max-[768px]:text-center">
+        <h2 className="mb-6 font-['Noto_Sans_KR',sans-serif] text-[clamp(1.85rem,3vw,2.4rem)] font-black leading-[1.2] text-[#050505] max-[768px]:text-center">
           {t.home.topicsShowcase.titlePrefix}
-          <Highlight>{t.home.topicsShowcase.titleHighlight}</Highlight>
+          <span className="text-[#050505]">{t.home.topicsShowcase.titleHighlight}</span>
           {t.home.topicsShowcase.titleSuffix}
-        </SectionTitle>
-      </SectionHeader>
+        </h2>
+      </div>
 
       {loading ? (
-        <LoadingState>{t.common.loading}</LoadingState>
+        <div className="p-8 text-center text-[1rem] text-[#050505]">{t.common.loading}</div>
       ) : topics.length > 0 ? (
-        <CarouselShell>
-          <CarouselViewport>
+        <div className="relative w-screen ml-[calc(50%-50vw)] pb-8">
+          <div className="w-full overflow-visible">
             {isAutoScrollEnabled ? (
-              <AutoScrollWrapper>
-                <AutoScrollStrip
-                  $duration={autoDuration}
+              <div className="relative w-full overflow-hidden [contain:layout_paint_style] [transform:translateZ(0)] [&:hover>div]:[animation-play-state:paused]">
+                <div
+                  className="flex min-w-max gap-[clamp(0.85rem,3vw,1.5rem)] backface-hidden will-change-transform [transform:translate3d(0,0,0)] animate-[home-auto-scroll_1s_linear_infinite] [animation-play-state:running] motion-reduce:animate-none motion-reduce:overflow-x-auto motion-reduce:snap-x motion-reduce:snap-mandatory"
+                  style={{ animationDuration: `${autoDuration}s` }}
                 >
                   {displayTopics.map((topic, idx) => (
-                    <TopicCard
+                    <div
                       key={`${topic.id}-${idx}`}
                       onClick={() => router.push(`/article/${topic.id}`)}
                       aria-hidden={idx >= topics.length}
+                      className="group relative isolate aspect-square flex-[0_0_clamp(240px,26vw,320px)] cursor-pointer snap-start overflow-hidden rounded-[10px] border-2 border-[#050505] bg-[#fff8dc] shadow-[4px_4px_0_rgba(5,5,5,0.88)] backface-hidden [contain:paint] [transform:translateZ(0)] transition-transform duration-[220ms] ease-[ease] hover:[transform:perspective(900px)_rotateY(-3deg)_translateY(-2px)] hover:shadow-[5px_5px_0_rgba(5,5,5,0.88)] after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:z-[3] after:bg-[linear-gradient(180deg,rgba(5,5,5,0)_22%,rgba(5,5,5,0.82)_100%)] after:opacity-90 after:transition-opacity after:duration-200 after:ease-[ease] max-[640px]:basis-[min(78vw,300px)] max-[640px]:shadow-[3px_3px_0_rgba(5,5,5,0.88)]"
                     >
                       {topic.imageUrl ? (
-                        <TopicImage
+                        <img
+                          className="absolute inset-0 z-0 h-full w-full object-cover backface-hidden [transform:translateZ(0)]"
                           src={topic.imageUrl}
                           alt={topic.titleEnglish || topic.titleKorean}
                           width={320}
@@ -308,27 +88,27 @@ export default function TopicsShowcase({ topics: initialTopics }: TopicsShowcase
                           onContextMenu={(event) => event.preventDefault()}
                         />
                       ) : (
-                        <TopicImagePlaceholder>📰</TopicImagePlaceholder>
+                        <div className="absolute inset-0 z-0 flex items-center justify-center bg-[#fff8dc] text-[3rem]">📰</div>
                       )}
-                      <TopicContent>
-                        <TopicTitle>
+                      <div className="relative z-[4] flex h-full flex-col justify-end p-[clamp(1rem,2.5vw,1.3rem)] max-[640px]:p-4">
+                        <h3 className="m-0 line-clamp-2 text-[clamp(1rem,2.2vw,1.15rem)] font-bold leading-[1.35] tracking-[-0.015em] text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.32)] max-[640px]:line-clamp-3 max-[640px]:text-[0.98rem] max-[640px]:leading-[1.32]">
                           {locale === "ko"
                             ? topic.titleKorean || topic.titleEnglish
                             : topic.titleEnglish || topic.titleKorean}
-                        </TopicTitle>
-                        <ClickHint>
+                        </h3>
+                        <span className="mt-[0.6rem] inline-flex translate-y-[6px] items-center gap-[0.3rem] text-[0.82rem] uppercase tracking-[0.08em] text-white opacity-0 transition-[opacity,transform] duration-200 ease-[ease] group-hover:translate-y-0 group-hover:opacity-100 [&_svg]:h-[0.95rem] [&_svg]:w-[0.95rem] max-[640px]:translate-y-0 max-[640px]:text-[0.74rem] max-[640px]:opacity-[0.92] max-[640px]:group-hover:opacity-100">
                           {t.home.topicsShowcase.hoverPrompt}
                           <ArrowUpRightIcon />
-                        </ClickHint>
-                      </TopicContent>
-                    </TopicCard>
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </AutoScrollStrip>
-              </AutoScrollWrapper>
+                </div>
+              </div>
             ) : null}
-          </CarouselViewport>
-        </CarouselShell>
+          </div>
+        </div>
       ) : null}
-    </Section>
+    </section>
   );
 }

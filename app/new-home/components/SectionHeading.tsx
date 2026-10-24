@@ -1,19 +1,28 @@
-import styled from "styled-components";
+import React from "react";
 
-export const SectionTitle = styled.h2`
-  font-size: clamp(1.85rem, 3vw, 2.4rem);
-  font-weight: 900;
-  color: #0f172a;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  font-family: "Noto Sans KR", sans-serif;
-  text-align: left;
+export function SectionTitle({
+  className = "",
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2
+      className={`text-[clamp(1.85rem,3vw,2.4rem)] font-black text-[#0f172a] mb-6 leading-[1.2] font-['Noto_Sans_KR',sans-serif] text-left max-[768px]:text-center ${className}`}
+      {...rest}
+    >
+      {children}
+    </h2>
+  );
+}
 
-  @media (max-width: 768px) {
-    text-align: center;
-  }
-`;
-
-export const Highlight = styled.span`
-  color: rgb(128, 0, 33);
-`;
+export function Highlight({
+  className = "",
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span className={`text-[rgb(128,0,33)] ${className}`} {...rest}>
+      {children}
+    </span>
+  );
+}

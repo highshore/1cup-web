@@ -6,6 +6,10 @@
 // participation-credit accounting requires joins/cancellations to go through DB RPCs.
 export * from "./meetup_service_legacy";
 export {
+  createMeetupEvent,
+  updateMeetupEvent,
+} from "./meetup_ordered_mutation_service";
+export {
   joinEventAsRole,
   cancelParticipation,
 } from "./meetup_registration_service";

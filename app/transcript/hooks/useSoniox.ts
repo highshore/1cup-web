@@ -156,11 +156,11 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
 
         const finalizedResults = convertTokensToResults(finalTokens);
         if (finalizedResults.length > 0) {
-          setFinalTranscript((prevFinal) => {
-            const nextFinal = [...prevFinal, ...finalizedResults];
-            finalTranscriptRef.current = nextFinal;
-            return nextFinal;
-          });
+          // The ref mirrors the state on every write, so build from it rather than
+          // writing the ref inside an updater React may run more than once.
+          const nextFinal = [...finalTranscriptRef.current, ...finalizedResults];
+          finalTranscriptRef.current = nextFinal;
+          setFinalTranscript(nextFinal);
         }
 
         // A pause can happen while the provider is finalizing the sentence that
@@ -314,8 +314,13 @@ export const useSoniox = (isPausedRef?: React.RefObject<boolean>) => {
 
   useEffect(() => {
     return () => {
+      // A socket still connecting would otherwise open after unmount, send the key and
+      // stay open with nobody reading it, so close it in either state.
       const socket = socketRef.current;
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (
+        socket &&
+        (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)
+      ) {
         socket.close();
       }
       finishStream();

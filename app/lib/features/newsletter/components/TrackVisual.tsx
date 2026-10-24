@@ -1,188 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styled, { css, keyframes } from "styled-components";
 import { useI18n } from "../../../i18n/I18nProvider";
-import { newsletterColors as c, NewsletterTrack } from "../constants";
+import { NewsletterTrack } from "../constants";
 import { usePrefersReducedMotion } from "../hooks";
 import LoopVideo from "./LoopVideo";
-
-const Tile = styled.div<{ $background: string; $compact: boolean }>`
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: ${(props) => (props.$compact ? "16 / 10" : "4 / 3")};
-  background: ${(props) => props.$background};
-`;
-
-const Caption = styled.div<{ $compact: boolean }>`
-  position: absolute;
-  right: ${(props) => (props.$compact ? "0.75rem" : "1rem")};
-  bottom: ${(props) => (props.$compact ? "0.75rem" : "1rem")};
-  left: ${(props) => (props.$compact ? "0.75rem" : "1rem")};
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  border: 2px solid ${c.ink};
-  border-radius: 12px;
-  background: #ffffff;
-  padding: ${(props) => (props.$compact ? "0.55rem 0.75rem" : "0.8rem 1rem")};
-`;
-
-const CaptionLabel = styled.span`
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: ${c.orangeText};
-`;
-
-const CaptionText = styled.span<{ $compact: boolean }>`
-  font-size: ${(props) => (props.$compact ? "0.86rem" : "1rem")};
-  font-weight: 800;
-  line-height: 1.4;
-  color: ${c.ink};
-`;
-
-const fade = keyframes`
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: none; }
-`;
-
-const Player = styled.div`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 0.85rem;
-  background:
-    radial-gradient(circle at 25% 30%, rgba(255, 255, 255, 0.55), transparent 45%),
-    linear-gradient(135deg, ${c.orange} 0%, #f9b48f 55%, ${c.cream} 100%);
-`;
-
-const PlayerTop = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: ${c.ink};
-`;
-
-const CC = styled.span`
-  border: 2px solid ${c.ink};
-  border-radius: 6px;
-  background: #ffffff;
-  padding: 0.05rem 0.35rem;
-`;
-
-const PlayGlyph = styled.span`
-  display: inline-flex;
-  align-self: center;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  border: 2px solid ${c.ink};
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 3px 3px 0 ${c.ink};
-
-  svg {
-    width: 22px;
-    height: 22px;
-    margin-left: 3px;
-  }
-`;
-
-const Subtitle = styled.p<{ $animate: boolean }>`
-  align-self: center;
-  max-width: 92%;
-  margin: 0;
-  border-radius: 8px;
-  background: rgba(5, 5, 5, 0.82);
-  padding: 0.35rem 0.7rem;
-  font-size: 0.84rem;
-  font-weight: 700;
-  line-height: 1.45;
-  text-align: center;
-  color: #ffffff;
-  ${(props) =>
-    props.$animate &&
-    css`
-      animation: ${fade} 320ms ease-out both;
-    `}
-`;
-
-const Progress = styled.div`
-  height: 4px;
-  margin-top: 0.6rem;
-  border-radius: 999px;
-  background: rgba(5, 5, 5, 0.18);
-
-  span {
-    display: block;
-    width: 38%;
-    height: 100%;
-    border-radius: inherit;
-    background: ${c.ink};
-  }
-`;
-
-const sweep = keyframes`
-  from { background-size: 0% 42%; }
-  to { background-size: 100% 42%; }
-`;
-
-const Article = styled.div<{ $compact: boolean }>`
-  position: absolute;
-  inset: ${(props) => (props.$compact ? "0.75rem" : "1.1rem")};
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5rem;
-  border: 2px solid ${c.ink};
-  border-radius: 12px;
-  background: #ffffff;
-  padding: ${(props) => (props.$compact ? "0.85rem" : "1.25rem")};
-`;
-
-const Source = styled.span`
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: ${c.muted};
-`;
-
-const Headline = styled.p<{ $compact: boolean }>`
-  margin: 0;
-  font-size: ${(props) => (props.$compact ? "1.02rem" : "1.3rem")};
-  font-weight: 900;
-  line-height: 1.3;
-  color: ${c.ink};
-
-  mark {
-    background: linear-gradient(${c.orange}, ${c.orange}) no-repeat left 85%;
-    background-size: 100% 42%;
-    color: inherit;
-    animation: ${sweep} 900ms cubic-bezier(0.23, 1, 0.32, 1) 400ms both;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    mark {
-      animation: none;
-    }
-  }
-`;
-
-const Dek = styled.p`
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: ${c.body};
-`;
-
-const Play = () => (
-  <svg viewBox="0 0 24 24" fill={c.ink} aria-hidden>
-    <path d="M7 4.5v15l12-7.5L7 4.5z" />
-  </svg>
-);
+import { cn } from "./NewsletterUI";
 
 function highlight(text: string, word: string) {
   const index = text.toLowerCase().indexOf(word.toLowerCase());
@@ -217,53 +40,76 @@ export default function TrackVisual({
     return () => clearInterval(timer);
   }, [track, reduced]);
 
+  const tile = cn("relative overflow-hidden", compact ? "aspect-[16/10]" : "aspect-[4/3]");
+
   if (track === "business") {
     return (
-      <Tile $background={c.surface} $compact={compact}>
+      <div className={cn(tile, "bg-[#f3f3f1]")}>
         <LoopVideo src="/assets/newsletter/city-loop.mp4" poster="/assets/newsletter/city-poster.jpg" />
-        <Caption $compact={compact}>
-          <CaptionLabel>{t.newsletter.detail.coverCaption}</CaptionLabel>
-          <CaptionText $compact={compact} lang="en">
+        <div
+          className={cn(
+            "absolute flex flex-col gap-[0.15rem] rounded-xl border-2 border-[#050505] bg-white",
+            compact ? "inset-x-3 bottom-3 px-3 py-[0.55rem]" : "inset-x-4 bottom-4 px-4 py-[0.8rem]",
+          )}
+        >
+          <span className="text-[0.7rem] font-extrabold text-[#d95f2d]">{t.newsletter.detail.coverCaption}</span>
+          <span lang="en" className={cn("font-extrabold leading-[1.4] text-[#050505]", compact ? "text-[0.86rem]" : "text-base")}>
             {example.en}
-          </CaptionText>
-        </Caption>
-      </Tile>
+          </span>
+        </div>
+      </div>
     );
   }
 
   if (track === "drama") {
     return (
-      <Tile $background={c.orange} $compact={compact}>
-        <Player>
-          <PlayerTop>
+      <div className={cn(tile, "bg-[#f47a4a]")}>
+        <div className="absolute inset-0 flex flex-col justify-between bg-[radial-gradient(circle_at_25%_30%,rgba(255,255,255,0.55),transparent_45%),linear-gradient(135deg,#f47a4a_0%,#f9b48f_55%,#fff8dc_100%)] p-[0.85rem]">
+          <div className="flex justify-between text-[0.7rem] font-extrabold text-[#050505]">
             <span>{showKo ? demo.subtitlesKo : demo.subtitlesEn}</span>
-            <CC>CC</CC>
-          </PlayerTop>
-          <PlayGlyph>
-            <Play />
-          </PlayGlyph>
-          <div>
-            <Subtitle key={String(showKo)} $animate={!reduced} lang={showKo ? "ko" : "en"}>
-              {showKo ? example.ko : example.en}
-            </Subtitle>
-            <Progress>
-              <span />
-            </Progress>
+            <span className="rounded-md border-2 border-[#050505] bg-white px-[0.35rem] py-[0.05rem]">CC</span>
           </div>
-        </Player>
-      </Tile>
+          <span className="inline-flex size-[54px] items-center justify-center self-center rounded-full border-2 border-[#050505] bg-white shadow-[3px_3px_0_#050505]">
+            <svg viewBox="0 0 24 24" fill="#050505" aria-hidden className="ml-[3px] size-[22px]">
+              <path d="M7 4.5v15l12-7.5L7 4.5z" />
+            </svg>
+          </span>
+          <div>
+            <p
+              key={String(showKo)}
+              lang={showKo ? "ko" : "en"}
+              className={cn(
+                "m-0 mx-auto max-w-[92%] rounded-lg bg-[rgba(5,5,5,0.82)] px-[0.7rem] py-[0.35rem] text-center text-[0.84rem] font-bold leading-[1.45] text-white",
+                !reduced && "nl-fade",
+              )}
+            >
+              {showKo ? example.ko : example.en}
+            </p>
+            <div className="mt-[0.6rem] h-1 rounded-full bg-[rgba(5,5,5,0.18)]">
+              <span className="block h-full w-[38%] rounded-[inherit] bg-[#050505]" />
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Tile $background={c.surface} $compact={compact}>
-      <Article $compact={compact}>
-        <Source>{demo.newsSource}</Source>
-        <Headline $compact={compact} lang="en">
+    <div className={cn(tile, "bg-[#f3f3f1]")}>
+      <div
+        className={cn(
+          "absolute flex flex-col justify-center gap-2 rounded-xl border-2 border-[#050505] bg-white",
+          compact ? "inset-3 p-[0.85rem]" : "inset-[1.1rem] p-5",
+        )}
+      >
+        <span className="text-[0.7rem] font-extrabold text-[#64748b]">{demo.newsSource}</span>
+        <p lang="en" className={cn("nl-sweep m-0 font-black leading-[1.3] text-[#050505]", compact ? "text-[1.02rem]" : "text-[1.3rem]")}>
           {highlight(example.en, copy.lesson.expression)}
-        </Headline>
-        <Dek lang="ko">{example.ko}</Dek>
-      </Article>
-    </Tile>
+        </p>
+        <p lang="ko" className="m-0 text-[0.8rem] font-semibold text-[#475569]">
+          {example.ko}
+        </p>
+      </div>
+    </div>
   );
 }

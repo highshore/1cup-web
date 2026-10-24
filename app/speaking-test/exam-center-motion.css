@@ -1,0 +1,40 @@
+/* Full-width ribbons: continuously redrawn curves, with static SVG fallback. */
+.exam-ribbon-background { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.exam-ribbon-canvas { position: absolute; inset: 0 auto auto 0; width: 100%; height: 592px; }
+.exam-ribbon-canvas[data-ready="true"] + .exam-ribbon-stage { visibility: hidden; }
+.exam-ribbon-stage { position: absolute; left: 50%; top: -75px; width: max(1440px, 100%); height: 592px; transform: translateX(-50%); }
+.exam-ribbon { position: absolute; left: -30%; top: -130px; width: 160%; height: 972px; max-width: none; }
+
+/* Two smooth turning points per cycle, instead of stopping at every sample. */
+.exam-wave-bar {
+  transform-origin: center;
+  will-change: transform;
+  animation: exam-recording-wave var(--wave-duration) cubic-bezier(0.37, 0, 0.63, 1) var(--wave-delay) infinite;
+}
+@keyframes exam-recording-wave {
+  0%, 100% { transform: scaleY(var(--wave-low)); }
+  50% { transform: scaleY(var(--wave-high)); }
+}
+.exam-wave-bar-1 { --wave-duration: 1.80s; --wave-delay: -0.40s; --wave-low: 0.500; --wave-high: 1.550; }
+.exam-wave-bar-2 { --wave-duration: 1.99s; --wave-delay: -0.63s; --wave-low: 0.320; --wave-high: 1.550; }
+.exam-wave-bar-3 { --wave-duration: 2.18s; --wave-delay: -0.86s; --wave-low: 0.400; --wave-high: 1.550; }
+.exam-wave-bar-4 { --wave-duration: 2.37s; --wave-delay: -1.09s; --wave-low: 0.320; --wave-high: 1.345; }
+.exam-wave-bar-5 { --wave-duration: 2.56s; --wave-delay: -1.32s; --wave-low: 0.320; --wave-high: 1.054; }
+.exam-wave-bar-6 { --wave-duration: 1.80s; --wave-delay: -1.55s; --wave-low: 0.333; --wave-high: 1.550; }
+.exam-wave-bar-7 { --wave-duration: 1.99s; --wave-delay: -1.78s; --wave-low: 0.320; --wave-high: 1.550; }
+.exam-wave-bar-8 { --wave-duration: 2.18s; --wave-delay: -2.01s; --wave-low: 0.320; --wave-high: 1.147; }
+.exam-wave-bar-9 { --wave-duration: 2.37s; --wave-delay: -2.24s; --wave-low: 0.353; --wave-high: 1.550; }
+.exam-wave-bar-10 { --wave-duration: 2.56s; --wave-delay: -2.47s; --wave-low: 0.320; --wave-high: 1.550; }
+.exam-wave-bar-11 { --wave-duration: 1.80s; --wave-delay: -2.70s; --wave-low: 0.320; --wave-high: 1.114; }
+.exam-wave-bar-12 { --wave-duration: 1.99s; --wave-delay: -2.93s; --wave-low: 0.320; --wave-high: 1.550; }
+.exam-wave-bar-13 { --wave-duration: 2.18s; --wave-delay: -3.16s; --wave-low: 0.320; --wave-high: 1.393; }
+.exam-wave-bar-14 { --wave-duration: 2.37s; --wave-delay: -3.39s; --wave-low: 0.429; --wave-high: 1.550; }
+.exam-wave-bar-15 { --wave-duration: 2.56s; --wave-delay: -3.62s; --wave-low: 0.320; --wave-high: 1.550; }
+.exam-wave-bar-16 { --wave-duration: 1.80s; --wave-delay: -3.85s; --wave-low: 0.320; --wave-high: 1.219; }
+.exam-wave-bar-17 { --wave-duration: 1.99s; --wave-delay: -4.08s; --wave-low: 0.353; --wave-high: 1.550; }
+.exam-wave-bar-18 { --wave-duration: 2.18s; --wave-delay: -4.31s; --wave-low: 0.320; --wave-high: 1.500; }
+@media (prefers-reduced-motion: reduce) {
+  .exam-wave-bar { animation: none; will-change: auto; }
+}
+
+.exam-hero-overlay { background: rgba(244, 122, 74, 0.55); }

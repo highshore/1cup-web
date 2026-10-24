@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { styled } from "styled-components";
 import { colors as brandColors } from "../lib/features/shadow/styles/shadow_styles";
 import {
   FiTrendingUp,
@@ -61,344 +60,236 @@ interface LanguageSuggestion {
   difficulty: "beginner" | "intermediate" | "advanced";
 }
 
-// Styled Components - YC Startup Design
-const Container = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 0rem;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  color: ${brandColors.text.primary};
-`;
+// Layout primitives (styled-components -> Tailwind migration).
+// Color values are the resolved brandColors used by the original styled blocks:
+// text.primary #2c1810 (token: ink), text.secondary #3c2e26, text.muted #8d6e63,
+// border.light #e8ddd4 (token: line), border.medium #d7c7b8, primary #3c2e26,
+// background #faf8f6, success #4e7c59, warning #c17817.
+type DivProps = React.HTMLAttributes<HTMLDivElement>;
+type ParagraphProps = React.HTMLAttributes<HTMLParagraphElement>;
+type HeadingProps = React.HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-const Header = styled.div`
-  margin-bottom: 3rem;
-  padding: 0;
-`;
+function Container({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`mx-auto min-h-screen max-w-[1200px] px-0 py-8 text-ink [font-family:-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,'Helvetica_Neue',Arial,sans-serif] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const Title = styled.h1`
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: ${brandColors.text.primary};
-  letter-spacing: -0.025em;
-`;
+function Header({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-12 p-0 ${className}`} {...rest} />;
+}
 
-const Subtitle = styled.p`
-  font-size: 1.125rem;
-  color: ${brandColors.text.muted};
-  margin-bottom: 2rem;
-  font-weight: 400;
-`;
+function Title({ className = "", ...rest }: HeadingProps) {
+  return <h1 className={`mb-2 text-[2.5rem] font-bold tracking-[-0.025em] text-ink ${className}`} {...rest} />;
+}
 
-const SessionMetaData = styled.div`
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid ${brandColors.border.light};
-`;
+function SessionMetaData({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-8 flex gap-8 border-b border-line px-0 py-6 ${className}`} {...rest} />;
+}
 
-const MetaItem = styled.div`
-  .label {
-    font-size: 0.875rem;
-    color: ${brandColors.text.muted};
-    text-transform: uppercase;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
-  }
+function MetaItem({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`[&_.label]:mb-1 [&_.label]:text-[0.875rem] [&_.label]:font-medium [&_.label]:uppercase [&_.label]:tracking-[0.05em] [&_.label]:text-[#8d6e63] [&_.value]:text-[1rem] [&_.value]:font-semibold [&_.value]:text-ink ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  .value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: ${brandColors.text.primary};
-  }
-`;
+function TabNavigation({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-8 flex border-b border-line ${className}`} {...rest} />;
+}
 
-const TabNavigation = styled.div`
-  display: flex;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid ${brandColors.border.light};
-`;
+function Tab({ $active, className = "", ...rest }: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`mr-8 cursor-pointer border-0 border-b-2 bg-transparent px-0 py-4 text-[0.875rem] font-medium [transition:all_0.2s_ease] hover:text-[#3c2e26] ${
+        $active ? "border-b-[#3c2e26] text-[#3c2e26]" : "border-b-transparent text-[#8d6e63]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const Tab = styled.button<{ $active: boolean }>`
-  padding: 1rem 0;
-  margin-right: 2rem;
-  border: none;
-  background: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${(props) =>
-    props.$active ? brandColors.primary : brandColors.text.muted};
-  border-bottom: 2px solid
-    ${(props) => (props.$active ? brandColors.primary : "transparent")};
-  cursor: pointer;
-  transition: all 0.2s ease;
+function MetricsGrid({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 ${className}`} {...rest} />;
+}
 
-  &:hover {
-    color: ${brandColors.primary};
-  }
-`;
+function MetricCard({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`rounded-lg border border-line bg-white p-6 [transition:border-color_0.2s_ease] hover:border-[#d7c7b8] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const MetricsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-`;
+function MetricHeader({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-4 flex items-center justify-between ${className}`} {...rest} />;
+}
 
-const MetricCard = styled.div`
-  background: #fff;
-  border: 1px solid ${brandColors.border.light};
-  border-radius: 8px;
-  padding: 1.5rem;
-  transition: border-color 0.2s ease;
+function MetricIcon({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-[#faf8f6] text-[#3c2e26] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  &:hover {
-    border-color: ${brandColors.border.medium};
-  }
-`;
+function MetricValue({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-1 text-[2rem] font-bold text-ink ${className}`} {...rest} />;
+}
 
-const MetricHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-`;
+function MetricLabel({ className = "", ...rest }: DivProps) {
+  return <div className={`text-[0.875rem] font-medium text-[#8d6e63] ${className}`} {...rest} />;
+}
 
-const MetricIcon = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: ${brandColors.background};
-  border-radius: 8px;
-  color: ${brandColors.text.secondary};
-`;
+function ContentGrid({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-12 grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-8 ${className}`} {...rest} />;
+}
 
-const MetricValue = styled.div`
-  font-size: 2rem;
-  font-weight: 700;
-  color: ${brandColors.text.primary};
-  margin-bottom: 0.25rem;
-`;
+function Card({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`rounded-lg border border-line bg-white p-8 [transition:border-color_0.2s_ease] hover:border-[#d7c7b8] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const MetricLabel = styled.div`
-  font-size: 0.875rem;
-  color: ${brandColors.text.muted};
-  font-weight: 500;
-`;
+function SectionTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 className={`mb-6 flex items-center gap-2 text-[1.125rem] font-semibold text-ink ${className}`} {...rest} />;
+}
 
-const ContentGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
-`;
+function ChartContainer({ className = "", ...rest }: DivProps) {
+  return <div className={`relative mb-4 h-[300px] ${className}`} {...rest} />;
+}
 
-const Card = styled.div`
-  background: #fff;
-  border: 1px solid ${brandColors.border.light};
-  border-radius: 8px;
-  padding: 2rem;
-  transition: border-color 0.2s ease;
+function ProgressChart({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-4 h-[400px] ${className}`} {...rest} />;
+}
 
-  &:hover {
-    border-color: ${brandColors.border.medium};
-  }
-`;
+function SuggestionsContainer({ className = "", ...rest }: DivProps) {
+  return <div className={`grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-8 ${className}`} {...rest} />;
+}
 
-const SectionTitle = styled.h3`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${brandColors.text.primary};
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
+function SuggestionSection({ className = "", ...rest }: DivProps) {
+  return <div className={`rounded-lg border border-line bg-white p-8 ${className}`} {...rest} />;
+}
 
-const ChartContainer = styled.div`
-  position: relative;
-  height: 300px;
-  margin-bottom: 1rem;
-`;
+function SuggestionTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 className={`mb-6 flex items-center gap-2 text-[1.125rem] font-semibold text-ink ${className}`} {...rest} />;
+}
 
-const ProgressChart = styled.div`
-  height: 400px;
-  margin-bottom: 1rem;
-`;
+function SuggestionList({ className = "", ...rest }: DivProps) {
+  return <div className={`flex flex-col gap-4 ${className}`} {...rest} />;
+}
 
-const SuggestionsContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 2rem;
-`;
+function SuggestionItem({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`rounded-md border border-line p-4 [transition:border-color_0.2s_ease] hover:border-[#d7c7b8] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const SuggestionSection = styled.div`
-  background: #fff;
-  border: 1px solid ${brandColors.border.light};
-  border-radius: 8px;
-  padding: 2rem;
-`;
+function SuggestionWord({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-2 text-[1rem] font-semibold text-ink ${className}`} {...rest} />;
+}
 
-const SuggestionTitle = styled.h3`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${brandColors.text.primary};
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
+function SuggestionDefinition({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-2 text-[0.875rem] leading-normal text-[#3c2e26] ${className}`} {...rest} />;
+}
 
-const SuggestionList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
+function SuggestionExample({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`rounded border-l-[3px] border-l-[#e8ddd4] bg-[#faf8f6] p-3 text-[0.875rem] italic text-[#8d6e63] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const SuggestionItem = styled.div`
-  padding: 1rem;
-  border: 1px solid ${brandColors.border.light};
-  border-radius: 6px;
-  transition: border-color 0.2s ease;
+function DifficultyBadge({
+  $difficulty,
+  className = "",
+  ...rest
+}: { $difficulty: string } & React.HTMLAttributes<HTMLSpanElement>) {
+  const tone =
+    $difficulty === "beginner"
+      ? "text-[#4e7c59] border-[#4e7c5930]"
+      : $difficulty === "intermediate"
+      ? "text-[#c17817] border-[#c1781730]"
+      : "text-[#3c2e26] border-[#3c2e2630]";
+  return (
+    <span
+      className={`mt-2 inline-block rounded border bg-[#faf8f6] px-3 py-1 text-[0.75rem] font-medium uppercase tracking-[0.05em] ${tone} ${className}`}
+      {...rest}
+    />
+  );
+}
 
-  &:hover {
-    border-color: ${brandColors.border.medium};
-  }
-`;
+function TranscriptSection({ className = "", ...rest }: DivProps) {
+  return <div className={`rounded-lg border border-line bg-white p-8 ${className}`} {...rest} />;
+}
 
-const SuggestionWord = styled.div`
-  font-weight: 600;
-  color: ${brandColors.text.primary};
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-`;
+function TranscriptSegment({ $isUser, className = "", ...rest }: { $isUser: boolean } & DivProps) {
+  return (
+    <div
+      className={`mb-6 flex gap-4 rounded-md border-l-[3px] p-4 ${
+        $isUser ? "border-l-[#3c2e26] bg-[#faf8f6]" : "border-l-[#d7c7b8] bg-white"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const SuggestionDefinition = styled.div`
-  color: ${brandColors.text.secondary};
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-  font-size: 0.875rem;
-`;
+function SpeakerLabel({ $isUser, className = "", ...rest }: { $isUser: boolean } & DivProps) {
+  return (
+    <div
+      className={`min-w-[60px] text-[0.875rem] font-semibold uppercase tracking-[0.05em] ${
+        $isUser ? "text-[#3c2e26]" : "text-[#8d6e63]"
+      } ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const SuggestionExample = styled.div`
-  color: ${brandColors.text.muted};
-  font-style: italic;
-  padding: 0.75rem;
-  background: ${brandColors.background};
-  border-radius: 4px;
-  border-left: 3px solid ${brandColors.border.light};
-  font-size: 0.875rem;
-`;
+function TranscriptText({ className = "", ...rest }: DivProps) {
+  return <div className={`flex-1 leading-[1.6] text-[#3c2e26] ${className}`} {...rest} />;
+}
 
-const DifficultyBadge = styled.span<{ $difficulty: string }>`
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0.5rem;
-  background: ${brandColors.background};
-  color: ${(props) =>
-    props.$difficulty === "beginner"
-      ? brandColors.success
-      : props.$difficulty === "intermediate"
-      ? brandColors.warning
-      : brandColors.primary};
-  border: 1px solid
-    ${(props) =>
-      props.$difficulty === "beginner"
-        ? `${brandColors.success}30`
-        : props.$difficulty === "intermediate"
-        ? `${brandColors.warning}30`
-        : `${brandColors.primary}30`};
-`;
-
-const TranscriptSection = styled.div`
-  background: #fff;
-  border: 1px solid ${brandColors.border.light};
-  border-radius: 8px;
-  padding: 2rem;
-`;
-
-const TranscriptSegment = styled.div<{ $isUser: boolean }>`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  border-radius: 6px;
-  background: ${(props) => (props.$isUser ? brandColors.background : "#fff")};
-  border-left: 3px solid
-    ${(props) =>
-      props.$isUser ? brandColors.primary : brandColors.border.medium};
-`;
-
-const SpeakerLabel = styled.div<{ $isUser: boolean }>`
-  font-weight: 600;
-  color: ${(props) =>
-    props.$isUser ? brandColors.primary : brandColors.text.muted};
-  min-width: 60px;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const TranscriptText = styled.div`
-  flex: 1;
-  line-height: 1.6;
-  color: ${brandColors.text.secondary};
-`;
-
-const ChartDescription = styled.p`
-  color: ${brandColors.text.muted};
-  font-size: 0.875rem;
-  text-align: center;
-  margin-top: 1rem;
-  line-height: 1.5;
-`;
+function ChartDescription({ className = "", ...rest }: ParagraphProps) {
+  return <p className={`mt-4 text-center text-[0.875rem] leading-normal text-[#8d6e63] ${className}`} {...rest} />;
+}
 
 // Empty State Components
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
-  text-align: center;
-  color: ${brandColors.text.muted};
-`;
+function EmptyState({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center px-8 py-12 text-center text-[#8d6e63] ${className}`}
+      {...rest}
+    />
+  );
+}
 
-const EmptyStateIcon = styled.div`
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
+function EmptyStateIcon({ className = "", ...rest }: DivProps) {
+  return <div className={`mb-4 text-[3rem] opacity-50 [&_svg]:h-12 [&_svg]:w-12 ${className}`} {...rest} />;
+}
 
-  svg {
-    width: 3rem;
-    height: 3rem;
-  }
-`;
+function EmptyStateTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 className={`mb-2 text-[1.125rem] font-semibold text-[#3c2e26] ${className}`} {...rest} />;
+}
 
-const EmptyStateTitle = styled.h3`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${brandColors.text.secondary};
-  margin-bottom: 0.5rem;
-`;
-
-const EmptyStateMessage = styled.p`
-  font-size: 0.875rem;
-  color: ${brandColors.text.muted};
-  max-width: 300px;
-  line-height: 1.5;
-`;
+function EmptyStateMessage({ className = "", ...rest }: ParagraphProps) {
+  return <p className={`max-w-[300px] text-[0.875rem] leading-normal text-[#8d6e63] ${className}`} {...rest} />;
+}
 
 // Real data will be loaded from props or API calls
 // No dummy/fallback data - proper empty states will be shown when no data exists

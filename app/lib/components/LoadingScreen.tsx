@@ -1,38 +1,15 @@
-import styled from "styled-components";
 import dynamic from "next/dynamic";
 import loadingAnimation from "../../../public/animations/loading.json";
-
-const Wrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #fdf9f6;
-`;
-
-const LoadingAnimation = styled.div`
-  width: 250px;
-  height: 250px;
-
-  @media (max-width: 768px) {
-    width: 200px;
-    height: 200px;
-  }
-`;
 
 // Dynamic import for Lottie to avoid SSR issues
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
-interface LoadingScreenProps {
-  // Removed text prop since we're not showing text anymore
-}
-
-export default function LoadingScreen(props: LoadingScreenProps) {
+export default function LoadingScreen() {
   return (
-    <Wrapper>
-      <LoadingAnimation>
+    <div className="flex h-screen items-center justify-center bg-[#fdf9f6]">
+      <div className="h-[250px] w-[250px] max-[768px]:h-[200px] max-[768px]:w-[200px]">
         <Lottie animationData={loadingAnimation} />
-      </LoadingAnimation>
-    </Wrapper>
+      </div>
+    </div>
   );
 }

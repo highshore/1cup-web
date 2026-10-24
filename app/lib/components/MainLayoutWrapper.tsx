@@ -1,49 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import styled from "styled-components";
 import Footer from "./footer";
 import NewNavbar from "../../new-home/components/NewNavbar";
-import { colors } from "../constants/colors";
-import { appLayout } from "../constants/app_layout";
 import NonKoreanApplicantPrompt from "./NonKoreanApplicantPrompt";
-
-const LayoutWrapper = styled.div<{ $isHomePage: boolean }>`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: ${(props) =>
-    props.$isHomePage ? colors.landingBg : colors.pageBg};
-`;
-
-const PageContainer = styled.div<{
-  $isHomePage: boolean;
-  $isFullWidthPage: boolean;
-}>`
-  padding-top: ${(props) => (props.$isHomePage ? "0" : "74px")};
-  flex: 1;
-  min-height: 100vh;
-  max-width: ${(props) =>
-    props.$isHomePage || props.$isFullWidthPage
-      ? "100%"
-      : appLayout.pageMaxWidth};
-  margin: 0 auto;
-  padding-bottom: 2rem;
-  font-family: "Noto Sans KR", sans-serif;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    padding-top: ${(props) => (props.$isHomePage ? "0" : "68px")};
-    padding-left: ${(props) =>
-      props.$isHomePage || props.$isFullWidthPage
-        ? "0"
-        : appLayout.pageGutterMobile};
-    padding-right: ${(props) =>
-      props.$isHomePage || props.$isFullWidthPage
-        ? "0"
-        : appLayout.pageGutterMobile};
-  }
-`;
 
 export default function MainLayoutWrapper({
   children,
@@ -52,18 +12,43 @@ export default function MainLayoutWrapper({
 }) {
   const pathname = usePathname();
   const isHomePage = pathname === "/";
-  // Article and newsletter pages draw their own full-bleed sections.
-  const isFullWidthPage =
-    pathname.startsWith("/article/") || pathname.startsWith("/newsletter");
+  const isArticlePage = pathname.startsWith("/article/");
+  // Newsletter pages draw their own full-bleed sections.
+  const isNewsletterPage = pathname.startsWith("/newsletter");
+  const isPaymentPage = pathname === "/payment";
+  const isNonKoreanApplicantPage = pathname === "/non-korean-applicants";
+  const isExamCenterPage = pathname === "/exam-center";
+  const isPrivateProfilePage =
+    pathname === "/profile" ||
+    pathname === "/profile/connections" ||
+    pathname === "/profile/account";
+  const isFullWidth =
+    isHomePage ||
+    isArticlePage ||
+    isNewsletterPage ||
+    isPaymentPage ||
+    isNonKoreanApplicantPage ||
+    isExamCenterPage ||
+    isPrivateProfilePage;
 
   return (
-    <LayoutWrapper $isHomePage={isHomePage}>
+    <div
+      className={`flex min-h-screen flex-col ${
+        isHomePage || isExamCenterPage ? "bg-white" : "bg-[#f5f5f5]"
+      }`}
+    >
       <NewNavbar />
-      <PageContainer $isHomePage={isHomePage} $isFullWidthPage={isFullWidthPage}>
+      <div
+        className={`mx-auto min-h-screen w-full flex-1 [font-family:'Noto_Sans_KR',sans-serif] ${isExamCenterPage ? "pb-0" : "pb-8"} ${
+          isHomePage ? "pt-0" : isExamCenterPage ? "pt-[60px]" : "pt-[74px] max-[768px]:pt-[68px]"
+        } ${isFullWidth ? "max-w-full" : "max-w-[960px] max-[768px]:px-2"} ${
+          isPrivateProfilePage ? "profile-workspace" : ""
+        }`}
+      >
         {children}
-      </PageContainer>
+      </div>
       <Footer />
       <NonKoreanApplicantPrompt />
-    </LayoutWrapper>
+    </div>
   );
 }

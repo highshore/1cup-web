@@ -1,97 +1,8 @@
 "use client";
 
 import React from "react";
-import styled, { keyframes } from "styled-components";
 import type { CopilotConversationMessage } from "../hooks/useTranscriptCopilot";
-
-const pulse = keyframes`
-  0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.42), inset 0 0 18px rgba(254, 202, 202, 0.22); }
-  50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.66), inset 0 0 26px rgba(254, 202, 202, 0.32); }
-`;
-
-const dotPulse = keyframes`
-  0%, 80%, 100% { opacity: 0.32; transform: translateY(0); }
-  40% { opacity: 1; transform: translateY(-2px); }
-`;
-
-const Snippet = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  margin-bottom: 0.9rem;
-  width: 100%;
-`;
-
-const Lens = styled.div<{ $active?: boolean }>`
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 50%;
-  border: 1px solid rgba(248, 113, 113, 0.78);
-  background:
-    radial-gradient(circle at 45% 42%, #fee2e2 0 8%, #ef4444 18%, #7f1d1d 48%, #111827 74%);
-  animation: ${(props) => (props.$active ? pulse : "none")} 1.8s ease-in-out infinite;
-`;
-
-const Content = styled.div`
-  min-width: 0;
-  width: 100%;
-`;
-
-const HeadRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const Name = styled.span`
-  color: #b91c1c;
-  font-size: 1rem;
-  font-weight: 700;
-`;
-
-const Meta = styled.span`
-  color: #64748b;
-  font-size: 0.82rem;
-`;
-
-const Body = styled.div`
-  margin-top: 0.35rem;
-  padding: 0.75rem 0.85rem;
-  border-left: 2px solid rgba(239, 68, 68, 0.65);
-  background: #fff7f7;
-  color: #334155;
-  border-radius: 0 8px 8px 0;
-  line-height: 1.58;
-  overflow-wrap: anywhere;
-`;
-
-const Summary = styled.p`
-  margin: 0;
-`;
-
-const TypingDots = styled.span`
-  display: inline-flex;
-  gap: 0.18rem;
-  align-items: center;
-  margin-left: 0.18rem;
-
-  span {
-    width: 0.28rem;
-    height: 0.28rem;
-    border-radius: 50%;
-    background: #ef4444;
-    animation: ${dotPulse} 1.1s ease-in-out infinite;
-  }
-
-  span:nth-child(2) {
-    animation-delay: 0.16s;
-  }
-
-  span:nth-child(3) {
-    animation-delay: 0.32s;
-  }
-`;
+import "./copilot-snippet.css";
 
 export default function CopilotTranscriptSnippet({
   message,
@@ -101,12 +12,20 @@ export default function CopilotTranscriptSnippet({
   isThinking?: boolean;
 }) {
   return (
-    <Snippet>
-      <Lens $active={isThinking} />
-      <Content>
-        <HeadRow>
-          <Name>AI Copilot</Name>
-          <Meta>
+    <div className="flex gap-3 items-start mb-[0.9rem] w-full">
+      <div
+        className={`w-10 h-10 flex-[0_0_40px] rounded-full border border-[rgba(248,113,113,0.78)] bg-[radial-gradient(circle_at_45%_42%,#fee2e2_0_8%,#ef4444_18%,#7f1d1d_48%,#111827_74%)] ${
+          isThinking
+            ? "animate-[transcript-copilot-pulse_1.8s_ease-in-out_infinite]"
+            : ""
+        }`}
+      />
+      <div className="min-w-0 w-full">
+        <div className="flex items-center gap-2">
+          <span className="text-[#b91c1c] text-[1rem] font-bold">
+            AI Copilot
+          </span>
+          <span className="text-[#64748b] text-[0.82rem]">
             {isThinking
               ? "listening"
               : message?.reason === "turn-switch"
@@ -115,30 +34,33 @@ export default function CopilotTranscriptSnippet({
             {!isThinking && message?.action?.type !== "none"
               ? ` · ${message.action.label}`
               : ""}
-          </Meta>
-        </HeadRow>
-        <Body>
+          </span>
+        </div>
+        <div className="mt-[0.35rem] py-3 px-[0.85rem] border-l-2 border-l-[rgba(239,68,68,0.65)] bg-[#fff7f7] text-[#334155] rounded-[0_8px_8px_0] leading-[1.58] [overflow-wrap:anywhere]">
           {isThinking ? (
-            <Summary>
+            <p className="m-0">
               Listening and thinking
-              <TypingDots aria-label="Thinking">
+              <span
+                className="inline-flex gap-[0.18rem] items-center ml-[0.18rem] [&_span]:w-[0.28rem] [&_span]:h-[0.28rem] [&_span]:rounded-full [&_span]:bg-[#ef4444] [&_span]:animate-[transcript-copilot-dot-pulse_1.1s_ease-in-out_infinite] [&_span:nth-child(2)]:[animation-delay:0.16s] [&_span:nth-child(3)]:[animation-delay:0.32s]"
+                aria-label="Thinking"
+              >
                 <span />
                 <span />
                 <span />
-              </TypingDots>
-            </Summary>
+              </span>
+            </p>
           ) : (
             <>
-              <Summary>
+              <p className="m-0">
                 {message?.error || message?.action?.message || message?.items?.[0]}
-              </Summary>
+              </p>
               {message?.action?.type === "speech_correction" && message.action.replacement && (
-                <Summary>Try: {message.action.replacement}</Summary>
+                <p className="m-0">Try: {message.action.replacement}</p>
               )}
             </>
           )}
-        </Body>
-      </Content>
-    </Snippet>
+        </div>
+      </div>
+    </div>
   );
 }

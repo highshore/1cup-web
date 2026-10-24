@@ -1,26 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import styled from "styled-components";
 import { useInView, usePrefersReducedMotion } from "../hooks";
 
-const Video = styled.video`
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
 // Muted decorative loop: plays only while half visible, never with reduced motion.
-export default function LoopVideo({
-  src,
-  poster,
-  className,
-}: {
-  src: string;
-  poster: string;
-  className?: string;
-}) {
+export default function LoopVideo({ src, poster }: { src: string; poster: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   const inView = useInView(ref, 0.5);
   const reduced = usePrefersReducedMotion();
@@ -36,9 +20,9 @@ export default function LoopVideo({
   }, [inView, reduced]);
 
   return (
-    <Video
+    <video
       ref={ref}
-      className={className}
+      className="block h-full w-full object-cover"
       src={src}
       poster={poster}
       muted

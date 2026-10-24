@@ -1,517 +1,453 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import styled from 'styled-components';
 import { useSoniox } from './hooks/useSoniox';
 import { useTranscriptCopilot } from './hooks/useTranscriptCopilot';
 import CopilotTranscriptSnippet from './components/CopilotTranscriptSnippet';
-import { colors } from '../lib/constants/colors';
 
-const ConversationDetailContainer = styled.div`
-  width: 100%;
-`;
+type DivProps = React.HTMLAttributes<HTMLDivElement>;
+type SectionProps = React.HTMLAttributes<HTMLElement>;
+type SpanProps = React.HTMLAttributes<HTMLSpanElement>;
+type HeadingProps = React.HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-const ConversationDetailLeft = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  width: 100%;
-`;
+const clampPct = (v: number) => Math.max(0, Math.min(100, v));
 
-const AppSpeechDetails = styled.section`
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-bottom: 1.5rem;
-`;
+function ConversationDetailContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`w-full ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SectionHeader = styled.h2`
-  font-size: 1.125rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0 0 1rem 0;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #050505;
-`;
+function ConversationDetailLeft({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-8 w-full ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const KeywordsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
+function AppSpeechDetails({ className = "", children, ...rest }: SectionProps) {
+  return (
+    <section className={`bg-transparent border-none rounded-none p-0 mb-6 ${className}`} {...rest}>
+      {children}
+    </section>
+  );
+}
 
-const KeywordTag = styled.span`
-  background: #ffffff;
-  color: #050505;
-  border: 1.5px solid #050505;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
+function SectionHeader({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h2
+      className={`text-[1.125rem] font-black text-[#050505] m-0 mb-4 pb-3 border-b-2 border-[#050505] ${className}`}
+      {...rest}
+    >
+      {children}
+    </h2>
+  );
+}
 
-const SpeakersContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 0.5rem;
-`;
+function KeywordsContainer({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SpeakerInfo = styled.div`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-`;
+function KeywordTag({ className = "", children, ...rest }: SpanProps) {
+  return (
+    <span
+      className={`bg-white text-[#050505] border-[1.5px] border-[#050505] py-1 px-3 rounded-full text-[0.875rem] font-bold ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-const TranscriptSnippet = styled.div`
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  width: 100%;
-`;
+function TranscriptSnippet({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-4 items-start mb-6 w-full ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SpeakerAvatar = styled.button<{ $bgColor?: string; $textColor?: string }>`
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid #050505;
-  background-color: ${props => props.$bgColor || '#e5e7eb'};
-  color: ${props => props.$textColor || '#4b5563'};
-  font-size: 1rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+function SpeakerAvatar({
+  $bgColor,
+  $textColor,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $bgColor?: string; $textColor?: string } & ButtonProps) {
+  return (
+    <button
+      className={`w-10 h-10 shrink-0 rounded-full border-2 border-[#050505] text-[1rem] font-extrabold flex items-center justify-center cursor-pointer shadow-[2px_2px_0_rgba(5,5,5,0.9)] [transition:transform_0.16s_ease,box-shadow_0.16s_ease] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(5,5,5,0.9)] focus-visible:outline-2 focus-visible:outline-[#f47a4a] focus-visible:outline-offset-2 ${className}`}
+      style={{
+        backgroundColor: $bgColor || "#e5e7eb",
+        color: $textColor || "#4b5563",
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  }
+function TranscriptContent({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-1 w-full min-w-0 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-  &:focus-visible {
-    outline: 2px solid #f47a4a;
-    outline-offset: 2px;
-  }
-`;
+function TranscriptHeadRow({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center gap-3 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const TranscriptContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  width: 100%;
-  min-width: 0;
-`;
+function SpeakerName({
+  $color,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $color?: string } & SpanProps) {
+  return (
+    <span
+      className={`font-extrabold text-[1rem] ${className}`}
+      style={{ color: $color || "#050505", ...style }}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-const TranscriptHeadRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
+function Timestamp({ className = "", children, ...rest }: SpanProps) {
+  return (
+    <span className={`text-[0.875rem] text-[rgba(5,5,5,0.6)] ${className}`} {...rest}>
+      {children}
+    </span>
+  );
+}
 
-const SpeakerName = styled.span<{ $color?: string }>`
-  font-weight: 800;
-  font-size: 1rem;
-  color: ${props => props.$color || '#050505'};
-`;
+function TranscriptBody({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`leading-[1.7] text-[#050505] cursor-default bg-transparent border-none rounded-none p-0 mt-2 break-words hyphens-auto w-full ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const Timestamp = styled.span`
-  font-size: 0.875rem;
-  color: rgba(5, 5, 5, 0.6);
-`;
+function WordSpan({
+  $lowConfidence,
+  $isPartial,
+  className = "",
+  children,
+  ...rest
+}: { $lowConfidence?: boolean; $isPartial?: boolean } & SpanProps) {
+  const colorClass = $lowConfidence
+    ? "text-[#b91c1c] font-bold underline"
+    : $isPartial
+      ? "text-[rgba(5,5,5,0.55)] font-normal no-underline"
+      : "font-normal no-underline";
+  return (
+    <span
+      className={`${colorClass} ${$isPartial ? "italic opacity-70" : "not-italic opacity-100"} decoration-[#fecaca] underline-offset-2 [transition:background-color_0.2s_ease] rounded-[4px] mr-0 [word-break:break-word] hover:bg-[rgba(244,122,74,0.18)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-const TranscriptBody = styled.div`
-  line-height: 1.7;
-  color: #050505;
-  cursor: default;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-top: 0.5rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  width: 100%;
-`;
+function Container({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`min-h-screen text-[#050505] bg-transparent [font-family:-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif] pb-[80px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const WordSpan = styled.span<{ $lowConfidence?: boolean; $isPartial?: boolean }>`
-  color: ${props => {
-    if (props.$lowConfidence) return '#b91c1c';
-    if (props.$isPartial) return 'rgba(5, 5, 5, 0.55)';
-    return 'inherit';
-  }};
-  font-weight: ${props => props.$lowConfidence ? '700' : 'normal'};
-  font-style: ${props => props.$isPartial ? 'italic' : 'normal'};
-  text-decoration: ${props => props.$lowConfidence ? 'underline' : 'none'};
-  text-decoration-color: #fecaca;
-  text-underline-offset: 2px;
-  transition: background-color 0.2s ease;
-  border-radius: 4px;
-  margin-right: 0; /* spacing handled programmatically to avoid gaps before punctuation */
-  word-break: break-word;
-  opacity: ${props => props.$isPartial ? '0.7' : '1'};
+function Controls({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center gap-4 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-  &:hover {
-    background-color: rgba(244, 122, 74, 0.18);
-  }
-`;
+function RecordButton({
+  $isRecording,
+  className = "",
+  children,
+  ...rest
+}: { $isRecording: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`flex items-center gap-2 py-[0.7rem] px-[1.4rem] border-2 border-[#050505] rounded-full text-[0.875rem] font-extrabold cursor-pointer shadow-[3px_3px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] ${
+        $isRecording ? "bg-[#d64545] text-white" : "bg-[#f47a4a] text-[#050505]"
+      } hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#050505] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-const Container = styled.div`
-  min-height: 100vh;
-  color: #050505;
-  background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding-bottom: 80px; /* Add space for audio player */
-`;
+function Content({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`pt-0 px-0 pb-8 max-w-[900px] mx-auto bg-transparent ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-// Removed sticky header bar in favor of inline top controls
+function ErrorMessage({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`mb-8 py-4 px-6 bg-[#fef2f2] text-[#991b1b] rounded-[12px] border-2 border-[#d64545] shadow-[4px_4px_0_rgba(214,69,69,0.4)] text-[0.875rem] font-bold ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const Title = styled.h1`
-  font-size: 1.75rem;
-  font-weight: 900;
-  color: #050505;
-  margin: 0;
-`;
+function LegendContent({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-start flex-col gap-3 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const Controls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-`;
+function LegendSpeakers({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex gap-4 flex-wrap ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-// Removed ProviderSelector (Soniox-only)
+function LegendItem({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center text-[0.75rem] font-bold text-[rgba(5,5,5,0.6)] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const StatusAndLegendSection = styled.div`
-  padding: 1rem 2rem;
-  background: #ffffff;
-  border-bottom: 2px solid #050505;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-`;
+function LegendColor({
+  $color,
+  className = "",
+  style,
+  ...rest
+}: { $color: string } & DivProps) {
+  return (
+    <div
+      className={`w-[10px] h-[10px] border-[1.5px] border-[#050505] rounded-full mr-[0.375rem] ${className}`}
+      style={{ backgroundColor: $color, ...style }}
+      {...rest}
+    />
+  );
+}
 
-const StatusIndicator = styled.div<{ $isActive: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 800;
-  background: #ffffff;
-  color: ${props => props.$isActive ? '#166534' : '#991b1b'};
-  border: 1.5px solid #050505;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-`;
+function ConfidenceNote({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`text-[0.6875rem] text-[rgba(5,5,5,0.55)] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const StatusDot = styled.div<{ $isActive: boolean }>`
-  width: 8px;
-  height: 8px;
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  background-color: ${props => props.$isActive ? '#22c55e' : '#ef4444'};
-`;
-
-const RecordButton = styled.button<{ $isRecording: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.4rem;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  ${props => props.$isRecording ? `
-    background: #d64545;
-    color: #ffffff;
-  ` : `
-    background: #f47a4a;
-    color: #050505;
-  `}
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-`;
-
-const Content = styled.div`
-  padding: 0 0 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-  background: transparent;
-`;
-
-// Removed page title row for a cleaner look
-
-const ErrorMessage = styled.div`
-  margin-bottom: 2rem;
-  padding: 1rem 1.5rem;
-  background: #fef2f2;
-  color: #991b1b;
-  border-radius: 12px;
-  border: 2px solid #d64545;
-  box-shadow: 4px 4px 0 rgba(214, 69, 69, 0.4);
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
-
-const LegendContent = styled.div`
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const LegendSpeakers = styled.div`
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-`;
-
-const LegendItem = styled.div`
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(5, 5, 5, 0.6);
-`;
-
-const LegendColor = styled.div<{ $color: string }>`
-  width: 10px;
-  height: 10px;
-  background-color: ${props => props.$color};
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  margin-right: 0.375rem;
-`;
-
-const ConfidenceNote = styled.div`
-  font-size: 0.6875rem;
-  color: rgba(5, 5, 5, 0.55);
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-style: italic;
-  font-weight: 700;
-  padding: 4rem 2rem;
-  font-size: 1rem;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 2px solid #050505;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
+function EmptyState({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`text-center text-[rgba(5,5,5,0.6)] italic font-bold py-16 px-8 text-[1rem] bg-white rounded-[12px] border-2 border-[#050505] shadow-[4px_4px_0_rgba(5,5,5,0.9)] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
 // --- Decibel monitor (live mic level + per-speaker loudness) ---
-const DecibelPanel = styled.section`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 1rem 1.1rem 1.15rem;
-  box-shadow: 4px 4px 0 #050505;
-`;
-
-const DecibelHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-`;
-
-const DecibelTitle = styled.h3`
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  padding: 0.26rem 0.62rem;
-  font-size: 0.82rem;
-  font-weight: 900;
-`;
-
-const DecibelReadout = styled.span<{ $active: boolean }>`
-  font-size: 0.82rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: ${({ $active }) => ($active ? "#050505" : "rgba(5,5,5,0.4)")};
-`;
-
-const Meter = styled.div`
-  position: relative;
-  height: 18px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f3f3f1;
-  overflow: hidden;
-`;
-
-const MeterFill = styled.div<{ $level: number }>`
-  height: 100%;
-  width: ${({ $level }) => Math.max(0, Math.min(100, $level))}%;
-  background: linear-gradient(
-    90deg,
-    #2f8f86 0%,
-    #2f8f86 55%,
-    #e0992b 78%,
-    #d64545 100%
+function DecibelPanel({ className = "", children, ...rest }: SectionProps) {
+  return (
+    <section
+      className={`border-2 border-[#050505] rounded-[14px] bg-white pt-4 px-[1.1rem] pb-[1.15rem] shadow-[4px_4px_0_#050505] ${className}`}
+      {...rest}
+    >
+      {children}
+    </section>
   );
-  transition: width 70ms linear;
-`;
+}
 
-const MeterPeak = styled.div<{ $peak: number }>`
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  left: ${({ $peak }) => Math.max(0, Math.min(100, $peak))}%;
-  width: 2px;
-  background: #050505;
-`;
+function DecibelHeader({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex items-center justify-between gap-3 mb-[0.85rem] ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const SpeakerLoudList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  margin-top: 1rem;
-`;
+function DecibelTitle({ className = "", children, ...rest }: HeadingProps) {
+  return (
+    <h3
+      className={`inline-flex items-center m-0 border-2 border-[#050505] rounded-full bg-[#f47a4a] text-[#050505] py-[0.26rem] px-[0.62rem] text-[0.82rem] font-black ${className}`}
+      {...rest}
+    >
+      {children}
+    </h3>
+  );
+}
 
-const SpeakerLoudRow = styled.div`
-  display: grid;
-  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.55rem;
-`;
+function DecibelReadout({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active: boolean } & SpanProps) {
+  return (
+    <span
+      className={`text-[0.82rem] font-extrabold tabular-nums ${
+        $active ? "text-[#050505]" : "text-[rgba(5,5,5,0.4)]"
+      } ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
-const SpeakerDot = styled.span<{ $color: string }>`
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: ${({ $color }) => $color};
-`;
+function Meter({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`relative h-[18px] border-2 border-[#050505] rounded-full bg-[#f3f3f1] overflow-hidden ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const SpeakerBarTrack = styled.div`
-  height: 10px;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #f3f3f1;
-  overflow: hidden;
-`;
+function MeterFill({
+  $level,
+  className = "",
+  style,
+  ...rest
+}: { $level: number } & DivProps) {
+  return (
+    <div
+      className={`h-full bg-[linear-gradient(90deg,#2f8f86_0%,#2f8f86_55%,#e0992b_78%,#d64545_100%)] [transition:width_70ms_linear] ${className}`}
+      style={{ width: `${clampPct($level)}%`, ...style }}
+      {...rest}
+    />
+  );
+}
 
-const SpeakerBarFill = styled.div<{ $level: number; $color: string }>`
-  height: 100%;
-  width: ${({ $level }) => Math.max(0, Math.min(100, $level))}%;
-  background: ${({ $color }) => $color};
-`;
+function MeterPeak({
+  $peak,
+  className = "",
+  style,
+  ...rest
+}: { $peak: number } & DivProps) {
+  return (
+    <div
+      className={`absolute top-[-2px] bottom-[-2px] w-[2px] bg-[#050505] ${className}`}
+      style={{ left: `${clampPct($peak)}%`, ...style }}
+      {...rest}
+    />
+  );
+}
 
-const SpeakerLoudValue = styled.span`
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: rgba(5, 5, 5, 0.6);
-  white-space: nowrap;
-`;
+function SpeakerLoudList({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div className={`flex flex-col gap-[0.55rem] mt-4 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
+}
 
-const CopilotPanel = styled.section`
-  background: #ffffff;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  padding: 1rem;
-`;
+function SpeakerLoudRow({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`grid grid-cols-[1.6rem_minmax(0,1fr)_auto] items-center gap-[0.55rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const CopilotHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 0.75rem;
-`;
+function SpeakerDot({
+  $color,
+  className = "",
+  style,
+  ...rest
+}: { $color: string } & SpanProps) {
+  return (
+    <span
+      className={`w-[1.1rem] h-[1.1rem] border-2 border-[#050505] rounded-full ${className}`}
+      style={{ background: $color, ...style }}
+      {...rest}
+    />
+  );
+}
 
-const CopilotTitle = styled.h3`
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 900;
-  margin: 0;
-`;
+function SpeakerBarTrack({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`h-[10px] border-[1.5px] border-[#050505] rounded-full bg-[#f3f3f1] overflow-hidden ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const CopilotRefreshButton = styled.button`
-  border: 2px solid #050505;
-  background: #ffffff;
-  color: #050505;
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+function SpeakerBarFill({
+  $level,
+  $color,
+  className = "",
+  style,
+  ...rest
+}: { $level: number; $color: string } & DivProps) {
+  return (
+    <div
+      className={`h-full ${className}`}
+      style={{ width: `${clampPct($level)}%`, background: $color, ...style }}
+      {...rest}
+    />
+  );
+}
 
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    box-shadow: none;
-  }
-`;
-
-const CopilotSummary = styled.p`
-  margin: 0 0 0.75rem 0;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.5;
-`;
-
-const CopilotGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CopilotColumnTitle = styled.div`
-  font-size: 0.75rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 800;
-  margin-bottom: 0.35rem;
-  text-transform: uppercase;
-`;
-
-const CopilotList = styled.ul`
-  margin: 0;
-  padding-left: 1rem;
-  color: rgba(5, 5, 5, 0.72);
-  line-height: 1.55;
-  font-size: 0.875rem;
-`;
+function SpeakerLoudValue({ className = "", children, ...rest }: SpanProps) {
+  return (
+    <span
+      className={`text-[0.72rem] font-bold tabular-nums text-[rgba(5,5,5,0.6)] whitespace-nowrap ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
 
 const RecordIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -528,176 +464,104 @@ const PulseIcon = () => (
   </svg>
 );
 
-const AudioPlayer = styled.audio`
-  width: 100%;
-  margin-top: 1rem;
-  border-radius: 10px;
-`;
-
-const PlayButton = styled.button<{ $isPlaying: boolean }>`
-  background: ${props => props.$isPlaying ? '#ef4444' : '#22c55e'};
-  color: white;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.75rem;
-  margin-left: 0.5rem;
-  box-shadow: 1.5px 1.5px 0 #050505;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: scale(1.1);
-  }
-`;
-
 // Audio Player Components
-const AudioPlayerContainer = styled.div<{ $isVisible: boolean }>`
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%) translateY(${props => props.$isVisible ? '0' : '100%'});
-  width: 100%;
-  max-width: 850px;
-  background: #ffffff;
-  color: #050505;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 3px solid #050505;
-  border-bottom: none;
-  box-shadow: 0 -6px 0 rgba(5, 5, 5, 0.9);
-  transition: transform 0.3s ease;
-  z-index: 100;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  box-sizing: border-box;
+function AudioPlayerContainer({
+  $isVisible,
+  className = "",
+  style,
+  children,
+  ...rest
+}: { $isVisible: boolean } & DivProps) {
+  return (
+    <div
+      className={`fixed bottom-0 left-1/2 w-full max-w-[850px] bg-white text-[#050505] p-4 flex items-center justify-between border-[3px] border-[#050505] border-b-0 shadow-[0_-6px_0_rgba(5,5,5,0.9)] [transition:transform_0.3s_ease] z-[100] rounded-tl-[16px] rounded-tr-[16px] box-border max-[768px]:p-[0.8rem] max-[768px]:flex-wrap ${className}`}
+      style={{
+        transform: `translateX(-50%) translateY(${$isVisible ? "0" : "100%"})`,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0.8rem;
-    flex-wrap: wrap;
-  }
-`;
+function AudioControls({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex items-center gap-[0.8rem] my-0 mx-[0.3rem] flex-nowrap max-[768px]:gap-2 max-[768px]:mx-[0.2rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const AudioControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin: 0 0.3rem;
-  flex-wrap: nowrap;
+function AudioButton({ className = "", children, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`bg-[#f47a4a] text-[#050505] border-2 border-[#050505] text-[1.5rem] cursor-pointer flex items-center justify-center [transition:transform_0.16s_ease,box-shadow_0.16s_ease] w-10 h-10 rounded-full shadow-[2px_2px_0_#050505] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_#050505] max-[768px]:text-[1.3rem] max-[768px]:w-9 max-[768px]:h-9 ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-    margin: 0 0.2rem;
-  }
-`;
+function AudioProgress({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`flex-1 h-[10px] bg-[#f3f3f1] border-2 border-[#050505] rounded-full overflow-hidden relative my-0 mx-4 cursor-pointer max-[768px]:mx-[0.8rem] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-const AudioButton = styled.button`
-  background: #f47a4a;
-  color: #050505;
-  border: 2px solid #050505;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  box-shadow: 2px 2px 0 #050505;
+function AudioProgressFill({
+  $progress,
+  className = "",
+  style,
+  ...rest
+}: { $progress: number } & DivProps) {
+  return (
+    <div
+      className={`absolute top-0 left-0 h-full bg-[#f47a4a] rounded-full ${className}`}
+      style={{ width: `${$progress}%`, ...style }}
+      {...rest}
+    />
+  );
+}
 
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
+function AudioTime({ className = "", children, ...rest }: DivProps) {
+  return (
+    <div
+      className={`text-[0.9rem] text-[#050505] font-extrabold tabular-nums my-0 mx-2 min-w-[50px] text-center max-[768px]:text-[0.8rem] max-[768px]:min-w-[44px] ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
 
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: 1px 1px 0 #050505;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 1.3rem;
-    width: 36px;
-    height: 36px;
-  }
-`;
-
-const AudioProgress = styled.div`
-  flex: 1;
-  height: 10px;
-  background: #f3f3f1;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  overflow: hidden;
-  position: relative;
-  margin: 0 1rem;
-  cursor: pointer;
-
-  @media (max-width: 768px) {
-    margin: 0 0.8rem;
-  }
-`;
-
-const AudioProgressFill = styled.div<{ $progress: number }>`
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: ${props => props.$progress}%;
-  background: #f47a4a;
-  border-radius: 999px;
-`;
-
-const AudioTime = styled.div`
-  font-size: 0.9rem;
-  color: #050505;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  margin: 0 0.5rem;
-  min-width: 50px;
-  text-align: center;
-
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    min-width: 44px;
-  }
-`;
-
-const SpeedButton = styled.button<{ $active: boolean }>`
-  background: ${props => props.$active ? '#f47a4a' : '#ffffff'};
-  color: #050505;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #050505;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-  &:hover {
-    background: #f47a4a;
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: 1px 1px 0 #050505;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-`;
+function SpeedButton({
+  $active,
+  className = "",
+  children,
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      className={`${
+        $active ? "bg-[#f47a4a]" : "bg-white"
+      } text-[#050505] border-2 border-[#050505] rounded-full py-[0.3rem] px-[0.6rem] text-[0.85rem] font-extrabold cursor-pointer shadow-[2px_2px_0_#050505] [transition:transform_0.16s_ease,box-shadow_0.16s_ease,background_0.16s_ease] hover:bg-[#f47a4a] hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#050505] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_#050505] max-[768px]:text-[0.75rem] max-[768px]:py-1 max-[768px]:px-2 ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function RecordTranscriptClient() {
   // Soniox-only

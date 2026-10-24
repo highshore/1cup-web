@@ -1,0 +1,185 @@
+/* Co-located styles for the blog detail page.
+   - blog-gradient-shine: shining sweep keyframes for the CTA button.
+   - .blog-detail-content: typography for the rendered post HTML
+     (dangerouslySetInnerHTML children cannot carry Tailwind classes). */
+
+/* Gradient shining sweep animation for CTA button */
+@keyframes blog-gradient-shine {
+  0% {
+    background-position: -100% center;
+  }
+  100% {
+    background-position: 100% center;
+  }
+}
+
+/* Enhanced typography styles */
+.blog-detail-content h1,
+.blog-detail-content h2,
+.blog-detail-content h3,
+.blog-detail-content h4,
+.blog-detail-content h5,
+.blog-detail-content h6 {
+  font-family: inherit;
+  color: #050505;
+  margin: 1.1rem 0 0.45rem 0;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.blog-detail-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+.blog-detail-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+.blog-detail-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.blog-detail-content h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.blog-detail-content h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.blog-detail-content h6 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* First paragraph after heading has no top margin */
+.blog-detail-content h1 + p,
+.blog-detail-content h2 + p,
+.blog-detail-content h3 + p,
+.blog-detail-content h4 + p,
+.blog-detail-content h5 + p,
+.blog-detail-content h6 + p {
+  margin-top: 0.5rem;
+}
+
+.blog-detail-content p {
+  margin-bottom: 0.9rem;
+  font-family: inherit;
+}
+
+/* Enhanced bold text styling */
+.blog-detail-content strong,
+.blog-detail-content b {
+  font-weight: 600;
+  color: #050505;
+}
+
+.blog-detail-content img {
+  max-width: 100%;
+  height: auto;
+  border: 2px solid #050505;
+  border-radius: 12px;
+  margin: 1.25rem 0;
+  display: block;
+}
+
+.blog-detail-content blockquote {
+  border-left: 4px solid #f47a4a;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: rgba(5, 5, 5, 0.68);
+  background: #fff8dc;
+  padding: 0.85rem 1.25rem;
+  border: 1.5px solid #050505;
+  border-radius: 12px;
+}
+
+.blog-detail-content ul,
+.blog-detail-content ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.9rem;
+}
+
+.blog-detail-content li {
+  margin-bottom: 0.35rem;
+}
+
+.blog-detail-content code {
+  background: #f3f3f1;
+  padding: 0.2rem 0.45rem;
+  border-radius: 8px;
+  font-family: "JetBrains Mono", "Monaco", "Consolas", monospace;
+  font-size: 0.9em;
+  border: 1px solid #050505;
+  color: #050505;
+}
+
+.blog-detail-content pre {
+  background: #f3f3f1;
+  padding: 1.25rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  border: 1.5px solid #050505;
+  font-family: "JetBrains Mono", "Monaco", "Consolas", monospace;
+}
+
+/* Better spacing for br tags */
+.blog-detail-content br {
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .blog-detail-content h1 {
+    font-size: 1.75rem;
+  }
+  .blog-detail-content h2 {
+    font-size: 1.5rem;
+  }
+  .blog-detail-content h3 {
+    font-size: 1.25rem;
+  }
+  .blog-detail-content h4 {
+    font-size: 1.125rem;
+  }
+  .blog-detail-content h5,
+  .blog-detail-content h6 {
+    font-size: 1rem;
+  }
+
+  .blog-detail-content h1,
+  .blog-detail-content h2,
+  .blog-detail-content h3,
+  .blog-detail-content h4,
+  .blog-detail-content h5,
+  .blog-detail-content h6 {
+    margin: 1.5rem 0 0.75rem 0;
+  }
+
+  .blog-detail-content p {
+    margin-bottom: 1.25rem;
+  }
+
+  .blog-detail-content img {
+    margin: 1rem 0;
+  }
+
+  .blog-detail-content blockquote {
+    padding: 0.75rem 1.25rem;
+    margin: 1.5rem 0;
+    border-radius: 20px;
+  }
+
+  .blog-detail-content ul,
+  .blog-detail-content ol {
+    margin-bottom: 1.25rem;
+  }
+
+  .blog-detail-content pre {
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+    border-radius: 20px;
+  }
+}

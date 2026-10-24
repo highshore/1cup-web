@@ -6,13 +6,13 @@ import { fetchHomeStats, HomeStats } from "../lib/features/home/services/stats_s
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "For Non-Korean Applicants | 1 Cup English",
+  title: "For Non-Korean Members | 1 Cup English",
   description:
-    "Application guide for long-term international inhabitants building a professional life and quality network in Korea.",
+    "A meetup for long-term international members who want to build a meaningful Korean network through thoughtful English conversations.",
   openGraph: {
-    title: "For Non-Korean Applicants | 1 Cup English",
+    title: "For Non-Korean Members | 1 Cup English",
     description:
-      "Build a quality network in Korea through meaningful conversations with Korean professionals and students.",
+      "Build a quality Korean network through interesting conversations with English-speaking Korean professionals and students.",
     url: "https://1cupenglish.com/non-korean-applicants",
     type: "website",
     images: [
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "For Non-Korean Applicants | 1 Cup English",
+    title: "For Non-Korean Members | 1 Cup English",
     description:
-      "Application guide for long-term international inhabitants building a quality network in Korea.",
+      "Build a meaningful Korean network through thoughtful English conversations in Seoul.",
     images: ["/images/url-share-thumbnail.jpg"],
   },
 };

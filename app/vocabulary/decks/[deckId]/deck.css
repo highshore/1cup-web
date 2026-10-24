@@ -1,0 +1,10 @@
+/* Keyframes for app/vocabulary/decks/[deckId] (styled-components migration). */
+
+@keyframes vocab-deck-skeleton-pulse {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}

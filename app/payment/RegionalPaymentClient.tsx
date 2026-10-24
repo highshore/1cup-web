@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import styled from "styled-components";
 
 import { useAuth } from "../lib/contexts/auth_context";
+import { useI18n } from "../lib/i18n/I18nProvider";
 import { invokeFunction, supabase } from "../lib/supabase/client";
 
 const PAYPLE_HOST = (process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr").replace(/\/+$/, "");
@@ -12,6 +12,22 @@ const PAYPLE_SDK_SRC = `${PAYPLE_HOST}/js/v1/payment.js`;
 
 type Region = "anam" | "yeouido";
 type ProductId = "membership_30d" | "participation_pack_5";
+
+const MEMBERSHIP_CARD_MEDIA: Record<
+  Region,
+  { src: string; credit: string; creditHref: string }
+> = {
+  anam: {
+    src: "/images/payment/anam-korea-university.webp",
+    credit: "Korea University · Chocolatte2 / CC BY-SA 4.0",
+    creditHref: "https://commons.wikimedia.org/wiki/File:KU_Main_Building.jpg",
+  },
+  yeouido: {
+    src: "/images/payment/yeouido.webp",
+    credit: "Yeouido · CC0 / Wikimedia Commons",
+    creditHref: "https://commons.wikimedia.org/wiki/File:Yeouido.png",
+  },
+};
 
 type PaymentProduct = {
   id: ProductId;
@@ -42,332 +58,37 @@ declare global {
   }
 }
 
-const Page = styled.main`
-  min-height: calc(100vh - 72px);
-  display: grid;
-  place-items: center;
-  background: transparent;
-  padding: 1rem;
-`;
+const formatWon = (value?: number) =>
+  value === undefined ? "—" : `₩${value.toLocaleString()}`;
 
-const Card = styled.section`
-  width: min(100%, 860px);
-  border: 3px solid #050505;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 6px 6px 0 #050505;
-  padding: 1.3rem;
-
-  @media (max-width: 720px) {
-    padding: 1rem;
-    box-shadow: 4px 4px 0 #050505;
-  }
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 2px solid #050505;
-  padding-bottom: 0.9rem;
-
-  @media (max-width: 620px) {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  font-size: clamp(1.35rem, 3vw, 1.8rem);
-  font-weight: 950;
-`;
-
-const Price = styled.div`
-  font-size: clamp(1.2rem, 3vw, 1.65rem);
-  font-weight: 950;
-  white-space: nowrap;
-`;
-
-const Muted = styled.span`
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.78rem;
-  font-weight: 700;
-`;
-
-const Step = styled.div`
-  margin-top: 1rem;
-`;
-
-const StepTitle = styled.div`
-  margin-bottom: 0.55rem;
-  font-size: 0.84rem;
-  font-weight: 950;
-`;
-
-const RegionGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-
-  @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const RegionButton = styled.button<{ $selected: boolean }>`
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${(p) => (p.$selected ? "#f47a4a" : "#fff")};
-  color: #050505;
-  padding: 0.9rem 0.75rem;
-  font: inherit;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: ${(p) => (p.$selected ? "2px 2px 0 #050505" : "none")};
-`;
-
-const ProductGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-
-  @media (max-width: 620px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ProductButton = styled.button<{ $selected: boolean; disabled?: boolean }>`
-  border: 2px solid #050505;
-  border-radius: 12px;
-  background: ${(p) => (p.$selected ? "#fff0e8" : "#fff")};
-  color: #050505;
-  padding: 0.9rem;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  box-shadow: ${(p) => (p.$selected ? "3px 3px 0 #f47a4a" : "none")};
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.52;
-    box-shadow: none;
-  }
-`;
-
-const ProductName = styled.div`
-  font-weight: 950;
-  font-size: 0.98rem;
-`;
-
-const ProductDescription = styled.div`
-  margin-top: 0.3rem;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.45;
-`;
-
-const PricePanel = styled.div`
-  margin-top: 1rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  padding: 0.95rem 1rem;
-  background: #fafafa;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-
-  @media (max-width: 560px) {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-`;
-
-const PriceLabel = styled.div`
-  font-size: 0.84rem;
-  font-weight: 950;
-`;
-
-const PriceValue = styled.div`
-  font-size: clamp(1.35rem, 4vw, 1.8rem);
-  font-weight: 950;
-  white-space: nowrap;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 1rem;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Section = styled.div`
-  min-width: 0;
-`;
-
-const Label = styled.div`
-  margin-bottom: 0.55rem;
-  font-size: 0.84rem;
-  font-weight: 900;
-`;
-
-const InputRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-width: 0;
-  border: 2px solid #050505;
-  border-radius: 12px;
-  padding: 0.75rem 0.8rem;
-  font: inherit;
-
-  &:focus {
-    outline: none;
-    box-shadow: 2px 2px 0 #f47a4a;
-  }
-`;
-
-const SmallButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #fff;
-  padding: 0 1rem;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-`;
-
-const Message = styled.p<{ $error?: boolean }>`
-  margin: 0.42rem 0 0;
-  color: ${(p) => (p.$error ? "#b42318" : "#16794f")};
-  font-size: 0.78rem;
-  font-weight: 750;
-`;
-
-const BenefitRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-  margin-top: 1rem;
-
-  @media (max-width: 620px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Benefit = styled.div`
-  border: 1.5px solid #050505;
-  border-radius: 10px;
-  padding: 0.62rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.35;
-`;
-
-const Footer = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: end;
-  margin-top: 1rem;
-  border-top: 2px solid #050505;
-  padding-top: 1rem;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const PolicyGroup = styled.div`
-  display: grid;
-  gap: 0.55rem;
-  color: rgba(5, 5, 5, 0.65);
-  font-size: 0.76rem;
-  line-height: 1.5;
-
-  p {
-    margin: 0;
-  }
-
-  strong {
-    color: #050505;
-    font-weight: 850;
-  }
-
-  a {
-    color: #f47a4a;
-    font-weight: 850;
-    text-decoration: underline;
-  }
-`;
-
-const PolicyTitle = styled.div`
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 950;
-`;
-
-const PayButton = styled.button`
-  min-width: 250px;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  background: #f47a4a;
-  padding: 0.9rem 1.35rem;
-  color: #050505;
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 4px 4px 0 #050505;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  @media (max-width: 620px) {
-    width: 100%;
-    min-width: 0;
-  }
-`;
-
-const StateCard = styled.div`
-  width: min(100%, 620px);
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #fff;
-  padding: 1.5rem;
-  text-align: center;
-  box-shadow: 5px 5px 0 #050505;
-`;
+const StatusMessage = ({
+  children,
+  error = false,
+}: {
+  children: React.ReactNode;
+  error?: boolean;
+}) => (
+  <p
+    className={`mt-2 text-[12px] font-medium leading-[1.55] ${
+      error ? "text-[#b42318]" : "text-[#16794f]"
+    }`}
+  >
+    {children}
+  </p>
+);
 
 export default function RegionalPaymentClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
+  const { t } = useI18n();
+  const copy = t.payment;
+
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<PaymentProduct[]>([]);
-  const [region, setRegion] = useState<Region | null>(null);
+  const [region, setRegion] = useState<Region>("anam");
   const [productId, setProductId] = useState<ProductId | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [alreadySubscribed, setAlreadySubscribed] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [appliedReferralCode, setAppliedReferralCode] = useState<string | null>(null);
@@ -376,18 +97,61 @@ export default function RegionalPaymentClient() {
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const referralInputRef = useRef<HTMLInputElement>(null);
 
+  const membershipProduct = useMemo(
+    () => products.find((p) => p.id === "membership_30d" && p.region === region),
+    [products, region],
+  );
+  const flexProduct = useMemo(
+    () => products.find((p) => p.id === "participation_pack_5" && p.region === region),
+    [products, region],
+  );
   const selectedProduct = useMemo(
-    () => region && productId
-      ? products.find((p) => p.id === productId && p.region === region)
-      : undefined,
+    () =>
+      productId
+        ? products.find((p) => p.id === productId && p.region === region)
+        : undefined,
     [products, productId, region],
   );
-  const totalAmount = quote?.validReferral ? quote.finalAmount : selectedProduct?.price;
+
+  const isPack = productId === "participation_pack_5";
+  const regionLabel = copy.locations[region];
+  const cardMedia = MEMBERSHIP_CARD_MEDIA[region];
+  const discount = quote?.validReferral ? quote.discountAmount : 0;
+  const totalAmount = quote?.validReferral
+    ? quote.finalAmount
+    : selectedProduct?.price;
 
   const resetReferralApplication = () => {
     setAppliedReferralCode(null);
     setQuote(null);
+    setMessage("");
+    setError("");
+  };
+
+  const selectRegion = (nextRegion: Region) => {
+    setRegion(nextRegion);
+    setProductId(null);
+    setCheckoutOpen(false);
+    setProcessing(false);
+    resetReferralApplication();
+  };
+
+  const openCheckout = (nextProduct: ProductId, focusReferral = false) => {
+    if (nextProduct === "membership_30d" && alreadySubscribed) return;
+    setProductId(nextProduct);
+    setCheckoutOpen(true);
+    setProcessing(false);
+    resetReferralApplication();
+    if (focusReferral) {
+      window.setTimeout(() => referralInputRef.current?.focus(), 80);
+    }
+  };
+
+  const closeCheckout = () => {
+    if (processing) return;
+    setCheckoutOpen(false);
     setMessage("");
     setError("");
   };
@@ -399,9 +163,13 @@ export default function RegionalPaymentClient() {
     const urlProduct = searchParams?.get("product");
 
     if (urlRef) setReferralCode(urlRef);
-    if (shouldResume) {
-      if (urlRegion === "anam" || urlRegion === "yeouido") setRegion(urlRegion);
-      if (urlProduct === "membership_30d" || urlProduct === "participation_pack_5") setProductId(urlProduct);
+    if (urlRegion === "anam" || urlRegion === "yeouido") setRegion(urlRegion);
+    if (
+      shouldResume &&
+      (urlProduct === "membership_30d" || urlProduct === "participation_pack_5")
+    ) {
+      setProductId(urlProduct);
+      setCheckoutOpen(true);
     }
 
     if (typeof window !== "undefined" && !urlRef) {
@@ -412,9 +180,16 @@ export default function RegionalPaymentClient() {
   }, [searchParams]);
 
   useEffect(() => {
+    // This runs once before the session is known and again once it is; the earlier,
+    // signed-out run must not finish last and overwrite the member's subscription state.
+    let cancelled = false;
     void (async () => {
       try {
-        const result = await invokeFunction<{ success: boolean; products: PaymentProduct[] }>("checkout", { action: "products" });
+        const result = await invokeFunction<{
+          success: boolean;
+          products: PaymentProduct[];
+        }>("checkout", { action: "products" });
+        if (cancelled) return;
         setProducts(result.products || []);
         if (currentUser) {
           const { data } = await supabase
@@ -422,35 +197,32 @@ export default function RegionalPaymentClient() {
             .select("has_active_subscription")
             .eq("uid", currentUser.uid)
             .maybeSingle();
+          if (cancelled) return;
           setAlreadySubscribed(Boolean(data?.has_active_subscription));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "상품 정보를 불러오지 못했습니다.");
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : copy.states.loadFailed,
+        );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [currentUser]);
+    return () => {
+      cancelled = true;
+    };
+  }, [copy.states.loadFailed, currentUser]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.PaypleCpayCallback = window.PaypleCpayCallback || [];
 
     const callback = (response: Record<string, any>) => {
-      const session = sessionStorage.getItem("paymentSessionInfo");
-      if (!session) {
-        window.location.href = "/payment/result";
-        return true;
-      }
-      const parsed = JSON.parse(session) as { userId: string };
-      void invokeFunction("checkout", {
-        action: "verify",
-        userId: parsed.userId,
-        paymentParams: response,
-      })
-        .then((result) => sessionStorage.setItem("paymentVerificationResult", JSON.stringify(result)))
-        .catch((err) => sessionStorage.setItem("paymentVerificationError", JSON.stringify({ message: err?.message || String(err) })))
-        .finally(() => { window.location.href = "/payment/result"; });
+      // Keep one verification path. The result page owns checkout verification,
+      // whether Payple returned through this browser callback or the server callback.
+      sessionStorage.setItem("paypleCallbackResponse", JSON.stringify(response));
+      window.location.href = "/payment/result";
       return true;
     };
 
@@ -464,8 +236,15 @@ export default function RegionalPaymentClient() {
       document.body.appendChild(script);
     };
 
+    // A jQuery tag already on the page (but jQuery not ready) is still loading; Payple
+    // is appended when it finishes, unless this component has gone by then.
+    const existing = window.$
+      ? null
+      : (document.querySelector(
+          'script[src="https://code.jquery.com/jquery-3.6.0.min.js"]',
+        ) as HTMLScriptElement | null);
+
     if (!window.$) {
-      const existing = document.querySelector('script[src="https://code.jquery.com/jquery-3.6.0.min.js"]') as HTMLScriptElement | null;
       if (existing) {
         existing.addEventListener("load", appendPayple, { once: true });
       } else {
@@ -480,13 +259,34 @@ export default function RegionalPaymentClient() {
     }
 
     return () => {
-      window.PaypleCpayCallback = (window.PaypleCpayCallback || []).filter((item) => item !== callback);
+      existing?.removeEventListener("load", appendPayple);
+      window.PaypleCpayCallback = (window.PaypleCpayCallback || []).filter(
+        (item) => item !== callback,
+      );
     };
   }, []);
 
+  useEffect(() => {
+    if (!checkoutOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !processing) {
+        setCheckoutOpen(false);
+        setMessage("");
+        setError("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [checkoutOpen, processing]);
+
   const applyReferral = async () => {
     const code = referralCode.trim();
-    if (!code || !selectedProduct || !region || !productId) return;
+    if (!code || !selectedProduct || !productId) return;
 
     if (!currentUser) {
       sessionStorage.setItem("referralCodePrefill", code);
@@ -511,35 +311,41 @@ export default function RegionalPaymentClient() {
       setQuote(result);
       if (result.validReferral) {
         setAppliedReferralCode(code);
-        setMessage(result.message);
       } else {
         setAppliedReferralCode(null);
-        setMessage(result.message);
       }
+      setMessage(result.message);
     } catch (err) {
       setAppliedReferralCode(null);
       setQuote(null);
-      setError(err instanceof Error ? err.message : "추천 코드를 확인하지 못했습니다.");
+      setError(
+        err instanceof Error ? err.message : copy.states.referralFailed,
+      );
     } finally {
       setCheckingReferral(false);
     }
   };
 
   const handlePayment = async () => {
-    if (!region || !productId) return;
+    if (!productId) return;
 
     if (!currentUser) {
-      localStorage.setItem("returnUrl", `/payment?resume=1&region=${region}&product=${productId}`);
-      if (referralCode.trim()) sessionStorage.setItem("referralCodePrefill", referralCode.trim());
+      localStorage.setItem(
+        "returnUrl",
+        `/payment?resume=1&region=${region}&product=${productId}`,
+      );
+      if (referralCode.trim()) {
+        sessionStorage.setItem("referralCodePrefill", referralCode.trim());
+      }
       router.push("/auth");
       return;
     }
     if (!selectedProduct || totalAmount === undefined) {
-      setError("상품 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
+      setError(copy.states.paymentInfoLoading);
       return;
     }
     if (productId === "membership_30d" && alreadySubscribed) {
-      setError("기존 30일 이용권의 결제금액은 그대로 유지됩니다. 새 30일 이용권을 중복 구매할 수 없습니다.");
+      setError(copy.states.duplicateMembership);
       return;
     }
 
@@ -555,207 +361,456 @@ export default function RegionalPaymentClient() {
         region,
         referralCode: appliedReferralCode || undefined,
       });
-      if (!paymentData?.success) throw new Error(paymentData?.message || "결제 정보를 불러오지 못했습니다.");
+      if (!paymentData?.success) {
+        throw new Error(paymentData?.message || copy.states.paymentInfoLoading);
+      }
+      if (paymentData?.recovered && paymentData?.result?.success) {
+        sessionStorage.setItem("paymentProcessed", "true");
+        sessionStorage.setItem("paymentResult", JSON.stringify(paymentData.result));
+        sessionStorage.removeItem("paymentSessionInfo");
+        router.push("/payment/result");
+        return;
+      }
       if (typeof window.PaypleCpayAuthCheck !== "function") {
-        throw new Error("결제 스크립트가 아직 로드되지 않았습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error(copy.states.paymentScriptLoading);
       }
 
-      sessionStorage.setItem("paymentSessionInfo", JSON.stringify({
-        userId: currentUser.uid,
-        productId,
-        region,
-        orderNumber: paymentData.orderNumber,
-        timestamp: Date.now(),
-      }));
+      sessionStorage.setItem(
+        "paymentSessionInfo",
+        JSON.stringify({
+          userId: currentUser.uid,
+          productId,
+          region,
+          orderNumber: paymentData.orderNumber,
+          timestamp: Date.now(),
+        }),
+      );
       window.PaypleCpayAuthCheck(paymentData.paymentParams);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "결제를 시작하지 못했습니다.");
+      setError(
+        err instanceof Error ? err.message : copy.states.paymentStartFailed,
+      );
       setProcessing(false);
     }
   };
 
   if (loading) {
-    return <Page><StateCard>결제 정보를 불러오는 중...</StateCard></Page>;
+    return (
+      <main className="min-h-[calc(100vh-74px)] bg-[#f5f5f5] px-5 py-16">
+        <div className="mx-auto w-full max-w-[560px] rounded-[20px] border border-[#dbdbd6] bg-white p-8 text-center text-[14px] font-semibold text-[#64748b]">
+          {copy.states.loading}
+        </div>
+      </main>
+    );
   }
 
-  const regionLabel = region === "yeouido" ? "여의도" : region === "anam" ? "안암" : "";
-  const isPack = productId === "participation_pack_5";
-  const discount = quote?.validReferral ? quote.discountAmount : 0;
+  const membershipPrice = membershipProduct?.price;
+  const flexPrice = flexProduct?.price;
 
   return (
-    <Page>
-      <Card>
-        <Header>
-          <div>
-            <Title>영어 한잔 이용권</Title>
-            <Muted>지역을 먼저 고른 뒤 이용 방식을 선택하면 가격과 상세 조건을 확인할 수 있습니다.</Muted>
+    <main className="min-h-[calc(100vh-74px)] bg-[#f5f5f5] py-[54px] text-[#050505] max-[768px]:py-8">
+      <div className="mx-auto flex w-full max-w-page flex-col gap-7 px-gutter max-[920px]:px-gutter-mobile">
+        <section className="flex min-h-[128px] items-end justify-between gap-8 max-[720px]:min-h-0 max-[720px]:flex-col max-[720px]:items-start">
+          <div className="flex flex-col gap-2">
+            <p className="m-0 text-[12px] font-bold text-[#f47a4a]">
+              {copy.eyebrow}
+            </p>
+            <h1 className="m-0 font-['Noto_Sans_KR',sans-serif] text-[42px] font-black leading-[1.24] tracking-[-0.035em] text-[#050505] max-[720px]:text-[34px] max-[480px]:text-[30px]">
+              {copy.title}
+            </h1>
+            <p className="m-0 text-[15px] leading-6 text-[#64748b]">
+              {copy.subtitle}
+            </p>
           </div>
-          {region && productId && totalAmount !== undefined ? (
-            <Price>
-              {totalAmount.toLocaleString()}원
-              {!isPack ? <Muted> / 30일</Muted> : null}
-            </Price>
-          ) : (
-            <Muted>가격은 이용권 선택 후 표시됩니다.</Muted>
-          )}
-        </Header>
 
-        <Step>
-          <StepTitle>1. 참여 지역을 선택하세요</StepTitle>
-          <RegionGrid>
-            <RegionButton
-              type="button"
-              $selected={region === "anam"}
-              onClick={() => {
-                setRegion("anam");
-                setProductId(null);
-                resetReferralApplication();
+        </section>
+
+        <section className="relative grid grid-cols-[430px_minmax(0,1fr)] gap-11 rounded-[28px] border-2 border-[#050505] bg-white px-[34px] pb-[34px] pt-[98px] shadow-[6px_6px_0_rgba(5,5,5,0.13)] max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[600px]:rounded-[22px] max-[600px]:px-5 max-[600px]:pb-5 max-[600px]:pt-[92px]">
+          <div className="absolute left-1/2 top-[20px] z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            <p className="m-0 text-[11px] font-bold text-[#64748b]">
+              {copy.locationLabel}
+            </p>
+            <div className="flex gap-1 rounded-[22px] bg-[#eaeae8] p-1">
+              {(["anam", "yeouido"] as Region[]).map((location) => (
+                <button
+                  key={location}
+                  type="button"
+                  onClick={() => selectRegion(location)}
+                  className={`h-9 min-w-[76px] rounded-[18px] px-4 text-[13px] font-bold transition-colors ${
+                    region === location
+                      ? "bg-[#050505] text-white"
+                      : "text-[#050505] hover:bg-white/70"
+                  }`}
+                  aria-pressed={region === location}
+                >
+                  {copy.locations[location]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col justify-center">
+            <div
+              className="relative h-[254px] w-full overflow-hidden rounded-[24px] border-2 border-[#050505] bg-[#f47a4a] shadow-[4px_4px_0_rgba(5,5,5,0.95)]"
+              style={{
+                backgroundImage: `linear-gradient(112deg, rgba(244,122,74,0.93) 0%, rgba(244,122,74,0.78) 42%, rgba(5,5,5,0.20) 100%), url("${cardMedia.src}")`,
+                backgroundPosition: region === "anam" ? "center 45%" : "center 55%",
+                backgroundSize: "cover",
               }}
             >
-              안암
-            </RegionButton>
-            <RegionButton
-              type="button"
-              $selected={region === "yeouido"}
-              onClick={() => {
-                setRegion("yeouido");
-                setProductId(null);
-                resetReferralApplication();
-              }}
-            >
-              여의도
-            </RegionButton>
-          </RegionGrid>
-        </Step>
-
-        {region ? (
-          <Step>
-            <StepTitle>2. 이용 방식을 선택하세요</StepTitle>
-            <ProductGrid>
-              <ProductButton
-                type="button"
-                $selected={productId === "membership_30d"}
-                disabled={alreadySubscribed}
-                onClick={() => {
-                  setProductId("membership_30d");
-                  resetReferralApplication();
-                }}
-              >
-                <ProductName>30일 멤버십 {alreadySubscribed ? "(이용 중)" : ""}</ProductName>
-                <ProductDescription>30일마다 자동 결제 · 선택한 지역의 밋업 신청 · 멤버십 전용 기능</ProductDescription>
-              </ProductButton>
-              <ProductButton
-                type="button"
-                $selected={productId === "participation_pack_5"}
-                onClick={() => {
-                  setProductId("participation_pack_5");
-                  resetReferralApplication();
-                }}
-              >
-                <ProductName>5회 참여권</ProductName>
-                <ProductDescription>한 번만 결제 · 자동 결제 없음 · 선택한 지역 밋업 신청 5회</ProductDescription>
-              </ProductButton>
-            </ProductGrid>
-            {alreadySubscribed ? (
-              <Message>현재 30일 멤버십을 이용 중입니다. 기존 결제금액은 그대로 유지되며 5회 참여권은 별도로 구매할 수 있습니다.</Message>
-            ) : null}
-          </Step>
-        ) : null}
-
-        {region && productId && selectedProduct && totalAmount !== undefined ? (
-          <>
-            <PricePanel>
-              <div>
-                <PriceLabel>3. {regionLabel} · {isPack ? "5회 참여권" : "30일 멤버십"}</PriceLabel>
-                <ProductDescription>
-                  {isPack
-                    ? `구매일부터 ${selectedProduct.validityDays ?? 180}일 동안 사용`
-                    : "30일마다 동일한 결제금액으로 자동 갱신"}
-                </ProductDescription>
-                {discount > 0 ? <Message>추천 할인 -{discount.toLocaleString()}원 적용</Message> : null}
+              <p className="absolute left-[22px] top-5 m-0 text-[15px] font-extrabold">
+                1 CUP ENGLISH
+              </p>
+              <div className="absolute right-[26px] top-4 flex h-7 min-w-[68px] items-center justify-center rounded-[14px] border border-[#050505] bg-white/90 px-3 text-[12px] font-bold">
+                {regionLabel}
               </div>
-              <PriceValue>{totalAmount.toLocaleString()}원</PriceValue>
-            </PricePanel>
-
-            <Grid>
-              <Section>
-                <Label>지인 추천 코드 <Muted>(선택 · 첫 유료 구매 1회)</Muted></Label>
-                <InputRow>
-                  <Input
-                    value={referralCode}
-                    placeholder="추천 코드를 입력하세요"
-                    onChange={(e) => {
-                      setReferralCode(e.target.value);
-                      resetReferralApplication();
-                    }}
-                  />
-                  <SmallButton type="button" onClick={applyReferral} disabled={!referralCode.trim() || checkingReferral}>
-                    {checkingReferral ? "확인 중" : "확인"}
-                  </SmallButton>
-                </InputRow>
-                {message ? <Message $error={Boolean(quote && !quote.validReferral)}>{message}</Message> : null}
-              </Section>
-
-              <Section>
-                <Label>선택한 이용권</Label>
-                <ProductDescription>
-                  {isPack
-                    ? `${regionLabel} 밋업 신청에 1회씩 사용되는 ${selectedProduct.credits ?? 5}회 참여권입니다. 멤버십 상태는 변경되지 않습니다.`
-                    : `${regionLabel} 밋업을 이용하는 30일 멤버십입니다. 구독이 유지되는 동안 같은 결제금액으로 자동 갱신됩니다.`}
-                </ProductDescription>
-              </Section>
-            </Grid>
-
-            <BenefitRow>
-              <Benefit>{isPack ? `✓ ${regionLabel} 밋업 신청 5회` : `✓ ${regionLabel} 밋업 신청`}</Benefit>
-              <Benefit>{isPack ? "✓ 자동 결제 없이 1회만 결제" : "✓ 멤버십 전용 영어 학습 기능"}</Benefit>
-              <Benefit>{isPack ? `✓ 구매일부터 ${selectedProduct.validityDays ?? 180}일간 사용` : "✓ 30일마다 자동 갱신 · 다음 결제 언제든 중단"}</Benefit>
-            </BenefitRow>
-
-            <Footer>
-              <PolicyGroup>
-                <PolicyTitle>결제 및 환불 정책</PolicyTitle>
-                {!isPack ? (
-                  <>
-                    <p><strong>자동 결제</strong> · 결제일부터 30일 단위로 자동 갱신됩니다. 다음 결제를 중단하기 전까지 현재 실제 결제금액으로 30일마다 자동 결제되며, 재결제 시 알림톡을 발송합니다.</p>
-                    <p><strong>이용 지역</strong> · 이번에 구매하는 신규 멤버십은 <strong>{regionLabel}</strong> 지역용입니다. 멤버십 기간 동안 선택한 지역의 밋업을 신청할 수 있습니다.</p>
-                    <p><strong>추천 할인</strong> · 추천 코드는 첫 번째 성공한 유료 구매에 한 번만 사용할 수 있으며 본인 추천 코드는 사용할 수 없습니다. 추천 할인이 적용된 30일 멤버십은 구독이 중단되지 않는 동안 할인된 실제 결제금액으로 갱신됩니다.</p>
-                    <p><strong>7일 환불</strong> · 최초 결제일로부터 <strong>7일 이내에는 전액 환불</strong>이 가능합니다. 7일 이후에는 실제 결제금액을 기준으로 사용하지 않은 남은 기간을 일할 계산해 환불합니다.</p>
-                    <p><strong>기존 회원 가격 보호</strong> · 이미 활성화된 기존 정기구독 회원의 현재 결제금액은 신규 지역별 가격으로 변경되지 않습니다. 기존 구독을 종료한 뒤 새로 가입하면 그 시점의 신규 가격이 적용됩니다.</p>
-                    <p><strong>구독 관리</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 이용 상태를 확인하고 다음 자동 결제를 중단할 수 있습니다. 자세한 조건은 <a href="/policy/refund">환불정책</a>을 확인해 주세요.</p>
-                  </>
-                ) : (
-                  <>
-                    <p><strong>자동 결제 없음</strong> · 5회 참여권은 한 번만 결제되며 30일 멤버십을 시작하거나 갱신하지 않습니다.</p>
-                    <p><strong>이용 지역 및 유효기간</strong> · 이번에 구매하는 참여권은 <strong>{regionLabel}</strong> 지역 밋업에만 사용할 수 있습니다. 총 {selectedProduct.credits ?? 5}회이며 구매일부터 {selectedProduct.validityDays ?? 180}일 동안 유효합니다. 밋업 참가 신청이 완료될 때 1회가 사용됩니다.</p>
-                    <p><strong>밋업 취소</strong> · 밋업 시작 <strong>24시간 전까지</strong> 참가를 취소하면 해당 신청에 사용한 참여권 1회가 반환됩니다. 24시간 이내 취소에는 참여권이 반환되지 않습니다.</p>
-                    <p><strong>남은 참여권 환불</strong> · 유효기간 내에는 <strong>실제 결제금액 × 남은 횟수 ÷ 5</strong>로 환불금액을 계산합니다. 추천 할인을 받았다면 할인 후 실제 결제금액을 기준으로 계산하며, 환불 완료 시 남은 참여권은 회수됩니다. 유효기간이 지난 참여권은 환불되지 않습니다.</p>
-                    <p><strong>추천 할인</strong> · 추천 코드는 첫 번째 성공한 유료 구매에 한 번만 사용할 수 있으며 본인 추천 코드는 사용할 수 없습니다.</p>
-                    <p><strong>참여권 관리 및 환불</strong> · <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile"); }}>프로필 페이지</a>에서 잔여 참여권을 확인할 수 있고, <a href="/payment/refunds">참여권 환불 페이지</a>에서 환불 가능한 구매 건과 예상 환불금액을 확인할 수 있습니다. 자세한 조건은 <a href="/policy/refund">환불정책</a>을 확인해 주세요.</p>
-                  </>
-                )}
-                {error ? <Message $error>{error}</Message> : null}
-              </PolicyGroup>
-
-              <PayButton
-                type="button"
-                onClick={handlePayment}
-                disabled={processing || (productId === "membership_30d" && alreadySubscribed)}
+              <p className="absolute left-[22px] top-[74px] m-0 text-[13px] font-bold">
+                {copy.membership.label}
+              </p>
+              <p className="absolute left-5 top-[94px] m-0 text-[36px] font-black leading-none tracking-[-0.02em]">
+                {copy.membership.name}
+              </p>
+              <div className="absolute bottom-[38px] left-5 flex items-end gap-2">
+                <p className="m-0 text-[34px] font-black leading-none tracking-[-0.035em]">
+                  {formatWon(membershipPrice)}
+                </p>
+                <p className="m-0 pb-[2px] text-[13px] font-bold">
+                  {copy.membership.period}
+                </p>
+              </div>
+              <p className="absolute bottom-[10px] left-[22px] m-0 text-[11px] font-medium">
+                {copy.membership.renewal}
+              </p>
+              <a
+                href={cardMedia.creditHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-[9px] right-[12px] max-w-[190px] truncate text-right text-[8px] font-medium text-white/75 [text-shadow:0_1px_3px_rgba(0,0,0,0.7)] hover:text-white hover:underline"
               >
-                {processing
-                  ? "결제 준비 중..."
-                  : productId === "membership_30d" && alreadySubscribed
-                    ? "멤버십 이용 중"
-                    : isPack
-                      ? `${totalAmount.toLocaleString()}원으로 참여권 구매`
-                      : `${totalAmount.toLocaleString()}원으로 시작하기`}
-              </PayButton>
-            </Footer>
-          </>
-        ) : null}
+                {cardMedia.credit}
+              </a>
+            </div>
+          </div>
 
-        {!region && error ? <Message $error>{error}</Message> : null}
-      </Card>
-    </Page>
+          <div className="flex min-w-0 flex-col gap-2">
+            <p className="m-0 text-[11px] font-bold text-[#f47a4a]">
+              {copy.membership.benefitsEyebrow}
+            </p>
+            <h2 className="m-0 font-['Noto_Sans_KR',sans-serif] text-[27px] font-black leading-9 tracking-[-0.025em] text-[#050505]">
+              {copy.membership.benefitsTitle}
+            </h2>
+            <p className="m-0 text-[13px] leading-5 text-[#64748b]">
+              {copy.membership.benefitsSubtitle}
+            </p>
+
+            <div className="h-2" />
+            {[
+              [copy.membership.benefitOneTitle, copy.membership.benefitOneBody],
+              [copy.membership.benefitTwoTitle, copy.membership.benefitTwoBody],
+              [copy.membership.benefitThreeTitle, copy.membership.benefitThreeBody],
+            ].map(([title, body]) => (
+              <div key={title} className="flex min-h-[66px] gap-3.5">
+                <div className="mt-px flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-[#f47a4a] bg-[#fff0e8] text-[13px] font-bold text-[#f47a4a]">
+                  ✓
+                </div>
+                <div className="min-w-0">
+                  <p className="m-0 text-[15px] font-bold leading-5 text-[#050505]">
+                    {title}
+                  </p>
+                  <p className="mt-[3px] text-[12px] leading-[18px] text-[#64748b]">
+                    {body}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            <div className="h-px w-full bg-[#e6e6e6]" />
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => openCheckout("membership_30d")}
+                disabled={!membershipProduct || alreadySubscribed}
+                className="flex h-[48px] w-full items-center justify-center rounded-[24px] bg-[#050505] px-5 text-[14px] font-bold text-white shadow-[3px_3px_0_#f47a4a] transition-transform hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+              >
+                {alreadySubscribed
+                  ? copy.membership.activeCta
+                  : `${copy.membership.cta}  →`}
+              </button>
+              <p className="m-0 text-center text-[11px] text-[#64748b]">
+                {copy.membership.renewalNote}
+              </p>
+            </div>
+            {alreadySubscribed ? (
+              <p className="m-0 text-[11px] leading-[1.55] text-[#64748b]">
+                {copy.membership.alreadyActive}
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="flex min-h-[142px] items-center justify-between gap-8 rounded-[22px] border-[1.5px] border-[#dadada] bg-white px-7 py-6 max-[720px]:flex-col max-[720px]:items-stretch max-[720px]:gap-5">
+          <div className="min-w-0">
+            <p className="m-0 text-[11px] font-bold text-[#f47a4a]">
+              {copy.flex.eyebrow}
+            </p>
+            <h2 className="mt-1 font-['Noto_Sans_KR',sans-serif] text-[21px] font-black leading-7 tracking-[-0.02em] text-[#050505]">
+              {copy.flex.title}
+            </h2>
+            <p className="mt-1 text-[12px] text-[#64748b]">
+              {copy.flex.description}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-6 max-[720px]:justify-between max-[480px]:flex-col max-[480px]:items-stretch max-[480px]:gap-3">
+            <div className="text-right max-[480px]:text-left">
+              <p className="m-0 text-[25px] font-black leading-none">
+                {formatWon(flexPrice)}
+              </p>
+              <p className="mt-1 text-[11px] text-[#64748b]">
+                {copy.flex.oneTime}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openCheckout("participation_pack_5")}
+              disabled={!flexProduct}
+              className="h-11 min-w-[172px] rounded-[22px] border-2 border-[#050505] bg-white px-5 text-[13px] font-bold text-[#050505] transition-colors hover:bg-[#f8f8f6] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {copy.flex.cta}
+            </button>
+          </div>
+        </section>
+
+        <div className="flex min-h-[30px] items-center justify-center gap-4 text-[11px] text-[#64748b] max-[480px]:gap-2 max-[480px]:text-[10px]">
+          <span>{copy.trust.secure}</span>
+          <span aria-hidden="true">•</span>
+          <a href="/policy/refund" className="hover:text-[#050505] hover:underline">
+            {copy.trust.refund}
+          </a>
+          <span aria-hidden="true">•</span>
+          <a href="/policy/terms" className="hover:text-[#050505] hover:underline">
+            {copy.trust.terms}
+          </a>
+        </div>
+
+        {!checkoutOpen && error ? <StatusMessage error>{error}</StatusMessage> : null}
+      </div>
+
+      {checkoutOpen && selectedProduct && productId && totalAmount !== undefined ? (
+        <div className="fixed inset-0 z-[120]" role="presentation">
+          <button
+            type="button"
+            aria-label={copy.checkout.close}
+            onClick={closeCheckout}
+            className="absolute inset-0 h-full w-full cursor-default bg-[#050505]/25"
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-checkout-title"
+            className="absolute right-0 top-0 flex h-full w-[520px] max-w-full flex-col overflow-y-auto bg-white px-9 py-9 shadow-[-10px_0_24px_rgba(0,0,0,0.16)] max-[600px]:w-full max-[600px]:px-5 max-[600px]:py-5"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h2
+                id="payment-checkout-title"
+                className="m-0 font-['Noto_Sans_KR',sans-serif] text-[28px] font-bold leading-[34px] tracking-[-0.025em] text-[#050505]"
+              >
+                {copy.checkout.title}
+              </h2>
+              <button
+                type="button"
+                onClick={closeCheckout}
+                disabled={processing}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-[30px] font-light leading-none text-[#64748b] hover:bg-[#f5f5f5] disabled:opacity-40"
+                aria-label={copy.checkout.close}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              className={`mt-[22px] flex flex-col gap-2.5 rounded-[20px] border-[1.5px] p-[22px] ${
+                isPack
+                  ? "border-[#e0e0e0] bg-[#f9f9f6]"
+                  : "border-[#f47a4a] bg-[#fff0e8]"
+              }`}
+            >
+              <p
+                className={`m-0 text-[12px] font-bold leading-4 ${
+                  isPack ? "text-[#64748b]" : "text-[#f47a4a]"
+                }`}
+              >
+                {isPack ? `${copy.flex.eyebrow} · ${regionLabel}` : `${copy.membership.label} · ${regionLabel}`}
+              </p>
+              <p className="m-0 text-[28px] font-bold leading-[34px] tracking-[-0.025em]">
+                {isPack ? copy.flex.name : copy.membership.name}
+              </p>
+              <div className="flex items-baseline gap-2">
+                <p className="m-0 text-[30px] font-bold leading-9">
+                  {formatWon(totalAmount)}
+                </p>
+                <p className="m-0 text-[12px] font-medium text-[#64748b]">
+                  {isPack ? copy.flex.oneTime : copy.membership.period}
+                </p>
+              </div>
+              <p className="m-0 text-[12px] leading-[18px] text-[#64748b]">
+                {isPack ? copy.checkout.flexSummary : copy.checkout.membershipSummary}
+              </p>
+            </div>
+
+            <section className="mt-[22px]">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="m-0 text-[15px] font-bold text-[#050505]">
+                  {copy.checkout.referralTitle}
+                </h3>
+                <span className="text-[12px] font-medium text-[#64748b]">
+                  {copy.checkout.optional}
+                </span>
+              </div>
+              <p className="mt-2 text-[12px] leading-[18px] text-[#64748b]">
+                {copy.checkout.referralHelp}
+              </p>
+              <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_92px] gap-2 max-[400px]:grid-cols-[minmax(0,1fr)_78px]">
+                <input
+                  ref={referralInputRef}
+                  value={referralCode}
+                  placeholder={copy.checkout.referralPlaceholder}
+                  onChange={(event) => {
+                    setReferralCode(event.target.value);
+                    resetReferralApplication();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && referralCode.trim() && !checkingReferral) {
+                      event.preventDefault();
+                      void applyReferral();
+                    }
+                  }}
+                  className="h-12 min-w-0 rounded-[12px] border-[1.5px] border-[#050505] bg-white px-4 text-[14px] text-[#050505] outline-none placeholder:text-[#94a3b8] focus:shadow-[0_0_0_2px_rgba(244,122,74,0.18)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void applyReferral()}
+                  disabled={!referralCode.trim() || checkingReferral}
+                  className="h-12 rounded-[12px] bg-[#f47a4a] text-[14px] font-bold text-[#050505] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {checkingReferral ? copy.checkout.checking : copy.checkout.apply}
+                </button>
+              </div>
+              {message ? (
+                <StatusMessage error={Boolean(quote && !quote.validReferral)}>
+                  {message}
+                </StatusMessage>
+              ) : (
+                <p className="mt-2 flex items-start gap-2 text-[11px] leading-4 text-[#16794f]">
+                  <span className="mt-[1px] inline-block h-4 w-4 shrink-0 rounded-full border border-[#16794f]" />
+                  <span>{copy.checkout.referralHint}</span>
+                </p>
+              )}
+            </section>
+
+            <div className="my-[22px] h-px w-full bg-[#e0e0e0]" />
+
+            <section>
+              <h3 className="m-0 text-[15px] font-bold leading-[22px]">
+                {copy.checkout.amountTitle}
+              </h3>
+              <div className="mt-0.5 flex items-center justify-between py-[5px] text-[14px] leading-5">
+                <span className="font-medium text-[#64748b]">
+                  {copy.checkout.productAmount}
+                </span>
+                <span className="font-bold text-[#050505]">
+                  {formatWon(selectedProduct.price)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-[5px] text-[14px] leading-5">
+                <span className="font-medium text-[#64748b]">
+                  {copy.checkout.referralDiscount}
+                </span>
+                <span className={`text-[13px] font-medium ${discount > 0 ? "text-[#16794f]" : "text-[#f47a4a]"}`}>
+                  {discount > 0
+                    ? `-${formatWon(discount)}`
+                    : copy.checkout.appliedAutomatically}
+                </span>
+              </div>
+              <div className="h-px w-full bg-[#e0e0e0]" />
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-[15px] font-bold text-[#64748b]">
+                  {copy.checkout.dueToday}
+                </span>
+                <span className="text-[26px] font-bold leading-8 text-[#050505]">
+                  {formatWon(totalAmount)}
+                </span>
+              </div>
+            </section>
+
+            <section className="mt-[18px] rounded-[14px] border border-[#dbdbd6] bg-[#fcfbf9] p-[15px]">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="m-0 text-[14px] font-bold leading-5 text-[#050505]">
+                  {copy.refund.title}
+                </h3>
+                <span className="shrink-0 text-[11px] font-bold text-[#64748b]">
+                  {copy.refund.check}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1 text-[11px] leading-[18px] text-[#64748b]">
+                <p className="m-0 text-[12px] font-medium text-[#050505]">
+                  {isPack ? copy.refund.flexPrimary : copy.refund.membershipPrimary}
+                </p>
+                <p className="m-0">
+                  {isPack ? copy.refund.flexSecondary : copy.refund.membershipSecondary}
+                </p>
+                <p className="m-0">
+                  {isPack ? copy.refund.flexTertiary : copy.refund.membershipTertiary}
+                </p>
+              </div>
+              <a
+                href="/policy/refund"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-[11px] font-bold text-[#f47a4a] underline underline-offset-2"
+              >
+                {copy.refund.details}
+              </a>
+            </section>
+
+            {error ? <StatusMessage error>{error}</StatusMessage> : null}
+
+            <button
+              type="button"
+              onClick={() => void handlePayment()}
+              disabled={processing || (productId === "membership_30d" && alreadySubscribed)}
+              className="mt-2 flex min-h-[54px] w-full items-center justify-center rounded-[27px] bg-[#050505] px-5 text-[15px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {processing
+                ? copy.states.paymentPreparing
+                : `${formatWon(totalAmount)} ${copy.checkout.pay}`}
+            </button>
+
+            <p className="mt-4 text-[11px] font-medium leading-[17px] text-[#64748b]">
+              {copy.checkout.payplePrefix}
+              <a
+                href="https://www.payple.kr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-[#f47a4a] underline underline-offset-2"
+              >
+                Payple
+              </a>
+              {copy.checkout.paypleSuffix}
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[#64748b]">
+              <span className="text-[8px] text-[#16794f]">●</span>
+              <span>{copy.trust.secure}</span>
+              <span>·</span>
+              <a href="/policy/refund" className="hover:underline">
+                {copy.trust.refund}
+              </a>
+              <span>·</span>
+              <a href="/policy/terms" className="hover:underline">
+                {copy.trust.terms}
+              </a>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </main>
   );
 }

@@ -1,159 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeftIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import styled from "styled-components";
+import { ArrowLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
-import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   fetchMutualProfileFriends,
   type MutualProfileFriend,
 } from "../../lib/features/profile/services/profile_connections";
+import type { ProfileShellData } from "../ProfileShell";
 
-const Page = styled.main`
-  width: min(100%, 860px);
-  margin: 0 auto;
-  padding: 0 1.25rem 4rem;
+const CONNECTED_DATE_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", { month: "short", year: "numeric" }),
+  en: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }),
+};
 
-  @media (max-width: 640px) {
-    padding: 0 1rem 3rem;
-  }
-`;
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "M"
+  );
+}
 
-const Header = styled.header`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
+function interpolate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
 
-const BackButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 0;
-  background: transparent;
-  padding: 0.2rem 0;
-  color: #050505;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 850;
-  cursor: pointer;
-
-  svg {
-    width: 17px;
-    height: 17px;
-  }
-`;
-
-const Heading = styled.h1`
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0.8rem 0 0.35rem;
-  color: #050505;
-  font-size: clamp(1.65rem, 5vw, 2rem);
-  font-weight: 900;
-
-  svg {
-    width: 28px;
-    height: 28px;
-    color: #f47a4a;
-  }
-`;
-
-const Subtitle = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.94rem;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const List = styled.div`
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 1.35rem;
-`;
-
-const FriendCard = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 0.85rem;
-  color: #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  text-decoration: none;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-
-  &:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
-const Avatar = styled.img`
-  width: 52px;
-  height: 52px;
-  flex: 0 0 auto;
-  border: 1.5px solid #050505;
-  border-radius: 50%;
-  object-fit: cover;
-`;
-
-const FriendName = styled.div`
-  font-size: 1rem;
-  font-weight: 900;
-`;
-
-const FriendMeta = styled.div`
-  margin-top: 0.18rem;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.78rem;
-  font-weight: 700;
-`;
-
-const State = styled.div`
-  margin-top: 1.35rem;
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #fff8dc;
-  padding: 1.3rem;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.92rem;
-  font-weight: 700;
-  line-height: 1.55;
-`;
-
-export default function ConnectionsClient() {
-  const router = useRouter();
-  const { currentUser, isLoading: authLoading } = useAuth();
+export function ConnectionsPanel({
+  shell,
+  mobile = false,
+  onBack,
+}: {
+  shell: ProfileShellData;
+  mobile?: boolean;
+  onBack?: () => void;
+}) {
   const { locale, t } = useI18n();
   const [friends, setFriends] = useState<MutualProfileFriend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace(`/auth?redirect=${encodeURIComponent("/profile/connections")}`);
-      return;
-    }
+  const currentUid = shell.currentUser?.uid;
 
+  useEffect(() => {
+    if (!currentUid) return;
     let active = true;
+    setLoading(true);
+    setError("");
     void fetchMutualProfileFriends()
       .then((items) => {
         if (active) setFriends(items);
       })
-      .catch(() => {
-        if (active) setError(t.profile.connectionsLoadFailed);
+      .catch((loadError) => {
+        console.error("Unable to load connections:", loadError);
+        if (active) setError(t.profile.connectionLoadFailed);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -162,58 +70,77 @@ export default function ConnectionsClient() {
     return () => {
       active = false;
     };
-  }, [authLoading, currentUser, router, t.profile.connectionsLoadFailed]);
-
-  const networkTitle = locale === "ko" ? "내 네트워크" : t.profile.connectionsTitle;
-  const networkSubtitle = locale === "ko"
-    ? "서로 좋아요를 누른 멤버가 내 네트워크에 표시됩니다."
-    : t.profile.connectionsSubtitle;
+  }, [locale, currentUid, t.profile.connectionLoadFailed]);
 
   return (
-    <Page>
-      <Header>
-        <div>
-          <BackButton type="button" onClick={() => router.push("/profile")}>
-            <ArrowLeftIcon />
-            {t.profile.aboutYou}
-          </BackButton>
-          <Heading>
-            <UserGroupIcon />
-            {networkTitle}
-          </Heading>
-          <Subtitle>{networkSubtitle}</Subtitle>
+    <div className={mobile ? "px-4 pb-10 pt-5 sm:px-6" : "p-8"}>
+      <div className="flex items-start gap-3">
+        {mobile && onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-[-2px] inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border-2 border-[#050505] bg-white"
+            aria-label={t.profile.backToProfile}
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
+        )}
+        <div className="min-w-0">
+          <h1 className="m-0">{t.profile.connections}</h1>
+          <p className="mt-1.5 text-[13px] text-[#64748b]">{t.profile.connectionsHelp}</p>
         </div>
-      </Header>
+      </div>
 
       {loading ? (
-        <State>{t.profile.loading}</State>
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-5 text-[13px] font-medium text-[#64748b]">
+          {t.profile.loadingConnections}
+        </div>
       ) : error ? (
-        <State role="alert">{error}</State>
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[#f2c7cc] bg-[#fff1f2] p-5 text-[13px] font-semibold text-[#b42331]">
+          {error}
+        </div>
       ) : friends.length === 0 ? (
-        <State>{t.profile.connectionsEmpty}</State>
+        <div className="mt-6 rounded-[16px] border-[1.5px] border-[rgba(5,5,5,0.12)] bg-white p-5 text-[13px] text-[#64748b]">
+          {t.profile.noConnections}
+        </div>
       ) : (
-        <List>
-          {friends.map((friend) => (
-            <FriendCard key={friend.uid} href={`/profile/${encodeURIComponent(friend.uid)}`}>
-              <Avatar
-                src={friend.photoURL || "/images/default_user.jpg"}
-                alt=""
-              />
-              <div>
-                <FriendName>{friend.displayName}</FriendName>
-                <FriendMeta>
-                  {friend.connectedAt
-                    ? new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-                        month: "short",
-                        year: "numeric",
-                      }).format(new Date(friend.connectedAt))
-                    : ""}
-                </FriendMeta>
-              </div>
-            </FriendCard>
-          ))}
-        </List>
+        <div className="mt-6 grid gap-4">
+          {friends.map((friend) => {
+            const connectedDate = friend.connectedAt
+              ? CONNECTED_DATE_FORMAT[locale].format(new Date(friend.connectedAt))
+              : null;
+            return (
+              <Link
+                key={friend.uid}
+                href={`/profile/${encodeURIComponent(friend.uid)}`}
+                className="flex min-h-[88px] items-center gap-4 rounded-[16px] border-2 border-[#050505] bg-white px-4 py-3 text-[#050505] no-underline shadow-[3px_3px_0_rgba(5,5,5,0.92)] transition-[transform,box-shadow,background-color] hover:-translate-x-px hover:-translate-y-px hover:bg-[#fffaf6] hover:shadow-[4px_4px_0_#f47a4a] hover:no-underline"
+              >
+                <div className="flex h-[60px] w-[60px] flex-none items-center justify-center overflow-hidden rounded-full border-2 border-[#f47a4a] bg-[#fff8dc] text-[18px] font-extrabold text-[#f47a4a]">
+                  {friend.photoURL ? (
+                    <img src={friend.photoURL} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials(friend.displayName)
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px] font-extrabold text-[#050505]">{friend.displayName}</div>
+                  <div className="mt-1 text-[13px] text-[#64748b]">
+                    {connectedDate
+                      ? interpolate(t.profile.connectedMonth, { date: connectedDate })
+                      : t.profile.memberFallback}
+                  </div>
+                </div>
+                <span className="hidden whitespace-nowrap text-[13px] font-extrabold text-[#e0602e] sm:inline">
+                  {t.profile.viewProfile}
+                </span>
+                <ChevronRightIcon className="h-[18px] w-[18px] flex-none text-[#f47a4a]" />
+              </Link>
+            );
+          })}
+        </div>
       )}
-    </Page>
+    </div>
   );
 }
+
+export default ConnectionsPanel;

@@ -1,6 +1,5 @@
 "use client";
 
-import styled from "styled-components";
 import {
   AcademicCapIcon,
   BriefcaseIcon,
@@ -9,7 +8,6 @@ import {
   TrophyIcon,
 } from "@heroicons/react/24/outline";
 import { useI18n } from "../../../i18n/I18nProvider";
-import { newsletterColors as c } from "../constants";
 import {
   AccentLines,
   Chip,
@@ -18,6 +16,7 @@ import {
   Section,
   SectionHeader,
   SectionTitle,
+  Tone,
 } from "./NewsletterUI";
 
 const icons = {
@@ -28,107 +27,13 @@ const icons = {
   company: BuildingOffice2Icon,
 } as const;
 
-const Layout = styled.div`
-  display: grid;
-  gap: 2rem;
-
-  @media (min-width: 900px) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: center;
-    gap: 3rem;
-  }
-`;
-
-const Photos = styled.figure`
-  position: relative;
-  margin: 0;
-  padding-bottom: 2.5rem;
-`;
-
-const PhotoMain = styled.img`
-  display: block;
-  width: 88%;
-  aspect-ratio: 4 / 3;
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  object-fit: cover;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-`;
-
-const PhotoSecond = styled.img`
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 48%;
-  aspect-ratio: 1;
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  object-fit: cover;
-  box-shadow: 5px 5px 0 ${c.orange};
-`;
-
-const PhotoCaption = styled.figcaption`
-  position: absolute;
-  bottom: 0.4rem;
-  left: 0;
-  max-width: 48%;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.45;
-  color: ${c.muted};
-`;
-
-const List = styled.ul`
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 2px solid ${c.ink};
-`;
-
-const Item = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  padding: 0.95rem 0.25rem;
-  border-bottom: 1px solid ${c.line};
-
-  svg {
-    flex-shrink: 0;
-    width: 24px;
-    height: 24px;
-    margin-top: 0.1rem;
-    color: ${c.ink};
-  }
-`;
-
-const ItemText = styled.span`
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-`;
-
-const ItemTitle = styled.span`
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1.4;
-  color: ${c.ink};
-`;
-
-const ItemDetail = styled.span`
-  font-size: 0.85rem;
-  font-weight: 650;
-  color: ${c.muted};
-`;
-
 // Founder credentials without names, schools or employers; see app/lib/i18n/newsletter.ts.
-export default function AuthorSection({ background }: { background?: string }) {
+export default function AuthorSection({ tone }: { tone?: Tone }) {
   const { t } = useI18n();
   const copy = t.newsletter.author;
 
   return (
-    <Section $background={background}>
+    <Section tone={tone}>
       <Container>
         <SectionHeader>
           <Chip>{copy.eyebrow}</Chip>
@@ -137,27 +42,44 @@ export default function AuthorSection({ background }: { background?: string }) {
           </SectionTitle>
           <Description>{copy.description}</Description>
         </SectionHeader>
-        <Layout>
-          <Photos>
-            <PhotoMain src="/assets/homepage/gallery2.webp" alt={copy.photoAlt} loading="lazy" />
-            <PhotoSecond src="/assets/homepage/gallery1.webp" alt="" loading="lazy" />
-            <PhotoCaption>{copy.photoCaption}</PhotoCaption>
-          </Photos>
-          <List>
+        <div className="grid gap-8 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[900px]:items-center min-[900px]:gap-12">
+          <figure className="relative m-0 pb-10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/homepage/gallery2.webp"
+              alt={copy.photoAlt}
+              loading="lazy"
+              className="block aspect-[4/3] w-[88%] rounded-[14px] border-2 border-[#050505] object-cover shadow-[5px_5px_0_rgba(5,5,5,0.88)]"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/homepage/gallery1.webp"
+              alt=""
+              loading="lazy"
+              className="absolute right-0 bottom-0 aspect-square w-[48%] rounded-[14px] border-2 border-[#050505] object-cover shadow-[5px_5px_0_#f47a4a]"
+            />
+            <figcaption className="absolute bottom-[0.4rem] left-0 max-w-[48%] text-[0.8rem] font-bold leading-[1.45] text-[#64748b]">
+              {copy.photoCaption}
+            </figcaption>
+          </figure>
+          <ul className="m-0 flex list-none flex-col border-t-2 border-[#050505] p-0">
             {copy.credentials.map((credential) => {
               const Icon = icons[credential.icon as keyof typeof icons];
               return (
-                <Item key={credential.title}>
-                  <Icon aria-hidden />
-                  <ItemText>
-                    <ItemTitle>{credential.title}</ItemTitle>
-                    <ItemDetail>{credential.detail}</ItemDetail>
-                  </ItemText>
-                </Item>
+                <li
+                  key={credential.title}
+                  className="flex items-start gap-[0.85rem] border-b border-[#e5e7eb] px-1 py-[0.95rem]"
+                >
+                  <Icon aria-hidden className="mt-[0.1rem] size-6 shrink-0 text-[#050505]" />
+                  <span className="flex flex-col gap-[0.1rem]">
+                    <span className="text-base font-black leading-[1.4] text-[#050505]">{credential.title}</span>
+                    <span className="text-[0.85rem] font-[650] text-[#64748b]">{credential.detail}</span>
+                  </span>
+                </li>
               );
             })}
-          </List>
-        </Layout>
+          </ul>
+        </div>
       </Container>
     </Section>
   );

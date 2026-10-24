@@ -1,63 +1,27 @@
-import styled from "styled-components";
-import { colors } from "../constants/colors";
-
-const FooterContainer = styled.footer`
-  background-color: #ffffff;
-  padding: 2rem 1.5rem;
-  border-top: 1px solid ${colors.primaryPale};
-  font-size: 0.8rem;
-  color: ${colors.text.medium};
-  text-align: center;
-
-  @media (max-width: 768px) {
-    padding: 1.5rem 1rem;
-    font-size: 0.75rem;
-  }
-`;
-
-const FooterContent = styled.div`
-  max-width: 850px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-
-  > div {
-    line-height: 1.4;
-
-    @media (max-width: 768px) {
-      line-height: 1.5;
-    }
-  }
-`;
-
-const FooterLink = styled.a`
-  color: ${colors.text.medium};
-  text-decoration: none;
-
-  &:hover {
-    color: ${colors.primary};
-    text-decoration: underline;
-  }
-`;
-
-const FooterDivider = styled.span`
-  color: ${colors.text.light};
-  margin: 0 0.5rem;
-`;
-
 export default function Footer() {
+  const linkClass =
+    "text-[#4A2F23] no-underline hover:text-[#2C1810] hover:underline";
+  const divider = <span className="mx-2 text-[#8B6B4F]">|</span>;
+
   return (
-    <FooterContainer>
-      <FooterContent>
+    <footer className="border-t border-[#F5EBE6] bg-white px-6 py-8 text-center text-[0.8rem] text-[#4A2F23] max-[768px]:px-4 max-[768px]:py-6 max-[768px]:text-[0.75rem]">
+      <div className="mx-auto flex max-w-[850px] flex-col gap-2 [&>div]:leading-[1.4] max-[768px]:[&>div]:leading-[1.5]">
         <div>
-          <FooterLink href="/vocabulary">내 단어장</FooterLink>
-          <FooterDivider>|</FooterDivider>
-          <FooterLink href="/policy/privacy">개인정보처리방침</FooterLink>
-          <FooterDivider>|</FooterDivider>
-          <FooterLink href="/policy/terms">이용약관</FooterLink>
-          <FooterDivider>|</FooterDivider>
-          <FooterLink href="/policy/refund">환불 및 멤버십 해지</FooterLink>
+          <a href="/vocabulary" className={linkClass}>
+            내 단어장
+          </a>
+          {divider}
+          <a href="/policy/privacy" className={linkClass}>
+            개인정보처리방침
+          </a>
+          {divider}
+          <a href="/policy/terms" className={linkClass}>
+            이용약관
+          </a>
+          {divider}
+          <a href="/policy/refund" className={linkClass}>
+            환불 및 멤버십 해지
+          </a>
         </div>
         <div>
           네이티브피티 | 549-04-02156 | 대표자 김수겸 | 이메일
@@ -67,7 +31,7 @@ export default function Footer() {
         <div>서울특별시 성북구 안암로9가길 9-8, 303호</div>
         <div>'영어 한잔'은 '네이티브피티'의 영어교육 서비스 브랜드입니다.</div>
         <div>ⓒ2026 All Rights Reserved.</div>
-      </FooterContent>
-    </FooterContainer>
+      </div>
+    </footer>
   );
 }

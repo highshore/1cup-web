@@ -1,0 +1,3390 @@
+/* Exam Center landing */
+.exam-center-page {
+  width: 100%;
+  background: #f5f3ed;
+  color: #050505;
+}
+.exam-center-wrap {
+  width: min(960px, calc(100% - 48px));
+  margin: 0 auto;
+}
+.exam-center-hero {
+  background: #f47a4a;
+  border-bottom: 2px solid #050505;
+}
+.exam-center-hero .exam-center-wrap {
+  min-height: 590px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 48px;
+  align-items: center;
+}
+.exam-center-copy h1,
+.exam-center-tests h2,
+.exam-card h3 {
+  font-family: inherit;
+  color: #050505;
+}
+.exam-center-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+.exam-center-kicker.orange { background: #f47a4a; }
+.exam-center-copy h1 {
+  max-width: 570px;
+  margin: 18px 0 0;
+  font-size: clamp(42px, 6vw, 62px);
+  font-weight: 900;
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+.exam-center-copy p {
+  max-width: 570px;
+  margin: 22px 0 0;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.58;
+}
+.exam-center-copy small {
+  display: block;
+  margin-top: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: .7;
+}
+.exam-center-cta {
+  margin-top: 28px;
+  min-height: 52px;
+  border: 2px solid #050505;
+  border-radius: 999px;
+  padding: 0 28px;
+  background: #050505;
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 #fff0e8;
+}
+.exam-center-preview {
+  border: 2px solid #050505;
+  border-radius: 26px;
+  background: white;
+  padding: 22px;
+  box-shadow: 7px 7px 0 rgba(5,5,5,.14);
+}
+.exam-center-preview > span {
+  font-size: 10px;
+  font-weight: 900;
+  color: #f47a4a;
+}
+.exam-center-preview-screen {
+  margin-top: 16px;
+  min-height: 360px;
+  border: 1px solid #d8d8d8;
+  background: #f8f8f8;
+  position: relative;
+  padding: 44px 24px 24px;
+}
+.exam-center-preview-top {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 30px;
+  border-bottom: 1px solid #d2d2d2;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.exam-center-preview-top em {
+  margin-left: 18px;
+  font-style: normal;
+  font-weight: 400;
+}
+.exam-center-preview-screen > strong {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+  font-size: 16px;
+}
+.exam-center-preview-media {
+  margin: 42px auto 0;
+  width: 210px;
+  height: 145px;
+  border: 1.5px dashed #a7a7a7;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: #64748b;
+}
+.exam-center-preview-time {
+  margin-top: 26px;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.exam-center-preview-time b {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+.exam-center-tests { background: white; }
+.exam-center-tests-inner {
+  min-height: 600px;
+  padding: 64px 0 96px;
+}
+.exam-center-tests h2 {
+  margin: 18px 0 0;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+}
+.exam-center-tests > .exam-center-wrap > p,
+.exam-center-tests-inner > p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+.exam-center-success {
+  margin-top: 24px;
+  border: 2px solid #050505;
+  border-radius: 14px;
+  background: #e8eddb;
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.exam-card {
+  width: min(540px, 100%);
+  min-height: 220px;
+  margin-top: 36px;
+  position: relative;
+  border: 2px solid #050505;
+  border-radius: 22px;
+  background: #050505;
+  color: white;
+  padding: 22px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 rgba(5,5,5,.14);
+}
+.exam-card-number {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  height: 30px;
+  border: 1.5px solid white;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+}
+.exam-card-badge {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  border-radius: 999px;
+  background: #f47a4a;
+  color: #050505;
+  padding: 7px 12px;
+  font-size: 9px;
+  font-weight: 900;
+}
+.exam-card h3 {
+  margin: 24px 0 0;
+  color: white;
+  font-size: 25px;
+  font-weight: 900;
+}
+.exam-card > p {
+  margin: 5px 0 0;
+  color: #d1d5db;
+  font-size: 13px;
+}
+.exam-card-meta {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 28px;
+  color: #aeb5be;
+  font-size: 11px;
+}
+.exam-card > strong {
+  display: block;
+  margin-top: 14px;
+  color: #f47a4a;
+  font-size: 12px;
+}
+
+/* TOEFL UI viewport */
+.toefl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  overflow: hidden;
+  background: #f8f8f8;
+  color: #1b1e22;
+}
+.toefl-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1024px;
+  height: 720px;
+  transform-origin: center center;
+  background: #f8f8f8;
+  overflow: hidden;
+  font-family: "Open Sans", Arial, sans-serif;
+}
+.toefl-screen {
+  position: relative;
+  width: 1024px;
+  height: 720px;
+  background: #f8f8f8;
+  overflow: hidden;
+}
+.toefl-topbar {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32px;
+  border-bottom: 1px solid #d2d2d2;
+  background: #f8f8f8;
+  z-index: 10;
+  font-size: 13px;
+}
+.toefl-topbar-section,
+.toefl-topbar-progress,
+.toefl-topbar-time,
+.toefl-topbar-volume,
+.toefl-topbar-action {
+  position: absolute;
+  top: 5px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.toefl-topbar-section {
+  left: 32px;
+  width: 100px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.toefl-topbar-progress { left: 126px; width: 230px; }
+.toefl-topbar-time { right: 150px; width: 70px; text-align: center; }
+.toefl-topbar-volume,
+.toefl-topbar-action {
+  border: 0;
+  background: transparent;
+  color: #387880;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.toefl-topbar-volume {
+  right: 148px;
+  width: 70px;
+  text-align: center;
+}
+.toefl-topbar-time + .toefl-topbar-volume { right: 226px; }
+.toefl-topbar-action {
+  right: 29px;
+  width: 88px;
+  text-align: right;
+  font-weight: 600;
+}
+.toefl-volume-popover {
+  position: absolute;
+  z-index: 20;
+  right: 68px;
+  top: 34px;
+  width: 225px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background: white;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+.toefl-volume-popover strong {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.toefl-volume-popover input,
+.toefl-inline-slider input {
+  width: 100%;
+  accent-color: #387880;
+}
+.toefl-hidden-back {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 48px;
+  height: 48px;
+}
+.toefl-primary {
+  min-width: 146px;
+  height: 42px;
+  border: 0;
+  border-radius: 3px;
+  background: #387880;
+  color: white;
+  padding: 0 22px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toefl-copy-screen,
+.toefl-section-intro,
+.toefl-writing-instructions,
+.toefl-speaking-instructions,
+.toefl-end-screen {
+  position: absolute;
+  left: 211px;
+  top: 56px;
+  width: 620px;
+}
+.toefl-copy-screen h1,
+.toefl-section-intro h1,
+.toefl-writing-instructions h1,
+.toefl-speaking-instructions h1,
+.toefl-end-screen h1 {
+  margin: 0;
+  font-family: inherit;
+  color: #1b1e22;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-copy-paragraphs { margin-top: 34px; }
+.toefl-copy-screen p,
+.toefl-section-intro > p,
+.toefl-writing-instructions > p,
+.toefl-speaking-instructions > p,
+.toefl-end-screen > p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.58;
+}
+.toefl-copy-screen .toefl-primary,
+.toefl-writing-instructions .toefl-primary,
+.toefl-speaking-instructions .toefl-primary,
+.toefl-end-screen .toefl-primary {
+  margin-top: 32px;
+}
+.toefl-inline-slider {
+  width: 360px;
+  margin-top: 30px;
+  border: 1px solid #d2d2d2;
+  border-radius: 3px;
+  background: white;
+  padding: 14px 18px;
+}
+.toefl-inline-slider span {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.toefl-example-label {
+  margin: 22px 0 0;
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.toefl-level-meter {
+  position: relative;
+  width: 650px;
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  font-size: 13px;
+  text-align: center;
+}
+.toefl-level-meter > div {
+  grid-column: 1 / -1;
+  height: 20px;
+  margin-top: 10px;
+  border: 1px solid #cfcfcf;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+.toefl-level-meter i {
+  display: block;
+  width: 42%;
+  height: 100%;
+  margin-left: 30%;
+  border-radius: 10px;
+  background: #64dcbc;
+}
+.toefl-mic-record {
+  position: absolute;
+  left: 302px;
+  top: 72px;
+  width: 626px;
+}
+.toefl-mic-record p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.48;
+}
+.toefl-mic-record blockquote {
+  margin: 20px 0 28px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.58;
+}
+.toefl-record-meter {
+  width: 390px;
+  margin: 34px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  font-size: 13px;
+  text-align: center;
+}
+.toefl-record-meter > div {
+  grid-column: 1 / -1;
+  height: 18px;
+  margin-top: 9px;
+  border: 1px solid #cfcfcf;
+  border-radius: 9px;
+  background: white;
+  overflow: hidden;
+}
+.toefl-record-meter i {
+  display: block;
+  margin-left: 31%;
+  width: 36%;
+  height: 100%;
+  background: #64dcbc;
+}
+.toefl-success-screen {
+  position: absolute;
+  left: 392px;
+  top: 94px;
+  width: 260px;
+  text-align: left;
+}
+.toefl-success-screen h1 {
+  margin: 0 0 52px;
+  font-size: 22px;
+  font-family: inherit;
+  letter-spacing: 0;
+}
+.toefl-success-screen p { font-size: 15px; line-height: 1.5; }
+.toefl-success-screen .toefl-primary { margin-top: 28px; }
+
+.toefl-section-intro > p:first-of-type { margin-top: 34px; }
+.toefl-intro-table {
+  width: 600px;
+  margin-top: 28px;
+  font-size: 14px;
+}
+.toefl-intro-table-head,
+.toefl-intro-row {
+  display: grid;
+  grid-template-columns: 156px 1fr;
+}
+.toefl-intro-table-head {
+  border-bottom: 1px solid #b4b4b4;
+  padding: 0 7px 8px;
+}
+.toefl-intro-row {
+  border-bottom: 1px solid #d2d2d2;
+  padding: 9px 7px;
+  gap: 0;
+}
+.toefl-section-intro .toefl-primary { margin-top: 28px; }
+
+.toefl-cloze {
+  position: absolute;
+  inset: 48px 42px auto;
+}
+.toefl-cloze h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 24px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-cloze > p {
+  margin: 210px 0 0;
+  font-size: 16px;
+  line-height: 1.85;
+}
+.toefl-cloze input {
+  display: inline-block;
+  width: 72px;
+  height: 25px;
+  margin: 0 4px;
+  border: 1px solid #9aa5a8;
+  border-radius: 2px;
+  background: white;
+  padding: 1px 5px;
+  font: inherit;
+  font-size: 14px;
+  color: #1b1e22;
+}
+.toefl-reading-daily h1,
+.toefl-reading-academic > h1 {
+  position: absolute;
+  top: 58px;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-daily-stimulus {
+  position: absolute;
+  left: 79px;
+  top: 163px;
+  width: 357px;
+  min-height: 170px;
+  border: 1px solid #d2d2d2;
+  background: white;
+  padding: 22px 26px;
+}
+.toefl-daily-stimulus > strong {
+  display: block;
+  text-align: center;
+  color: #387880;
+  font-size: 16px;
+}
+.toefl-daily-stimulus p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.toefl-stimulus-placeholder {
+  margin-top: 14px;
+  border: 1px dashed #aab3b6;
+  padding: 9px;
+  text-align: center;
+  color: #7b8589;
+  font-size: 9px;
+  font-weight: 700;
+}
+.toefl-daily-question {
+  position: absolute;
+  left: 530px;
+  top: 151px;
+  width: 414px;
+}
+.toefl-daily-question h2,
+.toefl-academic-question h2,
+.toefl-listening-question h1,
+.toefl-response-question h2 {
+  margin: 0 0 22px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-options { display: grid; gap: 8px; }
+.toefl-option {
+  display: flex;
+  align-items: flex-start;
+  min-height: 34px;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 14px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.toefl-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toefl-radio {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  border: 1px solid #949da0;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 4px white;
+}
+.toefl-option input:checked + .toefl-radio {
+  background: #387880;
+  border-color: #387880;
+}
+.toefl-passage {
+  position: absolute;
+  left: 23px;
+  top: 151px;
+  width: 468px;
+  height: 500px;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+.toefl-passage p {
+  margin: 0 0 13px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.toefl-academic-question {
+  position: absolute;
+  left: 530px;
+  top: 151px;
+  width: 430px;
+}
+.toefl-end-screen { top: 58px; }
+.toefl-end-screen > p { margin-top: 28px; }
+
+.toefl-listening-response h1,
+.toefl-listening-stimulus h1 {
+  position: absolute;
+  top: 56px;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-media-placeholder {
+  border: 1.5px dashed #9da7aa;
+  border-radius: 4px;
+  background: #f0f1f1;
+  color: #596166;
+  font: inherit;
+  cursor: pointer;
+}
+.toefl-media-placeholder strong,
+.toefl-media-placeholder span {
+  display: block;
+}
+.toefl-media-placeholder strong { font-size: 12px; }
+.toefl-media-placeholder > span:last-child {
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.toefl-media-icon {
+  margin-bottom: 12px;
+  font-size: 34px !important;
+  color: #387880;
+}
+.toefl-media-placeholder.response-audio {
+  position: absolute;
+  left: 230px;
+  top: 165px;
+  width: 260px;
+  height: 230px;
+}
+.toefl-response-question {
+  position: absolute;
+  left: 556px;
+  top: 190px;
+  width: 380px;
+}
+.toefl-listening-stimulus .large-audio {
+  position: absolute;
+  left: 331px;
+  top: 149px;
+  width: 358px;
+  height: 380px;
+}
+.toefl-listening-stimulus > p {
+  position: absolute;
+  top: 555px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #7b8589;
+  font-size: 11px;
+}
+.toefl-listening-question {
+  position: absolute;
+  left: 297px;
+  top: 105px;
+  width: 430px;
+}
+.toefl-listening-question h1 { margin-bottom: 30px; }
+
+.toefl-writing-instructions,
+.toefl-speaking-instructions { top: 57px; }
+.toefl-writing-instructions > p:first-of-type,
+.toefl-speaking-instructions > p:first-of-type { margin-top: 34px; }
+.toefl-sentence {
+  position: absolute;
+  left: 130px;
+  top: 60px;
+  width: 764px;
+}
+.toefl-sentence h1 {
+  margin: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-sentence-answer {
+  min-height: 86px;
+  margin-top: 200px;
+  border: 1px solid #b4b4b4;
+  border-radius: 3px;
+  background: white;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+.toefl-sentence-answer > span {
+  width: 100%;
+  color: #8a9498;
+  text-align: center;
+  font-size: 13px;
+}
+.toefl-token-bank {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.toefl-token-bank button,
+.toefl-sentence-answer button {
+  min-height: 40px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  background: white;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.toefl-token-bank button.placed { opacity: .25; }
+.toefl-email,
+.toefl-discussion {
+  position: absolute;
+  left: 0;
+  top: 32px;
+  width: 1024px;
+  height: 688px;
+}
+.toefl-email-prompt {
+  position: absolute;
+  left: 40px;
+  top: 24px;
+  width: 350px;
+  font-size: 14px;
+}
+.toefl-email-prompt p {
+  margin: 0 0 9px;
+  line-height: 1.55;
+}
+.toefl-email-prompt h2 {
+  margin: 24px 0 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-email-prompt h3 {
+  margin: 28px 0 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.toefl-email-prompt ul {
+  margin: 13px 0 0 30px;
+  padding: 0;
+  line-height: 1.7;
+}
+.toefl-email-editor {
+  position: absolute;
+  left: 405px;
+  top: 0;
+  width: 619px;
+  height: 620px;
+  border-left: 1px solid #b4b4b4;
+  padding: 24px 48px 0 9px;
+}
+.toefl-email-editor > strong,
+.toefl-discussion-editor > strong { font-size: 14px; }
+.toefl-email-line {
+  margin-top: 17px;
+  font-size: 13px;
+}
+.toefl-editor-tools {
+  margin-top: 16px;
+  border-top: 1px solid #d2d2d2;
+  padding: 10px 0;
+  color: #687277;
+  font-size: 11px;
+}
+.toefl-editor-tools span { float: right; }
+.toefl-email-editor textarea,
+.toefl-discussion-editor textarea {
+  width: 100%;
+  height: 365px;
+  border: 1px solid #b4b4b4;
+  border-radius: 1px;
+  background: white;
+  padding: 14px;
+  resize: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.toefl-discussion-feed {
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  width: 510px;
+  height: 620px;
+  overflow-y: auto;
+  padding-right: 22px;
+}
+.toefl-discussion-feed h1 {
+  margin: 0 0 24px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-professor,
+.toefl-student-post {
+  border: 1px solid #d2d2d2;
+  border-radius: 3px;
+  background: white;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.toefl-professor strong,
+.toefl-student-post strong { color: #387880; }
+.toefl-professor p,
+.toefl-student-post p { margin: 7px 0 0; line-height: 1.5; }
+.toefl-student-post {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 12px;
+}
+.toefl-avatar-placeholder {
+  width: 46px;
+  height: 46px;
+  border: 1px dashed #98a2a5;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #7b8589;
+  font-size: 7px;
+  font-weight: 800;
+}
+.toefl-discussion-editor {
+  position: absolute;
+  left: 535px;
+  top: 0;
+  width: 489px;
+  height: 620px;
+  border-left: 1px solid #b4b4b4;
+  padding: 23px 23px 0 19px;
+}
+.toefl-discussion-editor .toefl-editor-tools { margin-top: 18px; }
+.toefl-discussion-editor textarea { height: 450px; }
+
+.toefl-speaking-scenario {
+  position: absolute;
+  left: 250px;
+  top: 58px;
+  width: 524px;
+  text-align: center;
+}
+.toefl-speaking-scenario h1,
+.toefl-speaking-prompt h1,
+.toefl-speaking-record h1,
+.toefl-speaking-save h1 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-speaking-scenario p {
+  margin: 70px 0 0;
+  font-size: 16px;
+}
+.toefl-speaking-scenario p + p { margin-top: 14px; }
+.toefl-speaking-scenario .scenario-media {
+  width: 330px;
+  height: 180px;
+  margin-top: 35px;
+}
+.toefl-speaking-scenario small,
+.toefl-speaking-prompt small {
+  display: block;
+  margin-top: 10px;
+  color: #7b8589;
+  font-size: 10px;
+}
+.toefl-speaking-prompt,
+.toefl-speaking-record,
+.toefl-speaking-save {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+}
+.toefl-speaking-prompt h1,
+.toefl-speaking-record h1 {
+  margin-top: 49px;
+  font-size: 24px;
+}
+.toefl-speaking-prompt .repeat-media,
+.toefl-speaking-record .repeat-media,
+.toefl-speaking-save .repeat-media {
+  position: absolute;
+  left: 348px;
+  top: 149px;
+  width: 328px;
+  height: 302px;
+}
+.toefl-speaking-prompt .interview-media,
+.toefl-speaking-record .interview-media,
+.toefl-speaking-save .interview-media {
+  position: absolute;
+  left: 321px;
+  top: 154px;
+  width: 382px;
+  height: 285px;
+}
+.toefl-speaking-prompt small {
+  position: absolute;
+  top: 468px;
+  left: 0;
+  width: 100%;
+}
+.toefl-response-time {
+  position: absolute;
+  left: 377px;
+  top: 544px;
+  width: 270px;
+  text-align: center;
+}
+.toefl-response-time.interview { top: 494px; }
+.toefl-response-time.save { top: 530px; }
+.toefl-response-time strong {
+  display: block;
+  color: #687277;
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+.toefl-response-time span {
+  display: block;
+  margin-top: 14px;
+  font-size: 21px;
+  font-weight: 600;
+}
+.toefl-speaking-save h1 {
+  position: absolute;
+  top: 94px;
+  left: 377px;
+  width: 270px;
+  font-size: 24px;
+}
+.toefl-speaking-save > p {
+  position: absolute;
+  left: 400px;
+  width: 224px;
+  margin: 0;
+  font-size: 15px;
+}
+.toefl-speaking-save > p:nth-of-type(1) { top: 172px; }
+.toefl-speaking-save > p:nth-of-type(2) { top: 203px; }
+.toefl-speaking-save .saving { opacity: .42; }
+
+/* modal states */
+.toefl-modal-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.38);
+}
+.toefl-modal {
+  width: 480px;
+  min-height: 250px;
+  border: 1px solid #d2d2d2;
+  border-radius: 7px;
+  background: white;
+  padding: 30px 34px;
+  text-align: center;
+}
+.toefl-modal h2 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.toefl-modal p {
+  margin: 30px auto 0;
+  width: 360px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.toefl-modal-actions {
+  margin-top: 34px;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  align-items: center;
+}
+.toefl-link-button {
+  border: 0;
+  background: transparent;
+  color: #387880;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .exam-center-hero .exam-center-wrap {
+    grid-template-columns: 1fr;
+    padding: 54px 0;
+  }
+  .exam-center-preview { width: min(420px, 100%); }
+  .exam-center-wrap { width: min(100% - 28px, 960px); }
+  .exam-center-copy h1 { font-size: 44px; }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Source-matched TOEFL pre-test chrome — screenshots supplied 2026-09-19     */
+/* Logical viewport: 1024 × 768 (4:3), matching the ETS sampler capture.       */
+/* -------------------------------------------------------------------------- */
+
+.toefl-overlay {
+  background: #ffffff;
+}
+
+.toefl-canvas,
+.toefl-screen {
+  height: 768px;
+  background: #ffffff;
+}
+
+.toefl-topbar {
+  height: 50px;
+  border: 0;
+  border-bottom: 1px solid #255b5f;
+  background: #2e696d;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  z-index: 40;
+}
+
+.toefl-topbar-section {
+  top: 59px;
+  left: 32px;
+  width: 120px;
+  color: #272727;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.toefl-topbar-progress {
+  top: 60px;
+  left: 154px;
+  color: #444;
+  font-size: 13px;
+}
+
+.toefl-topbar-time {
+  top: 7px;
+  right: 266px;
+  height: 36px;
+  color: #fff;
+  line-height: 36px;
+}
+
+.toefl-topbar-volume,
+.toefl-topbar-action {
+  top: 4px;
+  height: 42px;
+  border-radius: 11px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 40px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.toefl-topbar-volume {
+  right: 136px;
+  width: 128px;
+  border: 1px solid rgba(255,255,255,.72);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.toefl-topbar-volume::after {
+  content: "  ◖";
+  margin-left: 5px;
+  font-size: 14px;
+}
+
+.toefl-topbar-action {
+  right: 2px;
+  width: 128px;
+  border: 1px solid #d7e8e9;
+  background: #ffffff;
+  color: #007d86;
+  padding: 0 26px 0 14px;
+}
+
+.toefl-topbar-action::after {
+  content: "›";
+  position: absolute;
+  right: 15px;
+  top: 0;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 38px;
+}
+
+.toefl-screen {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #333;
+}
+
+.toefl-pretest-copy {
+  position: absolute;
+  left: 212px;
+  top: 108px;
+  width: 604px;
+  color: #333;
+}
+
+.toefl-pretest-copy h1,
+.toefl-mic-instruction-content h1 {
+  margin: 0;
+  color: #454545;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 31px;
+  letter-spacing: 0;
+}
+
+.toefl-title-rule {
+  width: 100%;
+  height: 1px;
+  margin-top: 11px;
+  background: #cfcfcf;
+}
+
+.toefl-pretest-copy p,
+.toefl-mic-instruction-content p {
+  margin: 31px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #333;
+}
+
+.toefl-welcome-screen p {
+  max-width: 600px;
+}
+
+.toefl-hardware-screen p:first-of-type {
+  margin-top: 29px;
+}
+
+.toefl-hardware-icons {
+  display: flex;
+  align-items: center;
+  gap: 38px;
+  width: 372px;
+  height: 78px;
+  margin: 15px 0 0 10px;
+  color: #0c8a91;
+}
+
+.toefl-hardware-icons svg {
+  width: 69px;
+  height: 69px;
+  flex: 0 0 auto;
+}
+
+.toefl-hardware-icons svg:last-child {
+  width: 78px;
+}
+
+.toefl-hardware-note {
+  margin-top: 4px !important;
+  max-width: 600px;
+}
+
+.toefl-volume-screen {
+  top: 109px;
+}
+
+.toefl-volume-screen .toefl-copy-paragraphs {
+  margin-top: 29px;
+}
+
+.toefl-volume-screen .toefl-copy-paragraphs p {
+  margin: 0 0 15px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.toefl-volume-note {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 10px;
+  color: #333;
+  font-size: 14px;
+}
+
+.toefl-volume-note-icon {
+  width: 62px;
+  height: 48px;
+  color: #078b92;
+  flex: 0 0 auto;
+}
+
+.toefl-volume-popover {
+  z-index: 70;
+  top: 48px;
+  right: 136px;
+  width: 240px;
+  height: 94px;
+  border: 1px solid #9da0a1;
+  border-radius: 15px;
+  background: #fff;
+  padding: 35px 18px 12px;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.toefl-volume-close {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  width: 18px;
+  height: 22px;
+  border: 1px solid #6086a4;
+  background: #fff;
+  color: #507fa2;
+  font: 15px/18px Arial, sans-serif;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toefl-volume-popover .toefl-segments {
+  position: absolute;
+  left: 18px;
+  top: 37px;
+  width: 200px;
+  height: 19px;
+  display: flex;
+  align-items: end;
+  gap: 4px;
+}
+
+.toefl-volume-popover .toefl-segments span {
+  width: 8px;
+  height: 15px;
+  border: 0;
+  border-radius: 3px;
+  background: #0b858c;
+}
+
+.toefl-volume-popover .toefl-segments span:nth-child(2n) { height: 17px; }
+.toefl-volume-popover .toefl-segments span:nth-child(3n) { height: 19px; }
+.toefl-volume-popover .toefl-segments span:not(.filled) { background: #d4d9da; }
+
+.toefl-volume-popover input[type="range"] {
+  position: absolute;
+  left: 18px;
+  bottom: 11px;
+  width: 200px;
+  height: 13px;
+  margin: 0;
+  accent-color: #0b858c;
+}
+
+.toefl-mic-instruction-content {
+  position: absolute;
+  left: 212px;
+  top: 108px;
+  width: 604px;
+  color: #333;
+}
+
+.toefl-mic-instruction-content .toefl-copy-paragraphs {
+  margin-top: 29px;
+}
+
+.toefl-mic-instruction-content .toefl-copy-paragraphs p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.toefl-mic-instruction-content h3 {
+  margin: 15px 0 0;
+  font: 700 14px/20px Arial, Helvetica, sans-serif;
+  color: #333;
+}
+
+.toefl-mic-examples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 58px;
+  margin-top: 24px;
+}
+
+.toefl-meter-example {
+  position: relative;
+  width: 270px;
+}
+
+.toefl-segments {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.toefl-meter-example .toefl-segments {
+  width: 270px;
+  height: 27px;
+}
+
+.toefl-meter-example .toefl-segments span {
+  width: 12px;
+  height: 27px;
+  box-sizing: border-box;
+  border: 1px solid #8f9394;
+  background: #fff;
+}
+
+.toefl-meter-example .toefl-segments.teal span.filled {
+  border-color: #08898f;
+  background: #08898f;
+}
+
+.toefl-meter-example .toefl-segments.red span.filled {
+  border-color: #d8292f;
+  background: #d8292f;
+}
+
+.toefl-meter-guides {
+  position: absolute;
+  inset: -17px 0 auto;
+  height: 58px;
+  pointer-events: none;
+}
+
+.toefl-meter-guides i {
+  position: absolute;
+  top: 0;
+  height: 58px;
+  border-left: 1px dotted #9c9c9c;
+}
+
+.toefl-meter-guides i:first-child { left: 33%; }
+.toefl-meter-guides i:last-child { left: 66%; }
+
+.toefl-meter-labels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  text-align: center;
+}
+
+.toefl-mic-verdicts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 115px;
+  width: 560px;
+  margin: 66px auto 0;
+}
+
+.toefl-mic-verdicts > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  color: #555;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.toefl-checkmark,
+.toefl-crossmark {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+}
+
+.toefl-checkmark::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  width: 20px;
+  height: 38px;
+  border-right: 6px solid #0a858b;
+  border-bottom: 6px solid #0a858b;
+  transform: rotate(45deg);
+}
+
+.toefl-crossmark::before,
+.toefl-crossmark::after {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 2px;
+  width: 6px;
+  height: 48px;
+  background: #d3262c;
+}
+
+.toefl-crossmark::before { transform: rotate(45deg); }
+.toefl-crossmark::after { transform: rotate(-45deg); }
+
+.toefl-mic-record-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0,0,0,.50);
+}
+
+.toefl-mic-record-card {
+  position: absolute;
+  left: 63px;
+  top: 85px;
+  width: 906px;
+  height: 436px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 8px 9px rgba(0,0,0,.44);
+}
+
+.toefl-record-circle {
+  position: absolute;
+  left: 27px;
+  top: 58px;
+  width: 172px;
+  height: 172px;
+  border: 1px solid #c8cccd;
+  border-radius: 50%;
+  background: #078a91;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 12px #fff, inset 0 0 0 14px #d0d4d5;
+  padding: 38px;
+}
+
+.toefl-record-circle svg {
+  width: 100%;
+  height: 100%;
+}
+
+.toefl-mic-record-copy {
+  position: absolute;
+  left: 244px;
+  top: 39px;
+  width: 626px;
+  color: #404040;
+}
+
+.toefl-mic-record-copy p {
+  margin: 0 0 15px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.toefl-record-level {
+  position: relative;
+  width: 360px;
+  margin: 43px 0 0 64px;
+}
+
+.toefl-record-level .toefl-segments {
+  width: 360px;
+  height: 40px;
+  gap: 4px;
+}
+
+.toefl-record-level .toefl-segments span {
+  width: 17px;
+  height: 40px;
+  border: 1px solid #8d9092;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.toefl-record-level .toefl-segments.yellow span.filled {
+  border-color: #ad9c29;
+  background: #f1d749;
+}
+
+.toefl-record-guide {
+  position: absolute;
+  left: 43px;
+  top: -6px;
+  width: 188px;
+  height: 88px;
+  border-left: 1px solid #9fa1a2;
+  border-right: 1px solid #9fa1a2;
+  background: rgba(230,230,230,.48);
+  pointer-events: none;
+}
+
+.toefl-record-labels {
+  display: grid;
+  grid-template-columns: 56px 188px 116px;
+  align-items: start;
+  margin-top: 10px;
+  color: #454545;
+  font-size: 14px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.toefl-success-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0,0,0,.50);
+}
+
+.toefl-success-modal {
+  position: absolute;
+  left: 272px;
+  top: 86px;
+  width: 480px;
+  height: 320px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 5px 12px rgba(0,0,0,.28);
+  color: #3d3d3d;
+  box-sizing: border-box;
+  padding: 63px 72px 50px 102px;
+  text-align: left;
+}
+
+.toefl-success-modal h2 {
+  margin: 0;
+  font: 700 17px/24px Arial, Helvetica, sans-serif;
+  color: #404040;
+}
+
+.toefl-success-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: #078a91;
+  color: #fff;
+  font-size: 11px;
+  vertical-align: 1px;
+}
+
+.toefl-success-rule {
+  width: 254px;
+  height: 1px;
+  margin: 13px 0 40px;
+  background: #dfdfdf;
+}
+
+.toefl-success-modal p {
+  width: 215px;
+  margin: 0 0 38px 27px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.toefl-success-modal .toefl-primary {
+  min-width: 98px;
+  height: 42px;
+  margin-left: 0;
+  border: 2px solid #147f85;
+  border-radius: 11px;
+  background: #078a91;
+  box-shadow: inset 0 0 0 2px #fff;
+  font-size: 13px;
+  line-height: 38px;
+  padding: 0 14px;
+}
+
+/* Keep the older generic content layout aligned under the taller real header. */
+.toefl-copy-screen,
+.toefl-section-intro,
+.toefl-writing-instructions,
+.toefl-speaking-instructions,
+.toefl-end-screen {
+  top: 108px;
+}
+
+
+/* Fine alignment from the microphone reference capture. */
+.toefl-mic-examples {
+  grid-template-columns: 303px 303px;
+  gap: 62px;
+}
+.toefl-meter-example,
+.toefl-meter-example .toefl-segments {
+  width: 303px;
+}
+.toefl-meter-example .toefl-segments span {
+  width: 15px;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Full-viewport exam runner                                                   */
+/* -------------------------------------------------------------------------- */
+
+.toefl-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #fff;
+}
+
+.toefl-canvas {
+  position: absolute;
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100dvh;
+  transform: none !important;
+  transform-origin: initial;
+  overflow: hidden;
+  background: #fff;
+}
+
+.toefl-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: #fff;
+}
+
+.toefl-topbar {
+  width: 100%;
+}
+
+.toefl-pretest-copy,
+.toefl-mic-instruction-content,
+.toefl-copy-screen,
+.toefl-section-intro,
+.toefl-writing-instructions,
+.toefl-speaking-instructions,
+.toefl-end-screen {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-mic-record-card,
+.toefl-success-modal {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic,
+.toefl-listening-response,
+.toefl-listening-stimulus,
+.toefl-email,
+.toefl-discussion,
+.toefl-speaking-prompt,
+.toefl-speaking-record,
+.toefl-speaking-save {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1024px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.toefl-cloze {
+  left: 50%;
+  right: auto;
+  width: min(940px, calc(100vw - 64px));
+  transform: translateX(-50%);
+}
+
+.toefl-listening-question {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-sentence,
+.toefl-speaking-scenario {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toefl-speaker-test {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 48px;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #078b92;
+  padding: 0;
+  cursor: pointer;
+}
+
+.toefl-speaker-test:hover,
+.toefl-speaker-test:focus-visible {
+  outline: 2px solid rgba(7, 139, 146, .28);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.toefl-record-circle:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.toefl-record-level .toefl-segments.teal span.filled {
+  border-color: #08898f;
+  background: #08898f;
+}
+
+.toefl-record-level .toefl-segments.red span.filled {
+  border-color: #d8292f;
+  background: #d8292f;
+}
+
+.toefl-hardware-error {
+  position: absolute;
+  left: 50%;
+  top: 620px;
+  width: min(604px, calc(100vw - 64px));
+  transform: translateX(-50%);
+  border: 1px solid #c44;
+  border-radius: 5px;
+  background: #fff4f4;
+  color: #8c1d1d;
+  padding: 10px 12px;
+  font: 13px/1.45 Arial, Helvetica, sans-serif;
+  z-index: 50;
+}
+
+@media (max-width: 1060px) {
+  .toefl-pretest-copy,
+  .toefl-mic-instruction-content,
+  .toefl-copy-screen,
+  .toefl-section-intro,
+  .toefl-writing-instructions,
+  .toefl-speaking-instructions,
+  .toefl-end-screen {
+    width: min(604px, calc(100vw - 40px));
+  }
+
+  .toefl-reading-daily,
+  .toefl-reading-academic,
+  .toefl-listening-response,
+  .toefl-listening-stimulus,
+  .toefl-email,
+  .toefl-discussion,
+  .toefl-speaking-prompt,
+  .toefl-speaking-record,
+  .toefl-speaking-save {
+    width: 1024px;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Header/status/question refinements from real TOEFL reading reference        */
+/* -------------------------------------------------------------------------- */
+
+.toefl-topbar-volume {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  right: 136px;
+  width: 128px;
+  height: 42px;
+  border: 1px solid #d4e1e2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #087b82;
+  box-shadow: none;
+}
+
+.toefl-topbar-volume::after {
+  content: none;
+}
+
+.toefl-topbar-volume-icon {
+  width: 23px;
+  height: 19px;
+  color: #078b92;
+}
+
+.toefl-topbar-section,
+.toefl-topbar-progress {
+  display: none;
+}
+
+.toefl-statusbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50px;
+  z-index: 34;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #313131;
+  background: #ffffff;
+  padding: 0 38px;
+  color: #383838;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toefl-statusbar-section {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.toefl-statusbar-divider {
+  width: 1px;
+  height: 22px;
+  background: #9d9d9d;
+}
+
+.toefl-statusbar-progress {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.toefl-volume-popover {
+  top: 48px;
+  right: 136px;
+  width: 240px;
+  height: 94px;
+  border: 1px solid #707070;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.toefl-volume-close {
+  right: 4px;
+  top: 4px;
+  width: 18px;
+  height: 22px;
+  border: 2px solid #76a2d3;
+  color: #444;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.toefl-volume-popover .toefl-segments {
+  left: 19px;
+  top: 29px;
+  width: 196px;
+  height: 27px;
+  align-items: end;
+  gap: 4px;
+}
+
+.toefl-volume-popover .toefl-segments span {
+  width: 8px;
+  min-height: 8px;
+  border-radius: 4px;
+  background: #078b8e;
+}
+
+.toefl-volume-popover .toefl-segments span:nth-child(1) { height: 9px; }
+.toefl-volume-popover .toefl-segments span:nth-child(2) { height: 10px; }
+.toefl-volume-popover .toefl-segments span:nth-child(3) { height: 11px; }
+.toefl-volume-popover .toefl-segments span:nth-child(4) { height: 12px; }
+.toefl-volume-popover .toefl-segments span:nth-child(5) { height: 13px; }
+.toefl-volume-popover .toefl-segments span:nth-child(6) { height: 14px; }
+.toefl-volume-popover .toefl-segments span:nth-child(7) { height: 15px; }
+.toefl-volume-popover .toefl-segments span:nth-child(8) { height: 16px; }
+.toefl-volume-popover .toefl-segments span:nth-child(9) { height: 17px; }
+.toefl-volume-popover .toefl-segments span:nth-child(10) { height: 18px; }
+.toefl-volume-popover .toefl-segments span:nth-child(11) { height: 19px; }
+.toefl-volume-popover .toefl-segments span:nth-child(12) { height: 20px; }
+.toefl-volume-popover .toefl-segments span:nth-child(13) { height: 21px; }
+.toefl-volume-popover .toefl-segments span:nth-child(14) { height: 22px; }
+.toefl-volume-popover .toefl-segments span:nth-child(15) { height: 23px; }
+.toefl-volume-popover .toefl-segments span:nth-child(16) { height: 24px; }
+
+.toefl-volume-popover .toefl-segments span:not(.filled) {
+  background: #d7dcdd;
+}
+
+.toefl-volume-popover input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  left: 19px;
+  bottom: 12px;
+  width: 196px;
+  height: 14px;
+  margin: 0;
+  background: transparent;
+}
+
+.toefl-volume-popover input[type="range"]::-webkit-slider-runnable-track {
+  height: 9px;
+  border: 2px solid #727272;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.toefl-volume-popover input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border: 0;
+  border-radius: 50%;
+  background: #078b8e;
+  box-shadow: 0 3px 5px rgba(0,0,0,.22);
+}
+
+.toefl-volume-popover input[type="range"]::-moz-range-track {
+  height: 7px;
+  border: 2px solid #727272;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.toefl-volume-popover input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #078b8e;
+  box-shadow: 0 3px 5px rgba(0,0,0,.22);
+}
+
+.toefl-cloze {
+  left: 0;
+  right: 0;
+  top: 92px;
+  bottom: 0;
+  width: 100%;
+  min-height: calc(100dvh - 92px);
+  transform: none;
+  box-sizing: border-box;
+  border: 1px solid #333333;
+  background: #ffffff;
+  padding: 24px 44px 48px;
+}
+
+.toefl-cloze h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.toefl-cloze > p {
+  max-width: 1040px;
+  margin: 220px auto 0;
+  font-size: 18px;
+  line-height: 1.48;
+}
+
+.toefl-cloze input {
+  vertical-align: baseline;
+  background: #d9d9d9;
+  border: 0;
+  border-bottom: 1px solid #7c7c7c;
+  border-radius: 0;
+}
+
+@media (max-width: 760px) {
+  .toefl-statusbar {
+    padding: 0 20px;
+  }
+
+  .toefl-cloze {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .toefl-cloze h1 {
+    font-size: 24px;
+  }
+
+  .toefl-cloze > p {
+    font-size: 16px;
+  }
+}
+
+
+/* Tidy microphone calibration success modal. */
+.toefl-success-modal {
+  width: 480px;
+  height: 320px;
+  box-sizing: border-box;
+  padding: 56px 72px 48px;
+  text-align: left;
+}
+
+.toefl-success-modal h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: #3f3f3f;
+  font: 700 18px/1.2 Arial, Helvetica, sans-serif;
+  text-align: left;
+}
+
+.toefl-success-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 50%;
+  background: #078a91;
+  color: #ffffff;
+  font: 700 13px/1 Arial, Helvetica, sans-serif;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.toefl-success-rule {
+  width: 100%;
+  height: 1px;
+  margin: 18px 0 0;
+  background: #dedede;
+}
+
+.toefl-success-modal p {
+  width: 100%;
+  margin: 42px 0 0;
+  color: #414141;
+  font: 400 16px/1.45 Arial, Helvetica, sans-serif;
+  text-align: left;
+}
+
+.toefl-success-modal .toefl-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 122px;
+  height: 44px;
+  margin: 36px 0 0;
+  padding: 0 18px;
+  border: 2px solid #147f85;
+  border-radius: 11px;
+  background: #078a91;
+  box-shadow: inset 0 0 0 2px #ffffff;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Reading daily-life + academic question layout from the real TOEFL reference */
+/* -------------------------------------------------------------------------- */
+
+.toefl-topbar-back {
+  position: absolute;
+  top: 4px;
+  right: 112px;
+  width: 82px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  border: 1px solid #d4e1e2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #087b82;
+  padding: 0 10px;
+  font: 700 13px/1 Arial, Helvetica, sans-serif;
+  cursor: pointer;
+}
+
+.toefl-nav-chevron.back {
+  display: inline-block;
+  margin-top: -1px;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.toefl-topbar.has-back .toefl-topbar-action {
+  right: 2px;
+  width: 106px;
+}
+
+.toefl-topbar.has-back .toefl-topbar-volume {
+  right: 198px;
+  width: 128px;
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 92px;
+  width: 100%;
+  height: calc(100dvh - 92px);
+  min-height: calc(100dvh - 92px);
+  transform: none;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 42px;
+  align-items: start;
+  border: 1px solid #333333;
+  background: #ffffff;
+  padding: 24px 20px 34px;
+  overflow: hidden;
+}
+
+.toefl-reading-daily > h1,
+.toefl-reading-academic > h1 {
+  position: static;
+  grid-column: 1 / -1;
+  width: auto;
+  margin: 0 0 50px;
+  color: #101010;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.toefl-passage {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  width: auto;
+  height: auto;
+  max-height: calc(100dvh - 225px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 0 12px 24px 0;
+  scrollbar-gutter: stable;
+}
+
+.toefl-passage p {
+  margin: 0 0 15px;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.28;
+}
+
+.toefl-academic-question {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  box-sizing: border-box;
+  padding: 0 16px 0 0;
+}
+
+.toefl-academic-question h2,
+.toefl-daily-question h2 {
+  margin: 0 0 18px;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.toefl-academic-question .toefl-options,
+.toefl-daily-question .toefl-options {
+  gap: 10px;
+}
+
+.toefl-academic-question .toefl-option,
+.toefl-daily-question .toefl-option {
+  min-height: 28px;
+  gap: 12px;
+  padding: 2px 0;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.toefl-academic-question .toefl-radio,
+.toefl-daily-question .toefl-radio {
+  width: 19px;
+  height: 19px;
+  flex-basis: 19px;
+  border: 1px solid #666666;
+}
+
+.toefl-daily-stimulus {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  width: auto;
+  min-height: 0;
+  max-height: calc(100dvh - 225px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: 1px solid #c8c8c8;
+  background: #ffffff;
+  padding: 24px 28px;
+}
+
+.toefl-daily-stimulus > strong {
+  display: block;
+  margin-bottom: 16px;
+  color: #087b82;
+  text-align: center;
+  font: 700 17px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-daily-stimulus p {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 400 14px/1.42 Arial, Helvetica, sans-serif;
+}
+
+.toefl-daily-question {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  box-sizing: border-box;
+  padding: 0 16px 0 0;
+}
+
+.toefl-stimulus-placeholder {
+  margin-top: 18px;
+  border: 1px dashed #a3aaad;
+  padding: 10px;
+  text-align: center;
+  color: #70787c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    column-gap: 24px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .toefl-reading-daily > h1,
+  .toefl-reading-academic > h1 {
+    margin-bottom: 38px;
+    font-size: 23px;
+  }
+
+  .toefl-passage p {
+    font-size: 13px;
+  }
+
+  .toefl-academic-question h2,
+  .toefl-daily-question h2,
+  .toefl-academic-question .toefl-option,
+  .toefl-daily-question .toefl-option {
+    font-size: 13px;
+  }
+}
+
+
+/* Constrain post-cloze Reading questions to a centered, near-4:3 working area. */
+.toefl-reading-daily,
+.toefl-reading-academic {
+  left: 50%;
+  right: auto;
+  width: min(1080px, calc(100vw - 140px));
+  height: min(790px, calc(100dvh - 116px));
+  min-height: 0;
+  top: 104px;
+  transform: translateX(-50%);
+  padding: 24px 28px 34px;
+}
+
+.toefl-reading-daily > h1,
+.toefl-reading-academic > h1 {
+  margin-bottom: 46px;
+}
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  column-gap: 48px;
+}
+
+.toefl-passage,
+.toefl-daily-stimulus {
+  max-height: calc(min(790px, calc(100dvh - 116px)) - 128px);
+}
+
+@media (max-width: 1180px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    width: calc(100vw - 72px);
+  }
+}
+
+@media (max-width: 760px) {
+  .toefl-reading-daily,
+  .toefl-reading-academic {
+    width: calc(100vw - 28px);
+    height: calc(100dvh - 108px);
+    top: 98px;
+    padding-left: 16px;
+    padding-right: 16px;
+    column-gap: 22px;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Borderless Reading working area + source-matched Listening layouts          */
+/* -------------------------------------------------------------------------- */
+
+.toefl-reading-daily,
+.toefl-reading-academic {
+  border: 0;
+}
+
+/* Listening screens use the same centered working area proportions as the
+   real UI, but without a visible card/stroke around the work area. */
+.toefl-listening-response,
+.toefl-listening-stimulus,
+.toefl-listening-question {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(960px, calc(100vw - 120px));
+  height: min(720px, calc(100dvh - 104px));
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 0;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Listen and Choose a Response */
+.toefl-listening-response h1 {
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 100%;
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 23px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-response .response-figure {
+  position: absolute;
+  left: 78px;
+  top: 92px;
+  width: 290px;
+  height: 330px;
+}
+
+.toefl-response-question {
+  position: absolute;
+  left: 520px;
+  top: 92px;
+  width: 365px;
+}
+
+.toefl-response-question .toefl-options {
+  gap: 12px;
+}
+
+.toefl-response-question .toefl-option {
+  min-height: 30px;
+  gap: 13px;
+  padding: 2px 0;
+  color: #333333;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Audio stimulus playback: title + one centered visual, no Next button. */
+.toefl-listening-stimulus h1 {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 100%;
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 23px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-stimulus .stimulus-figure {
+  position: absolute;
+  left: 50%;
+  top: 70px;
+  width: 420px;
+  height: 450px;
+  transform: translateX(-50%);
+}
+
+.toefl-listening-stimulus > p {
+  position: absolute;
+  left: 0;
+  top: 535px;
+  width: 100%;
+  margin: 0;
+  color: #8a9295;
+  text-align: center;
+  font-size: 10px;
+}
+
+/* Questions tied to a conversation / announcement / academic talk. */
+.toefl-listening-question {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  column-gap: 72px;
+  align-items: start;
+  padding: 52px 34px 30px;
+}
+
+.toefl-listening-question .question-figure {
+  position: static;
+  grid-column: 1;
+  width: 390px;
+  height: 450px;
+  justify-self: center;
+}
+
+.toefl-listening-question-copy {
+  grid-column: 2;
+  width: 100%;
+  padding-top: 0;
+}
+
+.toefl-listening-question-copy h1 {
+  margin: 0 0 20px;
+  color: #111111;
+  text-align: left;
+  font: 700 15px/1.35 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-listening-question-copy .toefl-options {
+  gap: 11px;
+}
+
+.toefl-listening-question-copy .toefl-option {
+  min-height: 30px;
+  gap: 13px;
+  padding: 2px 0;
+  color: #111111;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Listening visuals are real media in production. Until assets are supplied,
+   keep placeholders borderless so the overall composition matches the source. */
+.toefl-media-placeholder.listening-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 35%, #edf0f0 0 44px, transparent 45px),
+    linear-gradient(to bottom, transparent 0 43%, #f1f3f3 43% 100%);
+  color: #8a9295;
+  cursor: default;
+  box-shadow: none;
+}
+
+.toefl-listening-stimulus .toefl-media-placeholder.listening-figure {
+  cursor: pointer;
+}
+
+.toefl-media-placeholder.listening-figure .toefl-media-icon {
+  margin: 0 0 12px;
+  color: #b7bfc1;
+  font-size: 48px !important;
+}
+
+.toefl-media-placeholder.listening-figure strong {
+  color: #747d80;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toefl-media-placeholder.listening-figure > span:last-child {
+  display: none;
+}
+
+@media (max-width: 1080px) {
+  .toefl-listening-response,
+  .toefl-listening-stimulus,
+  .toefl-listening-question {
+    width: calc(100vw - 56px);
+  }
+
+  .toefl-listening-response .response-figure {
+    left: 40px;
+    width: 260px;
+  }
+
+  .toefl-response-question {
+    left: 50%;
+    width: 42%;
+  }
+
+  .toefl-listening-question {
+    grid-template-columns: 40% 1fr;
+    column-gap: 40px;
+  }
+
+  .toefl-listening-question .question-figure {
+    width: 100%;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* TOEFL Writing — Build a Sentence, matched to the real interaction pattern   */
+/* -------------------------------------------------------------------------- */
+
+.toefl-sentence {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(940px, calc(100vw - 80px));
+  height: calc(100dvh - 92px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  padding: 24px 24px 40px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toefl-sentence h1 {
+  margin: 0;
+  color: #111111;
+  text-align: center;
+  font: 700 25px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.toefl-sentence-dialogue {
+  width: min(780px, 100%);
+  margin: 135px auto 0;
+}
+
+.toefl-sentence-turn {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  column-gap: 22px;
+  align-items: center;
+}
+
+.toefl-sentence-turn + .toefl-sentence-turn {
+  margin-top: 30px;
+}
+
+.toefl-sentence-avatar {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 2px solid #0b9297;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, #dfe6e6 0 20px, transparent 21px),
+    linear-gradient(to bottom, #f4f6f6 0 48%, #dde5e5 48% 100%);
+  color: #798487;
+  overflow: hidden;
+}
+
+.toefl-sentence-avatar span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.toefl-sentence-turn.prompt p {
+  margin: 0;
+  color: #111111;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.toefl-sentence-composer {
+  min-width: 0;
+}
+
+.toefl-sentence-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 7px;
+  min-height: 70px;
+  color: #111111;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.toefl-sentence-fixed {
+  display: inline-flex;
+  align-items: flex-end;
+  min-height: 34px;
+  padding-bottom: 5px;
+  white-space: nowrap;
+}
+
+.toefl-sentence-fixed.suffix {
+  margin-left: 2px;
+}
+
+.toefl-sentence-slot {
+  position: relative;
+  min-width: 104px;
+  min-height: 34px;
+  max-width: 190px;
+  border: 0;
+  border-bottom: 1.5px solid #5f5f5f;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  padding: 0 5px 4px;
+  font: 400 14px/1.25 Arial, Helvetica, sans-serif;
+  text-align: center;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.toefl-sentence-slot.filled {
+  cursor: grab;
+}
+
+.toefl-sentence-slot.filled:active {
+  cursor: grabbing;
+}
+
+.toefl-sentence-slot:focus-visible {
+  outline: 2px solid #0b9297;
+  outline-offset: 2px;
+}
+
+.toefl-sentence-slot:hover {
+  background: rgba(11, 146, 151, .035);
+}
+
+.toefl-token-bank {
+  width: min(760px, 100%);
+  margin: 56px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 28px;
+  min-height: 58px;
+  padding: 8px 0 18px;
+}
+
+.toefl-token-bank button {
+  min-height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  padding: 5px 3px;
+  font: 400 14px/1.3 Arial, Helvetica, sans-serif;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.toefl-token-bank button:hover:not(.placed) {
+  color: #087b82;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.toefl-token-bank button:active:not(.placed) {
+  cursor: grabbing;
+}
+
+.toefl-token-bank button.placed {
+  opacity: .22;
+  cursor: default;
+  text-decoration: none;
+}
+
+.toefl-token-bank button:focus-visible {
+  outline: 2px solid #0b9297;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (max-width: 840px) {
+  .toefl-sentence {
+    width: calc(100vw - 32px);
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .toefl-sentence-dialogue {
+    margin-top: 90px;
+  }
+
+  .toefl-sentence-turn {
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 16px;
+  }
+
+  .toefl-sentence-avatar {
+    width: 68px;
+    height: 68px;
+  }
+
+  .toefl-sentence-slot {
+    min-width: 82px;
+  }
+
+  .toefl-token-bank {
+    margin-top: 42px;
+    gap: 14px 20px;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Writing email/discussion + status-row timer + Speaking response timer       */
+/* -------------------------------------------------------------------------- */
+
+.toefl-statusbar-time {
+  margin-left: auto;
+  color: #333333;
+  font: 400 13px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+/* Writing task workspaces start directly below the section/progress row. */
+.toefl-email,
+.toefl-discussion {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: min(1180px, calc(100vw - 48px));
+  height: calc(100dvh - 92px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: #ffffff;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------------ Email task -------------------------------- */
+
+.toefl-email {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  border-left: 1px solid #d7d7d7;
+  border-right: 1px solid #d7d7d7;
+}
+
+.toefl-email-prompt {
+  position: static;
+  width: auto;
+  height: 100%;
+  box-sizing: border-box;
+  border-right: 1px solid #d7d7d7;
+  padding: 20px 22px 24px;
+  overflow-y: auto;
+  color: #151515;
+  font-size: 15px;
+}
+
+.toefl-email-prompt p {
+  margin: 0 0 13px;
+  line-height: 1.35;
+}
+
+.toefl-email-prompt h2 {
+  margin: 14px 0 2px;
+  color: #111111;
+  font: 700 16px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-email-prompt h3 {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 700 16px/1.25 Arial, Helvetica, sans-serif;
+}
+
+.toefl-email-prompt ul {
+  margin: 0 0 16px 27px;
+  padding: 0;
+  color: #111111;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.toefl-email-prompt li {
+  padding-left: 3px;
+}
+
+.toefl-email-prompt li::marker,
+.toefl-discussion-prompt li::marker {
+  font-size: 1.3em;
+}
+
+.toefl-writing-note {
+  margin-top: 10px !important;
+}
+
+.toefl-email-editor {
+  position: static;
+  width: auto;
+  height: 100%;
+  box-sizing: border-box;
+  border: 0;
+  padding: 22px 14px 20px;
+  overflow: hidden;
+}
+
+.toefl-response-heading {
+  display: block;
+  margin: 0 0 23px;
+  color: #111111;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.toefl-email-addresses {
+  margin-bottom: 14px;
+  color: #111111;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.toefl-email-addresses b {
+  font-weight: 700;
+}
+
+.toefl-editor-shell {
+  width: 100%;
+  height: calc(100% - 96px);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border: 1px solid #d7d7d7;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.toefl-editor-tools {
+  height: 55px;
+  flex: 0 0 55px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  border: 0;
+  background: #f7f7f7;
+  padding: 8px 13px;
+  color: #555d61;
+  font-size: 11px;
+}
+
+.toefl-editor-tool-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toefl-editor-tool-buttons button {
+  min-width: 55px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: #dddddd;
+  color: #3f3f3f;
+  padding: 0 13px;
+  font: 400 12px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-editor-tool-buttons button.active {
+  background: #078a91;
+  color: #ffffff;
+}
+
+.toefl-word-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #078a91;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.toefl-word-count span {
+  margin-left: 7px;
+  color: #222222;
+  float: none;
+  font-size: 12px;
+}
+
+.toefl-email-editor textarea,
+.toefl-discussion-editor textarea {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 14px 16px;
+  resize: none;
+  outline: none;
+  color: #222222;
+  font: 400 14px/1.5 Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------- Academic Discussion ----------------------------- */
+
+.toefl-discussion {
+  display: grid;
+  grid-template-columns: 38% 62%;
+  border-left: 1px solid #d7d7d7;
+  border-right: 1px solid #d7d7d7;
+}
+
+.toefl-discussion-prompt {
+  height: 100%;
+  box-sizing: border-box;
+  border-right: 1px solid #d7d7d7;
+  padding: 16px 18px 22px;
+  overflow-y: auto;
+  color: #151515;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.toefl-discussion-prompt > p {
+  margin: 0 0 14px;
+}
+
+.toefl-discussion-prompt h2 {
+  margin: 0 0 12px;
+  color: #111111;
+  font: 700 14px/1.35 Arial, Helvetica, sans-serif;
+}
+
+.toefl-discussion-prompt ul {
+  margin: 0 0 14px 27px;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.toefl-professor-avatar {
+  width: 84px;
+  height: 84px;
+  margin: 18px auto 14px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed #9aa4a6;
+  border-radius: 50%;
+  background: #f2f4f4;
+  color: #758083;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.toefl-professor-question p {
+  margin: 0 0 9px;
+  line-height: 1.42;
+}
+
+.toefl-discussion-workspace {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  box-sizing: border-box;
+  padding: 14px 12px 12px;
+  overflow: hidden;
+}
+
+.toefl-discussion-posts {
+  display: grid;
+  gap: 11px;
+  margin-bottom: 12px;
+}
+
+.toefl-discussion .toefl-student-post {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 0 8px;
+  color: #111111;
+  font-size: 14px;
+}
+
+.toefl-discussion .toefl-student-post p {
+  margin: 0;
+  line-height: 1.42;
+}
+
+.toefl-discussion .toefl-avatar-placeholder {
+  width: 52px;
+  height: 52px;
+  border: 1px dashed #99a3a5;
+  border-radius: 50%;
+  background: #f1f4f4;
+  font-size: 7px;
+}
+
+.toefl-discussion-editor {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+}
+
+.toefl-discussion-editor .toefl-editor-shell {
+  height: 100%;
+}
+
+/* --------------------------- Speaking timer ------------------------------- */
+
+.toefl-response-time,
+.toefl-response-time.interview,
+.toefl-response-time.save {
+  width: 180px;
+  text-align: center;
+}
+
+.toefl-response-time {
+  left: 422px;
+  top: 536px;
+}
+
+.toefl-response-time.interview {
+  left: 422px;
+  top: 486px;
+}
+
+.toefl-response-time.save {
+  left: 422px;
+  top: 522px;
+}
+
+.toefl-response-time-card {
+  width: 180px;
+  height: 66px;
+  box-sizing: border-box;
+  border: 1px solid #078a91;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.toefl-response-time-label {
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: #078a91;
+  color: #ffffff;
+  font: 700 11px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: .01em;
+}
+
+.toefl-response-time-value {
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #444444;
+  font: 700 17px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-response-mic {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #d5dadd;
+  border-radius: 50%;
+  color: #6c7f82;
+  background: #ffffff;
+}
+
+.toefl-response-mic svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 900px) {
+  .toefl-email,
+  .toefl-discussion {
+    width: calc(100vw - 20px);
+  }
+
+  .toefl-email {
+    grid-template-columns: 40% 60%;
+  }
+
+  .toefl-discussion {
+    grid-template-columns: 39% 61%;
+  }
+
+  .toefl-editor-tool-buttons button {
+    min-width: 46px;
+    padding: 0 8px;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Admin-only exam navigator. Rendered only after the admin gesture is used.  */
+/* -------------------------------------------------------------------------- */
+
+.toefl-admin-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .58);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-panel {
+  width: min(940px, calc(100vw - 64px));
+  height: min(720px, calc(100dvh - 64px));
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .28);
+  overflow: hidden;
+}
+
+.toefl-admin-header {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #d9d9d9;
+  padding: 13px 18px;
+}
+
+.toefl-admin-header > div {
+  min-width: 0;
+}
+
+.toefl-admin-header strong {
+  display: block;
+  color: #151515;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.toefl-admin-header span {
+  display: block;
+  margin-top: 4px;
+  color: #6d7679;
+  font-size: 12px;
+}
+
+.toefl-admin-header button,
+.toefl-admin-section-jumps button {
+  border: 0;
+  border-radius: 8px;
+  background: #078a91;
+  color: #ffffff;
+  cursor: pointer;
+  font: 700 12px/1 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-header button {
+  min-width: 76px;
+  height: 36px;
+}
+
+.toefl-admin-section-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #e1e1e1;
+  padding: 10px 16px;
+}
+
+.toefl-admin-section-jumps button {
+  min-height: 34px;
+  padding: 0 14px;
+  background: #edf5f5;
+  color: #087b82;
+  border: 1px solid #a8cbce;
+}
+
+.toefl-admin-groups {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+}
+
+.toefl-admin-groups section + section {
+  margin-top: 20px;
+}
+
+.toefl-admin-groups h3 {
+  margin: 0 0 9px;
+  color: #252525;
+  font: 700 14px/1.2 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-step-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.toefl-admin-step-grid button {
+  min-height: 42px;
+  border: 1px solid #d5d9da;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #333333;
+  padding: 7px 9px;
+  text-align: left;
+  cursor: pointer;
+  font: 400 11px/1.28 Arial, Helvetica, sans-serif;
+}
+
+.toefl-admin-step-grid button:hover {
+  border-color: #078a91;
+  background: #f2f8f8;
+}
+
+.toefl-admin-step-grid button.current {
+  border-color: #078a91;
+  background: #078a91;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .toefl-admin-panel {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+  }
+
+  .toefl-admin-step-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Fix legacy response-time span rules leaking into the compact timer card. */
+.toefl-response-time .toefl-response-time-value > span {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.toefl-response-time .toefl-response-mic {
+  margin-top: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.toefl-response-time-value {
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+
+/* Ensure the mic glyph itself remains centered inside its circular badge.
+   A legacy `.toefl-response-time span` rule was overriding inline-grid. */
+.toefl-response-time .toefl-response-mic {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.toefl-response-time .toefl-response-mic svg {
+  display: block;
+  margin: 0;
+}

@@ -1,79 +1,110 @@
 "use client";
 
 import Link from "next/link";
-import styled, { css } from "styled-components";
-import { appLayout } from "../../../constants/app_layout";
+import type { ComponentProps, ReactNode } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
-import { newsletterColors as c } from "../constants";
+import "../newsletter.css";
 
-// Primitives mirror the production home (app/new-home/NewHomeClient.tsx):
-// 2px ink borders, hard offset shadows, orange pill chips, 900-weight titles.
+// Primitives mirror the production home (app/new-home): 2px ink borders, hard offset
+// shadows, orange pill chips, 900-weight titles. Values match the home's arbitrary classes.
 
-export const Page = styled.div`
-  background: #ffffff;
-  color: ${c.heading};
-  font-family: "Noto Sans KR", sans-serif;
-  word-break: keep-all;
-`;
+export const cn = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ");
 
-export const Section = styled.section<{ $background?: string }>`
-  background: ${(props) => props.$background ?? "transparent"};
-  padding: clamp(3.5rem, 7vw, 5.5rem) 0;
-  /* Anchor targets clear the fixed global navbar. */
-  scroll-margin-top: 74px;
-`;
+export const tones = {
+  white: "bg-white",
+  surface: "bg-[#f3f3f1]",
+  surfaceAlt: "bg-[#f5f5f5]",
+  cream: "bg-[#fff8dc]",
+} as const;
+export type Tone = keyof typeof tones;
 
-export const Container = styled.div<{ $narrow?: boolean }>`
-  max-width: ${(props) => (props.$narrow ? "720px" : appLayout.pageMaxWidth)};
-  margin: 0 auto;
-  padding: 0 20px;
+export function Page({ children }: { children: ReactNode }) {
+  return (
+    <div className="bg-white font-['Noto_Sans_KR',sans-serif] text-[#0f172a] break-keep">
+      {children}
+    </div>
+  );
+}
 
-  @media (max-width: 768px) {
-    padding: 0 1rem;
-  }
-`;
+export function Section({
+  tone = "white",
+  className,
+  ...props
+}: ComponentProps<"section"> & { tone?: Tone }) {
+  return (
+    <section
+      className={cn(
+        "scroll-mt-[74px] py-[clamp(3.5rem,7vw,5.5rem)]",
+        tones[tone],
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-export const SectionHeader = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-bottom: clamp(1.5rem, 4vw, 2.25rem);
+export function Container({
+  narrow,
+  className,
+  ...props
+}: ComponentProps<"div"> & { narrow?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "mx-auto px-5 max-[768px]:px-4",
+        narrow ? "max-w-[720px]" : "max-w-page",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-  @media (max-width: 768px) {
-    align-items: center;
-    text-align: center;
-  }
-`;
+export function SectionHeader({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "mb-[clamp(1.5rem,4vw,2.25rem)] flex flex-col items-start max-[768px]:items-center max-[768px]:text-center",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-export const Chip = styled.p`
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 0.85rem;
-  border: 2px solid ${c.ink};
-  border-radius: 999px;
-  background: ${c.orange};
-  color: ${c.ink};
-  padding: 0.34rem 0.72rem;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-`;
+export function Chip({ children }: { children: ReactNode }) {
+  return (
+    <p className="m-0 mb-[0.85rem] inline-flex items-center rounded-full border-2 border-[#050505] bg-[#f47a4a] px-[0.72rem] py-[0.34rem] text-[0.78rem] font-black leading-[1.25] tracking-[0.02em] text-[#050505]">
+      {children}
+    </p>
+  );
+}
 
 // Headings opt out of the global h1–h6 font and color.
-export const SectionTitle = styled.h2`
-  margin: 0;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: clamp(1.6rem, 2.4vw, 2.05rem);
-  font-weight: 900;
-  line-height: 1.18;
-  letter-spacing: 0;
-  color: ${c.heading};
-`;
+export function SectionTitle({ className, ...props }: ComponentProps<"h2">) {
+  return (
+    <h2
+      className={cn(
+        "m-0 font-['Noto_Sans_KR',sans-serif] text-[clamp(1.6rem,2.4vw,2.05rem)] font-black leading-[1.18] tracking-[0] text-[#0f172a]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-export const Accent = styled.span`
-  color: ${c.orangeText};
-`;
+export function SubTitle({ className, ...props }: ComponentProps<"h3">) {
+  return (
+    <h3
+      className={cn(
+        "m-0 font-['Noto_Sans_KR',sans-serif] text-[1.25rem] font-black leading-[1.3] text-[#0f172a]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
 // Renders a multi-line title with the last line in the accent color, like the production home.
 export function AccentLines({ text }: { text: string }) {
@@ -82,7 +113,9 @@ export function AccentLines({ text }: { text: string }) {
     <>
       {lines.map((line, index) =>
         index === lines.length - 1 ? (
-          <Accent key={line}>{line}</Accent>
+          <span key={line} className="text-[#d95f2d]">
+            {line}
+          </span>
         ) : (
           <span key={line}>
             {line}
@@ -94,186 +127,89 @@ export function AccentLines({ text }: { text: string }) {
   );
 }
 
-export const SubTitle = styled.h3`
-  margin: 0;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: 1.25rem;
-  font-weight: 900;
-  line-height: 1.3;
-  color: ${c.heading};
-`;
+export function Description({ className, ...props }: ComponentProps<"p">) {
+  return (
+    <p
+      className={cn(
+        "m-0 mt-4 max-w-[32rem] text-[0.98rem] font-[620] leading-[1.65] text-[#64748b]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-export const Description = styled.p`
-  max-width: 32rem;
-  margin: 1rem 0 0;
-  color: ${c.muted};
-  font-size: 0.98rem;
-  font-weight: 620;
-  line-height: 1.65;
-`;
+export function SmallText({ className, ...props }: ComponentProps<"p">) {
+  return (
+    <p
+      className={cn("m-0 text-[0.82rem] font-[580] leading-[1.6] text-[#64748b]", className)}
+      {...props}
+    />
+  );
+}
 
-export const SmallText = styled.p<{ $color?: string }>`
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 580;
-  line-height: 1.6;
-  color: ${(props) => props.$color ?? c.muted};
-`;
+export const cardClass =
+  "rounded-[14px] border-2 border-[#050505] bg-white shadow-[5px_5px_0_rgba(5,5,5,0.88)]";
 
-export const cardStyles = css`
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-`;
+const buttonBase =
+  "inline-flex min-h-[52px] cursor-pointer items-center justify-center rounded-full border-2 border-[#050505] px-[1.9rem] py-[0.875rem] font-[inherit] text-base font-[850] no-underline [transition:background-color_160ms_ease,box-shadow_160ms_ease,transform_160ms_ease] hover:no-underline disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none";
 
-export const Card = styled.div`
-  ${cardStyles}
-`;
+const lift =
+  "[@media(hover:hover)]:hover:-translate-x-px [@media(hover:hover)]:hover:-translate-y-px disabled:hover:translate-x-0 disabled:hover:translate-y-0";
 
-const buttonBase = css`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
-  padding: 0.875rem 1.9rem;
-  border: 2px solid ${c.ink};
-  border-radius: 999px;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 850;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 160ms ease, box-shadow 160ms ease,
-    transform 160ms ease;
+export const buttonVariants = {
+  // White pill with the orange offset shadow (production hero CTA).
+  primary: cn(
+    buttonBase,
+    lift,
+    "bg-white text-[#050505] shadow-[5px_5px_0_#f47a4a] hover:text-[#050505] [@media(hover:hover)]:hover:bg-[#fff8dc] [@media(hover:hover)]:hover:shadow-[7px_7px_0_#f47a4a]",
+  ),
+  // Orange pill with an ink offset shadow, for the main purchase action.
+  orange: cn(
+    buttonBase,
+    lift,
+    "bg-[#f47a4a] text-[#050505] shadow-[4px_4px_0_#050505] hover:text-[#050505] [@media(hover:hover)]:hover:shadow-[6px_6px_0_#050505]",
+  ),
+  // Plain ink outline for secondary actions on light backgrounds.
+  outline: cn(
+    buttonBase,
+    "bg-transparent text-[#050505] hover:text-[#050505] [@media(hover:hover)]:hover:bg-[#fff8dc]",
+  ),
+} as const;
+export type ButtonVariant = keyof typeof buttonVariants;
 
-  &:hover {
-    text-decoration: none;
-  }
+export function ButtonLink({
+  variant,
+  className,
+  ...props
+}: ComponentProps<typeof Link> & { variant: ButtonVariant }) {
+  return <Link className={cn(buttonVariants[variant], className)} {...props} />;
+}
 
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    box-shadow: none;
-    opacity: 0.5;
-  }
-`;
-
-// White pill with the orange offset shadow (production hero CTA).
-const primary = css`
-  ${buttonBase}
-  background: #ffffff;
-  color: ${c.ink};
-  box-shadow: 5px 5px 0 ${c.orange};
-
-  &:hover {
-    color: ${c.ink};
-  }
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      background: ${c.cream};
-      box-shadow: 7px 7px 0 ${c.orange};
-      transform: translate(-1px, -1px);
-    }
-  }
-`;
-
-// Orange pill with an ink offset shadow, for the main purchase action.
-const orange = css`
-  ${buttonBase}
-  background: ${c.orange};
-  color: ${c.ink};
-  box-shadow: 4px 4px 0 ${c.ink};
-
-  &:hover {
-    color: ${c.ink};
-  }
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      box-shadow: 6px 6px 0 ${c.ink};
-      transform: translate(-1px, -1px);
-    }
-  }
-`;
-
-// Plain ink outline for secondary actions on light backgrounds.
-const outline = css`
-  ${buttonBase}
-  background: transparent;
-  color: ${c.ink};
-
-  &:hover {
-    color: ${c.ink};
-  }
-
-  @media (hover: hover) {
-    &:hover:not(:disabled) {
-      background: ${c.cream};
-    }
-  }
-`;
-
-export const PrimaryLink = styled(Link)`
-  ${primary}
-`;
-export const OrangeLink = styled(Link)`
-  ${orange}
-`;
-export const OutlineLink = styled(Link)`
-  ${outline}
-`;
-export const OrangeButton = styled.button`
-  ${orange}
-`;
-export const OutlineButton = styled.button`
-  ${outline}
-`;
-
-const BrandBarRoot = styled.div`
-  border-bottom: 1px solid ${c.line};
-  background: #ffffff;
-`;
-
-const BrandBarInner = styled(Container)`
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-`;
-
-const Wordmark = styled(Link)`
-  font-size: 1.15rem;
-  font-weight: 900;
-  color: ${c.ink};
-  text-decoration: none;
-
-  &:hover {
-    color: ${c.ink};
-    text-decoration: none;
-  }
-`;
-
-const Endorsement = styled.span`
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: ${c.muted};
-`;
+export function Button({
+  variant,
+  className,
+  ...props
+}: ComponentProps<"button"> & { variant: ButtonVariant }) {
+  return <button className={cn(buttonVariants[variant], className)} {...props} />;
+}
 
 // Sub-brand bar under the global navbar; the brand name is a placeholder until it is decided.
 export function BrandBar() {
   const { t } = useI18n();
   return (
-    <BrandBarRoot>
-      <BrandBarInner>
-        <Wordmark href="/newsletter">{t.newsletter.brand.name}</Wordmark>
-        <Endorsement>{t.newsletter.brand.endorsement}</Endorsement>
-      </BrandBarInner>
-    </BrandBarRoot>
+    <div className="border-b border-[#e5e7eb] bg-white">
+      <Container className="flex items-baseline gap-2 py-[0.875rem]">
+        <Link
+          href="/newsletter"
+          className="text-[1.15rem] font-black text-[#050505] no-underline hover:text-[#050505] hover:no-underline"
+        >
+          {t.newsletter.brand.name}
+        </Link>
+        <span className="text-[0.78rem] font-bold text-[#64748b]">
+          {t.newsletter.brand.endorsement}
+        </span>
+      </Container>
+    </div>
   );
 }

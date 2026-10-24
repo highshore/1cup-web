@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  compiler: {
-    styledComponents: true,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -17,6 +14,11 @@ const nextConfig = {
       { protocol: "https", hostname: "k.kakaocdn.net" },
       { protocol: "https", hostname: "hetiycbotgjeluteicyk.supabase.co" },
     ],
+  },
+  async headers() {
+    return ["admin", "auth", "profile", "messages", "notifications", "payment", "vocabulary", "report"].map((root) => ({
+      source: `/${root}/:path*`, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+    }));
   },
   async redirects() {
     return [

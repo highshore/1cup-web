@@ -1,76 +1,9 @@
 "use client";
 
-import styled, { keyframes } from "styled-components";
+import type { CSSProperties } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
-import { NEWSLETTER_TRACKS, newsletterColors as c, NewsletterTrack } from "../constants";
-
-const slide = keyframes`
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-`;
-
-const Viewport = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow: hidden;
-  padding: 0.5rem 0 0.75rem;
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-`;
-
-const Track = styled.div<{ $reverse?: boolean; $seconds: number }>`
-  display: flex;
-  width: max-content;
-  gap: 1rem;
-  animation: ${slide} ${(props) => props.$seconds}s linear infinite;
-  animation-direction: ${(props) => (props.$reverse ? "reverse" : "normal")};
-
-  ${Viewport}:hover & {
-    animation-play-state: paused;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    flex-wrap: wrap;
-    width: auto;
-    justify-content: center;
-    animation: none;
-  }
-`;
-
-const Item = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 220px;
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 0.9rem 1.1rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.88);
-`;
-
-const Expression = styled.span`
-  font-size: 1.15rem;
-  font-weight: 900;
-  color: ${c.ink};
-`;
-
-const Meaning = styled.span`
-  font-size: 0.84rem;
-  font-weight: 650;
-  color: ${c.body};
-`;
-
-const TrackName = styled.span`
-  align-self: flex-start;
-  margin-bottom: 0.3rem;
-  border-radius: 999px;
-  background: ${c.cream};
-  padding: 0.15rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: ${c.orangeText};
-`;
+import { NEWSLETTER_TRACKS, NewsletterTrack } from "../constants";
+import { cn } from "./NewsletterUI";
 
 type Entry = { key: string; track: string; en: string; ko: string };
 
@@ -88,18 +21,30 @@ export default function ExpressionMarquee({ tracks = NEWSLETTER_TRACKS }: { trac
   const rows = [entries.slice(0, half), entries.slice(half)].filter((row) => row.length);
 
   return (
-    <Viewport>
+    <div className="nl-marquee flex flex-col gap-4 overflow-hidden pt-2 pb-3 [mask-image:linear-gradient(90deg,transparent,#000_6%,#000_94%,transparent)]">
       {rows.map((row, rowIndex) => (
-        <Track key={rowIndex} $reverse={rowIndex === 1} $seconds={Math.max(30, row.length * 9)}>
+        <div
+          key={rowIndex}
+          className={cn("nl-marquee-track flex w-max gap-4", rowIndex === 1 && "nl-reverse")}
+          style={{ "--nl-marquee-duration": `${Math.max(30, row.length * 9)}s` } as CSSProperties}
+        >
           {[...row, ...row].map((entry, index) => (
-            <Item key={`${entry.key}-${index}`} aria-hidden={index >= row.length}>
-              <TrackName>{entry.track}</TrackName>
-              <Expression lang="en">{entry.en}</Expression>
-              <Meaning>{entry.ko}</Meaning>
-            </Item>
+            <div
+              key={`${entry.key}-${index}`}
+              aria-hidden={index >= row.length}
+              className="flex min-w-[220px] flex-col gap-[0.2rem] rounded-[14px] border-2 border-[#050505] bg-white px-[1.1rem] py-[0.9rem] shadow-[4px_4px_0_rgba(5,5,5,0.88)]"
+            >
+              <span className="mb-[0.3rem] self-start rounded-full bg-[#fff8dc] px-[0.55rem] py-[0.15rem] text-[0.72rem] font-extrabold text-[#d95f2d]">
+                {entry.track}
+              </span>
+              <span lang="en" className="text-[1.15rem] font-black text-[#050505]">
+                {entry.en}
+              </span>
+              <span className="text-[0.84rem] font-[650] text-[#475569]">{entry.ko}</span>
+            </div>
           ))}
-        </Track>
+        </div>
       ))}
-    </Viewport>
+    </div>
   );
 }

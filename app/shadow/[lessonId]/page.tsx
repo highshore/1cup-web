@@ -8,7 +8,16 @@ interface ShadowLessonPageProps {
 
 export const metadata: Metadata = {
   title: "Shadow Learning | OneCup English",
-  description: "Practice English pronunciation and listening with timestamped video shadowing.",
+  description:
+    "Practice English pronunciation and listening with timestamped video shadowing.",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
 };
 
 export default async function ShadowLessonPage({ params }: ShadowLessonPageProps) {

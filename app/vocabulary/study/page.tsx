@@ -1,5 +1,7 @@
+import { requireSignedIn } from "../../lib/auth/server_guards";
 import StudyDeckPicker from "./StudyDeckPicker";
 
-export default function VocabularyStudyIndexPage() {
+export default async function VocabularyStudyIndexPage() {
+  await requireSignedIn("/vocabulary/study");
   return <StudyDeckPicker />;
 }

@@ -1,129 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import styled from "styled-components";
 import { useI18n } from "../../../i18n/I18nProvider";
 import {
   formatKrw,
   NEWSLETTER_MEMBER_PRICE_KRW,
   NEWSLETTER_MONTHLY_PRICE_KRW,
-  newsletterColors as c,
   NewsletterTrack,
 } from "../constants";
 import TrackVisual from "./TrackVisual";
-
-const CardLink = styled(Link)`
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 2px solid ${c.ink};
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.88);
-  color: ${c.heading};
-  text-decoration: none;
-  transition: box-shadow 160ms ease, transform 160ms ease;
-
-  &:hover {
-    color: ${c.heading};
-    text-decoration: none;
-  }
-
-  @media (hover: hover) {
-    &:hover {
-      transform: translate(-1px, -1px);
-      box-shadow: 7px 7px 0 rgba(5, 5, 5, 0.88);
-    }
-  }
-
-  &:focus-visible {
-    outline: 3px solid rgba(244, 122, 74, 0.45);
-    outline-offset: 3px;
-  }
-`;
-
-const Media = styled.div`
-  border-bottom: 2px solid ${c.ink};
-`;
-
-const Body = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.1rem 1.25rem 1.3rem;
-`;
-
-const Title = styled.span`
-  font-size: 1.35rem;
-  font-weight: 900;
-  line-height: 1.25;
-  color: ${c.ink};
-`;
-
-const Tagline = styled.span`
-  font-size: 0.94rem;
-  font-weight: 650;
-  line-height: 1.55;
-  color: ${c.body};
-`;
-
-const PriceRow = styled.span`
-  display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
-  margin-top: 0.35rem;
-`;
-
-const Price = styled.span`
-  font-size: 1.3rem;
-  font-weight: 900;
-  color: ${c.ink};
-`;
-
-const Muted = styled.span`
-  font-size: 0.85rem;
-  font-weight: 650;
-  color: ${c.muted};
-`;
-
-const MemberPrice = styled.span`
-  align-self: flex-start;
-  border-radius: 999px;
-  background: ${c.cream};
-  padding: 0.2rem 0.6rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: ${c.orangeText};
-`;
 
 export default function TrackCard({ track }: { track: NewsletterTrack }) {
   const { t } = useI18n();
   const copy = t.newsletter.tracks[track];
 
   return (
-    <CardLink href={`/newsletter/${track}`}>
-      <Media>
+    <Link
+      href={`/newsletter/${track}`}
+      className="flex flex-col overflow-hidden rounded-[14px] border-2 border-[#050505] bg-white text-[#0f172a] no-underline shadow-[5px_5px_0_rgba(5,5,5,0.88)] [transition:box-shadow_160ms_ease,transform_160ms_ease] hover:text-[#0f172a] hover:no-underline focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(244,122,74,0.45)] [@media(hover:hover)]:hover:-translate-x-px [@media(hover:hover)]:hover:-translate-y-px [@media(hover:hover)]:hover:shadow-[7px_7px_0_rgba(5,5,5,0.88)]"
+    >
+      <div className="border-b-2 border-[#050505]">
         <TrackVisual track={track} compact />
-      </Media>
-      <Body>
-        <Title>{copy.title}</Title>
-        <Tagline>{copy.tagline}</Tagline>
-        <PriceRow>
-          <Price>
-            {t.newsletter.price.amount.replace(
-              "{price}",
-              formatKrw(NEWSLETTER_MONTHLY_PRICE_KRW),
-            )}
-          </Price>
-          <Muted>{t.newsletter.price.perMonth}</Muted>
-        </PriceRow>
-        <MemberPrice>
-          {t.newsletter.price.memberShort.replace(
-            "{price}",
-            formatKrw(NEWSLETTER_MEMBER_PRICE_KRW),
-          )}
-        </MemberPrice>
-      </Body>
-    </CardLink>
+      </div>
+      <div className="flex flex-col gap-2 px-5 pt-[1.1rem] pb-[1.3rem]">
+        <span className="text-[1.35rem] font-black leading-[1.25] text-[#050505]">{copy.title}</span>
+        <span className="text-[0.94rem] font-[650] leading-[1.55] text-[#475569]">{copy.tagline}</span>
+        <span className="mt-[0.35rem] flex items-baseline gap-[0.375rem]">
+          <span className="text-[1.3rem] font-black text-[#050505]">
+            {t.newsletter.price.amount.replace("{price}", formatKrw(NEWSLETTER_MONTHLY_PRICE_KRW))}
+          </span>
+          <span className="text-[0.85rem] font-[650] text-[#64748b]">{t.newsletter.price.perMonth}</span>
+        </span>
+        <span className="self-start rounded-full bg-[#fff8dc] px-[0.6rem] py-[0.2rem] text-[0.8rem] font-extrabold text-[#d95f2d]">
+          {t.newsletter.price.memberShort.replace("{price}", formatKrw(NEWSLETTER_MEMBER_PRICE_KRW))}
+        </span>
+      </div>
+    </Link>
   );
 }

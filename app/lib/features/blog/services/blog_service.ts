@@ -381,26 +381,13 @@ export const fixMissingSlugs = async (): Promise<void> => {
 
 // --- Blog likes (junction table blog_post_likes) ------------------------------
 // The old inline `likedBy[]` array is replaced by the blog_post_likes junction.
-
-// Whether the given user has liked the given post.
-export const hasLikedBlogPost = async (
-  postId: string,
-  userId: string
-): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase
-      .from("blog_post_likes")
-      .select("user_id")
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (error) throw error;
-    return !!data;
-  } catch (error) {
-    console.error("Error checking blog post like:", error);
-    return false;
-  }
-};
+//
+// hasLikedBlogPost / likeBlogPost / unlikeBlogPost were carried over from the
+// Firestore version and never wired up to any component. They took the liking
+// user's id as an argument and sent it as blog_post_likes.user_id, so the caller
+// rather than the session decided whose like was written. Nothing renders likes
+// today; if the feature comes back, derive the uid from the session server-side
+// (or default the column to current_uid()) instead of passing it in.
 
 // Number of likes for a post (counted from the junction table).
 export const getBlogPostLikeCount = async (postId: string): Promise<number> => {
@@ -417,36 +404,3 @@ export const getBlogPostLikeCount = async (postId: string): Promise<number> => {
   }
 };
 
-// Like a post: insert a junction row (idempotent via upsert).
-export const likeBlogPost = async (
-  postId: string,
-  userId: string
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from("blog_post_likes")
-      .upsert({ post_id: postId, user_id: userId });
-    if (error) throw error;
-  } catch (error) {
-    console.error("Error liking blog post:", error);
-    throw new Error("Failed to like blog post");
-  }
-};
-
-// Unlike a post: delete the junction row.
-export const unlikeBlogPost = async (
-  postId: string,
-  userId: string
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from("blog_post_likes")
-      .delete()
-      .eq("post_id", postId)
-      .eq("user_id", userId);
-    if (error) throw error;
-  } catch (error) {
-    console.error("Error unliking blog post:", error);
-    throw new Error("Failed to unlike blog post");
-  }
-};

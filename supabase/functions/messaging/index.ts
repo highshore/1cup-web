@@ -67,16 +67,17 @@ function isValidKrPhone(no: string): boolean {
   return !!no && no.startsWith("010") && no.length >= 10;
 }
 
+const SEOUL_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /** Same-day check (Asia/Seoul) used by the daily cron to gate link sending. */
 function isToday(updatedAt: string | null): boolean {
   if (!updatedAt) return false;
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const day = (d: Date) => fmt.format(d);
+  const day = (d: Date) => SEOUL_DAY.format(d);
   return day(new Date(updatedAt)) === day(new Date());
 }
 

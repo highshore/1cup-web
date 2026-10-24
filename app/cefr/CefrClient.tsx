@@ -2,129 +2,16 @@
 import React from "react";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { supabase, invokeFunction } from "../lib/supabase/client";
-import styled from "styled-components";
+
+import "./cefr.css";
 
 type CefrLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
-const Container = styled.div`
-	max-width: 960px;
-	margin: 0 auto;
-	padding: 24px 16px;
-	color: #111;
-`;
+// Shared class strings (styled-components migration).
+const secondaryTextClass = "text-[rgba(0,0,0,0.6)] text-[13px] mt-2";
 
-const Title = styled.h1`
-	font-size: 28px;
-	font-weight: 800;
-	margin: 0 0 16px 0;
-`;
-
-const TextArea = styled.textarea`
-	width: 100%;
-	min-height: 160px;
-	padding: 14px;
-	border-radius: 12px;
-	border: 1px solid rgba(0,0,0,0.12);
-	background: #fff;
-	color: #111;
-	resize: vertical;
-	outline: none;
-	font-size: 14px;
-	line-height: 1.5;
-	box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-`;
-
-const Actions = styled.div`
-	display: flex;
-	gap: 12px;
-	margin-top: 12px;
-`;
-
-const PrimaryButton = styled.button<{ disabled?: boolean }>`
-	position: relative;
-	padding: 12px 18px;
-	border-radius: 14px;
-	border: 1px solid rgba(0,0,0,0.15);
-	cursor: pointer;
-	background: linear-gradient(135deg, #f9fafb, #e5e7eb);
-	color: #111;
-	font-weight: 700;
-	box-shadow: 0 6px 14px rgba(0,0,0,0.08), inset 0 -2px 6px rgba(255,255,255,0.7);
-	opacity: ${p => (p.disabled ? 0.6 : 1)};
-	transition: transform 0.08s ease, box-shadow 0.2s ease, background 0.2s ease;
-	&:active { transform: translateY(1px); box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
-`;
-
-const SecondaryText = styled.div`
-	color: rgba(0,0,0,0.6);
-	font-size: 13px;
-	margin-top: 8px;
-`;
-
-const InstructionRow = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-top: 10px;
-	color: rgba(0,0,0,0.62);
-	font-size: 13px;
-`;
-
-const InstructionIcon = styled(InformationCircleIcon)`
-	width: 18px;
-	height: 18px;
-	flex-shrink: 0;
-	color: rgba(0,0,0,0.45);
-`;
-
-const Spinner = styled.div`
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-	border: 2px solid rgba(0,0,0,0.2);
-	border-top-color: rgba(0,0,0,0.8);
-	animation: spin 0.8s linear infinite;
-	@keyframes spin { to { transform: rotate(360deg); } }
-`;
-
-const ChartWrapper = styled.div`
-	margin-top: 24px;
-	padding: 16px;
-	border-radius: 16px;
-	background: linear-gradient(180deg, #ffffff, #f8fafc);
-	border: 1px solid rgba(0,0,0,0.08);
-	box-shadow: 0 8px 26px rgba(0,0,0,0.06);
-`;
-
-const ChartGrid = styled.div`
-	display: grid;
-	grid-template-columns: repeat(6, 1fr);
-	gap: 14px;
-	align-items: end;
-	height: 260px;
-`;
-
-const BarColumn = styled.div`
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8px;
-`;
-
-const BarSvg = styled.svg`
-	width: 100%;
-	height: 200px;
-`;
-
-const BarLabel = styled.div`
-	font-weight: 800;
-	color: #111;
-`;
-
-const LevelLabel = styled.div`
-	font-weight: 700;
-	color: rgba(0,0,0,0.9);
-`;
+const spinnerClass =
+	"w-[18px] h-[18px] rounded-full border-2 border-[rgba(0,0,0,0.2)] border-t-[rgba(0,0,0,0.8)] animate-[cefr-spin_0.8s_linear_infinite]";
 
 const levels: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const levelColors: Record<CefrLevel, string> = {
@@ -346,33 +233,41 @@ export default function CefrClient() {
 	const isLoading = isSubmitting || (!!batchId && !isTerminal);
 
 	return (
-		<Container>
-			<Title>CEFR Level Classifier</Title>
-			<TextArea
+		<div className="max-w-page mx-auto py-6 px-4 text-[#111]">
+			<h1 className="text-[28px] font-extrabold mx-0 mt-0 mb-4">CEFR Level Classifier</h1>
+			<textarea
+				className="w-full min-h-[160px] p-[14px] rounded-[12px] border border-[rgba(0,0,0,0.12)] bg-white text-[#111] resize-y outline-none text-[14px] leading-[1.5] shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)]"
 				placeholder="Paste or type your text here..."
 				value={text}
 				onChange={e => setText(e.target.value)}
 				onKeyDown={handleKeyDown}
 			/>
-			<InstructionRow>
-				<InstructionIcon aria-hidden="true" />
+			<div className="flex items-center gap-2 mt-[10px] text-[rgba(0,0,0,0.62)] text-[13px]">
+				<InformationCircleIcon
+					className="w-[18px] h-[18px] shrink-0 text-[rgba(0,0,0,0.45)]"
+					aria-hidden="true"
+				/>
 				<span>
 					Press Enter to classify with the CEFR model (Shift+Enter for a newline).{" "}
 					{candidateWordCount > 0
 						? `Batching ${candidateWordCount.toLocaleString()} unique words.`
 						: "We automatically deduplicate words before sending."}
 				</span>
-			</InstructionRow>
-			<Actions>
-				<PrimaryButton onClick={handleSubmit} disabled={isSubmitting || !text.trim()}>
+			</div>
+			<div className="flex gap-3 mt-3">
+				<button
+					className="relative py-3 px-[18px] rounded-[14px] border border-[rgba(0,0,0,0.15)] cursor-pointer bg-[linear-gradient(135deg,#f9fafb,#e5e7eb)] text-[#111] font-bold shadow-[0_6px_14px_rgba(0,0,0,0.08),inset_0_-2px_6px_rgba(255,255,255,0.7)] [transition:transform_0.08s_ease,box-shadow_0.2s_ease,background_0.2s_ease] active:[transform:translateY(1px)] active:shadow-[0_3px_10px_rgba(0,0,0,0.06)] disabled:opacity-60"
+					onClick={handleSubmit}
+					disabled={isSubmitting || !text.trim()}
+				>
 					{isSubmitting ? "Submitting..." : "Classify Words"}
-				</PrimaryButton>
-				{isLoading && <Spinner role="status" aria-label="loading" />}
-				{status && <SecondaryText>Status: {status}</SecondaryText>}
-			</Actions>
-			{error && <SecondaryText style={{ color: "#b91c1c" }}>{error}</SecondaryText>}
+				</button>
+				{isLoading && <div className={spinnerClass} role="status" aria-label="loading" />}
+				{status && <div className={secondaryTextClass}>Status: {status}</div>}
+			</div>
+			{error && <div className={secondaryTextClass} style={{ color: "#b91c1c" }}>{error}</div>}
 
-			<ChartWrapper>
+			<div className="mt-6 p-4 rounded-[16px] bg-[linear-gradient(180deg,#ffffff,#f8fafc)] border border-[rgba(0,0,0,0.08)] shadow-[0_8px_26px_rgba(0,0,0,0.06)]">
 				<div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
 					<div style={{ fontWeight: 700 }}>Total weighted words: {total}</div>
 					{levels.map(l => (
@@ -383,18 +278,18 @@ export default function CefrClient() {
 				</div>
 				{isLoading && (
 					<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, color: "#111" }}>
-						<Spinner />
+						<div className={spinnerClass} />
 						<div>Processing batch… This may take a while.</div>
 					</div>
 				)}
-				<ChartGrid>
+				<div className="grid grid-cols-[repeat(6,1fr)] gap-[14px] items-end h-[260px]">
 					{levels.map(level => {
 						const value = counts[level] || 0;
 						const pct = total > 0 ? Math.round((value / total) * 100) : 0;
 						const barHeight = (value / maxCount) * 180; // px for rect
 						return (
-							<BarColumn key={level}>
-								<BarSvg viewBox="0 0 100 200" preserveAspectRatio="none">
+							<div className="flex flex-col items-center gap-2" key={level}>
+								<svg className="w-full h-[200px]" viewBox="0 0 100 200" preserveAspectRatio="none">
 									<defs>
 										<linearGradient id={`grad-${level}`} x1="0" y1="0" x2="0" y2="1">
 											<stop offset="0%" stopColor={levelColors[level]} stopOpacity="0.95" />
@@ -402,13 +297,13 @@ export default function CefrClient() {
 										</linearGradient>
 									</defs>
 									<rect x="20" width="60" y={200 - barHeight} height={barHeight} rx="10" fill={`url(#grad-${level})`} />
-								</BarSvg>
-								<BarLabel>{value} ({pct}%)</BarLabel>
-								<LevelLabel>{level}</LevelLabel>
-							</BarColumn>
+								</svg>
+								<div className="font-extrabold text-[#111]">{value} ({pct}%)</div>
+								<div className="font-bold text-[rgba(0,0,0,0.9)]">{level}</div>
+							</div>
 						);
 					})}
-				</ChartGrid>
+				</div>
 				{!isLoading && (status === "completed") && (
 					<div style={{ marginTop: 16 }}>
 						{levels.map(l => {
@@ -430,7 +325,7 @@ export default function CefrClient() {
 						})}
 					</div>
 				)}
-			</ChartWrapper>
+			</div>
 			{!isLoading && (status === "completed") && (
 				<div style={{ marginTop: 16 }}>
 					<strong>Per-word labels</strong>
@@ -444,7 +339,7 @@ export default function CefrClient() {
 					</div>
 				</div>
 			)}
-		</Container>
+		</div>
 	);
 }
 

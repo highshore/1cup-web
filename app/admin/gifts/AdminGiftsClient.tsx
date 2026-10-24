@@ -8,11 +8,17 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import styled from "styled-components";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  LabelHTMLAttributes,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 
-import { appLayout } from "../../lib/constants/app_layout";
 import { useAuth } from "../../lib/contexts/auth_context";
+import type { getDictionary } from "../../lib/i18n";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import {
   getAdminGiftsClient,
@@ -27,6 +33,7 @@ import type {
   AdminGiftFavorite,
   AdminGiftHistoryItem,
   AdminGiftProduct,
+  AdminGiftRecipient,
   AdminGiftsData,
 } from "../../lib/features/gifts/types";
 
@@ -45,916 +52,743 @@ const FEATURED_BRAND_NAMES = [
   "던킨",
 ];
 
-const Page = styled.main`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding: 0 ${appLayout.pageGutterDesktop} 2.5rem;
-
-  @media (max-width: 640px) {
-    padding-right: ${appLayout.pageGutterMobile};
-    padding-left: ${appLayout.pageGutterMobile};
-  }
-`;
-
-const Stack = styled.div`
-  display: grid;
-  gap: 1.25rem;
-`;
-
-const Card = styled.section`
-  overflow: hidden;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.25rem 0;
-
-  @media (max-width: 680px) {
-    flex-direction: column;
-  }
-`;
-
-const CardTitle = styled.h2`
-  margin: 0;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 900;
-`;
-
-const CardDescription = styled.p`
-  margin: 0.38rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.5;
-`;
-
-const CardBody = styled.div`
-  padding: 1.05rem 1.25rem 1.25rem;
-`;
-
-const ProviderInfo = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-`;
-
-const Pill = styled.span<{ $tone?: "ok" | "warn" | "error" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: ${({ $tone }) =>
-    $tone === "ok" ? "#dcfce7" : $tone === "error" ? "#fee2e2" : "#fff3cd"};
-  padding: 0.28rem 0.55rem;
-  color: #050505;
-  font-size: 0.72rem;
-  font-weight: 900;
-`;
-
-const Balance = styled.span`
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 850;
-`;
-
-const Notice = styled.div`
-  margin-bottom: 1rem;
-  border: 1.5px solid #050505;
-  border-left: 5px solid #f47a4a;
-  border-radius: 10px;
-  background: #fff8f4;
-  padding: 0.72rem 0.78rem;
-  color: rgba(5, 5, 5, 0.74);
-  font-size: 0.74rem;
-  font-weight: 650;
-  line-height: 1.45;
-
-  strong {
-    color: #050505;
-    font-weight: 900;
-  }
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem 1.25rem;
-
-  @media (max-width: 820px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormColumn = styled.div`
-  min-width: 0;
-`;
-
-const Field = styled.label`
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 0.9rem;
-  color: #050505;
-  font-size: 0.79rem;
-  font-weight: 900;
-
-  &:first-child {
-    margin-top: 0;
-  }
-`;
-
-const Input = styled.input`
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.6rem 0.7rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.86rem;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const Textarea = styled.textarea`
-  width: 100%;
-  min-height: 150px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.65rem 0.7rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.86rem;
-  line-height: 1.5;
-
-  &:focus {
-    outline: 3px solid #f47a4a;
-  }
-`;
-
-const FieldHint = styled.p`
-  margin: -0.05rem 0 0;
-  color: rgba(5, 5, 5, 0.56);
-  font-size: 0.7rem;
-  font-weight: 600;
-`;
-
-const MemberPicker = styled.div`
-  overflow: hidden;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-`;
-
-const SearchWrap = styled.div`
-  position: relative;
-  border-bottom: 1.5px solid #050505;
-
-  svg {
-    position: absolute;
-    top: 50%;
-    left: 0.7rem;
-    width: 1rem;
-    height: 1rem;
-    transform: translateY(-50%);
-    color: rgba(5, 5, 5, 0.52);
-  }
-`;
-
-const SearchInput = styled(Input)`
-  min-height: 40px;
-  border: 0;
-  border-radius: 0;
-  padding-left: 2.1rem;
-
-  &:focus {
-    outline: none;
-  }
-`;
-
-const RecipientList = styled.div`
-  max-height: 235px;
-  overflow-y: auto;
-`;
-
-const RecipientRow = styled.label<{ $selected: boolean; $disabled?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 48px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
-  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
-  padding: 0.55rem 0.72rem;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  opacity: ${({ $disabled }) => ($disabled ? 0.52 : 1)};
-
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  &:hover {
-    background: ${({ $disabled }) => ($disabled ? "#ffffff" : "#fff8f4")};
-  }
-
-  input {
-    width: 1rem;
-    height: 1rem;
-    accent-color: #f47a4a;
-  }
-`;
-
-const Avatar = styled.span`
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #f47a4a;
-  color: #050505;
-  font-size: 0.7rem;
-  font-weight: 850;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-`;
-
-const RecipientText = styled.span`
-  display: grid;
-  min-width: 0;
-  gap: 0.08rem;
-`;
-
-const RecipientName = styled.span`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.81rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const RecipientMeta = styled.span`
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.67rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const EmptyRecipients = styled.p`
-  margin: 0;
-  padding: 1.25rem 0.75rem;
-  color: rgba(5, 5, 5, 0.54);
-  font-size: 0.8rem;
-  text-align: center;
-`;
-
-const LookupRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-`;
-
-const SecondaryButton = styled.button`
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 0.55rem 0.68rem;
-  box-shadow: 2px 2px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #fff1ea;
-    box-shadow: 3px 3px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  svg {
-    width: 0.95rem;
-    height: 0.95rem;
-  }
-`;
-
-const ProductCard = styled.div`
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  gap: 0.8rem;
-  margin-top: 0.8rem;
-  border: 1.5px solid #050505;
-  border-radius: 12px;
-  background: #fff8f4;
-  padding: 0.72rem;
-`;
-
-const ProductImage = styled.div`
-  width: 74px;
-  height: 74px;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 9px;
-  background: #ffffff;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const ProductName = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 0.85rem;
-  font-weight: 900;
-  line-height: 1.35;
-`;
-
-const ProductMeta = styled.p`
-  margin: 0.25rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.7rem;
-  font-weight: 650;
-  line-height: 1.4;
-`;
-
-const ProductActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-`;
-
-const FavoriteQuickPicks = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-top: 0.8rem;
-`;
-
-const FavoriteQuickPick = styled.button`
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 0.42rem;
-  overflow: hidden;
-  border: 1.5px solid #050505;
-  border-radius: 9px;
-  background: #fffef4;
-  padding: 0.4rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-
-  &:hover:not(:disabled) {
-    background: #fff1ea;
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.6;
-  }
-`;
-
-const FavoriteQuickImage = styled.div`
-  width: 28px;
-  height: 28px;
-  overflow: hidden;
-  border-radius: 6px;
-  background: #fff8f4;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  svg {
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    padding: 0.35rem;
-    color: #f47a4a;
-  }
-`;
-
-const FavoriteQuickText = styled.span`
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.68rem;
-  font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const ManualLookup = styled.details`
-  margin-top: 0.7rem;
-
-  summary {
-    width: fit-content;
-    cursor: pointer;
-    color: rgba(5, 5, 5, 0.68);
-    font-size: 0.72rem;
-    font-weight: 800;
-  }
-`;
-
-const ManualLookupRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  margin-top: 0.5rem;
-`;
-
-const ModalBackdrop = styled.div`
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(5, 5, 5, 0.56);
-  padding: 1rem;
-`;
-
-const ModalCard = styled.section`
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(760px, 100%);
-  max-height: min(620px, calc(100vh - 2rem));
-  overflow: hidden;
-  border: 3px solid #050505;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 7px 7px 0 #050505;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 2px solid #050505;
-  padding: 1rem 1.1rem;
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  color: #050505;
-  font-size: 1rem;
-  font-weight: 950;
-`;
-
-const ModalDescription = styled.p`
-  margin: 0.25rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.73rem;
-  font-weight: 650;
-  line-height: 1.45;
-`;
-
-const IconButton = styled.button`
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 2px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #050505;
-  cursor: pointer;
-
-  &:hover {
-    background: #fff1ea;
-  }
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
-`;
-
-const CatalogTools = styled.div`
-  border-bottom: 1.5px solid rgba(5, 5, 5, 0.18);
-  padding: 0.7rem;
-`;
-
-const CatalogSearch = styled(SearchWrap)`
-  border: 2px solid #050505;
-  border-radius: 10px;
-`;
-
-const CatalogSearchInput = styled(SearchInput)`
-  border-radius: 8px;
-`;
-
-const CatalogBody = styled.div`
-  display: grid;
-  min-height: 0;
-  grid-template-columns: 188px minmax(0, 1fr);
-
-  @media (max-width: 620px) {
-    grid-template-columns: 145px minmax(0, 1fr);
-  }
-`;
-
-const BrandPanel = styled.aside`
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  overflow: hidden;
-  border-right: 2px solid #050505;
-  background: #fff8f4;
-`;
-
-const BrandList = styled.div`
-  min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
-  padding: 0.35rem;
-`;
-
-const BrandButton = styled.button<{ $selected: boolean }>`
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  border: 0;
-  border-radius: 7px;
-  background: ${({ $selected }) => ($selected ? "#f47a4a" : "transparent")};
-  padding: 0.55rem 0.58rem;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 850;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  &:hover {
-    background: ${({ $selected }) => ($selected ? "#f47a4a" : "#fff1ea")};
-  }
-`;
-
-const CatalogItems = styled.div`
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0.85rem;
-`;
-
-const CatalogGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CatalogProduct = styled.div<{ $selected: boolean; $disabled: boolean }>`
-  position: relative;
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 0.65rem;
-  width: 100%;
-  min-height: 86px;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 11px;
-  background: ${({ $selected }) => ($selected ? "#fff1ea" : "#ffffff")};
-  padding: 0.58rem;
-  color: #050505;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  font: inherit;
-  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
-  text-align: left;
-
-  &:hover {
-    border-color: ${({ $disabled }) => ($disabled ? "#050505" : "#f47a4a")};
-    background: ${({ $disabled, $selected }) =>
-      $disabled ? ($selected ? "#fff1ea" : "#ffffff") : "#fff8f4"};
-  }
-`;
-
-const FavoriteToggle = styled.button<{ $active: boolean }>`
-  position: absolute;
-  top: 0.38rem;
-  right: 0.38rem;
-  display: grid;
-  width: 25px;
-  height: 25px;
-  place-items: center;
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: ${({ $active }) => ($active ? "#fef08a" : "#ffffff")};
-  color: #050505;
-  cursor: pointer;
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.55;
-  }
-
-  svg {
-    width: 0.86rem;
-    height: 0.86rem;
-  }
-`;
-
-const CatalogItemsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  margin-bottom: 0.7rem;
-`;
-
-const CatalogBrandName = styled.p`
-  margin: 0;
-  overflow: hidden;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const SortSelect = styled.select`
-  min-height: 32px;
-  max-width: 168px;
-  border: 1.5px solid #050505;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 0.3rem 0.4rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 800;
-`;
-
-const CatalogImage = styled.div`
-  width: 58px;
-  height: 58px;
-  overflow: hidden;
-  border: 1px solid rgba(5, 5, 5, 0.35);
-  border-radius: 8px;
-  background: #fff8f4;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-const CatalogText = styled.span`
-  display: grid;
-  min-width: 0;
-  gap: 0.14rem;
-`;
-
-const CatalogName = styled.span`
-  overflow: hidden;
-  font-size: 0.76rem;
-  font-weight: 900;
-  line-height: 1.32;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const CatalogMeta = styled.span`
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.67rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const CatalogFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-top: 1.5px solid rgba(5, 5, 5, 0.18);
-  padding: 0.85rem 1.1rem;
-
-  @media (max-width: 560px) {
-    align-items: stretch;
-    flex-direction: column;
-  }
-`;
-
-const CatalogStatus = styled.div`
-  display: flex;
-  align-items: center;
-  color: rgba(5, 5, 5, 0.64);
-  font-size: 0.72rem;
-  font-weight: 800;
-`;
-
-const CatalogActions = styled.div`
-  display: flex;
-  gap: 0.55rem;
-
-  @media (max-width: 560px) {
-    > button {
-      flex: 1;
-    }
-  }
-`;
-
-const TwoColumns = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-
-  @media (max-width: 540px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const SubmitRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1.1rem;
-  border-top: 1.5px solid rgba(5, 5, 5, 0.16);
-  padding-top: 1rem;
-
-  @media (max-width: 560px) {
-    align-items: stretch;
-    flex-direction: column;
-  }
-`;
-
-const SendButton = styled.button`
-  min-height: 42px;
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #f47a4a;
-  padding: 0.65rem 0.9rem;
-  box-shadow: 3px 3px 0 #050505;
-  color: #050505;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.81rem;
-  font-weight: 900;
-
-  &:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    background: #f88d63;
-    box-shadow: 4px 4px 0 #050505;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    box-shadow: none;
-  }
-`;
-
-const InlineStatus = styled.p<{ $error?: boolean }>`
-  margin: 0;
-  color: ${({ $error }) => ($error ? "#991b1b" : "#0f6b32")};
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.4;
-`;
-
-const HistoryWrap = styled.div`
-  overflow-x: auto;
-`;
-
-const HistoryTable = styled.div`
-  min-width: 880px;
-`;
-
-const HistoryRow = styled.div`
-  display: grid;
-  grid-template-columns: 150px minmax(150px, 1.05fr) minmax(220px, 1.5fr) 105px 125px minmax(170px, 1fr);
-  gap: 0.8rem;
-  align-items: center;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.14);
-  padding: 0.72rem 0;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-`;
-
-const HistoryHeaderRow = styled(HistoryRow)`
-  border-bottom: 2px solid #050505;
-  padding-top: 0;
-  color: rgba(5, 5, 5, 0.58);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-`;
-
-const HistoryPrimary = styled.div`
-  min-width: 0;
-  color: #050505;
-  font-size: 0.78rem;
-  font-weight: 850;
-  line-height: 1.4;
-`;
-
-const HistorySecondary = styled.div`
-  margin-top: 0.15rem;
-  overflow: hidden;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.67rem;
-  font-weight: 650;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const Status = styled.span<{ $status: AdminGiftHistoryItem["status"] }>`
-  display: inline-flex;
-  width: fit-content;
-  border: 1px solid #050505;
-  border-radius: 999px;
-  background: ${({ $status }) =>
-    $status === "sent"
-      ? "#dcfce7"
-      : $status === "pending"
-        ? "#fff3cd"
-        : $status === "cancelled_after_timeout"
-          ? "#e0f2fe"
-          : "#fee2e2"};
-  padding: 0.22rem 0.44rem;
-  color: #050505;
-  font-size: 0.64rem;
-  font-weight: 900;
-`;
-
-const ProviderError = styled.div`
-  margin-top: 0.15rem;
-  color: #991b1b;
-  font-size: 0.65rem;
-  font-weight: 750;
-  line-height: 1.35;
-`;
-
-const EmptyState = styled.p`
-  margin: 0;
-  padding: 1.4rem 0.5rem;
-  color: rgba(5, 5, 5, 0.54);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-align: center;
-`;
-
-const LoadingState = styled.div`
-  display: grid;
-  min-height: 260px;
-  place-items: center;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 0.88rem;
-  font-weight: 800;
-`;
+type DivProps = HTMLAttributes<HTMLDivElement>;
+type SectionProps = HTMLAttributes<HTMLElement>;
+type SpanProps = HTMLAttributes<HTMLSpanElement>;
+type ParagraphProps = HTMLAttributes<HTMLParagraphElement>;
+type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+type InputProps = InputHTMLAttributes<HTMLInputElement>;
+type GiftsCopy = ReturnType<typeof getDictionary>["admin"]["gifts"];
+type CatalogSort = "price-asc" | "price-desc" | "name";
+
+function Page({ className = "", ...rest }: SectionProps) {
+  return (
+    <main
+      {...rest}
+      className={`w-full max-w-page box-border mx-auto px-gutter pb-10 max-[640px]:px-gutter-mobile ${className}`}
+    />
+  );
+}
+
+const MONEY_OPTIONS: Intl.NumberFormatOptions = {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+};
+const MONEY_FORMAT = {
+  ko: new Intl.NumberFormat("ko-KR", MONEY_OPTIONS),
+  en: new Intl.NumberFormat("en-US", MONEY_OPTIONS),
+};
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+const DATE_TIME_FORMAT = {
+  ko: new Intl.DateTimeFormat("ko-KR", DATE_TIME_OPTIONS),
+  en: new Intl.DateTimeFormat("en-US", DATE_TIME_OPTIONS),
+};
+
+function Stack({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`grid gap-5 ${className}`} />;
+}
+
+function Card({ className = "", ...rest }: SectionProps) {
+  return (
+    <section
+      {...rest}
+      className={`overflow-hidden border-[3px] border-[#050505] rounded-[16px] bg-white shadow-[6px_6px_0_rgba(5,5,5,0.9)] ${className}`}
+    />
+  );
+}
+
+function CardHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-start justify-between gap-4 px-5 pt-5 max-[680px]:flex-col ${className}`}
+    />
+  );
+}
+
+function CardTitle({ className = "", ...rest }: HeadingProps) {
+  return <h2 {...rest} className={`m-0 text-[#050505] text-[1rem] font-black ${className}`} />;
+}
+
+function CardDescription({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[0.38rem] mb-0 text-[rgba(5,5,5,0.6)] text-[0.78rem] font-semibold leading-[1.5] ${className}`}
+    />
+  );
+}
+
+function CardBody({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`px-5 pt-[1.05rem] pb-5 ${className}`} />;
+}
+
+function ProviderInfo({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-wrap items-center justify-end gap-2 ${className}`} />;
+}
+
+function Pill({
+  $tone,
+  className = "",
+  ...rest
+}: { $tone?: "ok" | "warn" | "error" } & SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex items-center border-[1.5px] border-[#050505] rounded-full px-[0.55rem] py-[0.28rem] text-[#050505] text-[0.72rem] font-black ${
+        $tone === "ok" ? "bg-[#dcfce7]" : $tone === "error" ? "bg-[#fee2e2]" : "bg-[#fff3cd]"
+      } ${className}`}
+    />
+  );
+}
+
+function Balance({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`text-[#050505] text-[0.79rem] font-[850] ${className}`} />;
+}
+
+function Notice({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mb-4 border-[1.5px] border-l-[5px] border-[#050505] border-l-[#f47a4a] rounded-[10px] bg-[#fff8f4] px-[0.78rem] py-[0.72rem] text-[rgba(5,5,5,0.74)] text-[0.74rem] font-[650] leading-[1.45] [&_strong]:text-[#050505] [&_strong]:font-black ${className}`}
+    />
+  );
+}
+
+function FormGrid({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-5 gap-y-4 max-[820px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function FormColumn({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-w-0 ${className}`} />;
+}
+
+function Field({
+  as: As = "label",
+  className = "",
+  ...rest
+}: { as?: "div" | "label" } & LabelHTMLAttributes<HTMLElement>) {
+  return (
+    <As
+      {...rest}
+      className={`grid gap-[0.4rem] mt-[0.9rem] first:mt-0 text-[#050505] text-[0.79rem] font-black ${className}`}
+    />
+  );
+}
+
+function Input({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[42px] box-border border-2 border-[#050505] rounded-[10px] bg-white px-[0.7rem] py-[0.6rem] text-[#050505] text-[0.86rem] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function Textarea({ className = "", ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...rest}
+      className={`w-full min-h-[150px] box-border resize-y border-2 border-[#050505] rounded-[10px] bg-white px-[0.7rem] py-[0.65rem] text-[#050505] text-[0.86rem] leading-[1.5] focus:outline-solid focus:outline-[3px] focus:outline-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function FieldHint({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-[-0.05rem] mb-0 text-[rgba(5,5,5,0.56)] text-[0.7rem] font-semibold ${className}`}
+    />
+  );
+}
+
+function MemberPicker({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`overflow-hidden border-2 border-[#050505] rounded-[10px] bg-white ${className}`}
+    />
+  );
+}
+
+const searchWrapSvgClasses =
+  "[&_svg]:absolute [&_svg]:top-1/2 [&_svg]:left-[0.7rem] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:translate-y-[-50%] [&_svg]:text-[rgba(5,5,5,0.52)]";
+
+function SearchWrap({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative border-b-[1.5px] border-[#050505] ${searchWrapSvgClasses} ${className}`}
+    />
+  );
+}
+
+function SearchInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[40px] box-border border-0 rounded-none bg-white py-[0.6rem] pr-[0.7rem] pl-[2.1rem] text-[#050505] text-[0.86rem] focus:outline-none ${className}`}
+    />
+  );
+}
+
+function RecipientList({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`max-h-[235px] overflow-y-auto ${className}`} />;
+}
+
+function RecipientRow({
+  $selected,
+  $disabled,
+  className = "",
+  ...rest
+}: { $selected: boolean; $disabled?: boolean } & LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      {...rest}
+      className={`flex items-center gap-[0.7rem] min-h-[48px] border-b border-[rgba(5,5,5,0.14)] px-[0.72rem] py-[0.55rem] last:border-b-0 [&_input]:w-4 [&_input]:h-4 [&_input]:accent-[#f47a4a] ${
+        $selected ? "bg-[#fff1ea]" : "bg-white"
+      } ${
+        $disabled
+          ? "cursor-not-allowed opacity-[0.52] hover:bg-white"
+          : "cursor-pointer hover:bg-[#fff8f4]"
+      } ${className}`}
+    />
+  );
+}
+
+function Avatar({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`grid w-7 h-7 flex-none place-items-center overflow-hidden rounded-full bg-[#f47a4a] text-[#050505] text-[0.7rem] font-[850] [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function RecipientText({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`grid min-w-0 gap-[0.08rem] ${className}`} />;
+}
+
+function RecipientName({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[#050505] text-[0.81rem] font-extrabold text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function RecipientMeta({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[rgba(5,5,5,0.55)] text-[0.67rem] font-[650] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function EmptyRecipients({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-3 py-5 text-[rgba(5,5,5,0.54)] text-[0.8rem] text-center ${className}`}
+    />
+  );
+}
+
+function SecondaryButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`inline-flex min-h-[42px] items-center justify-center gap-[0.35rem] border-2 border-[#050505] rounded-[10px] bg-white px-[0.68rem] py-[0.55rem] shadow-[2px_2px_0_#050505] text-[#050505] cursor-pointer text-[0.75rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#fff1ea] [&:hover:not(:disabled)]:shadow-[3px_3px_0_#050505] disabled:cursor-not-allowed disabled:opacity-[0.55] [&_svg]:w-[0.95rem] [&_svg]:h-[0.95rem] ${className}`}
+    />
+  );
+}
+
+function ProductCard({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[74px_minmax(0,1fr)] gap-[0.8rem] mt-[0.8rem] border-[1.5px] border-[#050505] rounded-[12px] bg-[#fff8f4] p-[0.72rem] ${className}`}
+    />
+  );
+}
+
+function ProductImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-[74px] h-[74px] overflow-hidden border-[1.5px] border-[#050505] rounded-[9px] bg-white [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function ProductName({ className = "", ...rest }: HeadingProps) {
+  return (
+    <h3
+      {...rest}
+      className={`m-0 text-[#050505] text-[0.85rem] font-black leading-[1.35] ${className}`}
+    />
+  );
+}
+
+function ProductMeta({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-1 mb-0 text-[rgba(5,5,5,0.6)] text-[0.7rem] font-[650] leading-[1.4] ${className}`}
+    />
+  );
+}
+
+function ProductActions({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`flex flex-wrap gap-[0.55rem] ${className}`} />;
+}
+
+function FavoriteQuickPicks({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`grid grid-cols-2 gap-2 mt-[0.8rem] ${className}`} />;
+}
+
+function FavoriteQuickPick({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`grid grid-cols-[28px_minmax(0,1fr)] items-center gap-[0.42rem] overflow-hidden border-[1.5px] border-[#050505] rounded-[9px] bg-[#fffef4] p-[0.4rem] text-[#050505] cursor-pointer text-left [&:hover:not(:disabled)]:bg-[#fff1ea] disabled:cursor-wait disabled:opacity-60 ${className}`}
+    />
+  );
+}
+
+function FavoriteQuickImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-7 h-7 overflow-hidden rounded-[6px] bg-[#fff8f4] [&_img]:w-full [&_img]:h-full [&_img]:object-cover [&_svg]:w-full [&_svg]:h-full [&_svg]:box-border [&_svg]:p-[0.35rem] [&_svg]:text-[#f47a4a] ${className}`}
+    />
+  );
+}
+
+function FavoriteQuickText({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[#050505] text-[0.68rem] font-[850] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function ManualLookup({ className = "", ...rest }: HTMLAttributes<HTMLDetailsElement>) {
+  return (
+    <details
+      {...rest}
+      className={`mt-[0.7rem] [&_summary]:w-fit [&_summary]:cursor-pointer [&_summary]:text-[rgba(5,5,5,0.68)] [&_summary]:text-[0.72rem] [&_summary]:font-extrabold ${className}`}
+    />
+  );
+}
+
+function ManualLookupRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] gap-[0.55rem] mt-2 ${className}`}
+    />
+  );
+}
+
+function ModalBackdrop({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`fixed z-[1000] inset-0 grid place-items-center bg-[rgba(5,5,5,0.56)] p-4 ${className}`}
+    />
+  );
+}
+
+function ModalCard({ className = "", ...rest }: SectionProps) {
+  return (
+    <section
+      {...rest}
+      className={`grid grid-rows-[auto_minmax(0,1fr)_auto] w-[min(760px,100%)] max-h-[min(620px,calc(100vh-2rem))] overflow-hidden border-[3px] border-[#050505] rounded-[16px] bg-white shadow-[7px_7px_0_#050505] ${className}`}
+    />
+  );
+}
+
+function ModalHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-start justify-between gap-4 border-b-2 border-[#050505] px-[1.1rem] py-4 ${className}`}
+    />
+  );
+}
+
+function ModalTitle({ className = "", ...rest }: HeadingProps) {
+  return <h3 {...rest} className={`m-0 text-[#050505] text-[1rem] font-[950] ${className}`} />;
+}
+
+function ModalDescription({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`mx-0 mt-1 mb-0 text-[rgba(5,5,5,0.62)] text-[0.73rem] font-[650] leading-[1.45] ${className}`}
+    />
+  );
+}
+
+function IconButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`grid w-[34px] h-[34px] flex-none place-items-center border-2 border-[#050505] rounded-[8px] bg-white text-[#050505] cursor-pointer hover:bg-[#fff1ea] [&_svg]:w-4 [&_svg]:h-4 ${className}`}
+    />
+  );
+}
+
+function CatalogTools({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`border-b-[1.5px] border-[rgba(5,5,5,0.18)] p-[0.7rem] ${className}`}
+    />
+  );
+}
+
+function CatalogSearch({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative border-2 border-[#050505] rounded-[10px] ${searchWrapSvgClasses} ${className}`}
+    />
+  );
+}
+
+function CatalogSearchInput({ className = "", ...rest }: InputProps) {
+  return (
+    <input
+      {...rest}
+      className={`w-full min-h-[40px] box-border border-0 rounded-[8px] bg-white py-[0.6rem] pr-[0.7rem] pl-[2.1rem] text-[#050505] text-[0.86rem] focus:outline-none ${className}`}
+    />
+  );
+}
+
+function CatalogBody({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid min-h-0 grid-cols-[188px_minmax(0,1fr)] max-[620px]:grid-cols-[145px_minmax(0,1fr)] ${className}`}
+    />
+  );
+}
+
+function BrandPanel({ className = "", ...rest }: SectionProps) {
+  return (
+    <aside
+      {...rest}
+      className={`grid grid-rows-[auto_minmax(0,1fr)] min-h-0 overflow-hidden border-r-2 border-[#050505] bg-[#fff8f4] ${className}`}
+    />
+  );
+}
+
+function BrandList({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`min-h-0 max-h-full overflow-y-auto p-[0.35rem] ${className}`} />
+  );
+}
+
+function BrandButton({
+  $selected,
+  className = "",
+  ...rest
+}: { $selected: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`block w-full overflow-hidden border-0 rounded-[7px] px-[0.58rem] py-[0.55rem] text-[#050505] cursor-pointer text-[0.72rem] font-[850] text-left text-ellipsis whitespace-nowrap ${
+        $selected ? "bg-[#f47a4a] hover:bg-[#f47a4a]" : "bg-transparent hover:bg-[#fff1ea]"
+      } ${className}`}
+    />
+  );
+}
+
+function CatalogItems({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-h-0 overflow-y-auto p-[0.85rem] ${className}`} />;
+}
+
+function CatalogGrid({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-2 gap-[0.7rem] max-[480px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function CatalogProduct({
+  $selected,
+  $disabled,
+  className = "",
+  ...rest
+}: { $selected: boolean; $disabled: boolean } & DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`relative grid grid-cols-[58px_minmax(0,1fr)] gap-[0.65rem] w-full min-h-[86px] items-center border-2 border-[#050505] rounded-[11px] p-[0.58rem] text-[#050505] text-left ${
+        $selected ? "bg-[#fff1ea]" : "bg-white"
+      } ${
+        $disabled
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer hover:border-[#f47a4a] hover:bg-[#fff8f4]"
+      } ${className}`}
+    />
+  );
+}
+
+function FavoriteToggle({
+  $active,
+  className = "",
+  ...rest
+}: { $active: boolean } & ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`absolute top-[0.38rem] right-[0.38rem] grid w-[25px] h-[25px] place-items-center border border-[#050505] rounded-full text-[#050505] cursor-pointer disabled:cursor-wait disabled:opacity-[0.55] [&_svg]:w-[0.86rem] [&_svg]:h-[0.86rem] ${
+        $active ? "bg-[#fef08a]" : "bg-white"
+      } ${className}`}
+    />
+  );
+}
+
+function CatalogItemsHeader({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-[0.65rem] mb-[0.7rem] ${className}`}
+    />
+  );
+}
+
+function CatalogBrandName({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 overflow-hidden text-[#050505] text-[0.78rem] font-black text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function SortSelect({ className = "", ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...rest}
+      className={`min-h-8 max-w-[168px] border-[1.5px] border-[#050505] rounded-[8px] bg-white px-[0.4rem] py-[0.3rem] text-[#050505] text-[0.68rem] font-extrabold ${className}`}
+    />
+  );
+}
+
+function CatalogImage({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`w-[58px] h-[58px] overflow-hidden border border-[rgba(5,5,5,0.35)] rounded-[8px] bg-[#fff8f4] [&_img]:w-full [&_img]:h-full [&_img]:object-cover ${className}`}
+    />
+  );
+}
+
+function CatalogText({ className = "", ...rest }: SpanProps) {
+  return <span {...rest} className={`grid min-w-0 gap-[0.14rem] ${className}`} />;
+}
+
+function CatalogName({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[0.76rem] font-black leading-[1.32] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function CatalogMeta({ className = "", ...rest }: SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`overflow-hidden text-[rgba(5,5,5,0.6)] text-[0.67rem] font-[650] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function CatalogFooter({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-3 border-t-[1.5px] border-[rgba(5,5,5,0.18)] px-[1.1rem] py-[0.85rem] max-[560px]:flex-col max-[560px]:items-stretch ${className}`}
+    />
+  );
+}
+
+function CatalogStatus({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center text-[rgba(5,5,5,0.64)] text-[0.72rem] font-extrabold ${className}`}
+    />
+  );
+}
+
+function CatalogActions({ className = "", ...rest }: DivProps) {
+  return (
+    <div {...rest} className={`flex gap-[0.55rem] max-[560px]:[&>button]:flex-1 ${className}`} />
+  );
+}
+
+function TwoColumns({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid grid-cols-[1fr_1fr] gap-[0.65rem] max-[540px]:grid-cols-1 ${className}`}
+    />
+  );
+}
+
+function SubmitRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`flex items-center justify-between gap-3 mt-[1.1rem] border-t-[1.5px] border-[rgba(5,5,5,0.16)] pt-4 max-[560px]:flex-col max-[560px]:items-stretch ${className}`}
+    />
+  );
+}
+
+function SendButton({ className = "", ...rest }: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      className={`min-h-[42px] border-2 border-[#050505] rounded-[10px] bg-[#f47a4a] px-[0.9rem] py-[0.65rem] shadow-[3px_3px_0_#050505] text-[#050505] cursor-pointer text-[0.81rem] font-black [&:hover:not(:disabled)]:[transform:translate(-1px,-1px)] [&:hover:not(:disabled)]:bg-[#f88d63] [&:hover:not(:disabled)]:shadow-[4px_4px_0_#050505] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${className}`}
+    />
+  );
+}
+
+function InlineStatus({
+  $error,
+  className = "",
+  ...rest
+}: { $error?: boolean } & ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 text-[0.75rem] font-extrabold leading-[1.4] ${
+        $error ? "text-[#991b1b]" : "text-[#0f6b32]"
+      } ${className}`}
+    />
+  );
+}
+
+function HistoryWrap({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`overflow-x-auto ${className}`} />;
+}
+
+function HistoryTable({ className = "", ...rest }: DivProps) {
+  return <div {...rest} className={`min-w-[880px] ${className}`} />;
+}
+
+const historyGridClasses =
+  "grid grid-cols-[150px_minmax(150px,1.05fr)_minmax(220px,1.5fr)_105px_125px_minmax(170px,1fr)] gap-[0.8rem] items-center";
+
+function HistoryRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`${historyGridClasses} border-b border-[rgba(5,5,5,0.14)] py-[0.72rem] last:border-b-0 ${className}`}
+    />
+  );
+}
+
+function HistoryHeaderRow({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`${historyGridClasses} border-b-2 border-[#050505] pt-0 pb-[0.72rem] text-[rgba(5,5,5,0.58)] text-[0.68rem] font-black tracking-[0.03em] ${className}`}
+    />
+  );
+}
+
+function HistoryPrimary({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`min-w-0 text-[#050505] text-[0.78rem] font-[850] leading-[1.4] ${className}`}
+    />
+  );
+}
+
+function HistorySecondary({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-[0.15rem] overflow-hidden text-[rgba(5,5,5,0.55)] text-[0.67rem] font-[650] leading-[1.35] text-ellipsis whitespace-nowrap ${className}`}
+    />
+  );
+}
+
+function Status({
+  $status,
+  className = "",
+  ...rest
+}: { $status: AdminGiftHistoryItem["status"] } & SpanProps) {
+  return (
+    <span
+      {...rest}
+      className={`inline-flex w-fit border border-[#050505] rounded-full px-[0.44rem] py-[0.22rem] text-[#050505] text-[0.64rem] font-black ${
+        $status === "sent"
+          ? "bg-[#dcfce7]"
+          : $status === "pending"
+            ? "bg-[#fff3cd]"
+            : $status === "cancelled_after_timeout"
+              ? "bg-[#e0f2fe]"
+              : "bg-[#fee2e2]"
+      } ${className}`}
+    />
+  );
+}
+
+function ProviderError({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`mt-[0.15rem] text-[#991b1b] text-[0.65rem] font-[750] leading-[1.35] ${className}`}
+    />
+  );
+}
+
+function EmptyState({ className = "", ...rest }: ParagraphProps) {
+  return (
+    <p
+      {...rest}
+      className={`m-0 px-2 py-[1.4rem] text-[rgba(5,5,5,0.54)] text-[0.78rem] font-bold text-center ${className}`}
+    />
+  );
+}
+
+function LoadingState({ className = "", ...rest }: DivProps) {
+  return (
+    <div
+      {...rest}
+      className={`grid min-h-[260px] place-items-center text-[rgba(5,5,5,0.6)] text-[0.88rem] font-extrabold ${className}`}
+    />
+  );
+}
 
 function lastFour(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -975,10 +809,670 @@ function brandRank(brandName: string): number {
   return index === -1 ? FEATURED_BRAND_NAMES.length : index;
 }
 
-export default function AdminGiftsClient() {
+// A typed-in phone number is one recipient; an empty field is none.
+function customRecipientCount(phone: string): number {
+  return phone.trim() ? 1 : 0;
+}
+
+// Why nothing can be sent yet: the provider is not configured, or no product is chosen.
+function sendBlockedReason(
+  data: AdminGiftsData | null,
+  product: AdminGiftProduct | null,
+  copy: GiftsCopy,
+): string | null {
+  if (!data?.configured) return data?.configurationError || copy.providerNeedsSetup;
+  if (!product) return copy.productRequired;
+  return null;
+}
+
+// Money (KRW) and timestamp formatting in the admin's locale.
+function useGiftFormat() {
   const { t, locale } = useI18n();
+  const unavailable = t.admin.gifts.unavailable;
+  const formatMoney = (value: number | null) =>
+    value === null ? unavailable : MONEY_FORMAT[locale].format(value);
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return DATE_TIME_FORMAT[locale].format(date);
+  };
+  return { formatMoney, formatDate };
+}
+
+// Whether the gift provider is configured, the prepaid balance, and a refresh button.
+function ProviderStatus({
+  data,
+  isRefreshing,
+  onRefresh,
+  copy,
+}: {
+  data: AdminGiftsData | null;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  copy: GiftsCopy;
+}) {
+  const { formatMoney } = useGiftFormat();
+  return (
+    <ProviderInfo>
+      <Pill $tone={data?.configured ? "ok" : "error"}>
+        {data?.configured ? copy.providerReady : copy.providerNeedsSetup}
+      </Pill>
+      <Balance>
+        {copy.balanceLabel}: {formatMoney(data?.balance ?? null)}
+      </Balance>
+      {data?.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
+      <SecondaryButton type="button" onClick={onRefresh} disabled={isRefreshing}>
+        <ArrowPathIcon />
+        {copy.refresh}
+      </SecondaryButton>
+    </ProviderInfo>
+  );
+}
+
+// One-click picks for products the admins starred in the catalog.
+function FavoritePicks({
+  favorites,
+  disabled,
+  onPick,
+  copy,
+}: {
+  favorites: AdminGiftFavorite[];
+  disabled: boolean;
+  onPick: (goodsCode: string) => void;
+  copy: GiftsCopy;
+}) {
+  if (favorites.length === 0) return null;
+  return (
+    <>
+      <FieldHint>{copy.quickPicks}</FieldHint>
+      <FavoriteQuickPicks>
+        {favorites.map((favorite) => (
+          <FavoriteQuickPick
+            key={favorite.goodsCode}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPick(favorite.goodsCode)}
+            title={favorite.goodsName}
+          >
+            <FavoriteQuickImage>
+              {favorite.imageUrl ? <img src={favorite.imageUrl} alt="" /> : <StarSolidIcon />}
+            </FavoriteQuickImage>
+            <FavoriteQuickText>{favorite.goodsName}</FavoriteQuickText>
+          </FavoriteQuickPick>
+        ))}
+      </FavoriteQuickPicks>
+    </>
+  );
+}
+
+// The product that will be sent: image, brand, purchase/list price, state and validity.
+function SelectedProduct({ product, copy }: { product: AdminGiftProduct; copy: GiftsCopy }) {
+  const { formatMoney } = useGiftFormat();
+  const hasDiscount = product.salePrice !== null && product.discountPrice !== product.salePrice;
+  return (
+    <ProductCard>
+      <ProductImage>
+        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
+      </ProductImage>
+      <div>
+        <ProductName>{product.goodsName}</ProductName>
+        <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
+        <ProductMeta>
+          {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
+          {hasDiscount ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}` : ""}
+        </ProductMeta>
+        <ProductMeta>
+          {copy.productState}: {product.state || copy.unavailable}
+          {product.limitDay !== null
+            ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
+            : ""}
+        </ProductMeta>
+      </div>
+    </ProductCard>
+  );
+}
+
+// Choose the gift: browse the catalog, use a starred favorite, or enter a goods code,
+// then show the chosen product.
+function GiftProductChooser({
+  canBrowse,
+  isBrandLoading,
+  onOpenCatalog,
+  favorites,
+  isLookingUp,
+  onPickFavorite,
+  goodsCode,
+  onGoodsCodeChange,
+  onLookup,
+  product,
+  copy,
+}: {
+  canBrowse: boolean;
+  isBrandLoading: boolean;
+  onOpenCatalog: () => void;
+  favorites: AdminGiftFavorite[];
+  isLookingUp: boolean;
+  onPickFavorite: (goodsCode: string) => void;
+  goodsCode: string;
+  onGoodsCodeChange: (goodsCode: string) => void;
+  onLookup: () => void;
+  product: AdminGiftProduct | null;
+  copy: GiftsCopy;
+}) {
+  return (
+    <>
+      <Field>
+        {copy.productCodeLabel}
+        <ProductActions>
+          <SecondaryButton
+            type="button"
+            disabled={!canBrowse || isBrandLoading}
+            onClick={onOpenCatalog}
+          >
+            <MagnifyingGlassIcon />
+            {copy.lookupProduct}
+          </SecondaryButton>
+        </ProductActions>
+        <FavoritePicks
+          favorites={favorites}
+          disabled={isLookingUp}
+          onPick={onPickFavorite}
+          copy={copy}
+        />
+        <ManualLookup>
+          <summary>{copy.manualProductCode}</summary>
+          <ManualLookupRow>
+            <Input
+              value={goodsCode}
+              onChange={(event) => onGoodsCodeChange(event.target.value.toUpperCase())}
+              placeholder={copy.productCodePlaceholder}
+              autoCapitalize="characters"
+            />
+            <SecondaryButton
+              type="button"
+              disabled={!canBrowse || isLookingUp || !goodsCode.trim()}
+              onClick={onLookup}
+            >
+              <MagnifyingGlassIcon />
+              {isLookingUp ? copy.lookingUp : copy.lookupByCode}
+            </SecondaryButton>
+          </ManualLookupRow>
+        </ManualLookup>
+      </Field>
+
+      {product && <SelectedProduct product={product} copy={copy} />}
+    </>
+  );
+}
+
+// One member in the recipient list; members without a phone, or past the batch limit,
+// cannot be ticked.
+function GiftRecipientOption({
+  recipient,
+  isSelected,
+  limitReached,
+  onToggle,
+  copy,
+}: {
+  recipient: AdminGiftRecipient;
+  isSelected: boolean;
+  limitReached: boolean;
+  onToggle: () => void;
+  copy: GiftsCopy;
+}) {
+  const name = recipientName(recipient, copy.memberFallback);
+  const disabled = !recipient.hasPhone || (!isSelected && limitReached);
+  return (
+    <RecipientRow $selected={isSelected} $disabled={disabled}>
+      <input type="checkbox" checked={isSelected} disabled={disabled} onChange={onToggle} />
+      <Avatar>
+        {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
+      </Avatar>
+      <RecipientText>
+        <RecipientName>{name}</RecipientName>
+        <RecipientMeta>{recipient.maskedPhone || copy.noPhone}</RecipientMeta>
+      </RecipientText>
+    </RecipientRow>
+  );
+}
+
+// Either a custom phone number or up to MAX_BATCH_RECIPIENTS members, searchable.
+function GiftRecipientPicker({
+  recipients,
+  matchingRecipients,
+  search,
+  onSearchChange,
+  isCustomRecipient,
+  onChooseCustom,
+  selectedRecipientIds,
+  onToggle,
+  recipientCount,
+  copy,
+}: {
+  recipients: AdminGiftRecipient[];
+  matchingRecipients: AdminGiftRecipient[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  isCustomRecipient: boolean;
+  onChooseCustom: () => void;
+  selectedRecipientIds: string[];
+  onToggle: (recipientId: string) => void;
+  recipientCount: number;
+  copy: GiftsCopy;
+}) {
+  const limitReached = selectedRecipientIds.length >= MAX_BATCH_RECIPIENTS;
+  return (
+    <Field as="div">
+      {copy.recipientLabel}
+      <MemberPicker>
+        <SearchWrap>
+          <MagnifyingGlassIcon />
+          <SearchInput
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={copy.searchRecipients}
+          />
+        </SearchWrap>
+        <RecipientList>
+          <RecipientRow $selected={isCustomRecipient}>
+            <input
+              type="radio"
+              name="gift-recipient"
+              checked={isCustomRecipient}
+              onChange={onChooseCustom}
+            />
+            <Avatar>+</Avatar>
+            <RecipientText>
+              <RecipientName>{copy.customRecipient}</RecipientName>
+            </RecipientText>
+          </RecipientRow>
+          {matchingRecipients.length === 0 ? (
+            <EmptyRecipients>{copy.noRecipients}</EmptyRecipients>
+          ) : (
+            matchingRecipients.map((recipient) => (
+              <GiftRecipientOption
+                key={recipient.id}
+                recipient={recipient}
+                isSelected={selectedRecipientIds.includes(recipient.id)}
+                limitReached={limitReached}
+                onToggle={() => onToggle(recipient.id)}
+                copy={copy}
+              />
+            ))
+          )}
+        </RecipientList>
+      </MemberPicker>
+      {recipients.some((recipient) => !recipient.hasPhone) && (
+        <FieldHint>{copy.noPhoneHint}</FieldHint>
+      )}
+      <FieldHint>
+        {copy.recipientSelectedCount.replace("{count}", String(recipientCount))}
+        {" · "}
+        {copy.recipientLimit.replace("{count}", String(MAX_BATCH_RECIPIENTS))}
+      </FieldHint>
+    </Field>
+  );
+}
+
+// Send result messages (or why sending is unavailable) and the send button.
+function GiftSendBar({
+  error,
+  success,
+  disabledReason,
+  isSending,
+  recipientCount,
+  onSend,
+  copy,
+}: {
+  error: string | null;
+  success: string | null;
+  disabledReason: string | null;
+  isSending: boolean;
+  recipientCount: number;
+  onSend: () => void;
+  copy: GiftsCopy;
+}) {
+  const showDisabledReason = !error && !success && disabledReason;
+  return (
+    <SubmitRow>
+      <div>
+        {error && <InlineStatus $error>{error}</InlineStatus>}
+        {success && <InlineStatus>{success}</InlineStatus>}
+        {showDisabledReason && <InlineStatus $error>{disabledReason}</InlineStatus>}
+      </div>
+      <SendButton type="button" disabled={isSending || Boolean(disabledReason)} onClick={onSend}>
+        {isSending ? copy.sending : copy.sendGift.replace("{count}", String(recipientCount))}
+      </SendButton>
+    </SubmitRow>
+  );
+}
+
+function GiftHistoryEntry({ gift, copy }: { gift: AdminGiftHistoryItem; copy: GiftsCopy }) {
+  const { formatMoney, formatDate } = useGiftFormat();
+  return (
+    <HistoryRow>
+      <HistoryPrimary>{formatDate(gift.createdAt)}</HistoryPrimary>
+      <div>
+        <HistoryPrimary>{gift.recipientName || copy.customRecipient}</HistoryPrimary>
+        <HistorySecondary>{gift.recipientPhoneMasked || copy.unavailable}</HistorySecondary>
+      </div>
+      <div>
+        <HistoryPrimary>{gift.goodsName}</HistoryPrimary>
+        <HistorySecondary>{gift.brandName || gift.goodsCode}</HistorySecondary>
+      </div>
+      <HistoryPrimary>{formatMoney(gift.purchasePrice)}</HistoryPrimary>
+      <div>
+        <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
+        {gift.providerMessage && gift.status !== "sent" && (
+          <ProviderError>{gift.providerMessage}</ProviderError>
+        )}
+      </div>
+      <div>
+        <HistoryPrimary>{gift.orderNo || copy.unavailable}</HistoryPrimary>
+        <HistorySecondary>{copy.trId}: {gift.trId}</HistorySecondary>
+      </div>
+    </HistoryRow>
+  );
+}
+
+// Every gift sent so far, with provider status and order references.
+function GiftHistory({ history, copy }: { history: AdminGiftHistoryItem[]; copy: GiftsCopy }) {
+  if (history.length === 0) return <EmptyState>{copy.historyEmpty}</EmptyState>;
+  return (
+    <HistoryWrap>
+      <HistoryTable>
+        <HistoryHeaderRow>
+          <div>{copy.historyDate}</div>
+          <div>{copy.historyRecipient}</div>
+          <div>{copy.historyProduct}</div>
+          <div>{copy.historyAmount}</div>
+          <div>{copy.historyStatus}</div>
+          <div>{copy.historyReference}</div>
+        </HistoryHeaderRow>
+        {history.map((gift) => (
+          <GiftHistoryEntry key={gift.id} gift={gift} copy={copy} />
+        ))}
+      </HistoryTable>
+    </HistoryWrap>
+  );
+}
+
+// Brand list in the catalog's left panel.
+function CatalogBrands({
+  isLoading,
+  brands,
+  selectedBrandCode,
+  onSelect,
+  copy,
+}: {
+  isLoading: boolean;
+  brands: AdminGiftBrand[];
+  selectedBrandCode: string | null;
+  onSelect: (brandCode: string) => void;
+  copy: GiftsCopy;
+}) {
+  if (isLoading) return <EmptyState>{copy.brandLoading}</EmptyState>;
+  if (brands.length === 0) return <EmptyState>{copy.brandEmpty}</EmptyState>;
+  return (
+    <>
+      {brands.map((brand) => (
+        <BrandButton
+          key={brand.brandCode}
+          type="button"
+          $selected={brand.brandCode === selectedBrandCode}
+          onClick={() => onSelect(brand.brandCode)}
+        >
+          {brand.brandName}
+        </BrandButton>
+      ))}
+    </>
+  );
+}
+
+// One product tile; products not on sale can be seen and starred but not chosen.
+function CatalogProductTile({
+  product,
+  isSelected,
+  onSelect,
+  isFavorite,
+  isFavoriteUpdating,
+  onToggleFavorite,
+  copy,
+}: {
+  product: AdminGiftProduct;
+  isSelected: boolean;
+  onSelect: () => void;
+  isFavorite: boolean;
+  isFavoriteUpdating: boolean;
+  onToggleFavorite: () => void;
+  copy: GiftsCopy;
+}) {
+  const { formatMoney } = useGiftFormat();
+  const unavailable = product.state !== "SALE";
+  return (
+    <CatalogProduct
+      role="button"
+      tabIndex={unavailable ? -1 : 0}
+      aria-disabled={unavailable}
+      $selected={isSelected}
+      $disabled={unavailable}
+      onClick={() => {
+        if (!unavailable) onSelect();
+      }}
+      onKeyDown={(event) => {
+        if (!unavailable && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <FavoriteToggle
+        type="button"
+        $active={isFavorite}
+        disabled={isFavoriteUpdating}
+        aria-label={isFavorite ? copy.removeFavorite : copy.addFavorite}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleFavorite();
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        {isFavorite ? <StarSolidIcon /> : <StarOutlineIcon />}
+      </FavoriteToggle>
+      <CatalogImage>
+        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
+      </CatalogImage>
+      <CatalogText>
+        <CatalogName>{product.goodsName}</CatalogName>
+        <CatalogMeta>{product.goodsCode}</CatalogMeta>
+        <CatalogMeta>
+          {formatMoney(product.discountPrice ?? product.salePrice)}
+          {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
+        </CatalogMeta>
+      </CatalogText>
+    </CatalogProduct>
+  );
+}
+
+type CatalogProductsProps = {
+  selectedBrand: AdminGiftBrand | null;
+  products: AdminGiftProduct[];
+  isProductsLoading: boolean;
+  hasProducts: boolean;
+  error: string | null;
+  onRetry: () => void;
+  selectedCode: string | null;
+  onSelectCode: (goodsCode: string) => void;
+  favoriteCodes: Set<string>;
+  favoriteUpdatingCode: string | null;
+  onToggleFavorite: (product: AdminGiftProduct) => void;
+  copy: GiftsCopy;
+};
+
+// The chosen brand's products, or the prompt / loading / error state in their place.
+function CatalogProducts({
+  selectedBrand,
+  products,
+  isProductsLoading,
+  hasProducts,
+  error,
+  onRetry,
+  selectedCode,
+  onSelectCode,
+  favoriteCodes,
+  favoriteUpdatingCode,
+  onToggleFavorite,
+  copy,
+}: CatalogProductsProps) {
+  if (!selectedBrand) return <EmptyState>{copy.catalogChooseBrand}</EmptyState>;
+  if (isProductsLoading && !hasProducts) return <EmptyState>{copy.catalogLoading}</EmptyState>;
+  if (error) {
+    return (
+      <>
+        <InlineStatus $error>{error}</InlineStatus>
+        <div style={{ marginTop: "0.8rem" }}>
+          <SecondaryButton type="button" onClick={onRetry}>
+            <ArrowPathIcon />
+            {copy.retry}
+          </SecondaryButton>
+        </div>
+      </>
+    );
+  }
+  if (products.length === 0) return <EmptyState>{copy.catalogEmpty}</EmptyState>;
+  return (
+    <CatalogGrid>
+      {products.map((product) => (
+        <CatalogProductTile
+          key={product.goodsCode}
+          product={product}
+          isSelected={selectedCode === product.goodsCode}
+          onSelect={() => onSelectCode(product.goodsCode)}
+          isFavorite={favoriteCodes.has(product.goodsCode)}
+          isFavoriteUpdating={favoriteUpdatingCode === product.goodsCode}
+          onToggleFavorite={() => onToggleFavorite(product)}
+          copy={copy}
+        />
+      ))}
+    </CatalogGrid>
+  );
+}
+
+// Brand → product browser for picking the gift; Escape and the backdrop close it.
+function GiftCatalogModal({
+  brandSearch,
+  onBrandSearchChange,
+  isBrandLoading,
+  brands,
+  onSelectBrand,
+  sort,
+  onSortChange,
+  isChoosing,
+  onChoose,
+  onClose,
+  ...productsProps
+}: CatalogProductsProps & {
+  brandSearch: string;
+  onBrandSearchChange: (value: string) => void;
+  isBrandLoading: boolean;
+  brands: AdminGiftBrand[];
+  onSelectBrand: (brandCode: string) => void;
+  sort: CatalogSort;
+  onSortChange: (sort: CatalogSort) => void;
+  isChoosing: boolean;
+  onChoose: () => void;
+  onClose: () => void;
+}) {
+  const { selectedBrand, products, isProductsLoading, selectedCode, copy } = productsProps;
+  const status = !selectedBrand
+    ? copy.catalogChooseBrand
+    : isProductsLoading
+      ? copy.catalogLoading
+      : copy.catalogAvailableCount.replace("{count}", String(products.length));
+
+  return (
+    <ModalBackdrop role="presentation" onMouseDown={onClose}>
+      <ModalCard
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gift-catalog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <ModalHeader>
+          <div>
+            <ModalTitle id="gift-catalog-title">{copy.catalogTitle}</ModalTitle>
+            <ModalDescription>{copy.catalogDescription}</ModalDescription>
+          </div>
+          <IconButton type="button" onClick={onClose} aria-label={copy.catalogClose}>
+            <XMarkIcon />
+          </IconButton>
+        </ModalHeader>
+
+        <CatalogBody>
+          <BrandPanel>
+            <CatalogTools>
+              <CatalogSearch>
+                <MagnifyingGlassIcon />
+                <CatalogSearchInput
+                  value={brandSearch}
+                  onChange={(event) => onBrandSearchChange(event.target.value)}
+                  placeholder={copy.brandSearchPlaceholder}
+                />
+              </CatalogSearch>
+            </CatalogTools>
+            <BrandList>
+              <CatalogBrands
+                isLoading={isBrandLoading}
+                brands={brands}
+                selectedBrandCode={selectedBrand?.brandCode ?? null}
+                onSelect={onSelectBrand}
+                copy={copy}
+              />
+            </BrandList>
+          </BrandPanel>
+
+          <CatalogItems>
+            {selectedBrand && (
+              <CatalogItemsHeader>
+                <CatalogBrandName>{selectedBrand.brandName}</CatalogBrandName>
+                <SortSelect
+                  value={sort}
+                  onChange={(event) => onSortChange(event.target.value as CatalogSort)}
+                  aria-label={copy.sortProducts}
+                >
+                  <option value="name">{copy.sortName}</option>
+                  <option value="price-asc">{copy.sortPriceAsc}</option>
+                  <option value="price-desc">{copy.sortPriceDesc}</option>
+                </SortSelect>
+              </CatalogItemsHeader>
+            )}
+            <CatalogProducts {...productsProps} />
+          </CatalogItems>
+        </CatalogBody>
+
+        <CatalogFooter>
+          <CatalogStatus>{status}</CatalogStatus>
+          <CatalogActions>
+            <SecondaryButton type="button" onClick={onClose}>
+              {copy.catalogClose}
+            </SecondaryButton>
+            <SendButton
+              type="button"
+              disabled={!selectedCode || isChoosing || isProductsLoading}
+              onClick={onChoose}
+            >
+              {isChoosing ? copy.lookingUp : copy.catalogChoose}
+            </SendButton>
+          </CatalogActions>
+        </CatalogFooter>
+      </ModalCard>
+    </ModalBackdrop>
+  );
+}
+
+export default function AdminGiftsClient() {
+  const { t } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const copy = t.admin.gifts;
 
   const [data, setData] = useState<AdminGiftsData | null>(null);
@@ -995,7 +1489,7 @@ export default function AdminGiftsClient() {
   const [brandProducts, setBrandProducts] = useState<AdminGiftProduct[] | null>(null);
   const [isBrandProductsLoading, setIsBrandProductsLoading] = useState(false);
   const [catalogSelectedCode, setCatalogSelectedCode] = useState<string | null>(null);
-  const [catalogSort, setCatalogSort] = useState<"price-asc" | "price-desc" | "name">("name");
+  const [catalogSort, setCatalogSort] = useState<CatalogSort>("name");
   const [favoriteUpdatingCode, setFavoriteUpdatingCode] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isCustomRecipient, setIsCustomRecipient] = useState(true);
@@ -1025,17 +1519,11 @@ export default function AdminGiftsClient() {
   }, [copy.loadError]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/auth");
-      return;
-    }
-    if (accountStatus !== "admin") {
-      router.replace("/");
-      return;
-    }
+    // app/admin/layout.tsx has already redirected non-admins on the server; this only
+    // waits for the browser session so RLS sees it.
+    if (authLoading || !currentUser || accountStatus !== "admin") return;
     void load();
-  }, [accountStatus, authLoading, currentUser, load, router]);
+  }, [accountStatus, authLoading, currentUser, load]);
 
   useEffect(() => {
     setMmsTitle((current) => current || copy.defaultMmsTitle);
@@ -1093,35 +1581,11 @@ export default function AdminGiftsClient() {
     [data?.favorites],
   );
   const recipientCount = isCustomRecipient
-    ? (customPhone.trim() ? 1 : 0)
+    ? customRecipientCount(customPhone)
     : selectedRecipientIds.length;
+  const sendDisabledReason = sendBlockedReason(data, product, copy);
 
-  const sendDisabledReason = !data?.configured
-    ? data?.configurationError || copy.providerNeedsSetup
-    : !product
-      ? copy.productRequired
-      : null;
-
-  const formatMoney = (value: number | null) =>
-    value === null
-      ? copy.unavailable
-      : new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
-          style: "currency",
-          currency: "KRW",
-          maximumFractionDigits: 0,
-        }).format(value);
-
-  const formatDate = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  };
+  const { formatMoney } = useGiftFormat();
 
   const lookupProduct = async () => {
     setIsLookingUp(true);
@@ -1185,7 +1649,7 @@ export default function AdminGiftsClient() {
       });
   };
 
-  const useProduct = async (goodsCode: string, closeCatalog = false) => {
+  const chooseProduct = async (goodsCode: string, closeCatalog = false) => {
     setIsLookingUp(true);
     setSendError(null);
     setSendSuccess(null);
@@ -1237,7 +1701,7 @@ export default function AdminGiftsClient() {
 
   const selectCatalogProduct = async () => {
     if (!catalogSelectedCode) return;
-    await useProduct(catalogSelectedCode, true);
+    await chooseProduct(catalogSelectedCode, true);
   };
 
   const toggleRecipient = (recipientId: string) => {
@@ -1362,19 +1826,7 @@ export default function AdminGiftsClient() {
                 <CardTitle>{copy.sendCardTitle}</CardTitle>
                 <CardDescription>{copy.sendCardDescription}</CardDescription>
               </div>
-              <ProviderInfo>
-                <Pill $tone={data?.configured ? "ok" : "error"}>
-                  {data?.configured ? copy.providerReady : copy.providerNeedsSetup}
-                </Pill>
-                <Balance>
-                  {copy.balanceLabel}: {formatMoney(data?.balance ?? null)}
-                </Balance>
-                {data?.balanceError && <Pill $tone="warn">{copy.balanceUnavailable}</Pill>}
-                <SecondaryButton type="button" onClick={() => void load()} disabled={isLoading}>
-                  <ArrowPathIcon />
-                  {copy.refresh}
-                </SecondaryButton>
-              </ProviderInfo>
+              <ProviderStatus data={data} isRefreshing={isLoading} onRefresh={() => void load()} copy={copy} />
             </CardHeader>
             <CardBody>
               <Notice>
@@ -1387,154 +1839,35 @@ export default function AdminGiftsClient() {
 
               <FormGrid>
                 <FormColumn>
-                  <Field>
-                    {copy.productCodeLabel}
-                    <ProductActions>
-                      <SecondaryButton
-                        type="button"
-                        disabled={!data?.configured || isBrandLoading}
-                        onClick={openCatalog}
-                      >
-                        <MagnifyingGlassIcon />
-                        {copy.lookupProduct}
-                      </SecondaryButton>
-                    </ProductActions>
-                    {(data?.favorites ?? []).length > 0 && (
-                      <>
-                        <FieldHint>{copy.quickPicks}</FieldHint>
-                        <FavoriteQuickPicks>
-                          {(data?.favorites ?? []).map((favorite) => (
-                            <FavoriteQuickPick
-                              key={favorite.goodsCode}
-                              type="button"
-                              disabled={isLookingUp}
-                              onClick={() => void useProduct(favorite.goodsCode)}
-                              title={favorite.goodsName}
-                            >
-                              <FavoriteQuickImage>
-                                {favorite.imageUrl ? <img src={favorite.imageUrl} alt="" /> : <StarSolidIcon />}
-                              </FavoriteQuickImage>
-                              <FavoriteQuickText>{favorite.goodsName}</FavoriteQuickText>
-                            </FavoriteQuickPick>
-                          ))}
-                        </FavoriteQuickPicks>
-                      </>
-                    )}
-                    <ManualLookup>
-                      <summary>{copy.manualProductCode}</summary>
-                      <ManualLookupRow>
-                        <Input
-                          value={goodsCode}
-                          onChange={(event) => setGoodsCode(event.target.value.toUpperCase())}
-                          placeholder={copy.productCodePlaceholder}
-                          autoCapitalize="characters"
-                        />
-                        <SecondaryButton
-                          type="button"
-                          disabled={!data?.configured || isLookingUp || !goodsCode.trim()}
-                          onClick={() => void lookupProduct()}
-                        >
-                          <MagnifyingGlassIcon />
-                          {isLookingUp ? copy.lookingUp : copy.lookupByCode}
-                        </SecondaryButton>
-                      </ManualLookupRow>
-                    </ManualLookup>
-                  </Field>
+                  <GiftProductChooser
+                    canBrowse={Boolean(data?.configured)}
+                    isBrandLoading={isBrandLoading}
+                    onOpenCatalog={openCatalog}
+                    favorites={data?.favorites ?? []}
+                    isLookingUp={isLookingUp}
+                    onPickFavorite={(code) => void chooseProduct(code)}
+                    goodsCode={goodsCode}
+                    onGoodsCodeChange={setGoodsCode}
+                    onLookup={() => void lookupProduct()}
+                    product={product}
+                    copy={copy}
+                  />
 
-                  {product && (
-                    <ProductCard>
-                      <ProductImage>
-                        {product.imageUrl ? <img src={product.imageUrl} alt="" /> : null}
-                      </ProductImage>
-                      <div>
-                        <ProductName>{product.goodsName}</ProductName>
-                        <ProductMeta>{product.brandName || product.goodsCode}</ProductMeta>
-                        <ProductMeta>
-                          {copy.purchasePrice}: {formatMoney(product.discountPrice ?? product.salePrice)}
-                          {product.salePrice !== null && product.discountPrice !== product.salePrice
-                            ? ` · ${copy.listPrice}: ${formatMoney(product.salePrice)}`
-                            : ""}
-                        </ProductMeta>
-                        <ProductMeta>
-                          {copy.productState}: {product.state || copy.unavailable}
-                          {product.limitDay !== null
-                            ? ` · ${copy.validity}: ${product.limitDay}${copy.days}`
-                            : ""}
-                        </ProductMeta>
-                      </div>
-                    </ProductCard>
-                  )}
-
-                  <Field as="div">
-                    {copy.recipientLabel}
-                    <MemberPicker>
-                      <SearchWrap>
-                        <MagnifyingGlassIcon />
-                        <SearchInput
-                          value={recipientSearch}
-                          onChange={(event) => setRecipientSearch(event.target.value)}
-                          placeholder={copy.searchRecipients}
-                        />
-                      </SearchWrap>
-                      <RecipientList>
-                        <RecipientRow $selected={isCustomRecipient}>
-                          <input
-                            type="radio"
-                            name="gift-recipient"
-                            checked={isCustomRecipient}
-                            onChange={() => {
-                              setIsCustomRecipient(true);
-                              setSelectedRecipientIds([]);
-                            }}
-                          />
-                          <Avatar>+</Avatar>
-                          <RecipientText>
-                            <RecipientName>{copy.customRecipient}</RecipientName>
-                          </RecipientText>
-                        </RecipientRow>
-                        {matchingRecipients.length === 0 ? (
-                          <EmptyRecipients>{copy.noRecipients}</EmptyRecipients>
-                        ) : (
-                          matchingRecipients.map((recipient) => {
-                            const name = recipientName(recipient, copy.memberFallback);
-                            const isSelected = selectedRecipientIds.includes(recipient.id);
-                            const selectionLimitReached =
-                              !isSelected && selectedRecipientIds.length >= MAX_BATCH_RECIPIENTS;
-                            const disabled = !recipient.hasPhone || selectionLimitReached;
-                            return (
-                              <RecipientRow
-                                key={recipient.id}
-                                $selected={isSelected}
-                                $disabled={disabled}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  disabled={disabled}
-                                  onChange={() => toggleRecipient(recipient.id)}
-                                />
-                                <Avatar>
-                                  {recipient.photoUrl ? <img src={recipient.photoUrl} alt="" /> : initials(name)}
-                                </Avatar>
-                                <RecipientText>
-                                  <RecipientName>{name}</RecipientName>
-                                  <RecipientMeta>{recipient.maskedPhone || copy.noPhone}</RecipientMeta>
-                                </RecipientText>
-                              </RecipientRow>
-                            );
-                          })
-                        )}
-                      </RecipientList>
-                    </MemberPicker>
-                    {recipients.some((recipient) => !recipient.hasPhone) && (
-                      <FieldHint>{copy.noPhoneHint}</FieldHint>
-                    )}
-                    <FieldHint>
-                      {copy.recipientSelectedCount.replace("{count}", String(recipientCount))}
-                      {" · "}
-                      {copy.recipientLimit.replace("{count}", String(MAX_BATCH_RECIPIENTS))}
-                    </FieldHint>
-                  </Field>
+                  <GiftRecipientPicker
+                    recipients={recipients}
+                    matchingRecipients={matchingRecipients}
+                    search={recipientSearch}
+                    onSearchChange={setRecipientSearch}
+                    isCustomRecipient={isCustomRecipient}
+                    onChooseCustom={() => {
+                      setIsCustomRecipient(true);
+                      setSelectedRecipientIds([]);
+                    }}
+                    selectedRecipientIds={selectedRecipientIds}
+                    onToggle={toggleRecipient}
+                    recipientCount={recipientCount}
+                    copy={copy}
+                  />
 
                   {isCustomRecipient && (
                     <TwoColumns>
@@ -1582,24 +1915,15 @@ export default function AdminGiftsClient() {
                 </FormColumn>
               </FormGrid>
 
-              <SubmitRow>
-                <div>
-                  {sendError && <InlineStatus $error>{sendError}</InlineStatus>}
-                  {sendSuccess && <InlineStatus>{sendSuccess}</InlineStatus>}
-                  {!sendError && !sendSuccess && sendDisabledReason && (
-                    <InlineStatus $error>{sendDisabledReason}</InlineStatus>
-                  )}
-                </div>
-                <SendButton
-                  type="button"
-                  disabled={isSending || Boolean(sendDisabledReason)}
-                  onClick={() => void submit()}
-                >
-                  {isSending
-                    ? copy.sending
-                    : copy.sendGift.replace("{count}", String(recipientCount))}
-                </SendButton>
-              </SubmitRow>
+              <GiftSendBar
+                error={sendError}
+                success={sendSuccess}
+                disabledReason={sendDisabledReason}
+                isSending={isSending}
+                recipientCount={recipientCount}
+                onSend={() => void submit()}
+                copy={copy}
+              />
             </CardBody>
           </Card>
 
@@ -1611,218 +1935,37 @@ export default function AdminGiftsClient() {
               </div>
             </CardHeader>
             <CardBody>
-              {(data?.history ?? []).length === 0 ? (
-                <EmptyState>{copy.historyEmpty}</EmptyState>
-              ) : (
-                <HistoryWrap>
-                  <HistoryTable>
-                    <HistoryHeaderRow>
-                      <div>{copy.historyDate}</div>
-                      <div>{copy.historyRecipient}</div>
-                      <div>{copy.historyProduct}</div>
-                      <div>{copy.historyAmount}</div>
-                      <div>{copy.historyStatus}</div>
-                      <div>{copy.historyReference}</div>
-                    </HistoryHeaderRow>
-                    {(data?.history ?? []).map((gift) => (
-                      <HistoryRow key={gift.id}>
-                        <HistoryPrimary>{formatDate(gift.createdAt)}</HistoryPrimary>
-                        <div>
-                          <HistoryPrimary>{gift.recipientName || copy.customRecipient}</HistoryPrimary>
-                          <HistorySecondary>{gift.recipientPhoneMasked || copy.unavailable}</HistorySecondary>
-                        </div>
-                        <div>
-                          <HistoryPrimary>{gift.goodsName}</HistoryPrimary>
-                          <HistorySecondary>{gift.brandName || gift.goodsCode}</HistorySecondary>
-                        </div>
-                        <HistoryPrimary>{formatMoney(gift.purchasePrice)}</HistoryPrimary>
-                        <div>
-                          <Status $status={gift.status}>{copy.statusLabels[gift.status]}</Status>
-                          {gift.providerMessage && gift.status !== "sent" && (
-                            <ProviderError>{gift.providerMessage}</ProviderError>
-                          )}
-                        </div>
-                        <div>
-                          <HistoryPrimary>{gift.orderNo || copy.unavailable}</HistoryPrimary>
-                          <HistorySecondary>{copy.trId}: {gift.trId}</HistorySecondary>
-                        </div>
-                      </HistoryRow>
-                    ))}
-                  </HistoryTable>
-                </HistoryWrap>
-              )}
+              <GiftHistory history={data?.history ?? []} copy={copy} />
             </CardBody>
           </Card>
         </Stack>
       )}
 
       {isCatalogOpen && (
-        <ModalBackdrop role="presentation" onMouseDown={() => setIsCatalogOpen(false)}>
-          <ModalCard
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="gift-catalog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <ModalHeader>
-              <div>
-                <ModalTitle id="gift-catalog-title">{copy.catalogTitle}</ModalTitle>
-                <ModalDescription>{copy.catalogDescription}</ModalDescription>
-              </div>
-              <IconButton type="button" onClick={() => setIsCatalogOpen(false)} aria-label={copy.catalogClose}>
-                <XMarkIcon />
-              </IconButton>
-            </ModalHeader>
-
-            <CatalogBody>
-              <BrandPanel>
-                <CatalogTools>
-                  <CatalogSearch>
-                    <MagnifyingGlassIcon />
-                    <CatalogSearchInput
-                      value={brandSearch}
-                      onChange={(event) => setBrandSearch(event.target.value)}
-                      placeholder={copy.brandSearchPlaceholder}
-                    />
-                  </CatalogSearch>
-                </CatalogTools>
-                <BrandList>
-                  {isBrandLoading ? (
-                    <EmptyState>{copy.brandLoading}</EmptyState>
-                  ) : matchingBrands.length === 0 ? (
-                    <EmptyState>{copy.brandEmpty}</EmptyState>
-                  ) : (
-                    matchingBrands.map((brand) => (
-                      <BrandButton
-                        key={brand.brandCode}
-                        type="button"
-                        $selected={brand.brandCode === selectedBrandCode}
-                        onClick={() => selectBrand(brand.brandCode)}
-                      >
-                        {brand.brandName}
-                      </BrandButton>
-                    ))
-                  )}
-                </BrandList>
-              </BrandPanel>
-
-              <CatalogItems>
-                {selectedBrand && (
-                  <CatalogItemsHeader>
-                    <CatalogBrandName>{selectedBrand.brandName}</CatalogBrandName>
-                    <SortSelect
-                      value={catalogSort}
-                      onChange={(event) =>
-                        setCatalogSort(event.target.value as "price-asc" | "price-desc" | "name")
-                      }
-                      aria-label={copy.sortProducts}
-                    >
-                      <option value="name">{copy.sortName}</option>
-                      <option value="price-asc">{copy.sortPriceAsc}</option>
-                      <option value="price-desc">{copy.sortPriceDesc}</option>
-                    </SortSelect>
-                  </CatalogItemsHeader>
-                )}
-                {!selectedBrand ? (
-                  <EmptyState>{copy.catalogChooseBrand}</EmptyState>
-                ) : isBrandProductsLoading && !brandProducts ? (
-                  <EmptyState>{copy.catalogLoading}</EmptyState>
-                ) : catalogError ? (
-                  <>
-                    <InlineStatus $error>{catalogError}</InlineStatus>
-                    <div style={{ marginTop: "0.8rem" }}>
-                      <SecondaryButton
-                        type="button"
-                        onClick={() => selectedBrandCode ? selectBrand(selectedBrandCode) : void loadBrands()}
-                      >
-                        <ArrowPathIcon />
-                        {copy.retry}
-                      </SecondaryButton>
-                    </div>
-                  </>
-                ) : matchingCatalogProducts.length === 0 ? (
-                  <EmptyState>{copy.catalogEmpty}</EmptyState>
-                ) : (
-                  <CatalogGrid>
-                    {matchingCatalogProducts.map((catalogProduct) => {
-                      const unavailable = catalogProduct.state !== "SALE";
-                      return (
-                        <CatalogProduct
-                          key={catalogProduct.goodsCode}
-                          role="button"
-                          tabIndex={unavailable ? -1 : 0}
-                          aria-disabled={unavailable}
-                          $selected={catalogSelectedCode === catalogProduct.goodsCode}
-                          $disabled={unavailable}
-                          onClick={() => {
-                            if (!unavailable) setCatalogSelectedCode(catalogProduct.goodsCode);
-                          }}
-                          onKeyDown={(event) => {
-                            if (!unavailable && (event.key === "Enter" || event.key === " ")) {
-                              event.preventDefault();
-                              setCatalogSelectedCode(catalogProduct.goodsCode);
-                            }
-                          }}
-                        >
-                          <FavoriteToggle
-                            type="button"
-                            $active={favoriteCodes.has(catalogProduct.goodsCode)}
-                            disabled={favoriteUpdatingCode === catalogProduct.goodsCode}
-                            aria-label={
-                              favoriteCodes.has(catalogProduct.goodsCode)
-                                ? copy.removeFavorite
-                                : copy.addFavorite
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void toggleFavorite(catalogProduct);
-                            }}
-                            onKeyDown={(event) => event.stopPropagation()}
-                          >
-                            {favoriteCodes.has(catalogProduct.goodsCode) ? <StarSolidIcon /> : <StarOutlineIcon />}
-                          </FavoriteToggle>
-                          <CatalogImage>
-                            {catalogProduct.imageUrl ? <img src={catalogProduct.imageUrl} alt="" /> : null}
-                          </CatalogImage>
-                          <CatalogText>
-                            <CatalogName>{catalogProduct.goodsName}</CatalogName>
-                            <CatalogMeta>{catalogProduct.goodsCode}</CatalogMeta>
-                            <CatalogMeta>
-                              {formatMoney(catalogProduct.discountPrice ?? catalogProduct.salePrice)}
-                              {unavailable ? ` · ${copy.catalogUnavailable}` : ""}
-                            </CatalogMeta>
-                          </CatalogText>
-                        </CatalogProduct>
-                      );
-                    })}
-                  </CatalogGrid>
-                )}
-              </CatalogItems>
-            </CatalogBody>
-
-            <CatalogFooter>
-              <CatalogStatus>
-                {!selectedBrand
-                  ? copy.catalogChooseBrand
-                  : isBrandProductsLoading
-                    ? copy.catalogLoading
-                    : copy.catalogAvailableCount.replace("{count}", String(matchingCatalogProducts.length))}
-              </CatalogStatus>
-              <CatalogActions>
-                <SecondaryButton type="button" onClick={() => setIsCatalogOpen(false)}>
-                  {copy.catalogClose}
-                </SecondaryButton>
-                <SendButton
-                  type="button"
-                  disabled={!catalogSelectedCode || isLookingUp || isBrandProductsLoading}
-                  onClick={() => void selectCatalogProduct()}
-                >
-                  {isLookingUp ? copy.lookingUp : copy.catalogChoose}
-                </SendButton>
-              </CatalogActions>
-            </CatalogFooter>
-          </ModalCard>
-        </ModalBackdrop>
+        <GiftCatalogModal
+          brandSearch={brandSearch}
+          onBrandSearchChange={setBrandSearch}
+          isBrandLoading={isBrandLoading}
+          brands={matchingBrands}
+          selectedBrand={selectedBrand}
+          onSelectBrand={selectBrand}
+          sort={catalogSort}
+          onSortChange={setCatalogSort}
+          products={matchingCatalogProducts}
+          isProductsLoading={isBrandProductsLoading}
+          hasProducts={Boolean(brandProducts)}
+          error={catalogError}
+          onRetry={() => (selectedBrandCode ? selectBrand(selectedBrandCode) : void loadBrands())}
+          selectedCode={catalogSelectedCode}
+          onSelectCode={setCatalogSelectedCode}
+          favoriteCodes={favoriteCodes}
+          favoriteUpdatingCode={favoriteUpdatingCode}
+          onToggleFavorite={(catalogProduct) => void toggleFavorite(catalogProduct)}
+          isChoosing={isLookingUp}
+          onChoose={() => void selectCatalogProduct()}
+          onClose={() => setIsCatalogOpen(false)}
+          copy={copy}
+        />
       )}
     </Page>
   );

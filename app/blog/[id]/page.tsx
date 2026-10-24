@@ -1,9 +1,9 @@
+import type { Metadata } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
+
 import BlogDetailClient from "./BlogDetailClient";
-import {
-  fetchPublishedBlogPostByIdServer,
-  getPublishedBlogPostIdsServer,
-} from "../../lib/features/blog/services/blog_service_server";
-import { BlogPost } from "../../lib/features/blog/types/blog_types";
+import { resolvePublishedBlogPostRouteServer } from "../../lib/features/blog/services/blog_service_server";
+import { getBlogRouteSlug, routeSlugEquals } from "../../lib/seo/route_slugs";
 
 interface BlogDetailPageProps {
   params: Promise<{
@@ -11,43 +11,104 @@ interface BlogDetailPageProps {
   }>;
 }
 
+const SITE_URL = "https://1cupenglish.com";
+
 // Force dynamic rendering - generate pages on-demand
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// This page will be statically generated at build time for each blog post
-export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
-  const { id } = await params;
-
-  let post: BlogPost | null = null;
-
-  try {
-    // Fetch the specific blog post at build time (SSG)
-    post = await fetchPublishedBlogPostByIdServer(id);
-  } catch (error) {
-    console.error("Error fetching blog post at build time:", error);
-  }
-
-  return <BlogDetailClient initialPost={post} />;
+function cleanDescription(value: string) {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
 }
 
-// Generate metadata for SEO
-export async function generateMetadata({ params }: BlogDetailPageProps) {
+async function resolvePost(routeValue: string) {
+  return resolvePublishedBlogPostRouteServer(decodeURIComponent(routeValue || "").trim());
+}
+
+export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
+  const { id } = await params;
+  const routeValue = decodeURIComponent(id || "").trim();
+  const post = await resolvePublishedBlogPostRouteServer(routeValue);
+
+  if (!post) notFound();
+
+  const canonicalSlug = getBlogRouteSlug(post);
+  if (!routeSlugEquals(routeValue, canonicalSlug)) {
+    permanentRedirect(`/blog/${encodeURIComponent(canonicalSlug)}`);
+  }
+
+  const canonicalUrl = `${SITE_URL}/blog/${encodeURIComponent(canonicalSlug)}`;
+  const description = cleanDescription(post.excerpt || post.content);
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description,
+    url: canonicalUrl,
+    mainEntityOfPage: canonicalUrl,
+    datePublished: post.publishedAt?.toISOString(),
+    dateModified: post.updatedAt?.toISOString(),
+    author: {
+      "@type": "Organization",
+      name: "1 Cup English",
+      alternateName: "영어 한잔",
+      url: SITE_URL,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "1 Cup English",
+      alternateName: "영어 한잔",
+      url: SITE_URL,
+    },
+    ...(post.featuredImage ? { image: [post.featuredImage] } : {}),
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <BlogDetailClient initialPost={post} />
+    </>
+  );
+}
+
+// Generate metadata for SEO and GEO.
+export async function generateMetadata({
+  params,
+}: BlogDetailPageProps): Promise<Metadata> {
   const { id } = await params;
 
   try {
-    const post = await fetchPublishedBlogPostByIdServer(id);
+    const routeValue = decodeURIComponent(id || "").trim();
+    const post = await resolvePost(routeValue);
 
     if (post) {
+      const canonicalSlug = getBlogRouteSlug(post);
+      const canonicalPath = `/blog/${encodeURIComponent(canonicalSlug)}`;
+      const description = cleanDescription(post.excerpt || post.content);
+
       return {
         title: `${post.title} | 영어 한잔`,
-        description: post.excerpt || post.content.slice(0, 160),
-        keywords: post.tags?.join(", ") || "영어 학습, 블로그, 영어 한잔",
+        description,
+        keywords: post.tags?.length
+          ? post.tags
+          : ["영어 한잔", "1 Cup English", "Seoul English community"],
+        alternates: { canonical: canonicalPath },
         openGraph: {
           title: post.title,
-          description: post.excerpt || post.content.slice(0, 160),
+          description,
           type: "article",
+          url: canonicalPath,
           publishedTime: post.publishedAt?.toISOString(),
-          authors: ["영어 한잔"],
+          modifiedTime: post.updatedAt?.toISOString(),
+          authors: ["1 Cup English"],
           images: post.featuredImage ? [post.featuredImage] : undefined,
         },
       };
@@ -56,12 +117,13 @@ export async function generateMetadata({ params }: BlogDetailPageProps) {
     return {
       title: "블로그 | 영어 한잔",
       description: "영어 한잔 커뮤니티의 블로그 콘텐츠를 만나보세요.",
-      keywords: "영어 학습, 블로그, 영어 한잔",
+      robots: { index: false, follow: false },
     };
   } catch (error) {
     console.error("Error generating metadata for blog post:", error);
     return {
       title: "블로그 | 영어 한잔",
+      robots: { index: false, follow: false },
     };
   }
 }

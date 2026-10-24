@@ -1,118 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import styled from "styled-components";
 import { supabase } from "../supabase/client";
 
-const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-`;
+const buttonBaseClass =
+  "cursor-pointer rounded-[10px] border-none px-6 py-3 text-[0.95rem] font-medium [transition:all_0.2s_ease]";
 
-const Dialog = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem;
-  width: 90%;
-  max-width: 440px;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  position: relative;
-`;
+const primaryButtonClass = `${buttonBaseClass} bg-[#2c1810] text-white enabled:hover:-translate-y-px enabled:hover:bg-[#3d2415] enabled:hover:shadow-[0_4px_12px_rgba(44,24,16,0.25)] disabled:cursor-not-allowed disabled:bg-[#9ca3af]`;
 
-const Title = styled.h2`
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #1f2937;
-  text-align: center;
-`;
-
-const Description = styled.p`
-  font-size: 0.95rem;
-  color: #6b7280;
-  line-height: 1.6;
-  margin-bottom: 2rem;
-  text-align: center;
-`;
-
-const InputContainer = styled.div`
-  margin-bottom: 2rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 1rem 1.25rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-  background: #fafbfc;
-
-  &:focus {
-    outline: none;
-    border-color: #2c1810;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(44, 24, 16, 0.1);
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-`;
-
-const Button = styled.button<{ variant?: "primary" | "secondary" }>`
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-
-  ${({ variant }) =>
-    variant === "primary"
-      ? `
-    background: #2c1810;
-    color: white;
-
-    &:hover {
-      background: #3d2415;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(44, 24, 16, 0.25);
-    }
-
-    &:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-  `
-      : `
-    background: #f3f4f6;
-    color: #6b7280;
-
-    &:hover {
-      background: #e5e7eb;
-    }
-  `}
-`;
+const secondaryButtonClass = `${buttonBaseClass} bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]`;
 
 interface DisplayNamePromptProps {
   onComplete: () => void;
@@ -183,16 +79,19 @@ export default function DisplayNamePrompt({
   };
 
   return (
-    <Overlay>
-      <Dialog>
-        <Title>닉네임 설정</Title>
-        <Description>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-[4px]">
+      <div className="relative w-[90%] max-w-[440px] rounded-[20px] border border-black/5 bg-white p-10 shadow-[0_10px_50px_rgba(0,0,0,0.15)]">
+        <h2 className="mb-2 text-center text-[1.4rem] font-semibold text-[#1f2937]">
+          닉네임 설정
+        </h2>
+        <p className="mb-8 text-center text-[0.95rem] leading-[1.6] text-[#6b7280]">
           닉네임 or 성함을 입력해주시면 운영진이 멤버 식별을 더 수월하게 할 수
           있습니다 🙇🏻‍♂️
-        </Description>
+        </p>
 
-        <InputContainer>
-          <Input
+        <div className="mb-8">
+          <input
+            className="w-full rounded-xl border border-[#e5e7eb] bg-[#fafbfc] px-5 py-4 text-[1rem] [transition:all_0.2s_ease] placeholder:text-[#9ca3af] focus:border-[#2c1810] focus:bg-white focus:shadow-[0_0_0_3px_rgba(44,24,16,0.1)] focus:outline-none"
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -212,21 +111,25 @@ export default function DisplayNamePrompt({
               {error}
             </div>
           )}
-        </InputContainer>
+        </div>
 
-        <ButtonGroup>
-          <Button variant="secondary" onClick={handleSkip} disabled={isLoading}>
+        <div className="flex justify-end gap-3">
+          <button
+            className={secondaryButtonClass}
+            onClick={handleSkip}
+            disabled={isLoading}
+          >
             나중에
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
+            className={primaryButtonClass}
             onClick={handleSubmit}
             disabled={isLoading || !displayName.trim()}
           >
             {isLoading ? "설정 중..." : "설정하기"}
-          </Button>
-        </ButtonGroup>
-      </Dialog>
-    </Overlay>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

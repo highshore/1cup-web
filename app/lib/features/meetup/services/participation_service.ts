@@ -43,17 +43,17 @@ export async function getMeetupEntitlement(input: {
   hasActiveSubscription: boolean;
   isComplimentary: boolean;
 }): Promise<MeetupEntitlement> {
-  const creditBalance = await getParticipationCreditBalance();
+  // Membership and operational access do not depend on a credit-balance
+  // request. Short-circuit them so a stale or failed credit lookup cannot
+  // incorrectly block an otherwise eligible member.
   if (input.isComplimentary) {
-    // Complimentary access is an internal authorization detail. Keep the
-    // learner-facing event page on the normal eligible-state copy; the
-    // registration RPC remains server-authoritative and still records the
-    // actual complimentary access type.
-    return { canJoin: true, source: "subscription", creditBalance };
+    return { canJoin: true, source: "complimentary", creditBalance: 0 };
   }
   if (input.hasActiveSubscription) {
-    return { canJoin: true, source: "subscription", creditBalance };
+    return { canJoin: true, source: "subscription", creditBalance: 0 };
   }
+
+  const creditBalance = await getParticipationCreditBalance();
   if (creditBalance > 0) {
     return { canJoin: true, source: "credit", creditBalance };
   }

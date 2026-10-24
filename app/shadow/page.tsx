@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: "Shadow Learning | OneCup English",
   description:
     "Practice shadowing technique for English pronunciation and listening skills",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
 };
 
 export default function ShadowPage() {

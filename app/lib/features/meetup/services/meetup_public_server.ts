@@ -36,17 +36,23 @@ function resolveDate(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+const SEOUL_DATE_TIME_PARTS = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SEOUL_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const SEOUL_MONTH_LABEL = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  timeZone: SEOUL_TIME_ZONE,
+});
+
 function formatSeoulDateTime(value: unknown) {
   const date = resolveDate(value) ?? new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: SEOUL_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
+  const parts = SEOUL_DATE_TIME_PARTS.formatToParts(date);
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value || "";
 
@@ -263,9 +269,9 @@ export async function fetchMeetupLeaderboardsServer(
         )
         .abortSignal(querySignal()),
       supabase
-      .from("meetup_participants")
-      .select("meetup_id,user_id,role")
-      .eq("registration_status", "registered")
+        .from("meetup_participants")
+        .select("meetup_id,user_id,role")
+        .eq("registration_status", "registered")
         .abortSignal(querySignal()),
       supabase
         .from("user_first_paid")
@@ -363,15 +369,12 @@ export async function fetchMeetupLeaderboardsServer(
       displayName: user.displayName,
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
       value: 1,
-      ...(paidMemberSortDate(user)
-        ? { joinedAt: paidMemberSortDate(user)!.toISOString() }
-        : {}),
+      // Keep the paid date server-side for ranking. The public response uses the
+      // account creation date so payment/subscription timing is not disclosed.
+      ...(user.createdAt ? { joinedAt: user.createdAt.toISOString() } : {}),
     }));
 
-  const monthLabel = new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    timeZone: SEOUL_TIME_ZONE,
-  }).format(now);
+  const monthLabel = SEOUL_MONTH_LABEL.format(now);
 
   return {
     monthLabel,

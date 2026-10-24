@@ -2,23 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import styled from "styled-components";
-import {
-  AcademicCapIcon,
-  BriefcaseIcon,
-  HeartIcon,
-  LinkIcon,
-  MapPinIcon,
-  SparklesIcon,
-  UserGroupIcon,
-} from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import { useAuth } from "../../lib/contexts/auth_context";
 import {
   type ProfileConnection,
   toggleProfileLike,
 } from "../../lib/features/profile/services/profile_connections";
-import { shareMatchedProfileViaKakao } from "../../lib/features/profile/services/kakao_profile_share";
 
 interface PublicProfile {
   uid: string;
@@ -32,6 +21,13 @@ interface PublicProfile {
   school?: string;
   location?: string;
   interests?: string;
+  profileDetails?: {
+    nationality?: string;
+    languages?: string[];
+    englishLevel?: string;
+    discussionTopics?: string[];
+    meetupPreferences?: string;
+  };
   badges: {
     gdgMember: boolean;
     activeMember: boolean;
@@ -45,377 +41,79 @@ interface PublicProfile {
   memberSince?: string | null;
 }
 
-const Page = styled.main`
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 0 1.25rem 4rem;
-  background: transparent;
+type PillTone = "white" | "warm" | "muted" | "dark";
 
-  @media (max-width: 640px) {
-    padding: 0 1rem 3rem;
-  }
-`;
+function Pill({
+  children,
+  tone = "white",
+}: {
+  children: React.ReactNode;
+  tone?: PillTone;
+}) {
+  const toneClass = {
+    white: "bg-white text-[#050505]",
+    warm: "bg-[#fff0e8] text-[#050505]",
+    muted: "border-[#e0e0e0] bg-[#f6f6f4] text-[#050505]",
+    dark: "bg-[#050505] text-white",
+  }[tone];
 
-const Hero = styled.section`
-  display: flex;
-  align-items: center;
-  gap: 1.75rem;
-  margin-bottom: 1.25rem;
+  return (
+    <span
+      className={`inline-flex min-h-[30px] items-center rounded-full border-[1.5px] border-[#050505] px-[0.7rem] py-[0.2rem] text-[0.72rem] font-[800] leading-none ${toneClass}`}
+    >
+      {children}
+    </span>
+  );
+}
 
-  @media (max-width: 640px) {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-`;
+function MetricCard({
+  value,
+  label,
+  description,
+  tone = "white",
+}: {
+  value: string | number;
+  label: string;
+  description?: string;
+  tone?: "white" | "warm" | "green" | "muted";
+}) {
+  const toneClass = {
+    white: "bg-white",
+    warm: "bg-[#fff0e8]",
+    green: "bg-[#e0f5e5]",
+    muted: "bg-[#f6f6f4]",
+  }[tone];
 
-const Avatar = styled.img`
-  width: 132px;
-  height: 132px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #f3f3f1;
-  border: 3px solid #050505;
-  box-shadow: 5px 5px 0 rgba(5, 5, 5, 0.9);
-
-  @media (max-width: 640px) {
-    width: 110px;
-    height: 110px;
-  }
-`;
-
-const HeroText = styled.div`
-  min-width: 0;
-`;
-
-const BadgeRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.55rem;
-
-  @media (max-width: 640px) {
-    justify-content: center;
-  }
-`;
-
-const Pill = styled.span<{ $variant?: "orange" | "dark" | "plain" }>`
-  display: inline-flex;
-  align-items: center;
-  border: 2px solid #050505;
-  border-radius: 999px;
-  padding: 0.18rem 0.6rem;
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: ${({ $variant }) =>
-    $variant === "dark" ? "#050505" : $variant === "orange" ? "#f47a4a" : "#ffffff"};
-  color: ${({ $variant }) => ($variant === "dark" ? "#ffffff" : "#050505")};
-`;
-
-const Name = styled.h1`
-  margin: 0;
-  color: #050505;
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1.1;
-
-  @media (max-width: 640px) {
-    font-size: 1.7rem;
-  }
-`;
-
-const Tagline = styled.p`
-  margin: 0.4rem 0 0;
-  color: rgba(5, 5, 5, 0.6);
-  font-size: 1rem;
-  font-style: italic;
-  line-height: 1.4;
-`;
-
-const HeroActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.9rem;
-
-  @media (max-width: 640px) {
-    justify-content: center;
-  }
-`;
-
-const MessageButton = styled.button`
-  border: 2px solid #050505;
-  border-radius: 10px;
-  background: #f47a4a;
-  padding: 0.5rem 0.8rem;
-  color: #050505;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  box-shadow: 2px 2px 0 rgba(5, 5, 5, 0.9);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0 rgba(5, 5, 5, 0.9);
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.7;
-  }
-`;
-
-const LikeButton = styled(MessageButton)<{ $active?: boolean; $mutual?: boolean }>`
-  background: ${({ $mutual, $active }) =>
-    $mutual ? "#050505" : $active ? "#fff0e8" : "#ffffff"};
-  color: ${({ $mutual }) => ($mutual ? "#ffffff" : "#050505")};
-
-  svg {
-    width: 17px;
-    height: 17px;
-    fill: ${({ $active }) => ($active ? "currentColor" : "none")};
-  }
-`;
-
-const KakaoButton = styled(MessageButton)`
-  background: #fee500;
-
-  svg {
-    width: 17px;
-    height: 17px;
-  }
-`;
-
-const ConnectionHint = styled.p`
-  width: 100%;
-  margin: 0.1rem 0 0;
-  color: rgba(5, 5, 5, 0.62);
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.45;
-
-  @media (max-width: 640px) {
-    text-align: center;
-  }
-`;
-
-const DetailsLockedCard = styled.section`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #fff8dc;
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-`;
-
-const StatCard = styled.div`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 1rem 0.9rem;
-  text-align: center;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const StatValue = styled.div`
-  color: #050505;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.1;
-`;
-
-const StatLabel = styled.div`
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-top: 0.35rem;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 0.85rem;
-  align-items: start;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Col = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-`;
-
-const Card = styled.section<{ $tint?: boolean }>`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: ${({ $tint }) => ($tint ? "#fff0e8" : "#ffffff")};
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const CardLabel = styled.h2`
-  margin: 0 0 0.7rem;
-  color: rgba(5, 5, 5, 0.55);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-`;
-
-const CardHeading = styled.h2`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.7rem;
-  color: #050505;
-  font-size: 1.05rem;
-  font-weight: 900;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #f47a4a;
-  }
-`;
-
-const BodyText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.78);
-  font-size: 0.92rem;
-  line-height: 1.65;
-`;
-
-const QuoteText = styled.p`
-  margin: 0;
-  color: rgba(5, 5, 5, 0.72);
-  font-size: 0.9rem;
-  font-style: italic;
-  line-height: 1.55;
-`;
-
-const ChipGroupLabel = styled.div`
-  margin: 0.9rem 0 0.5rem;
-  color: #050505;
-  font-size: 0.82rem;
-  font-weight: 800;
-
-  &:first-child {
-    margin-top: 0;
-  }
-`;
-
-const Chips = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-`;
-
-const Chip = styled.span`
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid #050505;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.25rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #050505;
-`;
-
-const Detail = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  color: #050505;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-top: 0.55rem;
-
-  &:first-of-type {
-    margin-top: 0;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #f47a4a;
-    flex: 0 0 auto;
-  }
-`;
-
-const InfoCard = styled.section`
-  border: 2px solid #050505;
-  border-radius: 14px;
-  background: #102733;
-  color: #ffffff;
-  padding: 1.15rem 1.2rem;
-  box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-`;
-
-const InfoLabel = styled.div`
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  margin-bottom: 0.45rem;
-`;
-
-const InfoTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.05rem;
-  font-weight: 900;
-`;
-
-const Dot = styled.span`
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #34d27b;
-  box-shadow: 0 0 0 3px rgba(52, 210, 123, 0.25);
-`;
-
-const InfoSub = styled.div`
-  margin-top: 0.45rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.85rem;
-  line-height: 1.5;
-`;
-
-const Centered = styled.div`
-  text-align: center;
-  padding: 4rem 1rem;
-  color: rgba(5, 5, 5, 0.6);
-  font-weight: 700;
-`;
+  return (
+    <div
+      className={`rounded-[18px] border-[1.5px] border-[#050505] p-4 shadow-[3px_3px_0_rgba(5,5,5,0.9)] ${toneClass}`}
+    >
+      <div className="text-[1.75rem] font-[900] leading-none text-[#050505] max-[640px]:text-[1.45rem]">
+        {value}
+      </div>
+      <div className="mt-2 text-[0.72rem] font-[850] text-[#050505]">
+        {label}
+      </div>
+      {description && (
+        <div className="mt-1 text-[0.66rem] leading-[1.35] text-[#64748b]">
+          {description}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const toChips = (value?: string): string[] =>
   (value || "")
     .split(/[,/·|]/)
-    .map((s) => s.trim())
+    .map((item) => item.trim())
     .filter(Boolean);
+
+function firstSentence(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+  return trimmed.split(/(?<=[.!?。])\s/)[0] || trimmed;
+}
 
 export default function PublicProfileClient({ uid }: { uid: string }) {
   const { locale, t } = useI18n();
@@ -424,8 +122,91 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState("");
   const [isUpdatingLike, setIsUpdatingLike] = useState(false);
-  const [likeError, setLikeError] = useState("");
-  const [shareMessage, setShareMessage] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+
+  const copy =
+    locale === "ko"
+      ? {
+          activeMember: "활동 멤버",
+          member: "1 Cup 멤버",
+          meetups: "회 밋업",
+          connect: "연결하기",
+          connectBack: "연결하기",
+          requestSent: "연결 요청 보냄",
+          connected: "연결됨",
+          editProfile: "프로필 편집",
+          share: "프로필 공유",
+          copied: "프로필 링크를 복사했어요.",
+          shareFailed: "프로필을 공유하지 못했습니다.",
+          detailsRicher: "연결하면 더 많은 프로필 정보가 보여요",
+          defaultTagline: "1 Cup에서 좋은 대화를 나누고 싶은 멤버입니다.",
+          conversationFuel: "대화 시작점",
+          askMeAbout: "이런 얘기 좋아해요…",
+          conversationBody: "관심 있는 주제 하나를 골라 바로 대화를 시작해 보세요.",
+          conversationPrompt: "하나 골라서 제 생각에 반박해 보세요.",
+          unlockTitle: "연결하면 대화 주제를 볼 수 있어요",
+          unlockBody: "서로 연결되면 이 멤버가 공개한 관심사와 자기소개를 확인할 수 있어요.",
+          atOneCup: "1 Cup에서",
+          atOneCupTitle: "빈 프로필 이상의 정보",
+          atOneCupBody: "누구를 만나게 될지 감을 잡을 정도의 활동 정보만 보여드려요.",
+          meetupLabel: "밋업",
+          meetupDescription: "참여",
+          sparkLabel: "Spark 평균",
+          sparkDescription: "대화 점수",
+          reportsLabel: "리포트",
+          reportsDescription: "말하기 리포트",
+          memberSince: "가입",
+          moreContext: "조금 더 알아보기",
+          aboutTitle: "이력서가 아니라, 알아볼 만큼만.",
+          work: "직장",
+          education: "학교",
+          languagePlace: "언어 · 활동 지역",
+          noDetails: "연결 후 직장, 학교, 언어, 지역 등 프로필 상세 정보가 표시됩니다.",
+          ownerContext: "내 공개 프로필",
+        }
+      : {
+          activeMember: "ACTIVE MEMBER",
+          member: "1 CUP MEMBER",
+          meetups: "MEETUPS",
+          connect: "Connect",
+          connectBack: "Connect back",
+          requestSent: "Request sent",
+          connected: "Connected",
+          editProfile: "Edit profile",
+          share: "Share profile",
+          copied: "Profile link copied.",
+          shareFailed: "Could not share this profile.",
+          detailsRicher: "details become richer once you connect",
+          defaultTagline: "A 1 Cup member who is here for thoughtful conversations.",
+          conversationFuel: "CONVERSATION FUEL",
+          askMeAbout: "Ask me about…",
+          conversationBody:
+            "Topics this member chose because they actually enjoy talking about them.",
+          conversationPrompt:
+            "The fastest way to start: pick one topic and challenge my take.",
+          unlockTitle: "Connect to unlock conversation starters",
+          unlockBody:
+            "Mutual connections can see the interests and profile details this member chose to share.",
+          atOneCup: "AT 1 CUP",
+          atOneCupTitle: "Not just a blank profile.",
+          atOneCupBody:
+            "A little activity context helps people know who they are meeting.",
+          meetupLabel: "Meetups",
+          meetupDescription: "attended",
+          sparkLabel: "Spark avg",
+          sparkDescription: "conversation score",
+          reportsLabel: "Reports",
+          reportsDescription: "speaking reports",
+          memberSince: "Member since",
+          moreContext: "A LITTLE MORE CONTEXT",
+          aboutTitle: "Enough to recognize the person — not a résumé.",
+          work: "WORK",
+          education: "EDUCATION",
+          languagePlace: "LANGUAGE & PLACE",
+          noDetails:
+            "Work, education, language, and location context appears after you connect.",
+          ownerContext: "Your public profile",
+        };
 
   const loadProfile = useCallback(async () => {
     try {
@@ -448,17 +229,69 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
     void loadProfile();
   }, [loadProfile]);
 
-  if (error) return <Centered>{error}</Centered>;
-  if (!profile) return <Centered>{t.profile.loading}</Centered>;
+  if (error) {
+    return (
+      <div className="px-4 py-16 text-center font-bold text-[rgba(5,5,5,0.6)]">
+        {error}
+      </div>
+    );
+  }
 
-  const interestChips = toChips(profile.interests);
-  const memberSinceLabel = profile.memberSince
-    ? new Date(profile.memberSince).toLocaleDateString(
-        locale === "ko" ? "ko-KR" : "en-US",
-        { year: "numeric", month: "short" }
-      )
+  if (!profile) {
+    return (
+      <div className="px-4 py-16 text-center font-bold text-[rgba(5,5,5,0.6)]">
+        {t.profile.loading}
+      </div>
+    );
+  }
+
+  const isOwner = currentUser?.uid === profile.uid;
+  const structuredTopics = profile.profileDetails?.discussionTopics || [];
+  const interestChips = (
+    structuredTopics.length > 0 ? structuredTopics : toChips(profile.interests)
+  ).slice(0, 5);
+  const languages = profile.profileDetails?.languages || [];
+  const englishLevel = profile.profileDetails?.englishLevel?.trim() || "";
+  const languageSummary = languages
+    .map((language) =>
+      language === "English" && englishLevel
+        ? `${language} (${englishLevel})`
+        : language,
+    )
+    .join(" · ");
+  const nationality = profile.profileDetails?.nationality?.trim() || "";
+  const memberSince = profile.memberSince ? new Date(profile.memberSince) : null;
+  const memberSinceLabel = memberSince
+    ? memberSince.toLocaleDateString(locale === "ko" ? "ko-KR" : "en-US", {
+        year: "numeric",
+        month: "short",
+      })
     : "—";
-  const hasAbout = profile.work || profile.school || profile.location;
+  const memberSinceYear = memberSince ? memberSince.getFullYear() : null;
+  const heroTagline =
+    profile.detailsVisible && profile.bio
+      ? firstSentence(profile.bio)
+      : copy.defaultTagline;
+  const heroMeta = profile.detailsVisible
+    ? [profile.work, profile.school, profile.location].filter(Boolean)
+    : [];
+  const hasAbout = Boolean(
+    profile.work || profile.school || profile.location || languageSummary,
+  );
+  const averageScore =
+    profile.stats.averageSpeakingScore != null
+      ? profile.stats.averageSpeakingScore.toFixed(1)
+      : "—";
+
+  const connectLabel = isOwner
+    ? copy.editProfile
+    : profile.connection.isMutual
+      ? copy.connected
+      : profile.connection.likesMe
+        ? copy.connectBack
+        : profile.connection.likedByMe
+          ? copy.requestSent
+          : copy.connect;
 
   const handleToggleLike = async () => {
     if (!currentUser) {
@@ -467,7 +300,7 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
     }
 
     setIsUpdatingLike(true);
-    setLikeError("");
+    setActionMessage("");
     try {
       const connection = await toggleProfileLike(profile.uid);
       setProfile((current) =>
@@ -475,197 +308,318 @@ export default function PublicProfileClient({ uid }: { uid: string }) {
       );
       await loadProfile();
     } catch {
-      setLikeError(t.profile.likeFailed);
+      setActionMessage(t.profile.likeFailed);
     } finally {
       setIsUpdatingLike(false);
     }
   };
 
-  const handleKakaoShare = async () => {
-    setShareMessage("");
-    const shareText = `${profile.displayName}\nhttps://1cupenglish.com/profile/${encodeURIComponent(profile.uid)}`;
+  const handlePrimaryAction = async () => {
+    if (isOwner) {
+      router.push("/profile");
+      return;
+    }
+    if (profile.connection.isMutual) {
+      router.push("/profile/connections");
+      return;
+    }
+    await handleToggleLike();
+  };
+
+  const handleShare = async () => {
+    setActionMessage("");
+    const url = `${window.location.origin}/profile/${encodeURIComponent(profile.uid)}`;
     try {
-      const shared = await shareMatchedProfileViaKakao({
-        uid: profile.uid,
-        displayName: profile.displayName,
-        locale,
-      });
-      if (shared) {
-        setShareMessage(t.profile.kakaoShareOpened);
+      if (navigator.share) {
+        await navigator.share({ title: profile.displayName, url });
         return;
       }
-      await navigator.clipboard.writeText(shareText);
-      setShareMessage(t.profile.kakaoShareCopied);
-    } catch {
-      setShareMessage(t.profile.kakaoShareFailed);
+      await navigator.clipboard.writeText(url);
+      setActionMessage(copy.copied);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        return;
+      }
+      setActionMessage(copy.shareFailed);
     }
   };
 
-  const likeLabel = profile.connection.isMutual
-    ? t.profile.mutualFriend
-    : profile.connection.likesMe
-      ? t.profile.likeBack
-      : profile.connection.likedByMe
-        ? t.profile.likedMember
-        : t.profile.likeMember;
-  const connectionHint = profile.connection.isMutual
-    ? t.profile.mutualConnectionHint
-    : profile.connection.likesMe
-      ? t.profile.likesYouHint
-      : profile.connection.likedByMe
-        ? t.profile.likeSentHint
-        : "";
+  const contextSummary = profile.detailsVisible
+    ? locale === "ko"
+      ? [
+          profile.work ? `${profile.work}에서 일하고 있습니다` : "",
+          profile.school ? `${profile.school}에서 공부했습니다` : "",
+          profile.location ? `${profile.location}을 기반으로 활동합니다` : "",
+          languageSummary ? `${languageSummary}로 대화할 수 있습니다` : "",
+        ]
+          .filter(Boolean)
+          .join(". ") + (hasAbout ? "." : "")
+      : [
+          profile.work ? `Works at ${profile.work}` : "",
+          profile.school ? `Studied at ${profile.school}` : "",
+          profile.location ? `Based in ${profile.location}` : "",
+          languageSummary ? `Speaks ${languageSummary}` : "",
+        ]
+          .filter(Boolean)
+          .join(". ") + (hasAbout ? "." : "")
+    : copy.noDetails;
 
   return (
-    <Page>
-      <Hero>
-        <Avatar
-          src={profile.photoURL || "/images/default_user.jpg"}
-          alt={profile.displayName}
-        />
-        <HeroText>
-          <BadgeRow>
-            {(profile.badges.activeMember || profile.badges.role) && (
-              <Pill $variant="orange">{t.profile.verified}</Pill>
-            )}
+    <main className="mx-auto w-full max-w-[1040px] px-4 pb-28 pt-5 text-[#050505] md:px-5 md:pb-16 md:pt-10">
+      <section className="grid overflow-hidden rounded-[26px] border-2 border-[#050505] bg-white shadow-[6px_6px_0_rgba(5,5,5,0.16)] md:grid-cols-[36.8%_1fr]">
+        <div className="relative bg-[#f47a4a] p-3 md:p-5">
+          <div className="relative aspect-[330/236] overflow-hidden rounded-[18px] border-[1.5px] border-[#050505] bg-[#c7c7c7] md:aspect-auto md:h-[366px] md:rounded-[20px] md:border-2">
+            <img
+              className="h-full w-full object-cover"
+              src={profile.photoURL || "/images/default_user.jpg"}
+              alt={profile.displayName}
+            />
+            <div className="absolute bottom-3 left-3 right-3 hidden rounded-[16px] bg-[rgba(5,5,5,0.94)] px-4 py-2.5 text-white md:block">
+              <div className="text-[0.72rem] font-[900] uppercase tracking-[0.04em]">
+                {locale === "ko" ? `${profile.displayName} 만나기` : `Meet ${profile.displayName}`}
+              </div>
+              <div className="mt-0.5 text-[0.72rem] font-medium text-[#ebebeb]">
+                {copy.member}
+                {profile.detailsVisible && profile.location
+                  ? ` · ${profile.location}`
+                  : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#f47a4a] px-5 pb-5 md:bg-white md:px-8 md:py-8">
+          <div className="flex flex-wrap gap-2">
             {profile.badges.activeMember && (
-              <Pill $variant="dark">{t.profile.activeMember}</Pill>
+              <Pill tone="warm">{copy.activeMember}</Pill>
             )}
-            {profile.badges.role && <Pill>{profile.badges.role}</Pill>}
-          </BadgeRow>
-          <Name>{profile.displayName}</Name>
-          <Tagline>
-            {profile.bio
-              ? `“${profile.bio.split(/(?<=[.!?。])\s/)[0]}”`
-              : `“${t.profile.taglineDefault}”`}
-          </Tagline>
-          {currentUser?.uid !== profile.uid && (
-            <HeroActions>
-              <LikeButton
-                type="button"
-                onClick={() => void handleToggleLike()}
-                disabled={isUpdatingLike}
-                $active={profile.connection.likedByMe}
-                $mutual={profile.connection.isMutual}
-                aria-pressed={profile.connection.likedByMe}
-              >
-                <HeartIcon />
-                {isUpdatingLike ? t.profile.likingMember : likeLabel}
-              </LikeButton>
-              {profile.connection.isMutual && (
-                <>
-                  <KakaoButton type="button" onClick={() => void handleKakaoShare()}>
-                    <LinkIcon />
-                    {t.profile.kakaoMessage}
-                  </KakaoButton>
-                  <MessageButton type="button" onClick={() => router.push("/profile/connections")}>
-                    <UserGroupIcon />
-                    {t.profile.viewConnections}
-                  </MessageButton>
-                </>
-              )}
-              {connectionHint && <ConnectionHint>{connectionHint}</ConnectionHint>}
-              {likeError && <ConnectionHint role="alert">{likeError}</ConnectionHint>}
-              {shareMessage && <ConnectionHint role="status">{shareMessage}</ConnectionHint>}
-            </HeroActions>
-          )}
-        </HeroText>
-      </Hero>
+            <Pill>{`${profile.stats.meetupCount} ${copy.meetups}`}</Pill>
+            {profile.badges.role && (
+              <Pill tone="dark">{profile.badges.role.toUpperCase()}</Pill>
+            )}
+          </div>
 
-      <StatsGrid>
-        <StatCard>
-          <StatValue>{profile.stats.meetupCount}</StatValue>
-          <StatLabel>{t.profile.meetupsCompleted}</StatLabel>
-        </StatCard>
-        <StatCard>
-          <StatValue>
-            {profile.stats.averageSpeakingScore != null
-              ? profile.stats.averageSpeakingScore.toFixed(1)
-              : "—"}
-          </StatValue>
-          <StatLabel>{t.profile.avgSparkScore}</StatLabel>
-        </StatCard>
-        <StatCard>
-          <StatValue>{profile.stats.speakingReports}</StatValue>
-          <StatLabel>{t.profile.speakingReports}</StatLabel>
-        </StatCard>
-        <StatCard>
-          <StatValue style={{ fontSize: "1rem" }}>{memberSinceLabel}</StatValue>
-          <StatLabel>{t.profile.memberSince}</StatLabel>
-        </StatCard>
-      </StatsGrid>
+          <h1 className="mt-3 text-[2rem] font-[900] leading-[1.05] md:mt-5 md:text-[3rem] md:leading-[1.08]">
+            {profile.displayName}
+          </h1>
+          <p className="mt-1.5 max-w-[34rem] text-[0.82rem] font-medium leading-[1.45] md:mt-2 md:text-[1.18rem] md:leading-[1.45]">
+            {heroTagline}
+          </p>
 
-      {profile.detailsVisible ? (
-      <Grid>
-        <Col>
-          <Card>
-            <CardHeading>
-              <SparklesIcon /> {t.profile.myStory}
-            </CardHeading>
-            <BodyText>
-              {profile.isPublic === false
-                ? t.profile.privateProfile
-                : profile.bio || t.profile.storyDefault}
-            </BodyText>
-          </Card>
-
-          {hasAbout && (
-            <Card>
-              <CardLabel>{t.profile.about}</CardLabel>
-              {profile.work && (
-                <Detail>
-                  <BriefcaseIcon />
-                  <span>{profile.work}</span>
-                </Detail>
-              )}
-              {profile.school && (
-                <Detail>
-                  <AcademicCapIcon />
-                  <span>{profile.school}</span>
-                </Detail>
-              )}
-              {profile.location && (
-                <Detail>
-                  <MapPinIcon />
-                  <span>{profile.location}</span>
-                </Detail>
-              )}
-            </Card>
-          )}
-        </Col>
-
-        <Col>
-          {interestChips.length > 0 && (
-            <Card>
-              <CardLabel>{t.profile.interestsTopics}</CardLabel>
-              <ChipGroupLabel>{t.profile.passions}</ChipGroupLabel>
-              <Chips>
-                {interestChips.map((chip) => (
-                  <Chip key={chip}>{chip}</Chip>
-                ))}
-              </Chips>
-            </Card>
+          {heroMeta.length > 0 && (
+            <p className="mt-5 hidden text-[0.86rem] font-[700] text-[#64748b] md:block">
+              {heroMeta.join("  ·  ")}
+            </p>
           )}
 
-          <InfoCard>
-            <InfoLabel>{t.profile.status}</InfoLabel>
-            <InfoTitle>
-              <Dot /> {t.profile.statusMember}
-            </InfoTitle>
-            <InfoSub>
-              {t.profile.statusSince.replace("{date}", memberSinceLabel)}
-            </InfoSub>
-          </InfoCard>
-        </Col>
-      </Grid>
-      ) : (
-        <DetailsLockedCard>
-          <CardHeading>
-            <UserGroupIcon /> {t.profile.detailsLockedTitle}
-          </CardHeading>
-          <BodyText>{t.profile.detailsLockedBody}</BodyText>
-        </DetailsLockedCard>
+          <div className="mt-4 hidden flex-wrap gap-2 md:flex">
+            {profile.detailsVisible && nationality && (
+              <Pill tone="muted">{nationality.toUpperCase()}</Pill>
+            )}
+            {profile.detailsVisible && languageSummary && (
+              <Pill tone="muted">{languageSummary.toUpperCase()}</Pill>
+            )}
+            {memberSinceYear && (
+              <Pill tone="muted">
+                {locale === "ko"
+                  ? `${memberSinceYear}년 가입`
+                  : `MEMBER SINCE ${memberSinceYear}`}
+              </Pill>
+            )}
+            {profile.badges.gdgMember && <Pill tone="muted">GDG</Pill>}
+          </div>
+
+          <div className="mt-6 hidden items-center gap-3 md:flex">
+            <button
+              type="button"
+              onClick={() => void handlePrimaryAction()}
+              disabled={isUpdatingLike}
+              className="min-w-[214px] cursor-pointer rounded-full border-2 border-[#050505] bg-[#050505] px-7 py-3 text-[0.94rem] font-[900] text-white shadow-[4px_4px_0_#f47a4a] transition-transform hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-wait disabled:opacity-60"
+            >
+              {isUpdatingLike ? t.profile.likingMember : connectLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleShare()}
+              className="cursor-pointer rounded-full border-2 border-[#050505] bg-white px-7 py-3 text-[0.88rem] font-[800] text-[#050505] transition-colors hover:bg-[#f6f6f4]"
+            >
+              {copy.share}
+            </button>
+          </div>
+
+          <div className="mt-3 hidden text-[0.74rem] text-[#64748b] md:block">
+            {isOwner
+              ? copy.ownerContext
+              : profile.connection.isMutual
+                ? copy.connected
+                : copy.detailsRicher}
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-4 md:hidden">
+        <button
+          type="button"
+          onClick={() => void handlePrimaryAction()}
+          disabled={isUpdatingLike}
+          className="w-full cursor-pointer rounded-full border-2 border-[#050505] bg-[#050505] px-6 py-3.5 text-[0.94rem] font-[900] text-white shadow-[4px_4px_0_#f47a4a] disabled:cursor-wait disabled:opacity-60"
+        >
+          {isUpdatingLike ? t.profile.likingMember : connectLabel}
+        </button>
+        <div className="mt-3 text-center text-[0.72rem] font-medium text-[#64748b]">
+          {profile.connection.isMutual
+            ? copy.connected
+            : `${copy.detailsRicher}${memberSince ? ` · ${copy.memberSince} ${memberSinceLabel}` : ""}`}
+        </div>
+      </div>
+
+      {actionMessage && (
+        <p
+          aria-live="polite"
+          className="mt-3 text-center text-[0.76rem] font-[650] text-[#64748b]"
+        >
+          {actionMessage}
+        </p>
       )}
-    </Page>
+
+      <div className="mt-8 grid gap-6 md:mt-9 md:grid-cols-[minmax(0,1.77fr)_minmax(300px,1fr)] md:gap-[30px]">
+        <section className="rounded-[24px] border-2 border-[#050505] bg-[#f47a4a] p-5 shadow-[5px_5px_0_rgba(5,5,5,0.9)] md:p-[26px]">
+          <div className="text-[0.7rem] font-[900] uppercase tracking-[0.03em]">
+            {copy.conversationFuel}
+          </div>
+          <h2 className="mt-2 text-[1.75rem] font-[900] leading-[1.15] md:text-[2.15rem]">
+            {profile.detailsVisible ? copy.askMeAbout : copy.unlockTitle}
+          </h2>
+          <p className="mt-2 max-w-[35rem] text-[0.82rem] font-medium leading-[1.45] md:text-[0.9rem]">
+            {profile.detailsVisible ? copy.conversationBody : copy.unlockBody}
+          </p>
+
+          {profile.detailsVisible && interestChips.length > 0 ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {interestChips.map((chip, index) => (
+                <Pill key={chip} tone={index % 2 === 1 ? "warm" : "white"}>
+                  {chip}
+                </Pill>
+              ))}
+            </div>
+          ) : profile.detailsVisible ? (
+            <div className="mt-5 text-[0.78rem] font-[700] text-[rgba(5,5,5,0.7)]">
+              {locale === "ko"
+                ? "아직 대화 주제를 추가하지 않았어요."
+                : "No conversation topics added yet."}
+            </div>
+          ) : null}
+
+          <div className="mt-6 rounded-[16px] border-[1.5px] border-[#050505] bg-white px-4 py-3.5 text-[0.84rem] font-[800] leading-[1.45] md:px-5 md:text-[0.88rem]">
+            <span className="mr-2 text-[1.7rem] font-[900] leading-none text-[#f47a4a]">
+              “
+            </span>
+            {profile.detailsVisible ? copy.conversationPrompt : copy.unlockBody}
+          </div>
+        </section>
+
+        <section className="rounded-[24px] border-2 border-[#050505] bg-white p-0 shadow-none md:p-[22px] md:shadow-[5px_5px_0_rgba(5,5,5,0.15)] max-md:border-0 max-md:bg-transparent">
+          <div className="text-[0.7rem] font-[900] uppercase tracking-[0.03em] text-[#f47a4a]">
+            {copy.atOneCup}
+          </div>
+          <h2 className="mt-2 text-[1.35rem] font-[900] leading-[1.2] md:text-[1.5rem]">
+            {copy.atOneCupTitle}
+          </h2>
+          <p className="mt-2 text-[0.78rem] leading-[1.45] text-[#64748b] md:text-[0.82rem]">
+            {copy.atOneCupBody}
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <MetricCard
+              value={profile.stats.meetupCount}
+              label={copy.meetupLabel}
+              description={copy.meetupDescription}
+              tone="warm"
+            />
+            <MetricCard
+              value={averageScore}
+              label={copy.sparkLabel}
+              description={copy.sparkDescription}
+              tone="green"
+            />
+            <MetricCard
+              value={profile.stats.speakingReports}
+              label={copy.reportsLabel}
+              description={copy.reportsDescription}
+              tone="muted"
+            />
+            <MetricCard
+              value={memberSinceLabel.toUpperCase()}
+              label={copy.memberSince}
+              tone="white"
+            />
+          </div>
+        </section>
+      </div>
+
+      <section className="mt-8 rounded-[24px] border-2 border-[#050505] bg-white p-5 shadow-[5px_5px_0_rgba(5,5,5,0.14)] md:mt-9 md:p-6">
+        <div className="text-[0.68rem] font-[900] uppercase tracking-[0.03em] text-[#f47a4a]">
+          {copy.moreContext}
+        </div>
+        <h2 className="mt-2 max-w-[40rem] text-[1.45rem] font-[900] leading-[1.2] md:text-[1.65rem]">
+          {copy.aboutTitle}
+        </h2>
+        <p className="mt-3 max-w-[42rem] text-[0.84rem] leading-[1.55] text-[#2b2b2b] md:text-[0.94rem]">
+          {contextSummary || copy.noDetails}
+        </p>
+
+        {profile.detailsVisible && hasAbout && (
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {profile.work && (
+              <div className="rounded-[16px] bg-[#fff0e8] px-4 py-3.5">
+                <div className="text-[0.62rem] font-[900] text-[#64748b]">
+                  {copy.work}
+                </div>
+                <div className="mt-1 text-[0.84rem] font-[800]">
+                  {profile.work}
+                </div>
+              </div>
+            )}
+            {profile.school && (
+              <div className="rounded-[16px] bg-[#f6f6f4] px-4 py-3.5">
+                <div className="text-[0.62rem] font-[900] text-[#64748b]">
+                  {copy.education}
+                </div>
+                <div className="mt-1 text-[0.84rem] font-[800]">
+                  {profile.school}
+                </div>
+              </div>
+            )}
+            {(languageSummary || profile.location) && (
+              <div className="rounded-[16px] bg-[#e0f5e5] px-4 py-3.5">
+                <div className="text-[0.62rem] font-[900] text-[#64748b]">
+                  {copy.languagePlace}
+                </div>
+                <div className="mt-1 text-[0.84rem] font-[800]">
+                  {[languageSummary, profile.location].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {!isOwner && (
+        <div className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#e0e0e0] bg-white px-4 pb-[calc(0.45rem_+_env(safe-area-inset-bottom))] pt-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => void handlePrimaryAction()}
+            disabled={isUpdatingLike}
+            className="w-full rounded-full bg-[#050505] px-5 py-3 text-[0.82rem] font-[900] text-white disabled:opacity-60"
+          >
+            {isUpdatingLike
+              ? t.profile.likingMember
+              : profile.connection.isMutual
+                ? copy.connected
+                : `${copy.connect} ${profile.displayName}`}
+          </button>
+        </div>
+      )}
+    </main>
   );
 }

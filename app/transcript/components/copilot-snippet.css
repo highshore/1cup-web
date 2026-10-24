@@ -1,0 +1,26 @@
+/* Keyframes for CopilotTranscriptSnippet (styled-components → Tailwind migration).
+   Prefixed to avoid global collisions. */
+@keyframes transcript-copilot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.42),
+      inset 0 0 18px rgba(254, 202, 202, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.66),
+      inset 0 0 26px rgba(254, 202, 202, 0.32);
+  }
+}
+
+@keyframes transcript-copilot-dot-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.32;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}

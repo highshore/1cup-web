@@ -1,0 +1,137 @@
+/*
+ * Keyframes and conditional global rules for /new-home, migrated from
+ * styled-components (createGlobalStyle + keyframes helpers).
+ */
+
+/*
+ * From NewHomeClient's createGlobalStyle. The `nh-machine-mode` class is
+ * toggled on <html> by NewHomeClient while Agent (machine) mode is displayed,
+ * mirroring the old $machineMode prop.
+ */
+html.nh-machine-mode,
+html.nh-machine-mode body {
+  background: #000000 !important;
+}
+
+html.nh-machine-mode body nav,
+html.nh-machine-mode body footer {
+  display: none !important;
+}
+
+body[data-home-image-guard="true"] img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+@keyframes nh-logo-marquee-forward {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes nh-logo-marquee-reverse {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes nh-leader-steam-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scaleY(0.75);
+  }
+  30% {
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px) scaleY(1.2);
+  }
+}
+
+@keyframes nh-leader-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes nh-leader-bubble-bob {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-6px);
+  }
+}
+
+@keyframes nh-leader-typing-bounce {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  35% {
+    transform: translateY(-0.26rem);
+    opacity: 1;
+  }
+}
+
+@keyframes nh-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nh-grow-bar {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--target-width, 100%);
+  }
+}
+
+@keyframes nh-support-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+}
+
+@keyframes nh-chart-breath {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
+}

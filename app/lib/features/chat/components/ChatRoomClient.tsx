@@ -14,9 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import styled from "styled-components";
 
-import { appLayout } from "../../../constants/app_layout";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { supabase } from "../../../supabase/client";
 import {
@@ -35,372 +33,8 @@ import {
   toChatMessage,
 } from "../types";
 
-const Page = styled.main`
-  width: 100%;
-  max-width: ${appLayout.pageMaxWidth};
-  min-height: calc(100vh - 120px);
-  margin: 0 auto;
-  padding: 1.4rem ${appLayout.pageGutterDesktop} 3.5rem;
-
-  @media (max-width: 640px) {
-    min-height: calc(100vh - 100px);
-    padding: 0.8rem ${appLayout.pageGutterMobile} 1.25rem;
-  }
-`;
-
-const ChatShell = styled.section`
-  display: grid;
-  grid-template-rows: auto minmax(420px, 1fr) auto;
-  min-height: min(720px, calc(100vh - 175px));
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  background: #f8fafc;
-  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
-
-  @media (max-width: 640px) {
-    min-height: calc(100vh - 120px);
-    border-radius: 16px;
-  }
-`;
-
-const Header = styled.header`
-  display: flex;
-  min-height: 72px;
-  align-items: center;
-  gap: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.8rem 1rem;
-`;
-
-const HeaderAvatar = styled.div<{ $system?: boolean }>`
-  display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  background: ${({ $system }) => ($system ? "#fef3c7" : "#e2e8f0")};
-  color: ${({ $system }) => ($system ? "#92400e" : "#334155")};
-  font-size: ${({ $system }) => ($system ? "1.2rem" : "0.95rem")};
-  font-weight: 800;
-`;
-
-const HeaderAvatarImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const HeaderText = styled.div`
-  min-width: 0;
-  flex: 1;
-`;
-
-const HeaderName = styled.div`
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 0.96rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const HeaderSub = styled.div`
-  overflow: hidden;
-  margin-top: 0.13rem;
-  color: #64748b;
-  font-size: 0.76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const ProfileLink = styled(Link)`
-  color: inherit;
-  text-decoration: none;
-
-  &:hover ${HeaderName} {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-`;
-
-const MenuWrap = styled.div`
-  position: relative;
-`;
-
-const MenuButton = styled.button`
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #475569;
-  cursor: pointer;
-
-  &:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-  }
-
-  svg {
-    width: 21px;
-    height: 21px;
-  }
-`;
-
-const Menu = styled.div`
-  position: absolute;
-  z-index: 2;
-  top: calc(100% + 0.35rem);
-  right: 0;
-  min-width: 145px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.3rem;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
-`;
-
-const MenuAction = styled.button<{ $danger?: boolean }>`
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  padding: 0.58rem 0.65rem;
-  color: ${({ $danger }) => ($danger ? "#b91c1c" : "#334155")};
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover {
-    background: ${({ $danger }) => ($danger ? "#fef2f2" : "#f8fafc")};
-  }
-`;
-
-const MessageViewport = styled.div`
-  overflow-y: auto;
-  padding: 1rem;
-`;
-
-const LoadEarlierButton = styled.button`
-  display: block;
-  margin: 0 auto 1rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0.45rem 0.8rem;
-  color: #475569;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 750;
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    border-color: #94a3b8;
-    color: #0f172a;
-  }
-
-  &:disabled {
-    cursor: wait;
-    opacity: 0.65;
-  }
-`;
-
-const DateDivider = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 1rem 0 0.75rem;
-  color: #64748b;
-  font-size: 0.72rem;
-
-  &::before,
-  &::after {
-    width: 46px;
-    height: 1px;
-    background: #dbe4ee;
-    content: "";
-  }
-
-  &::before {
-    margin-right: 0.6rem;
-  }
-
-  &::after {
-    margin-left: 0.6rem;
-  }
-`;
-
-const MessageRow = styled.div<{ $mine: boolean; $system: boolean }>`
-  display: flex;
-  justify-content: ${({ $mine, $system }) => ($system ? "center" : $mine ? "flex-end" : "flex-start")};
-  margin: 0.35rem 0;
-`;
-
-const MessageStack = styled.div<{ $mine: boolean; $system: boolean }>`
-  display: flex;
-  max-width: min(78%, 570px);
-  align-items: flex-end;
-  gap: 0.42rem;
-  flex-direction: ${({ $mine }) => ($mine ? "row-reverse" : "row")};
-
-  ${({ $system }) =>
-    $system && `
-      max-width: min(86%, 620px);
-      flex-direction: column;
-      align-items: center;
-    `}
-`;
-
-const Bubble = styled.div<{ $mine: boolean; $system: boolean; $failed?: boolean }>`
-  border: ${({ $system, $failed }) =>
-    $failed ? "1px solid #fca5a5" : $system ? "1px solid #fcd34d" : "0"};
-  border-radius: ${({ $mine, $system }) =>
-    $system ? "14px" : $mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px"};
-  background: ${({ $mine, $system, $failed }) =>
-    $failed ? "#fef2f2" : $system ? "#fffbeb" : $mine ? "#0f172a" : "#ffffff"};
-  padding: ${({ $system }) => ($system ? "0.7rem 0.8rem" : "0.62rem 0.76rem")};
-  color: ${({ $mine }) => ($mine ? "#ffffff" : "#1e293b")};
-  font-size: 0.9rem;
-  line-height: 1.48;
-  white-space: pre-wrap;
-  box-shadow: ${({ $mine, $system }) =>
-    $mine || $system ? "none" : "0 1px 2px rgba(15, 23, 42, 0.06)"};
-`;
-
-const FailedText = styled.div`
-  margin-top: 0.25rem;
-  color: #b91c1c;
-  font-size: 0.7rem;
-  font-weight: 700;
-`;
-
-const Timestamp = styled.time`
-  flex: 0 0 auto;
-  padding-bottom: 0.16rem;
-  color: #94a3b8;
-  font-size: 0.67rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-`;
-
-const SystemActionLink = styled(Link)`
-  display: inline-flex;
-  margin-top: 0.52rem;
-  border-radius: 8px;
-  background: #f59e0b;
-  padding: 0.34rem 0.55rem;
-  color: #451a03;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-decoration: none;
-
-  &:hover {
-    background: #fbbf24;
-  }
-`;
-
-const SystemMessageTitle = styled.h3`
-  margin: 0 0 0.24rem;
-  color: #78350f;
-  font-size: 0.86rem;
-  font-weight: 850;
-  line-height: 1.35;
-`;
-
-const ComposerArea = styled.div`
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
-  padding: 0.8rem;
-`;
-
-const ComposerForm = styled.form`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.65rem;
-`;
-
-const ComposerInput = styled.textarea`
-  min-height: 42px;
-  max-height: 120px;
-  width: 100%;
-  resize: vertical;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.65rem 0.72rem;
-  color: #0f172a;
-  font: inherit;
-  font-size: 0.9rem;
-  line-height: 1.35;
-
-  &:focus {
-    outline: 2px solid #94a3b8;
-    outline-offset: 1px;
-  }
-
-  &:disabled {
-    background: #f8fafc;
-    cursor: not-allowed;
-  }
-`;
-
-const SendButton = styled.button`
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 0;
-  border-radius: 12px;
-  background: #0f172a;
-  color: #ffffff;
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: #020617;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const ComposerHint = styled.div`
-  margin-top: 0.45rem;
-  color: #94a3b8;
-  font-size: 0.7rem;
-`;
-
-const Notice = styled.div<{ $warning?: boolean }>`
-  border-top: 1px solid #e2e8f0;
-  background: ${({ $warning }) => ($warning ? "#fffbeb" : "#f8fafc")};
-  padding: 0.9rem 1rem;
-  color: ${({ $warning }) => ($warning ? "#92400e" : "#64748b")};
-  font-size: 0.84rem;
-  text-align: center;
-`;
-
-const InlineError = styled.div`
-  margin: 0.55rem 0 0;
-  color: #b91c1c;
-  font-size: 0.76rem;
-  text-align: center;
-`;
+const headerNameClass =
+  "overflow-hidden text-[#0f172a] text-[0.96rem] font-extrabold text-ellipsis whitespace-nowrap";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -675,14 +309,23 @@ export default function ChatRoomClient({ initialData }: { initialData: ChatRoomI
   }, [isSystem, messagingStatus, t]);
 
   return (
-    <Page>
-      <ChatShell>
-        <Header>
-          <HeaderAvatar $system={isSystem} aria-hidden="true">
+    <main className="w-full max-w-page min-h-[calc(100vh-120px)] mx-auto pt-[1.4rem] px-gutter pb-14 max-[640px]:min-h-[calc(100vh-100px)] max-[640px]:pt-[0.8rem] max-[640px]:px-gutter-mobile max-[640px]:pb-5">
+      <section className="grid grid-rows-[auto_minmax(420px,1fr)_auto] min-h-[min(720px,calc(100vh-175px))] overflow-hidden border border-[#e2e8f0] rounded-[20px] bg-[#f8fafc] shadow-[0_16px_38px_rgba(15,23,42,0.08)] max-[640px]:min-h-[calc(100vh-120px)] max-[640px]:rounded-2xl">
+        <header className="flex min-h-[72px] items-center gap-3 border-b border-[#e2e8f0] bg-[rgba(255,255,255,0.95)] py-[0.8rem] px-4">
+          <div
+            className={`grid w-[42px] h-[42px] flex-none place-items-center overflow-hidden rounded-full font-extrabold ${
+              isSystem
+                ? "bg-[#fef3c7] text-[#92400e] text-[1.2rem]"
+                : "bg-[#e2e8f0] text-[#334155] text-[0.95rem]"
+            }`}
+            aria-hidden="true"
+          >
             {isSystem ? (
               "☕"
             ) : otherMember?.photoUrl ? (
-              <HeaderAvatarImage
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="w-full h-full object-cover"
                 src={otherMember.photoUrl}
                 alt=""
                 referrerPolicy="no-referrer"
@@ -690,47 +333,61 @@ export default function ChatRoomClient({ initialData }: { initialData: ChatRoomI
             ) : (
               headerName.charAt(0).toUpperCase()
             )}
-          </HeaderAvatar>
-          <HeaderText>
+          </div>
+          <div className="min-w-0 flex-1">
             {otherMember ? (
-              <ProfileLink href={`/profile/${otherMember.id}`}>
-                <HeaderName>{headerName}</HeaderName>
-              </ProfileLink>
+              <Link className="group text-inherit no-underline" href={`/profile/${otherMember.id}`}>
+                <div className={`${headerNameClass} underline-offset-[3px] group-hover:underline`}>
+                  {headerName}
+                </div>
+              </Link>
             ) : (
-              <HeaderName>{headerName}</HeaderName>
+              <div className={headerNameClass}>{headerName}</div>
             )}
-            <HeaderSub>{isSystem ? t.chat.systemRoomLabel : t.chat.profileLinkHint}</HeaderSub>
-          </HeaderText>
+            <div className="overflow-hidden mt-[0.13rem] text-[#64748b] text-[0.76rem] text-ellipsis whitespace-nowrap">
+              {isSystem ? t.chat.systemRoomLabel : t.chat.profileLinkHint}
+            </div>
+          </div>
           {!isSystem && otherMember && (
-            <MenuWrap>
-              <MenuButton
+            <div className="relative">
+              <button
+                className="grid w-9 h-9 place-items-center border-0 rounded-[10px] bg-transparent text-[#475569] cursor-pointer hover:bg-[#f1f5f9] hover:text-[#0f172a] [&_svg]:w-[21px] [&_svg]:h-[21px]"
                 type="button"
                 onClick={() => setIsMenuOpen((open) => !open)}
                 aria-label={t.chat.conversationMenu}
                 aria-expanded={isMenuOpen}
               >
                 <EllipsisHorizontalIcon />
-              </MenuButton>
+              </button>
               {isMenuOpen && (
-                <Menu>
-                  <MenuAction
+                <div className="absolute z-[2] top-[calc(100%+0.35rem)] right-0 min-w-[145px] overflow-hidden border border-[#e2e8f0] rounded-xl bg-white p-[0.3rem] shadow-[0_12px_24px_rgba(15,23,42,0.16)]">
+                  <button
+                    className={`w-full border-0 rounded-lg bg-transparent py-[0.58rem] px-[0.65rem] text-[0.84rem] font-bold text-left cursor-pointer ${
+                      messagingStatus !== "blocked_by_me"
+                        ? "text-[#b91c1c] hover:bg-[#fef2f2]"
+                        : "text-[#334155] hover:bg-[#f8fafc]"
+                    }`}
                     type="button"
-                    $danger={messagingStatus !== "blocked_by_me"}
                     onClick={() => void changeBlockStatus()}
                   >
                     {messagingStatus === "blocked_by_me" ? t.chat.unblock : t.chat.block}
-                  </MenuAction>
-                </Menu>
+                  </button>
+                </div>
               )}
-            </MenuWrap>
+            </div>
           )}
-        </Header>
+        </header>
 
-        <MessageViewport ref={viewportRef} aria-live="polite">
+        <div className="overflow-y-auto p-4" ref={viewportRef} aria-live="polite">
           {hasMore && (
-            <LoadEarlierButton type="button" onClick={() => void loadOlderMessages()} disabled={isLoadingOlder}>
+            <button
+              className="block mx-auto mb-4 border border-[#cbd5e1] rounded-full bg-white py-[0.45rem] px-[0.8rem] text-[#475569] text-[0.78rem] font-[750] cursor-pointer [&:hover:not(:disabled)]:border-[#94a3b8] [&:hover:not(:disabled)]:text-[#0f172a] disabled:cursor-wait disabled:opacity-65"
+              type="button"
+              onClick={() => void loadOlderMessages()}
+              disabled={isLoadingOlder}
+            >
               {isLoadingOlder ? t.chat.loadingEarlier : t.chat.loadEarlier}
-            </LoadEarlierButton>
+            </button>
           )}
           {messages.map((message, index) => {
             const previous = messages[index - 1];
@@ -742,29 +399,105 @@ export default function ChatRoomClient({ initialData }: { initialData: ChatRoomI
 
             return (
               <div key={message.id}>
-                {needsDateDivider && <DateDivider>{dateKey(message.createdAt, locale)}</DateDivider>}
-                <MessageRow $mine={mine} $system={systemMessage}>
-                  <MessageStack $mine={mine} $system={systemMessage}>
-                    <Bubble $mine={mine} $system={systemMessage} $failed={message.failed}>
-                      {systemTitle && <SystemMessageTitle>{systemTitle}</SystemMessageTitle>}
+                {needsDateDivider && (
+                  <div className="flex items-center justify-center mt-4 mb-3 text-[#64748b] text-[0.72rem] before:content-[''] before:w-[46px] before:h-px before:bg-[#dbe4ee] before:mr-[0.6rem] after:content-[''] after:w-[46px] after:h-px after:bg-[#dbe4ee] after:ml-[0.6rem]">
+                    {dateKey(message.createdAt, locale)}
+                  </div>
+                )}
+                <div
+                  className={`flex my-[0.35rem] ${
+                    systemMessage ? "justify-center" : mine ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={
+                      systemMessage
+                        ? "flex max-w-[min(86%,620px)] flex-col items-center gap-[0.42rem]"
+                        : `flex max-w-[min(78%,570px)] items-end gap-[0.42rem] ${
+                            mine ? "flex-row-reverse" : "flex-row"
+                          }`
+                    }
+                  >
+                    <div
+                      className={`text-[0.9rem] leading-[1.48] whitespace-pre-wrap ${
+                        message.failed
+                          ? "border border-[#fca5a5]"
+                          : systemMessage
+                            ? "border border-[#fcd34d]"
+                            : "border-0"
+                      } ${
+                        systemMessage
+                          ? "rounded-[14px]"
+                          : mine
+                            ? "rounded-[16px_16px_4px_16px]"
+                            : "rounded-[16px_16px_16px_4px]"
+                      } ${
+                        message.failed
+                          ? "bg-[#fef2f2]"
+                          : systemMessage
+                            ? "bg-[#fffbeb]"
+                            : mine
+                              ? "bg-[#0f172a]"
+                              : "bg-white"
+                      } ${
+                        systemMessage ? "py-[0.7rem] px-[0.8rem]" : "py-[0.62rem] px-[0.76rem]"
+                      } ${mine ? "text-white" : "text-[#1e293b]"} ${
+                        mine || systemMessage
+                          ? "shadow-none"
+                          : "shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                      }`}
+                    >
+                      {systemTitle && (
+                        <h3 className="mt-0 mx-0 mb-[0.24rem] text-[#78350f] text-[0.86rem] font-[850] leading-[1.35]">
+                          {systemTitle}
+                        </h3>
+                      )}
                       {message.body}
-                      {message.failed && <FailedText>{t.chat.messageFailed}</FailedText>}
-                      {action && <SystemActionLink href={action.url}>{action.label}</SystemActionLink>}
-                    </Bubble>
-                    <Timestamp dateTime={message.createdAt}>{timeLabel(message.createdAt, locale)}</Timestamp>
-                  </MessageStack>
-                </MessageRow>
+                      {message.failed && (
+                        <div className="mt-1 text-[#b91c1c] text-[0.7rem] font-bold">
+                          {t.chat.messageFailed}
+                        </div>
+                      )}
+                      {action && (
+                        <Link
+                          className="inline-flex mt-[0.52rem] rounded-lg bg-[#f59e0b] py-[0.34rem] px-[0.55rem] text-[#451a03] text-[0.76rem] font-extrabold no-underline hover:bg-[#fbbf24] hover:text-[#451a03] hover:no-underline"
+                          href={action.url}
+                        >
+                          {action.label}
+                        </Link>
+                      )}
+                    </div>
+                    <time
+                      className="flex-none pb-[0.16rem] text-[#94a3b8] text-[0.67rem] tabular-nums whitespace-nowrap"
+                      dateTime={message.createdAt}
+                    >
+                      {timeLabel(message.createdAt, locale)}
+                    </time>
+                  </div>
+                </div>
               </div>
             );
           })}
-        </MessageViewport>
+        </div>
 
         {isSystem || messagingStatus !== "available" ? (
-          <Notice $warning={messagingStatus === "blocked_by_me"}>{statusNotice}</Notice>
+          <div
+            className={`border-t border-[#e2e8f0] py-[0.9rem] px-4 text-[0.84rem] text-center ${
+              messagingStatus === "blocked_by_me"
+                ? "bg-[#fffbeb] text-[#92400e]"
+                : "bg-[#f8fafc] text-[#64748b]"
+            }`}
+          >
+            {statusNotice}
+          </div>
         ) : (
-          <ComposerArea>
-            <ComposerForm onSubmit={handleSubmit}>
-              <ComposerInput
+          <div className="border-t border-[#e2e8f0] bg-white p-[0.8rem]">
+            <form
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-[0.65rem]"
+              onSubmit={handleSubmit}
+            >
+              <textarea
+                className="min-h-[42px] max-h-[120px] w-full resize-y border border-[#cbd5e1] rounded-xl bg-white py-[0.65rem] px-[0.72rem] text-[#0f172a] text-[0.9rem] leading-[1.35] focus:outline-2 focus:outline-solid focus:outline-[#94a3b8] focus:outline-offset-1 disabled:bg-[#f8fafc] disabled:cursor-not-allowed"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value.slice(0, 4000))}
                 onKeyDown={handleComposerKeyDown}
@@ -774,15 +507,24 @@ export default function ChatRoomClient({ initialData }: { initialData: ChatRoomI
                 disabled={isSending}
                 rows={1}
               />
-              <SendButton type="submit" disabled={!isSendEnabled} aria-label={t.chat.send}>
+              <button
+                className="grid w-[42px] h-[42px] place-items-center border-0 rounded-xl bg-[#0f172a] text-white cursor-pointer [&:hover:not(:disabled)]:bg-[#020617] disabled:cursor-not-allowed disabled:opacity-40 [&_svg]:w-[18px] [&_svg]:h-[18px]"
+                type="submit"
+                disabled={!isSendEnabled}
+                aria-label={t.chat.send}
+              >
                 <PaperAirplaneIcon />
-              </SendButton>
-            </ComposerForm>
-            <ComposerHint>{t.chat.composerHint}</ComposerHint>
-          </ComposerArea>
+              </button>
+            </form>
+            <div className="mt-[0.45rem] text-[#94a3b8] text-[0.7rem]">{t.chat.composerHint}</div>
+          </div>
         )}
-        {error && <InlineError role="alert">{error}</InlineError>}
-      </ChatShell>
-    </Page>
+        {error && (
+          <div className="mt-[0.55rem] mx-0 mb-0 text-[#b91c1c] text-[0.76rem] text-center" role="alert">
+            {error}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

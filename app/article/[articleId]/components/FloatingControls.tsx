@@ -1,5 +1,4 @@
 import React from "react";
-import styled from "styled-components";
 
 interface FloatingControlsProps {
   isAudioMode: boolean;
@@ -9,38 +8,6 @@ interface FloatingControlsProps {
   onToggleVisibility: () => void;
 }
 
-const Container = styled.div<{ $isVisible: boolean }>`
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  opacity: ${props => props.$isVisible ? 1 : 0};
-  pointer-events: ${props => props.$isVisible ? 'auto' : 'none'};
-  transition: opacity 0.3s ease;
-  z-index: 99;
-`;
-
-const Button = styled.button`
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #f47a4a;
-  border: 2px solid #050505;
-  box-shadow: 3px 3px 0 rgba(5, 5, 5, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-
-  &:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 rgba(5, 5, 5, 0.9);
-  }
-`;
-
 export default function FloatingControls({
   hasAudio,
   onToggleAudioMode,
@@ -49,8 +16,17 @@ export default function FloatingControls({
   if (!hasAudio) return null;
 
   return (
-    <Container $isVisible={isVisible}>
-      <Button onClick={onToggleAudioMode}>🎧</Button>
-    </Container>
+    <div
+      className={`fixed bottom-20 right-5 flex flex-col gap-2 [transition:opacity_0.3s_ease] z-[99] ${
+        isVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
+    >
+      <button
+        className="w-12 h-12 rounded-full bg-[#f47a4a] border-2 border-[#050505] shadow-[3px_3px_0_rgba(5,5,5,0.9)] flex items-center justify-center cursor-pointer [transition:transform_0.16s_ease,box-shadow_0.16s_ease] hover:[transform:translate(-1px,-1px)] hover:shadow-[4px_4px_0_rgba(5,5,5,0.9)]"
+        onClick={onToggleAudioMode}
+      >
+        🎧
+      </button>
+    </div>
   );
 }

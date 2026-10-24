@@ -5,7 +5,12 @@
   "description": "Firebase -> Supabase migration/cutover tooling. Kept out of the web app's dependency tree, like functions/.",
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
-    "firebase-admin": "^13.4.0",
+    "firebase-admin": "^14.5.0",
     "pg": "^8.13.1"
+  },
+  "overrides": {
+    "gaxios": {
+      "uuid": "11.1.1"
+    }
   }
 }

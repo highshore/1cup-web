@@ -237,6 +237,7 @@ export async function verifyCodeAndMintSession(
   const targetAuthId = (phoneOwner as string | null) ?? existingAuthId ?? null;
 
   let authId: string;
+  let createdAuthUser = false;
   if (targetAuthId) {
     const { error: uErr } = await db.auth.admin.updateUserById(targetAuthId, {
       password,
@@ -256,14 +257,44 @@ export async function verifyCodeAndMintSession(
     });
     if (cErr || !created?.user) throw new OtpError("계정 생성에 실패했습니다.", 500);
     authId = created.user.id;
-    // Defensive: ensure a public.users row exists even if the handle_new_user trigger didn't.
+    createdAuthUser = true;
+
+    // Defensive: ensure the create-only auth trigger left this principal mapped to
+    // its own fresh profile. This is deliberately NOT an existing-member lookup.
     const { data: linked } = await db
       .from("user_auth_identities")
       .select("uid")
       .eq("auth_id", authId)
       .maybeSingle();
     if (!linked) {
-      await db.from("users").insert({ uid: authId, auth_id: authId, phone: local });
+      await db
+        .from("users")
+        .upsert(
+          { uid: authId, auth_id: authId, phone: local, identity_unmatched: true },
+          { onConflict: "uid", ignoreDuplicates: true },
+        );
+      await db
+        .from("user_auth_identities")
+        .upsert(
+          { auth_id: authId, uid: authId },
+          { onConflict: "auth_id", ignoreDuplicates: true },
+        );
+    }
+  }
+
+  // A freshly-created phone auth user may belong to a migrated profile that has
+  // a phone number but no auth identity yet. At this point the OTP has already
+  // been consumed, so possession of that phone is proven. Move ONLY this newly
+  // created identity through the constrained linking RPC; never repoint an
+  // established auth identity based on a profile lookup.
+  if (createdAuthUser && existingUid && existingUid !== authId) {
+    const { error: linkErr } = await db.rpc("link_identity_to_profile", {
+      p_auth_id: authId,
+      p_target_uid: existingUid,
+    });
+    if (linkErr) {
+      console.error("Verified phone account linking failed:", linkErr.message);
+      throw new OtpError("기존 계정 연결에 실패했습니다.", 500);
     }
   }
 

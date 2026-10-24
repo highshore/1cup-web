@@ -1,12 +1,18 @@
 import { Metadata } from "next";
-import ProfileClient from "./ProfileClient";
+import { requireSignedIn } from "../lib/auth/server_guards";
+import ProfileDashboardClient from "./ProfileDashboardClientV2";
+import styles from "./mobile-profile-sync.module.css";
 
 export const metadata: Metadata = {
-  title: "프로필 | OneCup English",
-  description:
-    "사용자 프로필 정보, 구독 상태, 저장한 단어 및 영어 한잔 기록을 확인하세요.",
+  title: "Profile | OneCup English",
+  description: "Manage your member profile, interests, languages and 1 Cup English community details.",
 };
 
-export default function ProfilePage() {
-  return <ProfileClient />;
+export default async function ProfilePage() {
+  await requireSignedIn("/profile");
+  return (
+    <div className={styles.root}>
+      <ProfileDashboardClient />
+    </div>
+  );
 }
