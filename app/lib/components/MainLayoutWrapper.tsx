@@ -18,13 +18,13 @@ const LayoutWrapper = styled.div<{ $isHomePage: boolean }>`
 
 const PageContainer = styled.div<{
   $isHomePage: boolean;
-  $isArticlePage: boolean;
+  $isFullWidthPage: boolean;
 }>`
   padding-top: ${(props) => (props.$isHomePage ? "0" : "74px")};
   flex: 1;
   min-height: 100vh;
   max-width: ${(props) =>
-    props.$isHomePage || props.$isArticlePage
+    props.$isHomePage || props.$isFullWidthPage
       ? "100%"
       : appLayout.pageMaxWidth};
   margin: 0 auto;
@@ -35,11 +35,11 @@ const PageContainer = styled.div<{
   @media (max-width: 768px) {
     padding-top: ${(props) => (props.$isHomePage ? "0" : "68px")};
     padding-left: ${(props) =>
-      props.$isHomePage || props.$isArticlePage
+      props.$isHomePage || props.$isFullWidthPage
         ? "0"
         : appLayout.pageGutterMobile};
     padding-right: ${(props) =>
-      props.$isHomePage || props.$isArticlePage
+      props.$isHomePage || props.$isFullWidthPage
         ? "0"
         : appLayout.pageGutterMobile};
   }
@@ -52,12 +52,14 @@ export default function MainLayoutWrapper({
 }) {
   const pathname = usePathname();
   const isHomePage = pathname === "/";
-  const isArticlePage = pathname.startsWith("/article/");
+  // Article and newsletter pages draw their own full-bleed sections.
+  const isFullWidthPage =
+    pathname.startsWith("/article/") || pathname.startsWith("/newsletter");
 
   return (
     <LayoutWrapper $isHomePage={isHomePage}>
       <NewNavbar />
-      <PageContainer $isHomePage={isHomePage} $isArticlePage={isArticlePage}>
+      <PageContainer $isHomePage={isHomePage} $isFullWidthPage={isFullWidthPage}>
         {children}
       </PageContainer>
       <Footer />
