@@ -24,6 +24,9 @@ const nextConfig = {
     return [
       { source: "/home", destination: "/", permanent: true },
       { source: "/new-home", destination: "/", permanent: true },
+      // The Daily storefront launched at /newsletter before it was renamed.
+      { source: "/newsletter", destination: "/daily", permanent: true },
+      { source: "/newsletter/:path*", destination: "/daily", permanent: true },
     ];
   },
   // Tree-shake large barrel packages so only used icons/utils are bundled.
