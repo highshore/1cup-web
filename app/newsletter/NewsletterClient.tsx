@@ -5,6 +5,9 @@ import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import TrackCard from "../lib/features/newsletter/components/TrackCard";
 import AuthorSection from "../lib/features/newsletter/components/AuthorSection";
+import ExpressionMarquee from "../lib/features/newsletter/components/ExpressionMarquee";
+import KakaoDemo from "../lib/features/newsletter/components/KakaoDemo";
+import LoopVideo from "../lib/features/newsletter/components/LoopVideo";
 import {
   AccentLines,
   BrandBar,
@@ -36,14 +39,68 @@ const Hero = styled.section`
 `;
 
 const HeroInner = styled(Container)`
+  display: grid;
+  align-items: center;
+  gap: 3rem;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+`;
+
+const HeroCopy = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 
-  @media (max-width: 768px) {
+  @media (max-width: 899px) {
     align-items: center;
     text-align: center;
   }
+`;
+
+const HeroDemo = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const MediaSplit = styled(Container)`
+  display: grid;
+  align-items: center;
+  gap: 2rem;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 3.5rem;
+  }
+`;
+
+const VideoFrame = styled.div`
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 2px solid ${c.ink};
+  border-radius: 14px;
+  background: ${c.surface};
+  box-shadow: 6px 6px 0 ${c.orange};
+`;
+
+const MediaCopy = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  @media (max-width: 899px) {
+    align-items: center;
+    text-align: center;
+  }
+`;
+
+const MarqueeHeader = styled(Container)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  text-align: center;
 `;
 
 const HeroTitle = styled.h1`
@@ -71,7 +128,7 @@ const Actions = styled.div`
   gap: 0.9rem;
   margin-top: 2rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 899px) {
     flex-direction: column;
     align-self: stretch;
   }
@@ -332,17 +389,22 @@ export default function NewsletterClient() {
 
       <Hero>
         <HeroInner>
-          <Chip>{copy.eyebrow}</Chip>
-          <HeroTitle>
-            <AccentLines text={copy.title} />
-          </HeroTitle>
-          <HeroDescription>{copy.description}</HeroDescription>
-          <Actions>
-            <PrimaryLink href="#tracks">{copy.chooseTrack}</PrimaryLink>
-            <OutlineLink href="/newsletter/business#sample">
-              {copy.viewSample}
-            </OutlineLink>
-          </Actions>
+          <HeroCopy>
+            <Chip>{copy.eyebrow}</Chip>
+            <HeroTitle>
+              <AccentLines text={copy.title} />
+            </HeroTitle>
+            <HeroDescription>{copy.description}</HeroDescription>
+            <Actions>
+              <PrimaryLink href="#tracks">{copy.chooseTrack}</PrimaryLink>
+              <OutlineLink href="/newsletter/business#sample">
+                {copy.viewSample}
+              </OutlineLink>
+            </Actions>
+          </HeroCopy>
+          <HeroDemo>
+            <KakaoDemo />
+          </HeroDemo>
         </HeroInner>
       </Hero>
 
@@ -367,9 +429,25 @@ export default function NewsletterClient() {
         </Notice>
       )}
 
-      <AuthorSection />
+      <Section>
+        <MediaSplit>
+          <VideoFrame>
+            <LoopVideo
+              src="/assets/newsletter/coffee-loop.mp4"
+              poster="/assets/newsletter/coffee-poster.jpg"
+            />
+          </VideoFrame>
+          <MediaCopy>
+            <Chip>{copy.coffeeEyebrow}</Chip>
+            <SectionTitle>
+              <AccentLines text={copy.coffeeTitle} />
+            </SectionTitle>
+            <Description>{copy.coffeeDescription}</Description>
+          </MediaCopy>
+        </MediaSplit>
+      </Section>
 
-      <Section id="tracks">
+      <Section id="tracks" $background={c.surface}>
         <Container>
           <SectionHeader>
             <Chip>{copy.tracksEyebrow}</Chip>
@@ -383,6 +461,18 @@ export default function NewsletterClient() {
           </TrackGrid>
         </Container>
       </Section>
+
+      <Section>
+        <MarqueeHeader>
+          <Chip>{copy.marqueeEyebrow}</Chip>
+          <SectionTitle>
+            <AccentLines text={copy.marqueeTitle} />
+          </SectionTitle>
+        </MarqueeHeader>
+        <ExpressionMarquee />
+      </Section>
+
+      <AuthorSection background={c.cream} />
 
       <Section $background={c.surface}>
         <Container>

@@ -9,8 +9,8 @@ import {
   NEWSLETTER_MONTHLY_PRICE_KRW,
   newsletterColors as c,
   NewsletterTrack,
-  trackCoverTheme,
 } from "../constants";
+import TrackVisual from "./TrackVisual";
 
 const CardLink = styled(Link)`
   display: flex;
@@ -35,42 +35,34 @@ const CardLink = styled(Link)`
       box-shadow: 7px 7px 0 rgba(5, 5, 5, 0.88);
     }
   }
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.45);
+    outline-offset: 3px;
+  }
 `;
 
-const Cover = styled.div<{ $background: string; $foreground: string }>`
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  min-height: 168px;
-  padding: 1.25rem;
+const Media = styled.div`
   border-bottom: 2px solid ${c.ink};
-  background: ${(props) => props.$background};
-  color: ${(props) => props.$foreground};
-`;
-
-const CoverEyebrow = styled.span<{ $color: string }>`
-  font-size: 0.78rem;
-  font-weight: 900;
-  color: ${(props) => props.$color};
-`;
-
-const CoverTitle = styled.span`
-  font-size: 1.85rem;
-  font-weight: 900;
-  line-height: 1.18;
 `;
 
 const Body = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem 1.25rem 1.25rem;
+  gap: 0.5rem;
+  padding: 1.1rem 1.25rem 1.3rem;
+`;
+
+const Title = styled.span`
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.25;
+  color: ${c.ink};
 `;
 
 const Tagline = styled.span`
-  font-size: 0.96rem;
-  font-weight: 700;
+  font-size: 0.94rem;
+  font-weight: 650;
   line-height: 1.55;
   color: ${c.body};
 `;
@@ -79,10 +71,11 @@ const PriceRow = styled.span`
   display: flex;
   align-items: baseline;
   gap: 0.375rem;
+  margin-top: 0.35rem;
 `;
 
 const Price = styled.span`
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 900;
   color: ${c.ink};
 `;
@@ -106,17 +99,14 @@ const MemberPrice = styled.span`
 export default function TrackCard({ track }: { track: NewsletterTrack }) {
   const { t } = useI18n();
   const copy = t.newsletter.tracks[track];
-  const theme = trackCoverTheme[track];
 
   return (
     <CardLink href={`/newsletter/${track}`}>
-      <Cover $background={theme.background} $foreground={theme.foreground}>
-        <CoverEyebrow $color={theme.eyebrow}>
-          {t.newsletter.storefront.coverEyebrow}
-        </CoverEyebrow>
-        <CoverTitle>{copy.title}</CoverTitle>
-      </Cover>
+      <Media>
+        <TrackVisual track={track} compact />
+      </Media>
       <Body>
+        <Title>{copy.title}</Title>
         <Tagline>{copy.tagline}</Tagline>
         <PriceRow>
           <Price>

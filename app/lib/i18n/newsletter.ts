@@ -15,8 +15,23 @@ const newsletter = {
       member: "영어 한잔 멤버 ₩{price} / 월",
       memberShort: "1cup 멤버 ₩{price}",
     },
+    demo: {
+      today: "오늘",
+      yesterday: "어제",
+      alimtalk: "알림톡 도착",
+      messageIntro: "[{track}] 오늘의 표현",
+      openLesson: "오늘의 레슨 보기",
+      listen: "듣기",
+      listening: "재생 중",
+      tapToListen: "예문을 누르면 발음을 들을 수 있어요",
+      subtitlesEn: "영어 자막",
+      subtitlesKo: "한글 자막",
+      newsSource: "Tech news",
+    },
     author: {
       eyebrow: "만든 사람",
+      photoCaption: "영어 한잔 오프라인 모임 현장",
+      photoAlt: "영어 한잔 오프라인 모임에서 멤버들이 테이블에 둘러앉아 영어로 이야기하는 모습",
       title: "매일 레슨은\n통역사가 직접 고르고 씁니다",
       description:
         "교과서 예문이 아니라, 수천 번의 비즈니스 미팅을 통역하며 실제로 오간 표현을 기준으로 고릅니다. 영어 한잔 오프라인 모임을 설계하고 이끄는 통역사가 레슨 하나하나를 직접 씁니다.",
@@ -49,6 +64,12 @@ const newsletter = {
       viewSample: "무료 샘플 레슨 보기",
       launchNotice: "런칭 할인 진행 중 · {deadline} 마감",
       launchNoticeDetail: "마감일이 지나면 정상가로 돌아가요. 연장하지 않아요.",
+      coffeeEyebrow: "하루 5분",
+      coffeeTitle: "커피 한 잔 내리는 시간이면\n오늘의 레슨이 끝나요",
+      coffeeDescription:
+        "레슨 하나는 표현 3개와 예문, 발음 음성, 1분 퀴즈로 끝나요. 커피를 내리는 동안 읽고 들으면 됩니다.",
+      marqueeEyebrow: "표현 미리보기",
+      marqueeTitle: "이런 표현들이\n매일 카톡으로 와요",
       tracksEyebrow: "트랙 안내",
       tracksTitle: "세 가지 트랙",
       tracksDescription: "트랙마다 따로 구독해요. 여러 개를 함께 받아도 돼요.",
@@ -115,6 +136,7 @@ const newsletter = {
         { label: "구성", value: "표현 3개 · 발음 음성 · 1분 퀴즈" },
       ],
       painEyebrow: "혹시 이런 적 있나요?",
+      coverCaption: "회의에서 바로 쓰는 한 문장",
       gainTitle: "이런 순간을 위해 만들었어요",
       pillsTitle: "카톡으로 매일 받는\n{track}",
       pills: [
@@ -355,8 +377,23 @@ const newsletter = {
       member: "OneCup members ₩{price} / month",
       memberShort: "Members ₩{price}",
     },
+    demo: {
+      today: "Today",
+      yesterday: "Yesterday",
+      alimtalk: "New Alimtalk",
+      messageIntro: "[{track}] Today's expression",
+      openLesson: "Open today's lesson",
+      listen: "Listen",
+      listening: "Playing",
+      tapToListen: "Tap an example to hear it",
+      subtitlesEn: "English subtitles",
+      subtitlesKo: "Korean subtitles",
+      newsSource: "Tech news",
+    },
     author: {
       eyebrow: "Who writes it",
+      photoCaption: "A OneCup English offline meetup",
+      photoAlt: "OneCup English members around a table at an offline meetup, talking in English",
       title: "Every lesson is picked\nand written by an interpreter",
       description:
         "Not textbook examples: we pick expressions that actually came up across thousands of interpreted business meetings. The interpreter who designs and leads OneCup English's offline meetups writes every lesson personally.",
@@ -398,6 +435,12 @@ const newsletter = {
       launchNotice: "Launch discount · ends {deadline}",
       launchNoticeDetail:
         "After the deadline, prices go back to normal. We won't extend it.",
+      coffeeEyebrow: "5 minutes a day",
+      coffeeTitle: "Today's lesson takes\nas long as a pour-over",
+      coffeeDescription:
+        "Each lesson is 3 expressions with examples, pronunciation audio and a 1-minute quiz. Read and listen while your coffee brews.",
+      marqueeEyebrow: "Expression preview",
+      marqueeTitle: "Expressions like these\narrive every day",
       tracksEyebrow: "Tracks",
       tracksTitle: "Three tracks",
       tracksDescription:
@@ -469,6 +512,7 @@ const newsletter = {
         },
       ],
       painEyebrow: "Sound familiar?",
+      coverCaption: "One sentence you can use in today's meeting",
       gainTitle: "We built it for moments like these",
       pillsTitle: "{track},\ndelivered to KakaoTalk daily",
       pills: [

@@ -1,10 +1,14 @@
 "use client";
 
-import { Fragment } from "react";
-import styled from "styled-components";
+import { Fragment, useEffect, useRef, useState } from "react";
+import styled, { keyframes } from "styled-components";
 import { CheckBadgeIcon } from "@heroicons/react/24/outline";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import AuthorSection from "../../lib/features/newsletter/components/AuthorSection";
+import PhoneFrame from "../../lib/features/newsletter/components/PhoneFrame";
+import SpeakButton from "../../lib/features/newsletter/components/SpeakButton";
+import TrackVisual from "../../lib/features/newsletter/components/TrackVisual";
+import { useInView, usePrefersReducedMotion, useSpeech } from "../../lib/features/newsletter/hooks";
 import {
   AccentLines,
   BrandBar,
@@ -42,18 +46,36 @@ const Cover = styled.div<{ $background: string; $foreground: string }>`
 `;
 
 const CoverInner = styled(Container)`
+  display: grid;
+  align-items: center;
+  gap: 2rem;
+  padding-top: 2.5rem;
+  padding-bottom: 2.75rem;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem;
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+`;
+
+const CoverCopy = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 0.5rem;
-  min-height: 240px;
-  padding-top: 2rem;
-  padding-bottom: 2rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 899px) {
     align-items: center;
     text-align: center;
   }
+`;
+
+const CoverMedia = styled.div`
+  overflow: hidden;
+  border: 2px solid ${c.ink};
+  border-radius: 14px;
+  box-shadow: 6px 6px 0 rgba(5, 5, 5, 0.88);
 `;
 
 const CoverEyebrow = styled.p<{ $color: string }>`
@@ -204,7 +226,8 @@ const KakaoCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin-bottom: 1.25rem;
+  box-shadow: 5px 5px 0 ${c.orange};
+  text-align: left;
   border: 2px solid ${c.ink};
   border-radius: 16px;
   background: #ffffff;
@@ -247,17 +270,97 @@ const KakaoBody = styled.p`
   color: ${c.heading};
 `;
 
-const LessonCard = styled(Card)`
+const LessonSplit = styled.div`
+  display: grid;
+  align-items: center;
+  gap: 2.5rem;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4rem;
+  }
+`;
+
+const LessonAside = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  box-shadow: 5px 5px 0 ${c.orange};
+  gap: 0.75rem;
+  max-width: 30rem;
+
+  @media (max-width: 899px) {
+    margin: 0 auto;
+    text-align: center;
+  }
+`;
+
+const TapHint = styled.p`
+  margin: 0.5rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: ${c.heading};
+`;
+
+const PhoneSlot = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const PhonePage = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding: 0.25rem 1.1rem 1.5rem;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+const PhoneBrand = styled.span`
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: ${c.muted};
+`;
+
+const ExpressionRowTop = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+`;
+
+const ExampleButton = styled.button<{ $active: boolean }>`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  margin: -0.35rem 0 0 -0.4rem;
+  border: 0;
+  border-radius: 10px;
+  background: ${(props) => (props.$active ? c.cream : "transparent")};
+  padding: 0.35rem 0.4rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.45);
+  }
 `;
 
 const Expression = styled.p`
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.45rem;
   font-weight: 900;
   line-height: 1.2;
   color: ${c.ink};
@@ -278,7 +381,7 @@ const Label = styled.span`
 
 const Meaning = styled.p`
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: ${c.heading};
 `;
@@ -287,8 +390,8 @@ const Nuance = styled.p`
   margin: 0;
   border-radius: 12px;
   background: ${c.cream};
-  padding: 0.85rem 1rem;
-  font-size: 0.92rem;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.8rem;
   font-weight: 620;
   line-height: 1.65;
   color: ${c.body};
@@ -327,7 +430,7 @@ const Examples = styled.ol`
 
 const ExampleEn = styled.p`
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.55;
   color: ${c.heading};
@@ -353,8 +456,8 @@ const OutlineChip = styled.span`
   border: 2px solid ${c.ink};
   border-radius: 999px;
   background: #ffffff;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.9rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
   font-weight: 800;
   color: ${c.ink};
 `;
@@ -379,18 +482,63 @@ const RowExpression = styled.span`
   color: ${c.ink};
 `;
 
-const Compare = styled(Card)`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.1rem 1.25rem;
+const swap = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 `;
 
-const CompareLine = styled.div`
-  display: grid;
-  grid-template-columns: 4.25rem 1fr;
-  align-items: baseline;
-  gap: 0.5rem;
+const Toggle = styled.div`
+  display: flex;
+  width: fit-content;
+  margin: 0 0 1.25rem;
+
+  @media (max-width: 768px) {
+    margin: 0 auto 1.25rem;
+  }
+
+  border: 2px solid ${c.ink};
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 3px;
+  box-shadow: 4px 4px 0 ${c.orange};
+`;
+
+const ToggleButton = styled.button<{ $active: boolean }>`
+  min-width: 96px;
+  border: 0;
+  border-radius: 999px;
+  background: ${(props) => (props.$active ? c.ink : "transparent")};
+  padding: 0.5rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: ${(props) => (props.$active ? "#ffffff" : c.body)};
+  cursor: pointer;
+  transition: background-color 240ms cubic-bezier(0.23, 1, 0.32, 1), color 240ms ease;
+
+  &:focus-visible {
+    outline: 3px solid rgba(244, 122, 74, 0.45);
+    outline-offset: 2px;
+  }
+`;
+
+const Compare = styled(Card)<{ $after: boolean }>`
+  display: flex;
+  align-items: center;
+  min-height: 76px;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 5px 5px 0 ${(props) => (props.$after ? c.orange : "rgba(5, 5, 5, 0.88)")};
+  transition: box-shadow 240ms ease;
+
+  & > span {
+    animation: ${swap} 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > span {
+      animation: none;
+    }
+  }
 `;
 
 const BeforeText = styled.span`
@@ -501,18 +649,43 @@ export default function TrackDetailClient({
   const lesson = trackCopy.lesson;
   const theme = trackCoverTheme[track];
   const price = formatKrw(NEWSLETTER_MONTHLY_PRICE_KRW);
+  const speech = useSpeech();
+  const reduced = usePrefersReducedMotion();
+  const compareRef = useRef<HTMLDivElement>(null);
+  const compareInView = useInView(compareRef, 0.6);
+  const [showAfter, setShowAfter] = useState(false);
+  const [autoFlipped, setAutoFlipped] = useState(false);
+
+  // Flip to "After" once when the comparison first comes into view.
+  useEffect(() => {
+    if (!compareInView || autoFlipped) return;
+    if (reduced) {
+      setAutoFlipped(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShowAfter(true);
+      setAutoFlipped(true);
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [compareInView, autoFlipped, reduced]);
 
   return (
     <Page>
       <BrandBar />
 
       <Cover $background={theme.background} $foreground={theme.foreground}>
-        <CoverInner $narrow>
-          <CoverEyebrow $color={theme.eyebrow}>
-            {t.newsletter.storefront.coverEyebrow}
-          </CoverEyebrow>
-          <CoverTitle>{trackCopy.title}</CoverTitle>
-          <CoverTagline $color={theme.tagline}>{trackCopy.tagline}</CoverTagline>
+        <CoverInner>
+          <CoverCopy>
+            <CoverEyebrow $color={theme.eyebrow}>
+              {t.newsletter.storefront.coverEyebrow}
+            </CoverEyebrow>
+            <CoverTitle>{trackCopy.title}</CoverTitle>
+            <CoverTagline $color={theme.tagline}>{trackCopy.tagline}</CoverTagline>
+          </CoverCopy>
+          <CoverMedia>
+            <TrackVisual track={track} />
+          </CoverMedia>
         </CoverInner>
       </Cover>
 
@@ -596,64 +769,88 @@ export default function TrackDetailClient({
       </Section>
 
       <Section id="sample" $background={c.surface}>
-        <Container $narrow>
+        <Container>
           <SectionHeader>
             <Chip>{copy.lessonEyebrow}</Chip>
             <SectionTitle>
               <AccentLines text={copy.lessonTitle} />
             </SectionTitle>
           </SectionHeader>
-
-          <KakaoCard>
-            <KakaoHead>
-              <KakaoAvatar>1</KakaoAvatar>
-              {t.newsletter.brand.name}
-              <Pill $background={KAKAO_YELLOW} $color={c.ink}>
-                {copy.kakaoTag}
-              </Pill>
-              <KakaoTime>{copy.kakaoTime}</KakaoTime>
-            </KakaoHead>
-            <KakaoBody>
-              {copy.kakaoNotice}
-              <br />[{trackCopy.title}] {lesson.expression}
-            </KakaoBody>
-          </KakaoCard>
-
-          <LessonCard>
-            <Expression lang="en">{lesson.expression}</Expression>
-            <Block>
-              <Label>{copy.meaningLabel}</Label>
-              <Meaning>{lesson.meaning}</Meaning>
-            </Block>
-            <Block>
-              <Label>{copy.nuanceLabel}</Label>
-              <Nuance>{lesson.nuance}</Nuance>
-            </Block>
-            <Block>
-              <Label>{copy.examplesLabel}</Label>
-              <Examples>
-                {lesson.examples.map((example) => (
-                  <li key={example.en}>
-                    <span>
-                      <ExampleEn lang="en">{example.en}</ExampleEn>
-                      <SmallText lang="ko">{example.ko}</SmallText>
-                    </span>
-                  </li>
-                ))}
-              </Examples>
-            </Block>
-            <Block>
-              <Label>{copy.similarLabel}</Label>
-              <ChipRow>
-                {lesson.similar.map((item) => (
-                  <OutlineChip key={item} lang="en">
-                    {item}
-                  </OutlineChip>
-                ))}
-              </ChipRow>
-            </Block>
-            <SmallText>{copy.audioNote}</SmallText>
-          </LessonCard>
+          <LessonSplit>
+            <LessonAside>
+              <KakaoCard>
+                <KakaoHead>
+                  <KakaoAvatar>1</KakaoAvatar>
+                  {t.newsletter.brand.name}
+                  <Pill $background={KAKAO_YELLOW} $color={c.ink}>
+                    {copy.kakaoTag}
+                  </Pill>
+                  <KakaoTime>{copy.kakaoTime}</KakaoTime>
+                </KakaoHead>
+                <KakaoBody>
+                  {copy.kakaoNotice}
+                  <br />[{trackCopy.title}] {lesson.expression}
+                </KakaoBody>
+              </KakaoCard>
+              <TapHint>{t.newsletter.demo.tapToListen}</TapHint>
+              <SmallText>{copy.audioNote}</SmallText>
+            </LessonAside>
+            <PhoneSlot>
+              <PhoneFrame time="8:01" label={`${trackCopy.title}: ${lesson.expression}`}>
+                <PhonePage>
+                  <PhoneBrand>
+                    {t.newsletter.brand.name} · {trackCopy.title}
+                  </PhoneBrand>
+                  <ExpressionRowTop>
+                    <Expression lang="en">{lesson.expression}</Expression>
+                    {speech.supported && (
+                      <SpeakButton
+                        active={speech.speakingText === lesson.expression}
+                        label={speech.speakingText === lesson.expression ? t.newsletter.demo.listening : t.newsletter.demo.listen}
+                        onClick={() => speech.speak(lesson.expression)}
+                      />
+                    )}
+                  </ExpressionRowTop>
+                  <Block>
+                    <Label>{copy.meaningLabel}</Label>
+                    <Meaning>{lesson.meaning}</Meaning>
+                  </Block>
+                  <Block>
+                    <Label>{copy.nuanceLabel}</Label>
+                    <Nuance>{lesson.nuance}</Nuance>
+                  </Block>
+                  <Block>
+                    <Label>{copy.examplesLabel}</Label>
+                    <Examples>
+                      {lesson.examples.map((example) => (
+                        <li key={example.en}>
+                          <ExampleButton
+                            type="button"
+                            $active={speech.speakingText === example.en}
+                            onClick={() => speech.speak(example.en)}
+                            disabled={!speech.supported}
+                          >
+                            <ExampleEn lang="en">{example.en}</ExampleEn>
+                            <SmallText lang="ko">{example.ko}</SmallText>
+                          </ExampleButton>
+                        </li>
+                      ))}
+                    </Examples>
+                  </Block>
+                  <Block>
+                    <Label>{copy.similarLabel}</Label>
+                    <ChipRow>
+                      {lesson.similar.map((item) => (
+                        <OutlineChip key={item} lang="en">
+                          {item}
+                        </OutlineChip>
+                      ))}
+                    </ChipRow>
+                  </Block>
+                </PhonePage>
+              </PhoneFrame>
+            </PhoneSlot>
+          </LessonSplit>
         </Container>
       </Section>
 
@@ -685,23 +882,26 @@ export default function TrackDetailClient({
               <AccentLines text={copy.beforeAfterTitle} />
             </SectionTitle>
           </SectionHeader>
+          <Toggle role="group" aria-label={copy.beforeAfterEyebrow} ref={compareRef}>
+            <ToggleButton type="button" $active={!showAfter} aria-pressed={!showAfter} onClick={() => setShowAfter(false)}>
+              {copy.beforeLabel}
+            </ToggleButton>
+            <ToggleButton type="button" $active={showAfter} aria-pressed={showAfter} onClick={() => setShowAfter(true)}>
+              {copy.afterLabel}
+            </ToggleButton>
+          </Toggle>
           <Rows>
             {trackCopy.beforeAfter.map((pair) => (
-              <Compare key={pair.after}>
-                <CompareLine>
-                  <Pill $background={c.line} $color={c.body}>
-                    {copy.beforeLabel}
-                  </Pill>
-                  <BeforeText lang="en">{pair.before}</BeforeText>
-                </CompareLine>
-                <CompareLine>
-                  <Pill $background={c.orange} $color={c.ink}>
-                    {copy.afterLabel}
-                  </Pill>
-                  <AfterText lang="en">
+              <Compare key={pair.after} $after={showAfter}>
+                {showAfter ? (
+                  <AfterText key="after" lang="en">
                     <Highlighted text={pair.after} highlight={pair.highlight} />
                   </AfterText>
-                </CompareLine>
+                ) : (
+                  <BeforeText key="before" lang="en">
+                    {pair.before}
+                  </BeforeText>
+                )}
               </Compare>
             ))}
           </Rows>
