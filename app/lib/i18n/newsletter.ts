@@ -1,4 +1,6 @@
 // Copy for the /newsletter sub-brand (daily Kakao lessons). Keep ko and en in the same shape.
+// Author credentials were approved by the founder for public use; keep names, schools and
+// employers out of this file.
 const newsletter = {
   ko: {
     brand: {
@@ -13,11 +15,36 @@ const newsletter = {
       member: "영어 한잔 멤버 ₩{price} / 월",
       memberShort: "1cup 멤버 ₩{price}",
     },
+    author: {
+      eyebrow: "만든 사람",
+      title: "매일 레슨은\n통역사가 직접 고르고 씁니다",
+      description:
+        "교과서 예문이 아니라, 수천 번의 비즈니스 미팅을 통역하며 실제로 오간 표현을 기준으로 고릅니다. 영어 한잔 오프라인 모임을 설계하고 이끄는 통역사가 레슨 하나하나를 직접 씁니다.",
+      credentials: [
+        {
+          icon: "work",
+          title: "대기업·IT 유니콘 기업 통역사 4년+",
+          detail: "수천 건의 미팅 통역",
+        },
+        {
+          icon: "military",
+          title: "한미연합군사령부 영어 통역병",
+          detail: "어학병 복무",
+        },
+        {
+          icon: "score",
+          title: "New TOEFL 6.0 만점",
+          detail: "iBT 118 · OPIc AL",
+        },
+        { icon: "school", title: "SKY 대학 컴퓨터학과", detail: "재학 중" },
+        { icon: "company", title: "현 Fortune 500 기업", detail: "재직 중" },
+      ],
+    },
     storefront: {
       eyebrow: "영어 한잔이 만드는 데일리 영어",
       title: "출근길 5분,\n카톡으로 오는\n영어 한 잔",
       description:
-        "앱 설치 없이, 내가 정한 시간에 매일 한 레슨씩 카카오톡으로 보내드려요.",
+        "통역사가 매일 고른 표현 하나를, 내가 정한 시간에 카카오톡으로 보내드려요. 앱 설치도 필요 없어요.",
       chooseTrack: "트랙 고르기",
       viewSample: "무료 샘플 레슨 보기",
       launchNotice: "런칭 할인 진행 중 · {deadline} 마감",
@@ -87,11 +114,33 @@ const newsletter = {
         { label: "결제", value: "매월 자동 결제 · 언제든 해지" },
         { label: "구성", value: "표현 3개 · 발음 음성 · 1분 퀴즈" },
       ],
+      painEyebrow: "혹시 이런 적 있나요?",
+      gainTitle: "이런 순간을 위해 만들었어요",
+      pillsTitle: "카톡으로 매일 받는\n{track}",
+      pills: [
+        { title: "앱 설치 없이", detail: "카카오톡으로 바로 와요" },
+        { title: "하루 5분", detail: "출근길에 읽고 듣고 끝내요" },
+        { title: "받는 시간은 직접", detail: "30분 단위로 정해요" },
+        { title: "언제든 해지", detail: "약정이 없어요" },
+      ],
+      lessonEyebrow: "오늘의 레슨",
+      lessonTitle: "오늘의 카톡이\n도착했어요",
+      kakaoTag: "알림톡",
+      kakaoNotice: "오늘의 영어 표현이 도착했습니다.",
+      kakaoTime: "오전 8:00",
+      meaningLabel: "뜻",
+      nuanceLabel: "이럴 때 써요",
+      examplesLabel: "실제 사용 예시",
+      similarLabel: "비슷한 표현",
+      audioNote: "모든 예문은 발음 음성과 함께 와요.",
+      notBasicEyebrow: "뻔한 기초 영어는 그만",
+      notBasicTitle: "실제로 쓰는 관용구와\n구동사를 배워요",
+      beforeAfterEyebrow: "Before → After",
+      beforeAfterTitle: "같은 말도\n이렇게 달라집니다",
+      beforeLabel: "Before",
+      afterLabel: "After",
+      scenesTitle: "이런 순간에 바로 써요",
       whoTitle: "이런 분께 맞아요",
-      sampleEyebrow: "샘플 레슨",
-      sampleTitle: "실제로 이런 레슨이 와요",
-      sampleCounter: "오늘의 표현 1 / 3",
-      viewFullSample: "샘플 레슨 전체 보기",
       reviewsTitle: "구매평 0",
       reviewsEmpty: "아직 구매평이 없어요. 구독자만 작성할 수 있어요.",
       gift: "선물하기",
@@ -102,47 +151,194 @@ const newsletter = {
       business: {
         title: "비즈니스 영어",
         tagline: "회의·메일에서 바로 쓰는 표현",
+        painTitle: "회의가 끝나고 나서야\n하고 싶은 말이 떠오르나요?",
+        pains: [
+          "할 말은 있는데, 영어로는 \"I think...\"에서 멈춰요.",
+          "메일 한 통 보내기 전에 번역기를 세 번 돌려요.",
+          "외국계 공고를 보고도 영어 면접 때문에 망설여요.",
+        ],
+        gains: [
+          "회의에서 내 의견을 한 문장으로 정리해 말하는 순간",
+          "메일 첫 줄을 망설이지 않고 쓰는 순간",
+          "동료가 쓰는 표현을 듣자마자 알아듣는 순간",
+        ],
+        lesson: {
+          expression: "circle back",
+          meaning: "(논의를) 나중에 다시 이어가다",
+          nuance:
+            "결론을 지금 내지 않고 다음에 다시 다루자고 할 때 씁니다. 'talk later'보다 업무적이고 정중해요.",
+          examples: [
+            {
+              en: "Let's circle back on pricing after the launch.",
+              ko: "가격 얘기는 출시 후에 다시 하죠.",
+            },
+            {
+              en: "Can we circle back to this on Friday?",
+              ko: "이건 금요일에 다시 얘기할 수 있을까요?",
+            },
+            {
+              en: "I'll circle back once I hear from legal.",
+              ko: "법무팀 답이 오면 다시 연락드릴게요.",
+            },
+          ],
+          similar: ["follow up on", "revisit", "touch base"],
+        },
+        notBasic: [
+          { type: "구동사", en: "loop in", ko: "(논의에) 끌어들이다, 참조로 넣다" },
+          { type: "관용구", en: "on the same page", ko: "같은 이해를 공유하는" },
+          { type: "관용구", en: "move the needle", ko: "눈에 띄는 변화를 만들다" },
+        ],
+        beforeAfter: [
+          {
+            before: "I will tell you later.",
+            after: "I'll circle back once I have the numbers.",
+            highlight: "circle back",
+          },
+          {
+            before: "Please add him to the email.",
+            after: "Could you loop him in on this thread?",
+            highlight: "loop him in",
+          },
+          {
+            before: "Do you understand my point?",
+            after: "Just to make sure we're on the same page...",
+            highlight: "on the same page",
+          },
+        ],
+        scenes: ["회의", "메일", "보고", "1:1 미팅"],
         whoFor: [
           "영어 회의에서 할 말은 있는데 표현이 떠오르지 않는 분",
           "영어 메일 한 통에 20분씩 걸리는 분",
           "앱 알림은 꺼두지만 카톡은 매일 확인하는 분",
         ],
-        sample: {
-          expression: "circle back",
-          meaning: "(논의를) 나중에 다시 이어가다",
-          exampleEn: "Let's circle back on pricing after the launch.",
-          exampleKo: "가격 얘기는 출시 후에 다시 하죠.",
-        },
       },
       drama: {
         title: "미드 속 원어민 표현",
         tagline: "대사 한 줄로 배우는 진짜 구어체",
+        painTitle: "자막을 끄면\n대사가 소리로만 들리나요?",
+        pains: [
+          "단어는 다 아는데, 말이 빨라서 놓쳐요.",
+          "교과서 영어로 말하면 어색하다는 말을 들어요.",
+          "원어민 친구의 농담에 한 박자 늦게 웃어요.",
+        ],
+        gains: [
+          "자막 없이 장면의 뉘앙스를 따라가는 순간",
+          "같은 말도 상황에 맞는 말투로 골라 쓰는 순간",
+          "짧은 리액션으로 대화에 자연스럽게 끼어드는 순간",
+        ],
+        lesson: {
+          expression: "I'm not buying it",
+          meaning: "그 말 못 믿겠어",
+          nuance:
+            "상대 말이 그럴듯하지 않을 때 가볍게 의심을 표현해요. 'I don't believe you'보다 덜 공격적이에요.",
+          examples: [
+            {
+              en: "You were stuck in traffic for three hours? I'm not buying it.",
+              ko: "세 시간이나 차가 막혔다고? 못 믿겠는데.",
+            },
+            {
+              en: "He says he's fine, but I'm not buying it.",
+              ko: "괜찮다는데, 난 안 믿겨.",
+            },
+            {
+              en: "Nice try, but I'm not buying it.",
+              ko: "시도는 좋았는데, 안 넘어가.",
+            },
+          ],
+          similar: ["I don't buy it", "Yeah, right", "Get out of here"],
+        },
+        notBasic: [
+          { type: "구동사", en: "blow off", ko: "(약속·일을) 무시하다, 바람맞히다" },
+          { type: "관용구", en: "spill the tea", ko: "(소문·뒷얘기를) 털어놓다" },
+          { type: "관용구", en: "read the room", ko: "분위기를 파악하다" },
+        ],
+        beforeAfter: [
+          {
+            before: "I don't believe you.",
+            after: "Nice try, but I'm not buying it.",
+            highlight: "I'm not buying it",
+          },
+          {
+            before: "He didn't come to the meeting.",
+            after: "He totally blew off the meeting.",
+            highlight: "blew off",
+          },
+          {
+            before: "Tell me the gossip.",
+            after: "Okay, spill the tea.",
+            highlight: "spill the tea",
+          },
+        ],
+        scenes: ["친구와 대화", "리액션", "농담", "감정 표현"],
         whoFor: [
           "미드를 자막 없이 보고 싶은 분",
           "교과서 영어와 실제 말투의 차이가 궁금한 분",
           "짧게라도 매일 꾸준히 하고 싶은 분",
         ],
-        sample: {
-          expression: "I'm not buying it",
-          meaning: "그 말 못 믿겠어",
-          exampleEn: "You were stuck in traffic for three hours? I'm not buying it.",
-          exampleKo: "세 시간이나 차가 막혔다고? 못 믿겠는데.",
-        },
       },
       tech: {
         title: "테크 영어",
         tagline: "실리콘밸리 뉴스 속 핵심 표현",
+        painTitle: "테크 기사, 단어는 아는데\n문장이 안 읽히나요?",
+        pains: [
+          "'ship', 'scale' 같은 쉬운 단어가 기사에선 다른 뜻이에요.",
+          "해외 개발 문서와 회의록을 번역기로 읽어요.",
+          "글로벌 팀 스탠드업에서 진행 상황을 설명하기 어려워요.",
+        ],
+        gains: [
+          "테크 뉴스 헤드라인의 뜻을 바로 잡는 순간",
+          "스탠드업에서 진행 상황을 짧고 정확하게 말하는 순간",
+          "PR 설명과 문서를 영어로 망설이지 않고 쓰는 순간",
+        ],
+        lesson: {
+          expression: "ship",
+          meaning: "(제품·기능을) 출시하다",
+          nuance:
+            "테크 업계에서는 'release'보다 훨씬 자주 써요. 코드나 기능을 실제 사용자에게 내보낸다는 느낌이에요.",
+          examples: [
+            {
+              en: "The team shipped the new search feature last week.",
+              ko: "팀이 지난주에 새 검색 기능을 출시했어요.",
+            },
+            {
+              en: "We need to ship this before the holiday freeze.",
+              ko: "연휴 배포 동결 전에 이걸 출시해야 해요.",
+            },
+            {
+              en: "Ship it, then iterate.",
+              ko: "일단 내보내고, 개선은 그다음에.",
+            },
+          ],
+          similar: ["roll out", "launch", "go live"],
+        },
+        notBasic: [
+          { type: "구동사", en: "roll out", ko: "(단계적으로) 배포하다" },
+          { type: "업계 용어", en: "dogfood", ko: "(자사 제품을) 직접 써보다" },
+          { type: "업계 용어", en: "tech debt", ko: "기술 부채" },
+        ],
+        beforeAfter: [
+          {
+            before: "We will make the feature available to everyone slowly.",
+            after: "We're rolling the feature out gradually.",
+            highlight: "rolling the feature out",
+          },
+          {
+            before: "Our employees use our product first.",
+            after: "We dogfood everything before launch.",
+            highlight: "dogfood",
+          },
+          {
+            before: "The old code makes new work slow.",
+            after: "Tech debt is slowing us down.",
+            highlight: "Tech debt",
+          },
+        ],
+        scenes: ["스탠드업", "코드 리뷰", "테크 뉴스", "기술 문서"],
         whoFor: [
           "테크 기사를 원문으로 읽고 싶은 분",
           "글로벌 IT 회사와 일하거나 이직을 준비하는 분",
           "스타트업·개발 용어를 영어로 정확히 쓰고 싶은 분",
         ],
-        sample: {
-          expression: "ship",
-          meaning: "(제품·기능을) 출시하다",
-          exampleEn: "The team shipped the new search feature last week.",
-          exampleKo: "팀이 지난주에 새 검색 기능을 출시했어요.",
-        },
       },
     },
   },
@@ -159,11 +355,44 @@ const newsletter = {
       member: "OneCup members ₩{price} / month",
       memberShort: "Members ₩{price}",
     },
+    author: {
+      eyebrow: "Who writes it",
+      title: "Every lesson is picked\nand written by an interpreter",
+      description:
+        "Not textbook examples: we pick expressions that actually came up across thousands of interpreted business meetings. The interpreter who designs and leads OneCup English's offline meetups writes every lesson personally.",
+      credentials: [
+        {
+          icon: "work",
+          title: "4+ years interpreting at large corporations and an IT unicorn",
+          detail: "Thousands of meetings interpreted",
+        },
+        {
+          icon: "military",
+          title: "English interpreter, ROK–US Combined Forces Command",
+          detail: "Military language specialist",
+        },
+        {
+          icon: "score",
+          title: "Perfect score on the new TOEFL (6.0)",
+          detail: "iBT 118 · OPIc AL",
+        },
+        {
+          icon: "school",
+          title: "Computer science at a SKY university",
+          detail: "Currently enrolled",
+        },
+        {
+          icon: "company",
+          title: "Fortune 500 company",
+          detail: "Currently employed",
+        },
+      ],
+    },
     storefront: {
       eyebrow: "Daily English from OneCup English",
       title: "Five minutes on your commute,\none cup of English\nin KakaoTalk",
       description:
-        "No app to install. One lesson a day, sent to KakaoTalk at the time you choose.",
+        "One expression a day, picked by an interpreter and sent to KakaoTalk at the time you choose. No app to install.",
       chooseTrack: "Choose a track",
       viewSample: "See a free sample lesson",
       launchNotice: "Launch discount · ends {deadline}",
@@ -239,11 +468,33 @@ const newsletter = {
           value: "3 expressions · pronunciation audio · 1-minute quiz",
         },
       ],
+      painEyebrow: "Sound familiar?",
+      gainTitle: "We built it for moments like these",
+      pillsTitle: "{track},\ndelivered to KakaoTalk daily",
+      pills: [
+        { title: "No app", detail: "It arrives in KakaoTalk" },
+        { title: "5 minutes a day", detail: "Read and listen on your commute" },
+        { title: "Your time", detail: "Pick it in 30-minute steps" },
+        { title: "Cancel anytime", detail: "No contract" },
+      ],
+      lessonEyebrow: "Today's lesson",
+      lessonTitle: "Today's KakaoTalk\njust arrived",
+      kakaoTag: "Alimtalk",
+      kakaoNotice: "Today's English expression is here.",
+      kakaoTime: "8:00 AM",
+      meaningLabel: "Meaning",
+      nuanceLabel: "When to use it",
+      examplesLabel: "Real examples",
+      similarLabel: "Similar expressions",
+      audioNote: "Every example comes with pronunciation audio.",
+      notBasicEyebrow: "Beyond basic English",
+      notBasicTitle: "Learn the idioms and\nphrasal verbs people actually use",
+      beforeAfterEyebrow: "Before → After",
+      beforeAfterTitle: "Say the same thing,\nbetter",
+      beforeLabel: "Before",
+      afterLabel: "After",
+      scenesTitle: "Use it right away in",
       whoTitle: "Who it's for",
-      sampleEyebrow: "Sample lesson",
-      sampleTitle: "Here's what a lesson looks like",
-      sampleCounter: "Expression 1 / 3",
-      viewFullSample: "See the full sample lesson",
       reviewsTitle: "Reviews 0",
       reviewsEmpty: "No reviews yet. Only subscribers can write them.",
       gift: "Gift",
@@ -254,47 +505,194 @@ const newsletter = {
       business: {
         title: "Business English",
         tagline: "Expressions for meetings and email",
+        painTitle: "Do the right words only come\nafter the meeting ends?",
+        pains: [
+          "You know what to say, but your English stops at \"I think...\"",
+          "You run every email through a translator three times.",
+          "You see a job at a global company and hesitate over the English interview.",
+        ],
+        gains: [
+          "Making your point in one clear sentence in a meeting",
+          "Writing the first line of an email without hesitating",
+          "Catching a colleague's expression the moment you hear it",
+        ],
+        lesson: {
+          expression: "circle back",
+          meaning: "to return to a topic later",
+          nuance:
+            "Use it when you'd rather settle something later. It sounds more professional and polite than 'talk later'.",
+          examples: [
+            {
+              en: "Let's circle back on pricing after the launch.",
+              ko: "가격 얘기는 출시 후에 다시 하죠.",
+            },
+            {
+              en: "Can we circle back to this on Friday?",
+              ko: "이건 금요일에 다시 얘기할 수 있을까요?",
+            },
+            {
+              en: "I'll circle back once I hear from legal.",
+              ko: "법무팀 답이 오면 다시 연락드릴게요.",
+            },
+          ],
+          similar: ["follow up on", "revisit", "touch base"],
+        },
+        notBasic: [
+          { type: "Phrasal verb", en: "loop in", ko: "to bring someone into a discussion" },
+          { type: "Idiom", en: "on the same page", ko: "sharing the same understanding" },
+          { type: "Idiom", en: "move the needle", ko: "to make a noticeable difference" },
+        ],
+        beforeAfter: [
+          {
+            before: "I will tell you later.",
+            after: "I'll circle back once I have the numbers.",
+            highlight: "circle back",
+          },
+          {
+            before: "Please add him to the email.",
+            after: "Could you loop him in on this thread?",
+            highlight: "loop him in",
+          },
+          {
+            before: "Do you understand my point?",
+            after: "Just to make sure we're on the same page...",
+            highlight: "on the same page",
+          },
+        ],
+        scenes: ["Meetings", "Email", "Reports", "1:1s"],
         whoFor: [
           "You know what to say in meetings but the words don't come",
           "One English email takes you 20 minutes",
           "You mute app notifications but check KakaoTalk every day",
         ],
-        sample: {
-          expression: "circle back",
-          meaning: "to return to a topic later",
-          exampleEn: "Let's circle back on pricing after the launch.",
-          exampleKo: "가격 얘기는 출시 후에 다시 하죠.",
-        },
       },
       drama: {
         title: "Native expressions from TV",
         tagline: "Real spoken English, one line at a time",
+        painTitle: "Turn off the subtitles and\nthe dialogue turns into noise?",
+        pains: [
+          "You know every word, but they talk too fast.",
+          "People say your textbook English sounds stiff.",
+          "You laugh a beat late at your friend's jokes.",
+        ],
+        gains: [
+          "Following a scene's nuance without subtitles",
+          "Choosing the right tone for the same message",
+          "Jumping into a conversation with a quick reaction",
+        ],
+        lesson: {
+          expression: "I'm not buying it",
+          meaning: "I don't believe you",
+          nuance:
+            "A light way to say you doubt what someone said. Less confrontational than 'I don't believe you'.",
+          examples: [
+            {
+              en: "You were stuck in traffic for three hours? I'm not buying it.",
+              ko: "세 시간이나 차가 막혔다고? 못 믿겠는데.",
+            },
+            {
+              en: "He says he's fine, but I'm not buying it.",
+              ko: "괜찮다는데, 난 안 믿겨.",
+            },
+            {
+              en: "Nice try, but I'm not buying it.",
+              ko: "시도는 좋았는데, 안 넘어가.",
+            },
+          ],
+          similar: ["I don't buy it", "Yeah, right", "Get out of here"],
+        },
+        notBasic: [
+          { type: "Phrasal verb", en: "blow off", ko: "to skip or ignore a plan" },
+          { type: "Idiom", en: "spill the tea", ko: "to share the gossip" },
+          { type: "Idiom", en: "read the room", ko: "to sense the mood" },
+        ],
+        beforeAfter: [
+          {
+            before: "I don't believe you.",
+            after: "Nice try, but I'm not buying it.",
+            highlight: "I'm not buying it",
+          },
+          {
+            before: "He didn't come to the meeting.",
+            after: "He totally blew off the meeting.",
+            highlight: "blew off",
+          },
+          {
+            before: "Tell me the gossip.",
+            after: "Okay, spill the tea.",
+            highlight: "spill the tea",
+          },
+        ],
+        scenes: ["Chatting with friends", "Reactions", "Jokes", "Feelings"],
         whoFor: [
           "You want to watch American shows without subtitles",
           "You wonder how textbook English differs from how people talk",
           "You want a small, steady daily habit",
         ],
-        sample: {
-          expression: "I'm not buying it",
-          meaning: "I don't believe you",
-          exampleEn: "You were stuck in traffic for three hours? I'm not buying it.",
-          exampleKo: "세 시간이나 차가 막혔다고? 못 믿겠는데.",
-        },
       },
       tech: {
         title: "Tech English",
         tagline: "Key expressions from Silicon Valley news",
+        painTitle: "You know the words in tech news,\nbut the sentences don't click?",
+        pains: [
+          "Easy words like 'ship' and 'scale' mean something else in articles.",
+          "You read engineering docs and meeting notes through a translator.",
+          "Explaining your progress at a global team's standup is hard.",
+        ],
+        gains: [
+          "Getting a tech headline at first read",
+          "Giving a short, precise update at standup",
+          "Writing PR descriptions and docs in English without hesitating",
+        ],
+        lesson: {
+          expression: "ship",
+          meaning: "to release a product or feature",
+          nuance:
+            "Far more common than 'release' in tech. It means getting code or a feature out to real users.",
+          examples: [
+            {
+              en: "The team shipped the new search feature last week.",
+              ko: "팀이 지난주에 새 검색 기능을 출시했어요.",
+            },
+            {
+              en: "We need to ship this before the holiday freeze.",
+              ko: "연휴 배포 동결 전에 이걸 출시해야 해요.",
+            },
+            {
+              en: "Ship it, then iterate.",
+              ko: "일단 내보내고, 개선은 그다음에.",
+            },
+          ],
+          similar: ["roll out", "launch", "go live"],
+        },
+        notBasic: [
+          { type: "Phrasal verb", en: "roll out", ko: "to release in stages" },
+          { type: "Industry term", en: "dogfood", ko: "to use your own product internally" },
+          { type: "Industry term", en: "tech debt", ko: "accumulated shortcuts in code" },
+        ],
+        beforeAfter: [
+          {
+            before: "We will make the feature available to everyone slowly.",
+            after: "We're rolling the feature out gradually.",
+            highlight: "rolling the feature out",
+          },
+          {
+            before: "Our employees use our product first.",
+            after: "We dogfood everything before launch.",
+            highlight: "dogfood",
+          },
+          {
+            before: "The old code makes new work slow.",
+            after: "Tech debt is slowing us down.",
+            highlight: "Tech debt",
+          },
+        ],
+        scenes: ["Standups", "Code review", "Tech news", "Docs"],
         whoFor: [
           "You want to read tech news in the original English",
           "You work with global tech companies or plan to",
           "You want to use startup and engineering terms precisely",
         ],
-        sample: {
-          expression: "ship",
-          meaning: "to release a product or feature",
-          exampleEn: "The team shipped the new search feature last week.",
-          exampleKo: "팀이 지난주에 새 검색 기능을 출시했어요.",
-        },
       },
     },
   },

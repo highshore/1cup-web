@@ -61,20 +61,38 @@ export const Chip = styled.p`
 `;
 
 // Headings opt out of the global h1–h6 font and color.
-export const SectionTitle = styled.h2<{ $inverse?: boolean }>`
+export const SectionTitle = styled.h2`
   margin: 0;
   font-family: "Noto Sans KR", sans-serif;
   font-size: clamp(1.6rem, 2.4vw, 2.05rem);
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
-  white-space: pre-line;
-  color: ${(props) => (props.$inverse ? "#ffffff" : c.heading)};
+  color: ${c.heading};
 `;
 
 export const Accent = styled.span`
   color: ${c.orangeText};
 `;
+
+// Renders a multi-line title with the last line in the accent color, like the production home.
+export function AccentLines({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <>
+      {lines.map((line, index) =>
+        index === lines.length - 1 ? (
+          <Accent key={line}>{line}</Accent>
+        ) : (
+          <span key={line}>
+            {line}
+            <br />
+          </span>
+        ),
+      )}
+    </>
+  );
+}
 
 export const SubTitle = styled.h3`
   margin: 0;
@@ -164,38 +182,38 @@ const primary = css`
   }
 `;
 
-// Solid ink pill (production navbar CTA).
-const dark = css`
+// Orange pill with an ink offset shadow, for the main purchase action.
+const orange = css`
   ${buttonBase}
-  background: ${c.ink};
-  color: #ffffff;
+  background: ${c.orange};
+  color: ${c.ink};
+  box-shadow: 4px 4px 0 ${c.ink};
 
   &:hover {
-    color: #ffffff;
+    color: ${c.ink};
   }
 
   @media (hover: hover) {
     &:hover:not(:disabled) {
-      background: #2a2a2a;
+      box-shadow: 6px 6px 0 ${c.ink};
+      transform: translate(-1px, -1px);
     }
   }
 `;
 
-// Outline pill for use on dark backgrounds.
-const ghost = css`
+// Plain ink outline for secondary actions on light backgrounds.
+const outline = css`
   ${buttonBase}
-  border-color: rgba(255, 255, 255, 0.55);
   background: transparent;
-  color: #ffffff;
+  color: ${c.ink};
 
   &:hover {
-    color: #ffffff;
+    color: ${c.ink};
   }
 
   @media (hover: hover) {
     &:hover:not(:disabled) {
-      border-color: #ffffff;
-      background: rgba(255, 255, 255, 0.08);
+      background: ${c.cream};
     }
   }
 `;
@@ -203,17 +221,17 @@ const ghost = css`
 export const PrimaryLink = styled(Link)`
   ${primary}
 `;
-export const DarkLink = styled(Link)`
-  ${dark}
+export const OrangeLink = styled(Link)`
+  ${orange}
 `;
-export const GhostLink = styled(Link)`
-  ${ghost}
+export const OutlineLink = styled(Link)`
+  ${outline}
 `;
-export const PrimaryButton = styled.button`
-  ${primary}
+export const OrangeButton = styled.button`
+  ${orange}
 `;
-export const DarkButton = styled.button`
-  ${dark}
+export const OutlineButton = styled.button`
+  ${outline}
 `;
 
 const BrandBarRoot = styled.div`

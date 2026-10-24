@@ -4,13 +4,15 @@ import styled from "styled-components";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
 import TrackCard from "../lib/features/newsletter/components/TrackCard";
+import AuthorSection from "../lib/features/newsletter/components/AuthorSection";
 import {
+  AccentLines,
   BrandBar,
   cardStyles,
   Chip,
   Container,
   Description,
-  GhostLink,
+  OutlineLink,
   Page,
   PrimaryLink,
   Section,
@@ -27,8 +29,9 @@ import {
 } from "../lib/features/newsletter/constants";
 
 const Hero = styled.section`
-  background: #000000;
-  color: #ffffff;
+  border-bottom: 2px solid ${c.ink};
+  background: ${c.cream};
+  color: ${c.heading};
   padding: clamp(4rem, 9vw, 6.5rem) 0;
 `;
 
@@ -50,17 +53,13 @@ const HeroTitle = styled.h1`
   font-weight: 900;
   line-height: 1.18;
   letter-spacing: 0;
-  color: #ffffff;
-`;
-
-const HeroAccent = styled.span`
-  color: ${c.orange};
+  color: ${c.heading};
 `;
 
 const HeroDescription = styled.p`
   max-width: 28rem;
   margin: 1.2rem 0 0;
-  color: rgba(255, 255, 255, 0.78);
+  color: ${c.body};
   font-size: clamp(0.98rem, 1.5vw, 1.08rem);
   font-weight: 560;
   line-height: 1.65;
@@ -322,7 +321,6 @@ export default function NewsletterClient() {
   const { currentUser, hasActiveSubscription } = useAuth();
   const copy = t.newsletter.storefront;
   const price = formatKrw(NEWSLETTER_MONTHLY_PRICE_KRW);
-  const titleLines = copy.title.split("\n");
 
   const launchEndsAt = NEWSLETTER_LAUNCH_DISCOUNT_ENDS_AT;
   const showLaunchNotice =
@@ -336,23 +334,14 @@ export default function NewsletterClient() {
         <HeroInner>
           <Chip>{copy.eyebrow}</Chip>
           <HeroTitle>
-            {titleLines.map((line, index) =>
-              index === titleLines.length - 1 ? (
-                <HeroAccent key={line}>{line}</HeroAccent>
-              ) : (
-                <span key={line}>
-                  {line}
-                  <br />
-                </span>
-              ),
-            )}
+            <AccentLines text={copy.title} />
           </HeroTitle>
           <HeroDescription>{copy.description}</HeroDescription>
           <Actions>
             <PrimaryLink href="#tracks">{copy.chooseTrack}</PrimaryLink>
-            <GhostLink href="/newsletter/business#sample">
+            <OutlineLink href="/newsletter/business#sample">
               {copy.viewSample}
-            </GhostLink>
+            </OutlineLink>
           </Actions>
         </HeroInner>
       </Hero>
@@ -377,6 +366,8 @@ export default function NewsletterClient() {
           </Container>
         </Notice>
       )}
+
+      <AuthorSection />
 
       <Section id="tracks">
         <Container>

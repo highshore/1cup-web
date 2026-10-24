@@ -32,15 +32,16 @@ export const newsletterColors = {
   line: "#e5e7eb",
 } as const;
 
+// Light covers only: dark sections read as heavy next to the production home.
 export const trackCoverTheme: Record<
   NewsletterTrack,
   { background: string; foreground: string; eyebrow: string; tagline: string }
 > = {
   business: {
-    background: newsletterColors.ink,
-    foreground: "#ffffff",
-    eyebrow: newsletterColors.orange,
-    tagline: "rgba(255, 255, 255, 0.78)",
+    background: newsletterColors.cream,
+    foreground: newsletterColors.ink,
+    eyebrow: newsletterColors.orangeText,
+    tagline: newsletterColors.body,
   },
   drama: {
     background: newsletterColors.orange,
@@ -49,7 +50,7 @@ export const trackCoverTheme: Record<
     tagline: "rgba(5, 5, 5, 0.78)",
   },
   tech: {
-    background: newsletterColors.cream,
+    background: newsletterColors.surface,
     foreground: newsletterColors.ink,
     eyebrow: newsletterColors.orangeText,
     tagline: newsletterColors.body,
