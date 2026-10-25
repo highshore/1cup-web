@@ -23,6 +23,7 @@ export interface Subscription {
   delivery_time: string;
   status: "trial" | "trial_ended" | "active" | "cancelled";
   next_send_at: string | null;
+  paid_until?: string | null;
 }
 
 interface Lesson {
@@ -176,9 +177,14 @@ export async function planSlot(
   db: SupabaseClient,
   sub: Subscription,
   forDate: string,
-): Promise<PlannedDelivery | { skip: "no-lesson" | "no-review" | "sunday" }> {
+): Promise<PlannedDelivery | { skip: "no-lesson" | "no-review" | "sunday" | "unpaid" }> {
   const dow = isoDow(forDate);
   if (dow === 7) return { skip: "sunday" };
+  // A paid subscription past the end of its paid period gets nothing until a renewal
+  // extends it (the billing run ends it for good after the grace days).
+  if (sub.status === "active" && sub.paid_until && new Date(sub.paid_until).getTime() <= Date.now()) {
+    return { skip: "unpaid" };
+  }
 
   if (sub.status === "trial") {
     if (await hasSentLesson(db, sub.id)) {
@@ -474,11 +480,12 @@ export interface TickStats {
   stale: number;
   missingLesson: number;
   noReview: number;
+  unpaid: number;
   skipped?: string;
 }
 
 export async function runTick(db: SupabaseClient, now = new Date()): Promise<TickStats> {
-  const stats: TickStats = { due: 0, sent: 0, failed: 0, stale: 0, missingLesson: 0, noReview: 0 };
+  const stats: TickStats = { due: 0, sent: 0, failed: 0, stale: 0, missingLesson: 0, noReview: 0, unpaid: 0 };
 
   const codes = await templateCodes(db);
   if (!codes) {
@@ -489,7 +496,7 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
 
   const { data: due, error } = await db
     .from("daily_subscriptions")
-    .select("id, customer_id, track, recipient_phone, recipient_name, delivery_time, status, next_send_at")
+    .select("id, customer_id, track, recipient_phone, recipient_name, delivery_time, status, next_send_at, paid_until")
     .in("status", ["trial", "active"])
     .lte("next_send_at", now.toISOString())
     .order("next_send_at", { ascending: true })
@@ -511,6 +518,7 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
     if ("skip" in plan) {
       if (plan.skip === "no-lesson") stats.missingLesson += 1;
       if (plan.skip === "no-review") stats.noReview += 1;
+      if (plan.skip === "unpaid") stats.unpaid += 1;
       continue;
     }
     plans.push(plan);

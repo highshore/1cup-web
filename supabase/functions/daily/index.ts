@@ -9,6 +9,13 @@
 //                they already used or hold.
 //   start-trial  Signed-in Daily customer. Records consent, uses up the phone's free
 //                trial on the track and sends the free lesson immediately.
+//   billing      pg_cron, daily 09:10 KST. Charges renewals due within a day, once per
+//                period, and ends paid access that ran out (see payments.ts).
+//   billing-info / checkout-window / checkout-verify / cancel-renewal
+//                Signed-in Daily customer: plans, starting a Payple checkout, settling
+//                it (idempotent), and turning off auto-renew.
+//   POST /daily/callback  Payple's server callback (no auth): keeps the billing key on
+//                the order and redirects the browser to /daily/subscribe/result.
 //   resend-trial Server only (Vault scheduler secret). Sends a trial its free lesson
 //                again when the first attempt failed; never sends a second lesson.
 //   test-send    1cup staff admins only: an operations tool, not a customer path.
@@ -33,6 +40,15 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid, recordSchedulerHeartbeat } from "../_shared/db.ts";
 import { krPhone, sendKakaoMessages } from "../_shared/kakao.ts";
+import {
+  billingInfo,
+  cancelRenewal,
+  createCheckoutWindow,
+  handleCallback,
+  PaymentError,
+  runBilling,
+  verifyCheckout,
+} from "./payments.ts";
 import {
   runTick,
   sendTrialLesson,
@@ -238,6 +254,9 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  if (new URL(req.url).pathname.endsWith("/callback")) {
+    return await handleCallback(admin(), req);
+  }
   if (req.method !== "POST") {
     return json(req, { success: false, error: "Method Not Allowed" }, 405);
   }
@@ -260,11 +279,42 @@ Deno.serve(async (req) => {
         await recordSchedulerHeartbeat("daily.tick", { stats }, "20 minutes");
         return json(req, { success: true, stats });
       }
+      case "billing": {
+        if (!(await schedulerAuthorized(req))) {
+          return json(req, { success: false, error: "permission-denied" }, 403);
+        }
+        const billingStats = await runBilling(admin());
+        await recordSchedulerHeartbeat("daily.billing", { stats: billingStats }, "26 hours");
+        return json(req, { success: true, stats: billingStats });
+      }
       case "resend-trial": {
         if (!(await schedulerAuthorized(req))) {
           return json(req, { success: false, error: "permission-denied" }, 403);
         }
         return json(req, { success: true, ...(await handleResendTrial(body)) });
+      }
+      case "billing-info":
+      case "checkout-window":
+      case "checkout-verify":
+      case "cancel-renewal": {
+        const customer = await loadCustomer(req);
+        if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
+        const db = admin();
+        try {
+          const result = action === "billing-info"
+            ? await billingInfo(db, customer)
+            : action === "checkout-window"
+            ? await createCheckoutWindow(db, customer, body)
+            : action === "checkout-verify"
+            ? await verifyCheckout(db, customer, body)
+            : await cancelRenewal(db, customer, body);
+          return json(req, { success: true, ...result });
+        } catch (e) {
+          if (e instanceof PaymentError) {
+            return json(req, { success: false, errorCode: e.code, message: e.message }, e.status);
+          }
+          throw e;
+        }
       }
       case "start-info":
       case "start-trial": {

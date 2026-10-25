@@ -1,5 +1,10 @@
 "use client";
 
+// Where the subscribe page leaves Payple's browser callback and the order number for
+// the result page, which is the one place a checkout is verified.
+export const DAILY_PAYMENT_SESSION_KEY = "dailyPaypleResponse";
+export const DAILY_PAYMENT_ORDER_KEY = "dailyPaymentOrder";
+
 export class DailyApiError extends Error {
   constructor(message: string, readonly code: string, readonly status: number) {
     super(message);
