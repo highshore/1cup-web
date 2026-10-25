@@ -34,7 +34,7 @@ export default function DailyNavbar() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
           <span aria-hidden className="h-4 w-px bg-[#cbd5e1]" />
-          <span className="text-[1.3rem] font-semibold uppercase leading-none tracking-[0.03em] text-[#050505] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
+          <span className="text-[1.3rem] font-thin uppercase leading-none tracking-[0.03em] text-[#050505] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
             {copy.brand}
           </span>
         </Link>
