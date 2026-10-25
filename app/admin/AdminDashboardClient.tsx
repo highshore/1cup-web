@@ -61,6 +61,7 @@ const loadingClass = "p-10 text-[rgba(5,5,5,0.6)] font-bold text-center";
 const QUICK_ACTIONS = [
   ["analytics", "/admin/analytics"],
   ["members", "/admin/members"],
+  ["cancellations", "/admin/cancellations"],
   ["articles", "/admin/articles"],
   ["shadow", "/admin/shadow"],
   ["marketing", "/admin/marketing"],

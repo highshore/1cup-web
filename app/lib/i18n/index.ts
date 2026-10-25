@@ -1,4 +1,5 @@
 import adminAnalytics from "./admin_analytics";
+import adminCancellations from "./admin_cancellations";
 import adminGifts from "./admin_gifts";
 import daily from "./daily";
 import homeFaq from "./home_faq";
@@ -46,10 +47,12 @@ const dictionaries = {
           ...en.admin.dashboard.sections,
           gifts: adminGifts.en.dashboardSection,
           analytics: adminAnalytics.en.dashboardSection,
+          cancellations: adminCancellations.en.dashboardSection,
         },
       },
       gifts: adminGifts.en.gifts,
       analytics: adminAnalytics.en,
+      cancellations: adminCancellations.en,
     },
   },
   ko: {
@@ -88,10 +91,12 @@ const dictionaries = {
           ...ko.admin.dashboard.sections,
           gifts: adminGifts.ko.dashboardSection,
           analytics: adminAnalytics.ko.dashboardSection,
+          cancellations: adminCancellations.ko.dashboardSection,
         },
       },
       gifts: adminGifts.ko.gifts,
       analytics: adminAnalytics.ko,
+      cancellations: adminCancellations.ko,
     },
   },
 };
