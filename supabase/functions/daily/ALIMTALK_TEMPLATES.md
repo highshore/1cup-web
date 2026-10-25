@@ -152,6 +152,6 @@ curl -s https://hetiycbotgjeluteicyk.supabase.co/functions/v1/daily \
 `kind` is `lesson`, `review` or `trial_ended`. The link buttons in test messages point
 to `…/test`, which has no page; only the message itself is being checked.
 
-If Alimtalk fails for a recipient (no KakaoTalk on that number, Kakao outage), NHN
-resends it as an LMS text with the link, from the account's registered 발신번호. Set
-`DAILY_SMS_FALLBACK=false` to turn that off.
+Text-message fallback is off. Turning it on (`DAILY_SMS_FALLBACK=true`) needs the sender
+profile's text-resend setting (대체 발송) in NHN Cloud first; without it NHN rejects every
+message with `-2502: Please set up plus-friend resend setting.`

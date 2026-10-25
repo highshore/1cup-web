@@ -9,6 +9,8 @@
 //                they already used or hold.
 //   start-trial  Signed-in Daily customer. Records consent, uses up the phone's free
 //                trial on the track and sends the free lesson immediately.
+//   resend-trial Server only (Vault scheduler secret). Sends a trial its free lesson
+//                again when the first attempt failed; never sends a second lesson.
 //   test-send    1cup staff admins only: an operations tool, not a customer path.
 //                Sends one message of a given kind to a phone number using the latest
 //                ready lesson, without touching subscriptions or deliveries.
@@ -23,7 +25,8 @@
 // Secrets (supabase secrets set …)
 //   DAILY_TEMPLATE_LESSON, DAILY_TEMPLATE_REVIEW, DAILY_TEMPLATE_TRIAL_ENDED
 //       Fallback template codes when daily_config has none.
-//   DAILY_SMS_FALLBACK   "false" to turn off the LMS fallback (default on).
+//   DAILY_SMS_FALLBACK   "true" to add an LMS fallback (default off; needs the Kakao
+//                        channel's text-resend setting in NHN, or NHN rejects the send).
 //   DAILY_SITE_URL       Base URL in fallback texts (default https://1cupenglish.com).
 //   KAKAO_APPKEY, KAKAO_SECRET_KEY, KAKAO_SENDER_KEY  shared with messaging.
 
@@ -169,6 +172,29 @@ async function handleStartTrial(
   return { subscriptionId: subscription.id, sent, nextSendAt: subscription.next_send_at };
 }
 
+async function handleResendTrial(body: { subscriptionId?: unknown }) {
+  const db = admin();
+  const { data: sub } = await db
+    .from("daily_subscriptions")
+    .select("id, customer_id, track, recipient_phone, recipient_name, delivery_time, status, next_send_at")
+    .eq("id", typeof body.subscriptionId === "string" ? body.subscriptionId : "")
+    .maybeSingle();
+  if (!sub) throw new Error("subscription not found");
+  if (sub.status !== "trial") throw new Error("not a trial");
+  const { count } = await db
+    .from("daily_deliveries")
+    .select("id", { count: "exact", head: true })
+    .eq("subscription_id", sub.id)
+    .eq("kind", "lesson")
+    .eq("status", "sent");
+  if ((count ?? 0) > 0) return { sent: false, reason: "already-sent" };
+  const codes = await templateCodes(db);
+  if (!codes) throw new Error("template codes are not configured");
+  const lesson = await trialLessonFor(db, sub.track as Track);
+  if (!lesson) throw new Error("no ready lesson");
+  return { sent: await sendTrialLesson(db, sub as Subscription, lesson, codes) };
+}
+
 async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: unknown }) {
   const phone = krPhone(typeof body.phone === "string" ? body.phone : "");
   if (!/^01[0-9]{8,9}$/.test(phone)) throw new Error("phone must be a Korean mobile number");
@@ -233,6 +259,12 @@ Deno.serve(async (req) => {
         const stats = await runTick(admin());
         await recordSchedulerHeartbeat("daily.tick", { stats }, "20 minutes");
         return json(req, { success: true, stats });
+      }
+      case "resend-trial": {
+        if (!(await schedulerAuthorized(req))) {
+          return json(req, { success: false, error: "permission-denied" }, 403);
+        }
+        return json(req, { success: true, ...(await handleResendTrial(body)) });
       }
       case "start-info":
       case "start-trial": {
