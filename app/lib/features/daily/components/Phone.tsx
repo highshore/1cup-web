@@ -10,7 +10,7 @@ import {
   PlusIcon,
   SpeakerWaveIcon,
 } from "@heroicons/react/24/solid";
-import { useI18n } from "../../../i18n/I18nProvider";
+import { dailyCopy } from "../copy";
 import { CupMark, cn } from "./DailyUI";
 
 // An iPhone-style device: titanium rim, Dynamic Island, status bar, home indicator.
@@ -76,8 +76,7 @@ function StatusBar({ className }: { className: string }) {
 
 // KakaoTalk chat with the 영어 한잔 channel showing today's Alimtalk.
 export function KakaoChat() {
-  const { t } = useI18n();
-  const copy = t.daily.kakao;
+  const copy = dailyCopy.kakao;
 
   return (
     <div className="flex h-full flex-col bg-[#bacee0] text-[#050505]">
@@ -126,8 +125,7 @@ export function KakaoChat() {
 
 // The iOS notification banner that lands over the hero phone.
 export function IosNotification({ className }: { className?: string }) {
-  const { t } = useI18n();
-  const copy = t.daily.hero.notification;
+  const copy = dailyCopy.hero.notification;
 
   return (
     <div
@@ -152,8 +150,7 @@ export function IosNotification({ className }: { className?: string }) {
 
 // The lesson page that opens from the Kakao button, shown in Safari.
 export function LessonScreen() {
-  const { t } = useI18n();
-  const copy = t.daily.lesson.screen;
+  const copy = dailyCopy.lesson.screen;
 
   return (
     <div className="flex h-full flex-col bg-white text-[#050505]">

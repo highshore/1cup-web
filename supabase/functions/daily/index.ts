@@ -3,9 +3,19 @@
 // Actions
 //   tick       pg_cron, every 5 minutes. Sends due lessons, Saturday reviews and
 //              trial-ended notices. Authorized by the Vault-held daily_scheduler_secret.
-//   test-send  Admins only. Sends one message of a given kind to a phone number using
-//              the latest ready lesson, without touching subscriptions or deliveries.
-//              For checking approved templates on a real phone before launch.
+//   start-info   Signed-in Daily customer (x-daily-session, forwarded by the Next.js
+//                /api/daily route from its httpOnly cookie). What the signup page needs:
+//                whether trials are open to them, the masked phone, and which tracks
+//                they already used or hold.
+//   start-trial  Signed-in Daily customer. Records consent, uses up the phone's free
+//                trial on the track and sends the free lesson immediately.
+//   test-send    1cup staff admins only: an operations tool, not a customer path.
+//                Sends one message of a given kind to a phone number using the latest
+//                ready lesson, without touching subscriptions or deliveries.
+//                For checking approved templates on a real phone before launch.
+//
+// Opening trials to everyone, and the numbers allowed to try the flow first, live in the
+// daily_config row (trial_open, tester_phones), not in secrets.
 //
 // Secrets (supabase secrets set …)
 //   DAILY_TEMPLATE_LESSON, DAILY_TEMPLATE_REVIEW, DAILY_TEMPLATE_TRIAL_ENDED
@@ -17,7 +27,15 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid, recordSchedulerHeartbeat } from "../_shared/db.ts";
 import { krPhone, sendKakaoMessages } from "../_shared/kakao.ts";
-import { runTick, templateCodes, type DeliveryKind, type Track } from "./delivery.ts";
+import {
+  runTick,
+  sendTrialLesson,
+  templateCodes,
+  trialLessonFor,
+  type DeliveryKind,
+  type Subscription,
+  type Track,
+} from "./delivery.ts";
 
 async function schedulerAuthorized(req: Request): Promise<boolean> {
   const presented = req.headers.get("x-daily-scheduler-secret");
@@ -35,6 +53,117 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
   if (!uid) return false;
   const { data } = await admin().from("users").select("account_status").eq("uid", uid).maybeSingle();
   return data?.account_status === "admin";
+}
+
+// Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
+const TERMS_VERSION = "2026-10-25";
+
+// A Daily customer, signed in with a Daily phone code. Daily customers are not 1cup
+// members: this never reads public.users or Supabase Auth.
+interface Customer {
+  id: string;
+  phone: string;
+  name: string | null;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// The Next.js server forwards the session token from its httpOnly cookie in this header.
+async function loadCustomer(req: Request): Promise<Customer | null> {
+  const token = req.headers.get("x-daily-session") ?? "";
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  const { data } = await admin()
+    .from("daily_sessions")
+    .select("expires_at, revoked_at, customer:daily_customers(id, phone, name)")
+    .eq("token_hash", await sha256Hex(token))
+    .maybeSingle();
+  if (!data || data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
+  return (data as unknown as { customer: Customer | null }).customer;
+}
+
+async function trialsOpenFor(customer: Customer): Promise<boolean> {
+  const { data } = await admin()
+    .from("daily_config")
+    .select("trial_open, tester_phones")
+    .eq("id", "settings")
+    .maybeSingle();
+  if (!data) return false;
+  return data.trial_open === true || (data.tester_phones ?? []).includes(customer.phone);
+}
+
+function maskPhone(phone: string): string {
+  return `${phone.slice(0, 3)}-****-${phone.slice(-4)}`;
+}
+
+async function handleStartInfo(customer: Customer) {
+  const db = admin();
+  const [{ data: claims }, { data: live }, open] = await Promise.all([
+    db.from("daily_trial_claims").select("track").eq("recipient_phone", customer.phone),
+    db.from("daily_subscriptions").select("track").eq("customer_id", customer.id).in("status", ["trial", "active"]),
+    trialsOpenFor(customer),
+  ]);
+  return {
+    open: open && templateCodes() !== null,
+    phone: maskPhone(customer.phone),
+    name: customer.name,
+    usedTrialTracks: (claims ?? []).map((c) => c.track),
+    liveTracks: (live ?? []).map((s) => s.track),
+  };
+}
+
+class StartError extends Error {
+  constructor(readonly code: string, readonly status = 400) {
+    super(code);
+  }
+}
+
+async function handleStartTrial(
+  customer: Customer,
+  body: { track?: unknown; time?: unknown; name?: unknown; marketing?: unknown; agreements?: unknown; termsVersion?: unknown },
+) {
+  if (!(await trialsOpenFor(customer))) throw new StartError("not-open", 403);
+  const codes = templateCodes();
+  if (!codes) throw new StartError("not-open", 403);
+
+  const track = body.track;
+  if (track !== "business" && track !== "tech") throw new StartError("invalid-track");
+  const time = typeof body.time === "string" ? body.time : "";
+  const match = /^([01][0-9]|2[0-2]):(00|30)$/.exec(time);
+  if (!match || time < "06:00" || time > "22:00") throw new StartError("invalid-time");
+
+  // The three required agreements, checked here as well as in the dialog: the record
+  // this writes is the proof of consent, so it must not depend on the client alone.
+  const agreements = (body.agreements ?? {}) as Record<string, unknown>;
+  if (agreements.terms !== true || agreements.privacy !== true || agreements.messages !== true) {
+    throw new StartError("consent-required");
+  }
+  if (body.termsVersion !== TERMS_VERSION) throw new StartError("terms-outdated", 409);
+
+  const db = admin();
+  const lesson = await trialLessonFor(db, track);
+  if (!lesson) throw new StartError("no-lesson", 503);
+
+  const name = typeof body.name === "string" ? body.name.trim().slice(0, 20) : "";
+  const { data: sub, error } = await db.rpc("daily_start_trial", {
+    p_customer_id: customer.id,
+    p_track: track,
+    p_name: name,
+    p_delivery_time: `${time}:00`,
+    p_marketing: body.marketing === true,
+    p_terms_version: TERMS_VERSION,
+  });
+  if (error) {
+    if (error.message.includes("trial-used")) throw new StartError("trial-used", 409);
+    if (error.message.includes("already-subscribed")) throw new StartError("already-subscribed", 409);
+    throw new Error(`start trial failed: ${error.message}`);
+  }
+
+  const subscription = sub as Subscription & { next_send_at: string };
+  const sent = await sendTrialLesson(db, subscription, lesson, codes);
+  return { subscriptionId: subscription.id, sent, nextSendAt: subscription.next_send_at };
 }
 
 async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: unknown }) {
@@ -94,6 +223,20 @@ Deno.serve(async (req) => {
         const stats = await runTick(admin());
         await recordSchedulerHeartbeat("daily.tick", { stats }, "20 minutes");
         return json(req, { success: true, stats });
+      }
+      case "start-info":
+      case "start-trial": {
+        const customer = await loadCustomer(req);
+        if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
+        if (action === "start-info") return json(req, { success: true, ...(await handleStartInfo(customer)) });
+        try {
+          return json(req, { success: true, ...(await handleStartTrial(customer, body)) });
+        } catch (e) {
+          if (e instanceof StartError) {
+            return json(req, { success: false, errorCode: e.code, message: e.code }, e.status);
+          }
+          throw e;
+        }
       }
       case "test-send": {
         if (!(await callerIsAdmin(req))) {

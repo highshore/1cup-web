@@ -16,7 +16,6 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { ShieldCheckIcon as ShieldCheckSolid } from "@heroicons/react/24/solid";
-import { useI18n } from "../lib/i18n/I18nProvider";
 import {
   CupMark,
   Emoji,
@@ -28,7 +27,13 @@ import {
   displayClass,
 } from "../lib/features/daily/components/DailyUI";
 import { IosNotification, IPhone, KakaoChat, LessonScreen } from "../lib/features/daily/components/Phone";
-import { DAILY_MONTHLY_PRICE_KRW, formatKrw } from "../lib/features/daily/constants";
+import {
+  DAILY_MONTHLY_PRICE_KRW,
+  DAILY_PASSES,
+  DAILY_TERMS_PATH,
+  formatKrw,
+} from "../lib/features/daily/constants";
+import { dailyCopy } from "../lib/features/daily/copy";
 import { dailyDisplay } from "../lib/features/daily/fonts";
 import { useReached, useScrolledPast, useSeen } from "../lib/features/daily/hooks";
 import "../lib/features/daily/daily.css";
@@ -54,8 +59,7 @@ const credentialIcons = {
 const h2Class = cn(displayClass, "text-[2.25rem] leading-[1.18] min-[900px]:text-[3.05rem]");
 
 export default function DailyClient() {
-  const { t } = useI18n();
-  const copy = t.daily;
+  const copy = dailyCopy;
   const heroRef = useRef<HTMLDivElement>(null);
   const pricingRef = useRef<HTMLDivElement>(null);
   const pastHero = useScrolledPast(heroRef);
@@ -68,7 +72,7 @@ export default function DailyClient() {
       <section className="overflow-hidden bg-[#f47a4a] px-4 pb-16 pt-10 min-[900px]:pb-24 min-[900px]:pt-20">
         <div
           ref={heroRef}
-          className="mx-auto grid w-full max-w-[1120px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,560px)_minmax(0,1fr)]"
+          className="mx-auto grid w-full max-w-[720px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_270px] min-[900px]:gap-8"
         >
           <div className="flex flex-col items-start">
             <span className="relative mb-4 inline-block text-[2.6rem]">
@@ -78,7 +82,7 @@ export default function DailyClient() {
               <ShieldCheckSolid className="size-4 text-[#f47a4a]" aria-hidden />
               {copy.hero.tagline}
             </Pill>
-            <h1 className={cn(displayClass, "mt-5 text-[2.9rem] leading-[1.12] min-[900px]:text-[4.25rem]")}>
+            <h1 className={cn(displayClass, "mt-5 text-[2.9rem] leading-[1.12] min-[900px]:text-[3.3rem]")}>
               <Headline text={copy.hero.title} accent={copy.hero.accent} accentClassName="text-white" />
             </h1>
             <p className="mt-5 max-w-[30rem] text-[1.02rem] font-semibold leading-[1.65] text-[rgba(5,5,5,0.78)] min-[900px]:text-[1.12rem]">
@@ -95,14 +99,14 @@ export default function DailyClient() {
             </ul>
           </div>
 
-          <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10 min-[900px]:pt-0">
+          <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10">
             <span aria-hidden className="absolute inset-x-6 bottom-6 top-16 rounded-[44px] bg-[#050505]/10" />
             <div className="daily-phone-in relative">
-              <IPhone className="w-[270px] min-[900px]:w-[300px]">
+              <IPhone className="w-[270px]">
                 <KakaoChat />
               </IPhone>
             </div>
-            <IosNotification className="daily-drop absolute left-1/2 top-0 w-[min(300px,calc(100%-8px))] -translate-x-1/2 min-[900px]:left-auto min-[900px]:right-[-12px] min-[900px]:top-8 min-[900px]:translate-x-0" />
+            <IosNotification className="daily-drop absolute left-1/2 top-0 w-[min(300px,calc(100%-8px))] -translate-x-1/2 min-[900px]:w-[280px]" />
           </div>
         </div>
       </section>
@@ -117,7 +121,7 @@ export default function DailyClient() {
           className="-z-10 object-cover opacity-80"
         />
         <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0)_30%,rgba(5,5,5,0.85))] min-[900px]:bg-[linear-gradient(90deg,rgba(5,5,5,0.85),rgba(5,5,5,0.1)_70%)]" />
-        <div className="mx-auto flex min-h-[460px] w-full max-w-[1120px] flex-col justify-end px-4 py-12 min-[900px]:min-h-[560px] min-[900px]:justify-center min-[900px]:px-8">
+        <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col justify-end px-4 py-12 min-[900px]:min-h-[560px] min-[900px]:justify-center">
           <Pill className="self-start bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
           <h2 className={cn(h2Class, "mt-4 text-white min-[900px]:text-[3.5rem]")}>
             <Headline text={copy.photo.title} />
@@ -271,7 +275,7 @@ export default function DailyClient() {
       </Panel>
 
       {/* P9: tracks */}
-      <Panel id="tracks" inner="min-[900px]:max-w-[960px]">
+      <Panel id="tracks">
         <h2 className={h2Class}>
           <Headline text={copy.tracks.title} accent={copy.tracks.accent} accentClassName="text-[#f47a4a]" />
         </h2>
@@ -330,14 +334,26 @@ export default function DailyClient() {
           <h2 className={cn(h2Class, "mt-4")}>
             <Headline text={copy.pricing.title} accent={copy.pricing.accent} accentClassName="text-white" />
           </h2>
+          <p className="mt-3 text-[1rem] font-semibold text-[rgba(5,5,5,0.78)]">{copy.pricing.trial}</p>
+          <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
+
           <div className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-9">
-            <p className="flex items-baseline gap-2">
-              <span className="text-[1rem] font-bold text-[#475569]">{copy.pricing.after}</span>
-              <span className={cn(displayClass, "text-[2.6rem] leading-none")}>₩{price}</span>
-              {copy.pricing.suffix && <span className="text-[1rem] font-bold text-[#475569]">{copy.pricing.suffix}</span>}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[1.15rem] font-black">{copy.pricing.subscription.name}</p>
+              <Pill className="bg-[#050505] text-white">{copy.pricing.subscription.badge}</Pill>
+            </div>
+            <div className="mt-5 flex items-center gap-4 rounded-[20px] bg-[#fff8dc] px-5 py-4">
+              <Emoji motion="float" className="text-[2.4rem]">☕</Emoji>
+              <div>
+                <p className="text-[1.02rem] font-black leading-snug">{copy.pricing.subscription.espresso}</p>
+                <p className="mt-0.5 flex items-baseline gap-1.5">
+                  <span className={cn(displayClass, "text-[2.3rem] leading-none")}>₩{price}</span>
+                  <span className="text-[0.9rem] font-bold text-[#475569]">/ {copy.pricing.subscription.period}</span>
+                </p>
+              </div>
+            </div>
             <ul className="m-0 mt-6 flex list-none flex-col gap-3 p-0">
-              {copy.pricing.benefits.map((benefit) => (
+              {copy.pricing.subscription.benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-2.5 text-[1rem] font-bold">
                   <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#050505] text-[#f47a4a]">
                     <CheckIcon className="size-3.5" strokeWidth={3} aria-hidden />
@@ -346,9 +362,29 @@ export default function DailyClient() {
                 </li>
               ))}
             </ul>
-            <TrialButton label={copy.hero.cta} className="mt-7 w-full" />
-            <p className="mt-3 text-center text-[0.82rem] font-semibold text-[#64748b]">{copy.pricing.note}</p>
           </div>
+
+          <div className="mt-3 rounded-[28px] bg-white/90 p-6 min-[900px]:p-9">
+            <p className="text-[1rem] font-black">{copy.pricing.passes.title}</p>
+            <ul className="m-0 mt-4 grid list-none gap-2 p-0 min-[600px]:grid-cols-3">
+              {DAILY_PASSES.map((pass) => (
+                <li key={pass.id} className="rounded-[18px] border border-[#e5e7eb] bg-white px-4 py-3.5">
+                  <p className="text-[0.92rem] font-bold text-[#475569]">{pass.label}</p>
+                  <p className="mt-1 text-[1.3rem] font-black">₩{formatKrw(pass.priceKrw)}</p>
+                  <p className="text-[0.8rem] font-semibold text-[#64748b]">
+                    {copy.pricing.passes.perMonth.replace("{price}", formatKrw(Math.round((pass.priceKrw * 30) / pass.days)))}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="mt-5 text-[0.85rem] font-semibold text-[rgba(5,5,5,0.72)]">
+            {copy.pricing.note}{" "}
+            <a href={DAILY_TERMS_PATH} className="underline underline-offset-2">
+              {copy.pricing.terms}
+            </a>
+          </p>
         </div>
       </Panel>
 
@@ -369,6 +405,9 @@ export default function DailyClient() {
         <p className="mt-10 flex items-center justify-center gap-2 text-[0.85rem] font-semibold text-[#64748b]">
           <CupMark className="h-4 w-3" />
           {copy.operatedBy}
+          <a href={DAILY_TERMS_PATH} className="underline underline-offset-2">
+            {copy.pricing.terms}
+          </a>
         </p>
       </Panel>
 
@@ -420,8 +459,7 @@ function Highlighted({ text, highlight }: { text: string; highlight: string }) {
 }
 
 function StickyBar({ visible }: { visible: boolean }) {
-  const { t } = useI18n();
-  const copy = t.daily.sticky;
+  const copy = dailyCopy.sticky;
   return (
     <div
       inert={!visible}
