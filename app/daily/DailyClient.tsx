@@ -110,7 +110,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
 
           <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10">
             <div className="daily-phone-in relative">
-              <HeroPhoneDemo className="w-[290px]" />
+              <HeroPhoneDemo className="w-[min(320px,calc(100vw-48px))]" />
             </div>
             <IosNotification className="daily-drop absolute left-1/2 top-0 w-[min(300px,calc(100%-8px))] -translate-x-1/2 min-[900px]:w-[280px]" />
           </div>
@@ -204,7 +204,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.lesson.sub}</p>
         </div>
         <div className="relative mx-auto mt-12 w-fit">
-          <IPhone className="w-[260px] min-[900px]:w-[290px]" statusClassName="bg-[#f47a4a] text-[#050505]">
+          <IPhone className="w-[min(320px,calc(100vw-48px))]" statusClassName="bg-white text-[#050505]">
             <LessonScreen />
           </IPhone>
           <Callout className="left-[-28px] top-[96px] min-[900px]:left-[-150px]" emoji="🔊">

@@ -14,18 +14,21 @@ export const dailyCopy = {
     lead: "통역사가 매일 아침 회의와 테크 현장에서 바로 쓰는 표현 하나를 카카오톡으로 올려드려요.",
     cta: "하루 무료로 받아보기",
     trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
-    notification: { app: "영어 한잔", time: "지금", body: "오늘의 영어 표현이 도착했어요 ☕" },
+    // A KakaoTalk notification: the channel's name, then the message's first line.
+    notification: { app: "영어 한잔", time: "지금", body: "[비즈니스 영어] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
+  // The hero phone's KakaoTalk chat. Mirrors the message customers get today: the
+  // approved general-purpose 1cup template (template_style "send-article"), word for word.
+  // Change it together with the template when the dedicated Daily templates go live.
   kakao: {
     channel: "영어 한잔",
-    date: "10월 27일 화요일",
+    date: "2026년 10월 27일 화요일",
     alimtalk: "알림톡 도착",
-    intro: "[비즈니스 영어] 오늘의 표현",
-    expression: "circle back",
-    meaning: "(논의를) 나중에 다시 이어가다",
-    example: "Let's circle back on pricing after the launch.",
-    open: "오늘의 레슨 보기",
+    title: "[비즈니스 영어] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다",
+    greeting: "Good Morning, 지수 님! 오늘의 영어 한잔을 전달드립니다 ☕️",
+    prompt: "아래 버튼을 클릭해주세요! 🥰",
+    open: "아티클 확인하기",
     time: "오전 8:00",
     input: "메시지 입력",
   },
@@ -62,20 +65,25 @@ export const dailyCopy = {
     accent: "도착했어요!",
     sub: "알림을 누르면 이런 레슨 페이지가 열려요",
     callouts: { audio: "발음 듣기", nuance: "뜻·뉘앙스", examples: "예문 3개", quiz: "1분 퀴즈" },
+    // The lesson page as it opens inside KakaoTalk's in-app browser, top section first.
     screen: {
+      pageTitle: "오늘의 레슨 | One Cup Daily",
+      url: "1cupenglish.com",
+      track: "비즈니스 영어",
+      date: "10월 27일 화요일",
+      label: "오늘의 표현",
       expression: "circle back",
-      listen: "듣기",
-      meaningLabel: "뜻",
       meaning: "(논의를) 나중에 다시 이어가다",
-      nuanceLabel: "이럴 때 써요",
+      listen: "발음 듣기",
+      pronunciation: "/ˈsɜːrkəl bæk/ · 강세: circle BACK",
+      nuanceTitle: "이럴 때 써요",
       nuance:
         "결론을 지금 내지 않고 다음에 다시 다루자고 할 때. 'talk later'보다 업무적이고 정중해요.",
-      examplesLabel: "실제 사용 예시",
+      examplesTitle: "실제 사용 예시",
       examples: [
         { en: "Let's circle back on pricing after the launch.", ko: "가격 얘기는 출시 후에 다시 하죠." },
         { en: "Can we circle back to this on Friday?", ko: "이건 금요일에 다시 얘기할 수 있을까요?" },
       ],
-      url: "1cupenglish.com",
     },
   },
   expressions: {
@@ -311,7 +319,7 @@ export const dailyCopy = {
       steps: [
         { title: "트랙 고르기", detail: "회의·메일에서 쓰는 비즈니스 영어, 실리콘밸리 뉴스 속 테크 영어 중 하나를 골라요." },
         { title: "받는 시간 고르기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요. 출근길에 읽을 수 있는 시간이 좋아요." },
-        { title: "휴대폰 번호 인증", detail: "레슨을 받을 번호로 인증번호를 받아 입력해요. 회원가입이나 비밀번호는 없어요." },
+        { title: "카카오로 시작하거나 번호 인증", detail: "카카오로 시작하면 카카오계정의 휴대폰 번호로 바로 들어와요. 휴대폰 번호에 인증번호를 받아 입력해도 돼요. 회원가입이나 비밀번호는 없어요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
         { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
       ],
@@ -351,7 +359,7 @@ export const dailyCopy = {
         { title: "평소엔 버튼으로 바로", detail: "카카오톡 메시지의 버튼으로 들어오면 따로 로그인하지 않아도 돼요." },
         { title: "결제·신청·변경은 인증번호 한 번", detail: "버튼으로 들어온 상태에서 결제, 새 트랙 신청, 설정 변경, 자동 결제 해지, 환불 요청을 하려면 내 번호로 가는 인증번호를 한 번 입력해요. 화면에는 010-****-1234처럼 가린 번호만 보여요." },
         { title: "메시지는 그대로 전달하지 마세요", detail: "메시지 버튼은 내 계정으로 들어가는 링크예요. 친구에게 알려주고 싶다면 레슨 페이지의 '동료에게 보내기'를 써주세요." },
-        { title: "다른 기기에서는 번호로", detail: "PC나 다른 브라우저에서는 내 계정이나 신청·구독 페이지에서 휴대폰 번호 인증으로 들어와요." },
+        { title: "다른 기기에서는 카카오나 번호로", detail: "PC나 다른 브라우저에서는 내 계정이나 신청·구독 페이지에서 '카카오로 시작하기'나 휴대폰 번호 인증으로 들어와요." },
       ],
     },
     subscribe: {
@@ -382,6 +390,7 @@ export const dailyCopy = {
         { title: "자동 결제 해지", detail: "내 계정의 구독 카드에서 '자동 결제 해지'를 누르면 돼요. 이미 결제한 기간이 끝날 때까지는 계속 받고, 그 안에는 다시 켤 수도 있어요." },
         { title: "받는 시간·이름 바꾸기", detail: "내 계정에서 트랙별 받는 시간과 카톡에서 부를 이름을 바꿔요. 바꾼 시간은 다음 레슨부터 적용돼요." },
         { title: "트랙 바꾸기", detail: "다른 트랙은 따로 신청해요. 지금 트랙을 그만 받으려면 자동 결제를 해지하면 돼요." },
+        { title: "계정 삭제", detail: "내 계정 맨 아래 '계정 삭제'에서 '계정 삭제'를 입력하면 바로 지워져요. 자동 결제 중이면 먼저 해지해 주세요. 남은 기간은 환불되지 않으니 환불을 원하면 먼저 요청해 주세요." },
       ],
     },
     refund: {
@@ -393,7 +402,7 @@ export const dailyCopy = {
       ],
       exampleTitle: "예를 들어",
       example: "3개월 이용권(₩13,500)을 결제하고 30일이 지나 요청하면, ₩13,500 × 60 ÷ 90 = ₩9,000을 돌려드려요.",
-      how: "내 계정의 결제 내역에서 '환불 요청'을 누르면 환불될 금액이 먼저 보여요. 요청하면 운영자가 확인한 뒤 결제한 카드의 승인 취소로 처리하고, 결과를 카카오톡으로 알려드려요. 카드사에 반영되기까지 영업일 기준 3~7일이 걸릴 수 있어요. 이메일이나 전화로도 요청할 수 있어요.",
+      how: "내 계정의 결제 내역에서 '환불 요청'을 누르면 환불될 금액이 먼저 보여요. 이유를 고르고 요청하면 운영자가 확인한 뒤 결제한 카드의 승인 취소로 처리하고, 결과를 카카오톡으로 알려드려요. 카드사에 반영되기까지 영업일 기준 3~7일이 걸릴 수 있어요. 이메일이나 전화로도 요청할 수 있어요.",
       terms: "환불 규정 전문 보기",
     },
     review: {
@@ -441,7 +450,7 @@ export const dailyCopy = {
   // /daily/account.
   account: {
     title: "내 계정",
-    signInTitle: "휴대폰 번호로 들어와 주세요",
+    signInTitle: "카카오나 휴대폰 번호로 들어와 주세요",
     signInDetail: "레슨을 받는 번호로 인증하면 구독과 결제 내역을 볼 수 있어요.",
     verifyTitle: "바꾸려면 본인 확인을 한 번 해 주세요",
     verifyDetail: "지금은 볼 수만 있어요. 설정 변경과 환불 요청은 인증번호를 입력한 뒤에 할 수 있어요.",
@@ -495,11 +504,38 @@ export const dailyCopy = {
         "환불되면 이 결제로 받은 기간이 줄어들고, 남은 기간이 없으면 레슨이 멈춰요.",
       ],
       recurringEffect: "정기구독 결제라서 요청하는 순간 자동 결제가 꺼져요.",
-      reason: "환불 이유 (선택)",
-      reasonPlaceholder: "더 나아지는 데 참고할게요.",
+      reason: "환불 이유",
+      reasonPick: "이유를 골라 주세요",
+      // Stored as the label itself; "기타" is stored as "기타: <what they wrote>".
+      reasons: [
+        "생각보다 자주 읽지 못했어요",
+        "레슨 내용이 기대와 달랐어요",
+        "난이도가 맞지 않았어요",
+        "메시지가 제대로 오지 않았어요",
+        "가격이 부담돼요",
+        "실수로 결제했어요",
+      ],
+      other: "기타 (직접 입력)",
+      otherLabel: "기타",
+      otherPlaceholder: "어떤 점이 아쉬웠는지 적어 주세요.",
       submit: "₩{amount} 환불 요청하기",
       cancel: "닫기",
       done: "환불 요청을 받았어요. 처리되면 카카오톡으로 알려드려요.",
+    },
+    // Same shape as 1cup's account deletion: a phrase to type, billing stopped first.
+    delete: {
+      button: "계정 삭제",
+      title: "계정을 삭제할까요?",
+      body: "레슨 발송이 바로 멈추고, 구독 정보와 받은 레슨 기록, 후기, 로그인 정보, 휴대폰 번호와 이름을 지워요. 되돌릴 수 없어요.",
+      kept: "결제·환불 기록은 법에 따라 5년 동안 휴대폰 번호와 이름 없이 보관하고, 무료 체험 이력은 중복 체험을 막기 위해 1년 동안 보관해요.",
+      remaining: "남은 이용 기간은 사라지고 자동으로 환불되지 않아요. 환불을 원하면 먼저 결제 내역에서 요청해 주세요.",
+      billingFirst: "자동 결제 중인 구독이 있어요. 먼저 자동 결제를 해지해 주세요.",
+      refundOpen: "진행 중인 환불 요청이 끝난 뒤에 삭제할 수 있어요.",
+      phrase: "계정 삭제",
+      prompt: "계속하려면 {phrase}를 정확히 입력하세요.",
+      confirm: "계정 영구 삭제",
+      deleting: "삭제하는 중…",
+      cancel: "취소",
     },
     errors: {
       generic: "잠시 후 다시 시도해 주세요.",

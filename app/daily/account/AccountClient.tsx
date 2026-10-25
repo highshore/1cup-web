@@ -278,12 +278,19 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
   );
 }
 
+// The select's value for "기타"; never stored as is.
+const OTHER = "__other__";
+
 function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: () => Promise<void>; onClose: () => void }) {
   const r = copy.refund;
   const quote = payment.quote!;
-  const [reason, setReason] = useState("");
+  const [choice, setChoice] = useState("");
+  const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const isOther = choice === OTHER;
+  const reason = isOther ? `${r.otherLabel}: ${other.trim()}` : choice;
+  const ready = choice !== "" && (!isOther || other.trim().length >= 2);
 
   const submit = async () => {
     setBusy(true);
@@ -311,14 +318,33 @@ function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: ()
       </ul>
       <label className="mt-4 block">
         <span className="text-[0.85rem] font-bold text-[#64748b]">{r.reason}</span>
-        <textarea
-          value={reason}
-          onChange={(event) => setReason(event.target.value.slice(0, 500))}
-          placeholder={r.reasonPlaceholder}
-          rows={2}
-          className="mt-1 w-full resize-none rounded-xl bg-white p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
-        />
+        <select
+          value={choice}
+          onChange={(event) => setChoice(event.target.value)}
+          className="mt-1 h-12 w-full cursor-pointer rounded-xl bg-white px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+        >
+          <option value="" disabled>
+            {r.reasonPick}
+          </option>
+          {r.reasons.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+          <option value={OTHER}>{r.other}</option>
+        </select>
       </label>
+      {isOther && (
+        <textarea
+          value={other}
+          onChange={(event) => setOther(event.target.value.slice(0, 480))}
+          placeholder={r.otherPlaceholder}
+          aria-label={r.other}
+          rows={2}
+          autoFocus
+          className="mt-2 w-full resize-none rounded-xl bg-white p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+        />
+      )}
       {message && (
         <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
           {message}
@@ -327,7 +353,7 @@ function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: ()
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || !ready}
           onClick={submit}
           className="h-12 flex-1 rounded-xl bg-[#050505] text-[0.95rem] font-black text-white disabled:opacity-35"
         >
@@ -414,6 +440,113 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
   );
 }
 
+function DeleteAccount({ info }: { info: AccountInfo }) {
+  const d = copy.delete;
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const billing = info.subscriptions.some((s) => s.status === "active" && s.autoRenew);
+  const refundOpen = info.payments.some((p) => p.refund && (p.refund.status === "requested" || p.refund.status === "refunding"));
+  const blocked = billing ? d.billingFirst : refundOpen ? d.refundOpen : "";
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !busy && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, busy]);
+
+  const remove = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi("account-delete", { confirmation: typed });
+      router.push("/daily");
+    } catch (e) {
+      setMessage(errorMessage(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={!info.verified}
+        onClick={() => {
+          setTyped("");
+          setMessage("");
+          setOpen(true);
+        }}
+        className="mx-auto mt-2 block text-[0.85rem] font-bold text-[#b91c1c] underline underline-offset-2 disabled:text-[#94a3b8] disabled:no-underline"
+      >
+        {d.button}
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 min-[600px]:items-center" onClick={() => !busy && setOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="daily-delete-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-[440px] rounded-[28px] bg-white p-6 text-[#050505]"
+          >
+            <h2 id="daily-delete-title" className="text-[1.25rem] font-black">
+              {d.title}
+            </h2>
+            <p className="mt-3 text-[0.92rem] font-semibold leading-relaxed text-[#334155]">{d.body}</p>
+            <p className="mt-2 text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">{d.remaining}</p>
+            <p className="mt-2 text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">{d.kept}</p>
+            {blocked ? (
+              <p role="alert" className="mt-4 rounded-2xl bg-[#fef2f2] px-4 py-3 text-[0.9rem] font-bold text-[#b91c1c]">
+                {blocked}
+              </p>
+            ) : (
+              <label className="mt-4 block">
+                <span className="text-[0.86rem] font-bold">{d.prompt.replace("{phrase}", `'${d.phrase}'`)}</span>
+                <input
+                  value={typed}
+                  onChange={(event) => setTyped(event.target.value)}
+                  autoFocus
+                  placeholder={d.phrase}
+                  className="mt-1.5 h-12 w-full rounded-xl bg-[#f5f5f4] px-3 text-[1rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#b91c1c]"
+                />
+              </label>
+            )}
+            {message && (
+              <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
+                {message}
+              </p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                disabled={busy}
+                className="h-12 flex-1 rounded-xl bg-[#f5f5f4] text-[0.95rem] font-black"
+              >
+                {d.cancel}
+              </button>
+              {!blocked && (
+                <button
+                  type="button"
+                  disabled={busy || typed.trim() !== d.phrase}
+                  onClick={remove}
+                  className="h-12 flex-1 rounded-xl bg-[#b91c1c] text-[0.95rem] font-black text-white disabled:opacity-35"
+                >
+                  {busy ? d.deleting : d.confirm}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function AccountClient() {
   // undefined: loading; null: not signed in.
   const [info, setInfo] = useState<AccountInfo | null | undefined>(undefined);
@@ -491,6 +624,7 @@ export default function AccountClient() {
             </section>
             <Payments info={info} onChanged={load} />
             <Profile key={`${info.name}-${info.marketing}`} info={info} onChanged={load} />
+            <DeleteAccount info={info} />
           </>
         )}
 

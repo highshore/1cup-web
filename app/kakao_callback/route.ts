@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { finishDailyKakaoLogin } from "../lib/features/daily/server/kakao";
 
 const STATE_COOKIE = "onecup-kakao-oauth-state";
 const REDIRECT_COOKIE = "onecup-kakao-oauth-redirect";
@@ -63,6 +64,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
+  // One Cup Daily signs in its own customers through the same Kakao app and redirect
+  // URI. Its state cookie marks those callbacks; everything else is 1cup's login below.
+  const daily = await finishDailyKakaoLogin(request);
+  if (daily) return daily;
+
   const origin = request.nextUrl.origin;
   const oauthError =
     request.nextUrl.searchParams.get("error_description") ??

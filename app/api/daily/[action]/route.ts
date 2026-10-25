@@ -28,7 +28,7 @@ export const runtime = "nodejs";
 //                                until approved)
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                                Payple payments, forwarded the same way
-//   account-info / account-update / resume-renewal / refund-request
+//   account-info / account-update / resume-renewal / refund-request / account-delete
 //                                the account page, forwarded the same way
 //   start-info / start-trial     forwarded to the `daily` Edge Function with the
 //                                session token, which never reaches page JavaScript
@@ -44,6 +44,7 @@ const FORWARDED = new Set([
   "account-update",
   "resume-renewal",
   "refund-request",
+  "account-delete",
 ]);
 
 function clientIp(req: Request): string | null {
@@ -128,8 +129,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
         cache: "no-store",
       });
       const payload = await upstream.json().catch(() => ({ success: false }));
-      // A session the function no longer accepts is gone for good; drop the cookie.
-      if (upstream.status === 401) jar.delete(DAILY_SESSION_COOKIE);
+      // A session the function no longer accepts is gone for good, and so is one whose
+      // account was just deleted; drop the cookie.
+      if (upstream.status === 401 || (action === "account-delete" && upstream.ok)) jar.delete(DAILY_SESSION_COOKIE);
       return NextResponse.json(payload, { status: upstream.status });
     }
 

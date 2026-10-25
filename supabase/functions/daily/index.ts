@@ -15,7 +15,7 @@
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                Signed-in Daily customer: plans, starting a Payple checkout, settling
 //                it (idempotent), and turning off auto-renew.
-//   account-info / account-update / resume-renewal / refund-request
+//   account-info / account-update / resume-renewal / refund-request / account-delete
 //                Signed-in Daily customer: the account page (account.ts). Changing
 //                anything needs a phone-code session; refunds are only requested here.
 //   admin-refunds / admin-refund-decide
@@ -51,6 +51,7 @@ import {
   accountInfo,
   adminDecideRefund,
   adminRefunds,
+  deleteAccount,
   requestRefund,
   resumeRenewal,
   updateSettings,
@@ -93,7 +94,7 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
 }
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-const TERMS_VERSION = "2026-10-25";
+const TERMS_VERSION = "2026-10-26";
 
 // A Daily customer, signed in with a Daily phone code. Daily customers are not 1cup
 // members: this never reads public.users or Supabase Auth.
@@ -115,6 +116,7 @@ const NEEDS_PHONE_CODE = new Set([
   "account-update",
   "resume-renewal",
   "refund-request",
+  "account-delete",
 ]);
 
 async function sha256Hex(value: string): Promise<string> {
@@ -331,7 +333,8 @@ Deno.serve(async (req) => {
       case "account-info":
       case "account-update":
       case "resume-renewal":
-      case "refund-request": {
+      case "refund-request":
+      case "account-delete": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
         if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
@@ -348,6 +351,7 @@ Deno.serve(async (req) => {
             "account-update": () => updateSettings(db, customer, body),
             "resume-renewal": () => resumeRenewal(db, customer, body),
             "refund-request": () => requestRefund(db, customer, body),
+            "account-delete": () => deleteAccount(db, customer, body),
           };
           const result = await handlers[action]();
           return json(req, { success: true, ...result });
