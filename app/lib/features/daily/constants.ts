@@ -22,6 +22,6 @@ export const DAILY_ACCOUNT_PATH = "/daily/account";
 export const DAILY_PRIVACY_PATH = "/daily/privacy";
 
 // Bump when the Daily terms or the consent wording change; stored with each signup.
-export const DAILY_TERMS_VERSION = "2026-10-25";
+export const DAILY_TERMS_VERSION = "2026-10-26";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");

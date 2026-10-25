@@ -191,6 +191,29 @@ async function createSession(
 }
 
 /**
+ * Signs in a phone number someone else has already verified (Kakao Login returns the
+ * account's verified number), creating its Daily customer on first use. The session is
+ * a full one, like after a phone code. A Kakao nickname fills in an empty name only.
+ */
+export async function signInVerifiedPhone(rawPhone: string, name: string | null): Promise<{ token: string; expiresAt: Date }> {
+  const phone = normalizePhone(rawPhone);
+  if (!isKoreanMobile(phone)) throw new DailyAuthError("카카오계정의 휴대폰 번호를 쓸 수 없어요. 휴대폰 번호로 인증해 주세요.");
+  const db = admin();
+  const now = new Date().toISOString();
+  const { data: customer, error } = await db
+    .from("daily_customers")
+    .upsert({ phone, last_login_at: now }, { onConflict: "phone" })
+    .select("id, name")
+    .single();
+  if (error || !customer) throw new DailyAuthError("로그인하지 못했어요.", 500);
+  const nickname = (name ?? "").trim().slice(0, 20);
+  if (!customer.name && nickname) {
+    await db.from("daily_customers").update({ name: nickname }).eq("id", customer.id);
+  }
+  return await createSession(customer.id, "phone", null);
+}
+
+/**
  * Signs the browser in from a Kakao message's button link (the delivery's access token),
  * with a link-scoped session. Returns null when the link is unknown, was never sent, or
  * is older than LINK_SIGNIN_DAYS.

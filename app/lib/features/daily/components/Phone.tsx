@@ -2,15 +2,17 @@
 
 import { ReactNode, useEffect, useRef, useState } from "react";
 import {
-  ArrowPathIcon,
   ChevronLeftIcon,
+  EllipsisHorizontalIcon,
   LockClosedIcon,
   MagnifyingGlassIcon,
   PlayIcon,
   PlusIcon,
   SpeakerWaveIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { dailyCopy } from "../copy";
+import { dailyWordmark } from "../fonts";
 import { usePrefersReducedMotion, useVisible } from "../hooks";
 import { CupMark, cn } from "./DailyUI";
 
@@ -36,7 +38,7 @@ export function IPhone({
   return (
     <div
       className={cn(
-        "relative aspect-[9/19.5] w-[280px] rounded-[48px] bg-[linear-gradient(145deg,#5b5b60,#1d1d20_40%,#3a3a3e)] p-[9px] shadow-[0_40px_80px_-24px_rgba(5,5,5,0.55),0_0_0_1px_rgba(255,255,255,0.08)_inset]",
+        "relative aspect-[9/19.5] w-[320px] rounded-[48px] bg-[linear-gradient(145deg,#5b5b60,#1d1d20_40%,#3a3a3e)] p-[9px] shadow-[0_40px_80px_-24px_rgba(5,5,5,0.55),0_0_0_1px_rgba(255,255,255,0.08)_inset]",
         className,
       )}
     >
@@ -84,8 +86,9 @@ function StatusBar({ className }: { className: string }) {
   );
 }
 
-// KakaoTalk chat with the 영어 한잔 channel showing today's Alimtalk. `tapping` shows a
-// finger press on the lesson button (used by the hero demo).
+// KakaoTalk chat with the 영어 한잔 channel showing today's Alimtalk, as the approved
+// template renders it: the yellow "알림톡 도착" header, the title line, the greeting and
+// the link button. `tapping` shows a finger press on the button (the hero demo).
 export function KakaoChat({ tapping = false }: { tapping?: boolean }) {
   const copy = dailyCopy.kakao;
 
@@ -102,29 +105,28 @@ export function KakaoChat({ tapping = false }: { tapping?: boolean }) {
         </p>
         <div className="daily-arrive flex gap-2 [animation-delay:600ms]">
           <AppMark className="size-9 rounded-[14px]" cupClassName="h-5 w-4" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pr-1">
             <p className="mb-1 text-[0.7rem] font-semibold text-[#3b4a59]">{copy.channel}</p>
-            <div className="overflow-hidden rounded-[14px] rounded-tl-[4px] bg-white shadow-[0_1px_0_rgba(0,0,0,0.06)]">
-              <p className="bg-[#fee500] px-3 py-1.5 text-[0.68rem] font-extrabold">{copy.alimtalk}</p>
-              <div className="px-3 pb-3 pt-2.5">
-                <p className="text-[0.7rem] font-bold text-[#64748b]">{copy.intro}</p>
-                <p className="mt-1.5 text-[1.2rem] font-black leading-tight">{copy.expression}</p>
-                <p className="mt-0.5 text-[0.74rem] font-semibold text-[#475569]">{copy.meaning}</p>
-                <p className="mt-2 rounded-lg bg-[#f5f5f5] px-2.5 py-2 text-[0.7rem] leading-snug text-[#334155]">
-                  {copy.example}
-                </p>
-                <p
-                  className={cn(
-                    "relative mt-2.5 rounded-lg py-2.5 text-center text-[0.76rem] font-extrabold transition-[transform,background-color] duration-150",
-                    tapping ? "scale-[0.97] bg-[#dcdcdc]" : "bg-[#f2f2f2]",
-                  )}
-                >
-                  {copy.open}
-                  {tapping && <span aria-hidden className="daily-tap absolute left-1/2 top-1/2 size-12 rounded-full bg-[#050505]/35 ring-2 ring-white/70" />}
-                </p>
+            <div className="flex items-end gap-1">
+              <div className="min-w-0 flex-1 overflow-hidden rounded-[14px] rounded-tl-[4px] bg-white">
+                <p className="bg-[#fee500] px-3 py-2 text-[0.7rem] font-extrabold">{copy.alimtalk}</p>
+                <div className="px-3 pb-3 pt-2.5 text-[0.74rem] leading-[1.55]">
+                  <p className="font-bold">{copy.title}</p>
+                  <p className="mt-2.5">{copy.greeting}</p>
+                  <p className="mt-2.5">{copy.prompt}</p>
+                  <p
+                    className={cn(
+                      "relative mt-3 rounded-md py-2 text-center text-[0.74rem] font-semibold transition-[transform,background-color] duration-150",
+                      tapping ? "scale-[0.97] bg-[#dcdcdc]" : "bg-[#f2f2f2]",
+                    )}
+                  >
+                    {copy.open}
+                    {tapping && <span aria-hidden className="daily-tap absolute left-1/2 top-1/2 size-12 rounded-full bg-[#050505]/35 ring-2 ring-white/70" />}
+                  </p>
+                </div>
               </div>
+              <span className="shrink-0 pb-0.5 text-[0.56rem] text-[#3b4a59]">{copy.time}</span>
             </div>
-            <p className="mt-1 text-right text-[0.58rem] text-[#3b4a59]">{copy.time}</p>
           </div>
         </div>
       </div>
@@ -141,7 +143,7 @@ type DemoPhase = "chat" | "tap" | "lesson";
 // How long each step of the hero demo holds before the next.
 const DEMO_HOLD: Record<DemoPhase, number> = { chat: 2600, tap: 850, lesson: 4600 };
 
-// The hero phone: today's Alimtalk arrives, a finger taps "오늘의 레슨 보기", and the lesson
+// The hero phone: today's Alimtalk arrives, a finger taps its button, and the lesson
 // page slides in, then back to the chat, on a loop. It only runs while on screen, and
 // with reduced motion it stays on the chat.
 export function HeroPhoneDemo({ className }: { className?: string }) {
@@ -168,7 +170,7 @@ export function HeroPhoneDemo({ className }: { className?: string }) {
     <div ref={ref} role="img" aria-label={dailyCopy.hero.demoLabel}>
       <IPhone
         className={className}
-        statusClassName={onLesson ? "bg-[#f47a4a] text-[#050505]" : "bg-[#bacee0] text-[#050505]"}
+        statusClassName={onLesson ? "bg-white text-[#050505]" : "bg-[#bacee0] text-[#050505]"}
       >
         <div aria-hidden className="relative h-full overflow-hidden">
           <div className={cn(slide, onLesson ? "-translate-x-1/4 opacity-60" : "translate-x-0")}>
@@ -183,7 +185,19 @@ export function HeroPhoneDemo({ className }: { className?: string }) {
   );
 }
 
-// The iOS notification banner that lands over the hero phone.
+// KakaoTalk's app icon in a notification: a dark speech bubble on yellow.
+function KakaoIcon({ className }: { className: string }) {
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center bg-[#fee500]", className)}>
+      <svg viewBox="0 0 24 22" className="h-[55%] w-[55%]" fill="#3c1e1e" aria-hidden>
+        <path d="M12 0C5.4 0 0 4.2 0 9.4c0 3.4 2.3 6.4 5.7 8l-1.2 4.3c-.1.4.3.7.6.5l5-3.3c.6.1 1.2.1 1.9.1 6.6 0 12-4.2 12-9.4S18.6 0 12 0Z" />
+      </svg>
+    </span>
+  );
+}
+
+// The iOS notification banner that lands over the hero phone: KakaoTalk's, with the
+// channel's name and the start of the message.
 export function IosNotification({ className }: { className?: string }) {
   const copy = dailyCopy.hero.notification;
 
@@ -194,7 +208,7 @@ export function IosNotification({ className }: { className?: string }) {
         className,
       )}
     >
-      <AppMark className="size-10 rounded-[10px]" cupClassName="h-6 w-5" />
+      <KakaoIcon className="size-10 rounded-[10px]" />
       <div className="min-w-0 flex-1">
         <p className="flex justify-between text-[0.82rem] font-extrabold">
           {copy.app}
@@ -206,43 +220,67 @@ export function IosNotification({ className }: { className?: string }) {
   );
 }
 
-// The lesson page that opens from the Kakao button, shown in Safari.
+// The lesson page that opens from the Kakao button, inside KakaoTalk's in-app browser:
+// the page's own top (track and date, today's expression, the pronunciation player) and
+// the start of "이럴 때 써요", the same blocks as LessonBody.
 export function LessonScreen() {
   const copy = dailyCopy.lesson.screen;
 
   return (
-    <div className="flex h-full flex-col bg-white text-[#050505]">
+    <div className={cn("flex h-full flex-col bg-white text-[#050505]", dailyWordmark.variable)}>
+      <div className="flex items-center gap-2 border-b border-[#ececec] px-3 pb-2">
+        <XMarkIcon className="size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 text-center">
+          <span className="block truncate text-[0.66rem] font-bold">{copy.pageTitle}</span>
+          <span className="flex items-center justify-center gap-0.5 text-[0.56rem] text-[#64748b]">
+            <LockClosedIcon className="size-2.5" aria-hidden />
+            {copy.url}
+          </span>
+        </span>
+        <EllipsisHorizontalIcon className="size-4 shrink-0" aria-hidden />
+      </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <div className="bg-[#f47a4a] px-4 pb-4 pt-2">
-          <p className="text-[1.7rem] font-black leading-tight [font-family:var(--font-daily-display),sans-serif] [font-weight:400]">
-            {copy.expression}
-          </p>
-          <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-[#050505] px-2.5 py-2 text-white">
-            <span className="flex size-7 items-center justify-center rounded-full bg-[#f47a4a] text-[#050505]">
-              <PlayIcon className="size-3.5" aria-hidden />
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="flex items-baseline gap-1.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[11px] w-auto" />
+            <span className="text-[10px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
+              {dailyCopy.nav.brand}
             </span>
-            <Waveform className="h-4 flex-1" />
-            <span className="text-[0.62rem] font-bold">0:03</span>
-          </div>
+          </span>
+          <span className="rounded-full bg-[#050505] px-2 py-0.5 text-[0.52rem] font-black text-white">내 계정</span>
         </div>
-        <div className="flex flex-col gap-3 px-4 py-3">
-          <div>
-            <p className="text-[0.64rem] font-extrabold text-[#d95f2d]">{copy.meaningLabel}</p>
-            <p className="text-[0.8rem] font-bold">{copy.meaning}</p>
+        <div className="flex flex-col gap-2 px-2.5">
+          <div className="rounded-[18px] bg-[#f47a4a] p-3.5">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full bg-[#050505] px-2 py-0.5 text-[0.54rem] font-black text-white">{copy.track}</span>
+              <span className="text-[0.56rem] font-bold text-[rgba(5,5,5,0.7)]">{copy.date}</span>
+            </div>
+            <p className="mt-3 text-[0.56rem] font-extrabold text-[rgba(5,5,5,0.7)]">{copy.label}</p>
+            <p className="text-[1.75rem] leading-[1.05] [font-family:var(--font-daily-display),sans-serif]">{copy.expression}</p>
+            <p className="mt-1 text-[0.72rem] font-bold">{copy.meaning}</p>
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#050505] px-2 py-1.5 text-white">
+              <span className="flex size-6 items-center justify-center rounded-full bg-[#f47a4a] text-[#050505]">
+                <PlayIcon className="size-3" aria-hidden />
+              </span>
+              <Waveform className="h-4 flex-1" />
+              <span className="text-[0.56rem] font-bold text-white/70">{copy.listen}</span>
+            </div>
+            <p className="mt-2 text-[0.58rem] font-bold text-[rgba(5,5,5,0.75)]">{copy.pronunciation}</p>
           </div>
-          <div className="rounded-xl bg-[#fff8dc] px-3 py-2.5">
-            <p className="text-[0.64rem] font-extrabold text-[#d95f2d]">{copy.nuanceLabel}</p>
-            <p className="mt-0.5 text-[0.68rem] leading-snug text-[#334155]">{copy.nuance}</p>
+          <div className="rounded-[18px] bg-[#fff8dc] p-3.5">
+            <p className="text-[0.72rem] font-black">💡 {copy.nuanceTitle}</p>
+            <p className="mt-1.5 text-[0.64rem] leading-[1.6] text-[#334155]">{copy.nuance}</p>
           </div>
-          <div>
-            <p className="mb-1.5 text-[0.64rem] font-extrabold text-[#d95f2d]">{copy.examplesLabel}</p>
-            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+          <div className="rounded-[18px] bg-[#f5f5f4] p-3.5">
+            <p className="text-[0.72rem] font-black">🗣️ {copy.examplesTitle}</p>
+            <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
               {copy.examples.map((example) => (
-                <li key={example.en} className="flex gap-2 rounded-xl border border-[#e5e7eb] px-2.5 py-2">
-                  <SpeakerWaveIcon className="mt-0.5 size-3.5 shrink-0 text-[#f47a4a]" aria-hidden />
+                <li key={example.en} className="flex gap-2 rounded-xl bg-white p-2">
+                  <SpeakerWaveIcon className="mt-0.5 size-3 shrink-0 text-[#f47a4a]" aria-hidden />
                   <span>
-                    <span className="block text-[0.68rem] font-bold leading-snug">{example.en}</span>
-                    <span className="block text-[0.6rem] text-[#64748b]">{example.ko}</span>
+                    <span className="block text-[0.64rem] font-bold leading-snug">{example.en}</span>
+                    <span className="block text-[0.56rem] text-[#64748b]">{example.ko}</span>
                   </span>
                 </li>
               ))}
@@ -250,13 +288,7 @@ export function LessonScreen() {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 border-t border-[#e5e7eb] bg-[#f7f7f8] px-3 pb-6 pt-2">
-        <span className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#e9e9eb] py-1.5 text-[0.7rem] font-semibold text-[#334155]">
-          <LockClosedIcon className="size-3" aria-hidden />
-          {copy.url}
-        </span>
-        <ArrowPathIcon className="size-4 text-[#64748b]" aria-hidden />
-      </div>
+      <div className="h-6 shrink-0 bg-white" />
     </div>
   );
 }

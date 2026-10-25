@@ -220,6 +220,27 @@ export async function requestRefund(db: SupabaseClient, customer: PaymentCustome
   return { success: true, refund: { amount: refund.amount, fullRefund: refund.full_refund } };
 }
 
+// The phrase typed to confirm, as on 1cup's own account deletion.
+const DELETE_PHRASE = "계정 삭제";
+
+const DELETE_ERRORS: Record<string, [string, number]> = {
+  "refund-open": ["진행 중인 환불 요청이 끝난 뒤에 삭제할 수 있어요.", 409],
+  "billing-stop-required": ["계정을 삭제하기 전에 자동 결제를 해지해 주세요.", 409],
+};
+
+export async function deleteAccount(db: SupabaseClient, customer: PaymentCustomer, body: Record<string, unknown>) {
+  if (body.confirmation !== DELETE_PHRASE) {
+    throw new PaymentError(`계속하려면 '${DELETE_PHRASE}'를 정확히 입력해 주세요.`, "confirmation-required");
+  }
+  const { data, error } = await db.rpc("daily_delete_account", { p_customer_id: customer.id });
+  if (error) {
+    const known = Object.keys(DELETE_ERRORS).find((code) => error.message.includes(code));
+    if (known) throw new PaymentError(DELETE_ERRORS[known][0], known, DELETE_ERRORS[known][1]);
+    throw new PaymentError("계정을 삭제하지 못했어요. 다시 시도해 주세요.", "delete-failed", 500);
+  }
+  return { success: true, result: data as string };
+}
+
 // ---------------------------------------------------------------------------
 // Admin (1cup staff)
 // ---------------------------------------------------------------------------
