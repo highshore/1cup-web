@@ -189,6 +189,14 @@ export const dailyCopy = {
       },
     ],
   },
+  // Shown only once 3+ reviews from verified customers are approved; never seeded.
+  reviews: {
+    title: "먼저 받아본\n사람들의 후기",
+    accent: "사람들의 후기",
+    verified: "인증된 구독자",
+    anonymous: "익명",
+    lessons: "레슨 {count}개 받음",
+  },
   tracks: {
     title: "두 가지 트랙 중\n골라서 받아요",
     accent: "골라서 받아요",

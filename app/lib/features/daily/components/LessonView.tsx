@@ -8,6 +8,7 @@ import { useSpeech } from "../hooks";
 import { dailyDisplay } from "../fonts";
 import { Waveform } from "./Phone";
 import { cn, displayClass, Emoji, Pill } from "./DailyUI";
+import ReviewCard from "./ReviewCard";
 import "../daily.css";
 
 const TRACK_LABEL = { business: "비즈니스 영어", tech: "테크 영어" } as const;
@@ -246,6 +247,8 @@ export function LessonPage({ lesson, isTrial, subscribeHref }: { lesson: DailyLe
             <ShareButton expression={lesson.expression} />
           </div>
         </section>
+
+        <ReviewCard />
 
         {isTrial && (
           <section className="rounded-[28px] bg-[#050505] p-6 text-white">

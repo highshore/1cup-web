@@ -1,5 +1,9 @@
 import { Metadata } from "next";
 import DailyClient from "./DailyClient";
+import { approvedReviews } from "../lib/features/daily/server/reviews";
+
+// Approved reviews are read on the server and refreshed every five minutes.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "One Cup Daily | 통역사가 매일 직접 올리는 카톡 영어",
@@ -9,6 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function DailyPage() {
-  return <DailyClient />;
+export default async function DailyPage() {
+  const reviews = await approvedReviews().catch(() => []);
+  return <DailyClient reviews={reviews} />;
 }

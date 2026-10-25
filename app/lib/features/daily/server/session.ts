@@ -156,3 +156,21 @@ export async function revokeDailySession(token: string | undefined): Promise<voi
     .eq("token_hash", sha256(token))
     .is("revoked_at", null);
 }
+
+export interface DailySessionCustomer {
+  id: string;
+  phone: string;
+  name: string | null;
+}
+
+/** The Daily customer behind a session cookie, or null when it is missing, revoked or expired. */
+export async function customerForSession(token: string | undefined): Promise<DailySessionCustomer | null> {
+  if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const { data } = await admin()
+    .from("daily_sessions")
+    .select("expires_at, revoked_at, customer:daily_customers(id, phone, name)")
+    .eq("token_hash", sha256(token))
+    .maybeSingle();
+  if (!data || data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
+  return (data as unknown as { customer: DailySessionCustomer | null }).customer;
+}
