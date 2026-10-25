@@ -5,12 +5,22 @@
 // on 1cupenglish.com, with only its SHA-256 in daily_sessions. Nothing here touches
 // public.users, phone_otp or Supabase Auth. The only shared piece is the delivery
 // channel: codes go out through the same NHN Alimtalk sender and OTP template as 1cup.
+//
+// Two kinds of session share the cookie:
+//   phone  from a phone code. Everything, including payments.
+//   link   from opening a Kakao message's button link (signInFromLink). The link can be
+//          forwarded, so it only covers what touches the reader's own learning; actions
+//          that record consent or move money ask for the phone code first, sent to the
+//          subscriber's own number (the "session" step-up below).
 import crypto from "crypto";
 import { admin } from "../../../supabase/server";
 import { alimtalkConfigured, sendOtpViaAlimtalk } from "../../../otp/alimtalk";
 
 export const DAILY_SESSION_COOKIE = "daily_session";
 export const DAILY_SESSION_DAYS = 30;
+// A message's button signs in for this long after it was sent; after that it still
+// opens the lesson, only without signing anyone in.
+const LINK_SIGNIN_DAYS = 14;
 
 const CODE_TTL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -99,6 +109,28 @@ export async function sendDailyCode(rawPhone: string, clientIp: string | null): 
 
 /** Checks the code, then signs the number in, creating its Daily customer on first use. */
 export async function verifyDailyCode(rawPhone: string, code: string): Promise<{ token: string; expiresAt: Date }> {
+  return await verifyCode(rawPhone, code);
+}
+
+/**
+ * The step-up for a link session: the code goes to the subscriber's own number, which
+ * the page never sees, so someone holding a forwarded link cannot complete it.
+ */
+export async function sendDailyCodeForSession(token: string | undefined, clientIp: string | null): Promise<void> {
+  const customer = await customerForSession(token);
+  if (!customer) throw new DailyAuthError("다시 인증해 주세요.", 401);
+  await sendDailyCode(customer.phone, clientIp);
+}
+
+export async function verifyDailyCodeForSession(token: string | undefined, code: string): Promise<{ token: string; expiresAt: Date }> {
+  const customer = await customerForSession(token);
+  if (!customer) throw new DailyAuthError("다시 인증해 주세요.", 401);
+  const session = await verifyCode(customer.phone, code);
+  await revokeDailySession(token);
+  return session;
+}
+
+async function verifyCode(rawPhone: string, code: string): Promise<{ token: string; expiresAt: Date }> {
   assertConfigured();
   const phone = normalizePhone(rawPhone);
   if (!isKoreanMobile(phone)) throw new DailyAuthError("휴대폰 번호를 다시 확인해 주세요.");
@@ -135,17 +167,46 @@ export async function verifyDailyCode(rawPhone: string, code: string): Promise<{
     .select("id")
     .single();
   if (customerError || !customer) throw new DailyAuthError("로그인하지 못했어요.", 500);
+  return await createSession(customer.id, "phone", null);
+}
 
+async function createSession(
+  customerId: string,
+  scope: "phone" | "link",
+  deliveryId: string | null,
+): Promise<{ token: string; expiresAt: Date }> {
+  const now = new Date();
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(now.getTime() + DAILY_SESSION_DAYS * 24 * 60 * 60 * 1000);
-  const { error: sessionError } = await db.from("daily_sessions").insert({
-    customer_id: customer.id,
+  const { error } = await admin().from("daily_sessions").insert({
+    customer_id: customerId,
     token_hash: sha256(token),
     expires_at: expiresAt.toISOString(),
     last_seen_at: now.toISOString(),
+    scope,
+    delivery_id: deliveryId,
   });
-  if (sessionError) throw new DailyAuthError("로그인하지 못했어요.", 500);
+  if (error) throw new DailyAuthError("로그인하지 못했어요.", 500);
   return { token, expiresAt };
+}
+
+/**
+ * Signs the browser in from a Kakao message's button link (the delivery's access token),
+ * with a link-scoped session. Returns null when the link is unknown, was never sent, or
+ * is older than LINK_SIGNIN_DAYS.
+ */
+export async function signInFromLink(accessToken: string): Promise<{ token: string; expiresAt: Date } | null> {
+  if (!/^[0-9a-f]{36}$/.test(accessToken ?? "")) return null;
+  const { data } = await admin()
+    .from("daily_deliveries")
+    .select("id, status, sent_at, subscription:daily_subscriptions(customer_id)")
+    .eq("access_token", accessToken)
+    .maybeSingle();
+  const customerId = (data as unknown as { subscription: { customer_id: string | null } | null } | null)?.subscription
+    ?.customer_id;
+  if (!data || !customerId || data.status !== "sent" || !data.sent_at) return null;
+  if (Date.now() - new Date(data.sent_at).getTime() > LINK_SIGNIN_DAYS * 24 * 60 * 60 * 1000) return null;
+  return await createSession(customerId, "link", data.id);
 }
 
 export async function revokeDailySession(token: string | undefined): Promise<void> {
@@ -161,6 +222,8 @@ export interface DailySessionCustomer {
   id: string;
   phone: string;
   name: string | null;
+  /** Signed in with a phone code rather than from a message link. */
+  verified: boolean;
 }
 
 /** The Daily customer behind a session cookie, or null when it is missing, revoked or expired. */
@@ -168,9 +231,10 @@ export async function customerForSession(token: string | undefined): Promise<Dai
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   const { data } = await admin()
     .from("daily_sessions")
-    .select("expires_at, revoked_at, customer:daily_customers(id, phone, name)")
+    .select("expires_at, revoked_at, scope, customer:daily_customers(id, phone, name)")
     .eq("token_hash", sha256(token))
     .maybeSingle();
   if (!data || data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
-  return (data as unknown as { customer: DailySessionCustomer | null }).customer;
+  const customer = (data as unknown as { customer: Omit<DailySessionCustomer, "verified"> | null }).customer;
+  return customer ? { ...customer, verified: data.scope === "phone" } : null;
 }

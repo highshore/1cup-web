@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/solid";
-import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi } from "../../lib/features/daily/api";
+import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi, signInWithLink } from "../../lib/features/daily/api";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
@@ -41,6 +41,8 @@ interface Subscription {
 
 interface BillingInfo {
   paymentsOpen: boolean;
+  // False when signed in from a message link: paying and cancelling ask for the code first.
+  verified: boolean;
   phone: string;
   subscriptions: Subscription[];
   products: Product[];
@@ -107,6 +109,9 @@ export default function SubscribeClient() {
   }, []);
 
   useEffect(() => {
+    // The trial-ended message and the lesson page link here with their delivery token.
+    const linkToken = new URLSearchParams(window.location.search).get("t");
+    if (linkToken) void signInWithLink(linkToken);
     void load();
   }, [load]);
 
@@ -158,8 +163,12 @@ export default function SubscribeClient() {
     try {
       await dailyApi("cancel-renewal", { track: target });
       await load();
-    } catch {
-      setError("해지하지 못했어요. 다시 시도해 주세요.");
+    } catch (e) {
+      setError(
+        e instanceof DailyApiError && e.code === "verify-required"
+          ? "해지 전에 아래에서 본인 확인을 해 주세요."
+          : "해지하지 못했어요. 다시 시도해 주세요.",
+      );
     }
   };
 
@@ -294,6 +303,11 @@ export default function SubscribeClient() {
                 </p>
               )}
 
+              {!info.verified ? (
+                <div className="mt-5">
+                  <PhoneVerification maskedPhone={info.phone} onVerified={load} />
+                </div>
+              ) : (
               <button
                 type="button"
                 disabled={!selected || blocked || busy}
@@ -305,6 +319,7 @@ export default function SubscribeClient() {
               >
                 {selected ? `₩${formatKrw(selected.amount)} 결제하기` : "결제하기"}
               </button>
+              )}
               <p className="mt-2 text-center text-[0.8rem] font-semibold text-[#64748b]">{pricing.note.split(" 무료 체험")[0]}</p>
             </div>
           </>

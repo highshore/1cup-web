@@ -11,8 +11,23 @@ export class DailyApiError extends Error {
   }
 }
 
+// A sign-in from a message link in flight; every other call waits for it, so a page
+// that loads data on mount sees the session the link just created.
+let linkSignIn: Promise<unknown> = Promise.resolve();
+
+/** Signs in from a Kakao message's button link (its delivery token). Never throws. */
+export function signInWithLink(token: string): Promise<unknown> {
+  linkSignIn = request("link-signin", { token }).catch(() => undefined);
+  return linkSignIn;
+}
+
 // Everything goes through /api/daily, which holds the Daily session in an httpOnly cookie.
 export async function dailyApi<T>(action: string, body: Record<string, unknown> = {}): Promise<T> {
+  await linkSignIn;
+  return await request<T>(action, body);
+}
+
+async function request<T>(action: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`/api/daily/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

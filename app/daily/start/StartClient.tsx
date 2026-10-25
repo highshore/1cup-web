@@ -16,6 +16,8 @@ import "../../lib/features/daily/daily.css";
 interface StartInfo {
   open: boolean;
   phone: string | null;
+  // False when signed in from a message link: starting a trial asks for the code first.
+  verified: boolean;
   name: string | null;
   usedTrialTracks: string[];
   liveTracks: string[];
@@ -47,6 +49,7 @@ const ERRORS: Record<string, string> = {
   "consent-required": "필수 항목에 모두 동의해 주세요.",
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
   "login-required": "인증이 만료됐어요. 휴대폰 번호를 다시 인증해 주세요.",
+  "verify-required": "신청 전에 본인 확인을 한 번 해 주세요.",
 };
 
 const TRACKS = dailyCopy.tracks.items;
@@ -109,6 +112,7 @@ export default function StartClient() {
       const code = e instanceof DailyApiError ? e.code : "";
       setError(ERRORS[code] ?? "신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
       if (code === "login-required") setInfo(null);
+      if (code === "verify-required") void loadInfo();
     } finally {
       setBusy(false);
     }
@@ -200,6 +204,13 @@ export default function StartClient() {
             <div className="h-[88px] animate-pulse rounded-[22px] bg-white/70" />
           ) : info === null ? (
             <PhoneVerification onVerified={loadInfo} />
+          ) : info && !info.verified && info.phone ? (
+            <>
+              <PhoneVerification maskedPhone={info.phone} onVerified={loadInfo} />
+              <button type="button" onClick={signOut} className="mt-2.5 text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
+                다른 번호로
+              </button>
+            </>
           ) : (
             <div className="rounded-[22px] bg-white p-5">
               <div className="flex items-center gap-2.5">

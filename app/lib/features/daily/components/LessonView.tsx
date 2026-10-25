@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signInWithLink } from "../api";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
 import { useSpeech } from "../hooks";
@@ -233,9 +234,30 @@ function ShareButton({ expression }: { expression: string }) {
   );
 }
 
-export function LessonPage({ lesson, isTrial, subscribeHref }: { lesson: DailyLessonContent; isTrial: boolean; subscribeHref: string }) {
+// Opening a message's button signs the browser in as the subscriber (a link-scoped
+// session, see server/session.ts). Render it before anything that loads Daily data on
+// mount: effects run in tree order, and every later dailyApi call waits for this one.
+function LinkSignIn({ token }: { token: string }) {
+  useEffect(() => {
+    void signInWithLink(token);
+  }, [token]);
+  return null;
+}
+
+export function LessonPage({
+  lesson,
+  isTrial,
+  subscribeHref,
+  linkToken,
+}: {
+  lesson: DailyLessonContent;
+  isTrial: boolean;
+  subscribeHref: string;
+  linkToken: string;
+}) {
   return (
     <div className={cn("daily-page min-h-[80vh] bg-white px-4 pb-20 pt-6 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
+      <LinkSignIn token={linkToken} />
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
         <LessonBody lesson={lesson} />
 
@@ -272,9 +294,10 @@ export function LessonPage({ lesson, isTrial, subscribeHref }: { lesson: DailyLe
   );
 }
 
-export function ReviewPage({ lessons }: { lessons: DailyLessonContent[] }) {
+export function ReviewPage({ lessons, linkToken }: { lessons: DailyLessonContent[]; linkToken: string }) {
   return (
     <div className={cn("daily-page min-h-[80vh] bg-white px-4 pb-20 pt-8 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
+      <LinkSignIn token={linkToken} />
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
         <div className="text-center min-[900px]:text-left">
           <Emoji className="text-[2.6rem]">🧠</Emoji>

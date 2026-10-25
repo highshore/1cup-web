@@ -4,7 +4,8 @@
 //   tick       pg_cron, every 5 minutes. Sends due lessons, Saturday reviews and
 //              trial-ended notices. Authorized by the Vault-held daily_scheduler_secret.
 //   start-info   Signed-in Daily customer (x-daily-session, forwarded by the Next.js
-//                /api/daily route from its httpOnly cookie). What the signup page needs:
+//                /api/daily route from its httpOnly cookie; a session from a message
+//                link may read but not start trials or pay, see NEEDS_PHONE_CODE). What the signup page needs:
 //                whether trials are open to them, the masked phone, and which tracks
 //                they already used or hold.
 //   start-trial  Signed-in Daily customer. Records consent, uses up the phone's free
@@ -86,7 +87,14 @@ interface Customer {
   id: string;
   phone: string;
   name: string | null;
+  // Signed in with a phone code, not from a message link (see the
+  // 20261026010000_daily_link_sessions migration).
+  verified: boolean;
 }
+
+// What a link session may not do: these record consent or move money, and a message
+// link can be forwarded. The page asks for the phone code, then retries.
+const NEEDS_PHONE_CODE = new Set(["start-trial", "checkout-window", "cancel-renewal"]);
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -99,11 +107,12 @@ async function loadCustomer(req: Request): Promise<Customer | null> {
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
   const { data } = await admin()
     .from("daily_sessions")
-    .select("expires_at, revoked_at, customer:daily_customers(id, phone, name)")
+    .select("expires_at, revoked_at, scope, customer:daily_customers(id, phone, name)")
     .eq("token_hash", await sha256Hex(token))
     .maybeSingle();
   if (!data || data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
-  return (data as unknown as { customer: Customer | null }).customer;
+  const customer = (data as unknown as { customer: Omit<Customer, "verified"> | null }).customer;
+  return customer ? { ...customer, verified: data.scope === "phone" } : null;
 }
 
 async function trialsOpenFor(customer: Customer): Promise<boolean> {
@@ -130,6 +139,7 @@ async function handleStartInfo(customer: Customer) {
   return {
     open: open && (await templateCodes(db)) !== null,
     phone: maskPhone(customer.phone),
+    verified: customer.verified,
     name: customer.name,
     usedTrialTracks: (claims ?? []).map((c) => c.track),
     liveTracks: (live ?? []).map((s) => s.track),
@@ -299,6 +309,9 @@ Deno.serve(async (req) => {
       case "cancel-renewal": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
+        if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
+          return json(req, { success: false, errorCode: "verify-required" }, 403);
+        }
         const db = admin();
         try {
           const result = action === "billing-info"
@@ -320,6 +333,9 @@ Deno.serve(async (req) => {
       case "start-trial": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
+        if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
+          return json(req, { success: false, errorCode: "verify-required" }, 403);
+        }
         if (action === "start-info") return json(req, { success: true, ...(await handleStartInfo(customer)) });
         try {
           return json(req, { success: true, ...(await handleStartTrial(customer, body)) });
