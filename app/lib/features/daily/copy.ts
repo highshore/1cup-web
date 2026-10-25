@@ -140,29 +140,52 @@ export const dailyCopy = {
       ],
     },
   },
-  // Relatedness (RAMP): a person behind every lesson, and people to use it with.
-  // The field note is a content promise: each lesson carries one from the interpreter.
+  // Relatedness (RAMP): other learners are visible where the lesson happens.
+  // Product promises: the shared sentence wall with ☕ reactions, a daily 통역사 PICK,
+  // real "together" numbers that appear only once 10+ people are behind them (never
+  // invented), and the invite reward (both get 7 days; terms 제5조의2).
   relatedness: {
-    title: "혼자 하는 공부처럼\n느껴지지 않게",
-    accent: "느껴지지 않게",
-    items: [
+    title: "같은 표현으로\n함께 쓰는 사람들",
+    accent: "함께 쓰는 사람들",
+    sub: "레슨을 읽고 끝내지 않아요. 같은 날 같은 표현을 받은 사람들과 문장으로 이어져요.",
+    feed: {
+      label: "예시 화면",
+      heading: "오늘의 표현",
+      expression: "circle back",
+      together: "오늘 아침 비즈니스 트랙에서 같은 표현을 받은 사람 128명",
+      prompt: "오늘 표현으로 한 문장 써보기…",
+      send: "올리기",
+      pick: "통역사 PICK",
+      sentences: [
+        { name: "익명의 PM", initial: "P", text: "Let's circle back on the timeline after QA.", cups: 12, pick: true },
+        { name: "마케터 J", initial: "J", text: "I'll circle back with the final numbers by Friday.", cups: 8, pick: false },
+        { name: "익명", initial: "?", text: "Can we circle back to the hiring plan next sprint?", cups: 5, pick: false },
+      ],
+    },
+    points: [
       {
-        emoji: "🗣️",
-        label: "말하는 사람",
-        title: "통역사의 현장 메모",
-        detail: "이 표현이 실제 회의에서 어떤 장면에 나왔는지, 통역사가 레슨마다 한 줄로 남겨요.",
+        emoji: "✍️",
+        label: "글 쓰는 손",
+        title: "함께 쓰는 문장",
+        detail: "퀴즈를 풀고 나면 오늘 표현으로 한 문장을 써요. 같은 표현으로 다른 사람들이 쓴 문장을 보고 ☕로 응원해요.",
+      },
+      {
+        emoji: "🏆",
+        label: "트로피",
+        title: "통역사 PICK",
+        detail: "통역사가 매일 잘 쓴 문장을 골라 다음 날 레슨에 소개해요. 이름을 밝힐지 익명으로 할지는 직접 정해요.",
+      },
+      {
+        emoji: "📊",
+        label: "막대 그래프",
+        title: "같이 푼 퀴즈",
+        detail: "같은 날 같은 퀴즈를 푼 사람들의 정답률과 가장 헷갈린 보기를 보여줘요. 10명 이상 모였을 때부터, 실제 숫자로만요.",
       },
       {
         emoji: "💌",
         label: "편지",
-        title: "동료에게 보내기",
-        detail: "오늘의 표현 카드를 카톡으로 바로 보내고, 다음 회의에서 같이 써봐요.",
-      },
-      {
-        emoji: "🤝",
-        label: "악수",
-        title: "같이 시작하기",
-        detail: "팀이나 친구와 같은 트랙을 받으면, 같은 날 같은 표현으로 이야기할 수 있어요.",
+        title: "친구 초대하면 둘 다 7일 더",
+        detail: "초대한 친구가 구독하면 두 사람 모두 7일을 더 받아요. 오늘의 표현 카드도 카톡으로 바로 보낼 수 있어요.",
       },
     ],
   },
@@ -241,6 +264,10 @@ export const dailyCopy = {
       {
         q: "받는 시간을 바꾸고 싶어요",
         a: "내 구독 페이지에서 받는 시간을 언제든 바꿀 수 있어요. 바꾼 시간은 다음 레슨부터 적용돼요.",
+      },
+      {
+        q: "친구를 초대하면 혜택이 있나요?",
+        a: "네. 내 초대 링크로 들어온 친구가 처음 구독하거나 이용권을 결제하면, 두 사람 모두 7일을 더 받아요. 정기구독은 다음 결제일이 7일 늦춰지고, 이용권은 끝나는 날이 7일 늘어나요.",
       },
       {
         q: "선물할 수 있나요?",
