@@ -1,8 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useI18n } from "../../../i18n/I18nProvider";
 import { DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH } from "../constants";
+import { dailyCopy } from "../copy";
 
 export const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
@@ -127,7 +127,6 @@ export function TrialButton({
   tone?: keyof typeof trialTone;
   className?: string;
 }) {
-  const { t } = useI18n();
   const base = cn(
     "inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl px-6 text-[1.05rem] font-black",
     trialTone[tone],
@@ -146,7 +145,7 @@ export function TrialButton({
     <button type="button" disabled aria-disabled className={cn(base, "cursor-not-allowed opacity-90")}>
       {label}
       <span className="rounded-full bg-white/20 px-2 py-0.5 text-[0.72rem] font-extrabold">
-        {t.daily.soon}
+        {dailyCopy.soon}
       </span>
     </button>
   );

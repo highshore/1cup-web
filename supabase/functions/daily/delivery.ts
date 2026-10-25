@@ -392,6 +392,34 @@ export async function sendClaimed(
 }
 
 // ---------------------------------------------------------------------------
+// The free lesson, sent the moment someone finishes signing up
+// ---------------------------------------------------------------------------
+
+/** The lesson a new trial gets: the latest ready one on or before today (KST). */
+export async function trialLessonFor(db: SupabaseClient, track: Track, now = new Date()): Promise<Lesson | null> {
+  return await lessonFor(db, track, kstDate(now), true);
+}
+
+/**
+ * Sends a new trial its lesson now. Uses the same claim-then-send path as the tick, so
+ * if a tick reaches this subscription at the same moment only one of them sends.
+ * Returns false when it could not be sent; the next tick slot then retries it, since a
+ * trial with no sent lesson is planned as a lesson, not as the trial-ended notice.
+ */
+export async function sendTrialLesson(
+  db: SupabaseClient,
+  sub: Subscription,
+  lesson: Lesson,
+  codes: TemplateCodes,
+  now = new Date(),
+): Promise<boolean> {
+  const claimed = await claim(db, [{ sub, kind: "lesson", forDate: kstDate(now), lesson }]);
+  if (claimed.length === 0) return false;
+  const outcome = await sendClaimed(db, claimed, codes);
+  return outcome.sent === 1;
+}
+
+// ---------------------------------------------------------------------------
 // The scheduler tick
 // ---------------------------------------------------------------------------
 

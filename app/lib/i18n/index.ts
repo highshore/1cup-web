@@ -1,7 +1,6 @@
 import adminAnalytics from "./admin_analytics";
 import adminCancellations from "./admin_cancellations";
 import adminGifts from "./admin_gifts";
-import daily from "./daily";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
 import ko from "./locales/ko";
@@ -15,7 +14,6 @@ export type SupportedLocale = "en" | "ko";
 const dictionaries = {
   en: {
     ...en,
-    daily: daily.en,
     notFound: notFound.en,
     payment: payment.en,
     speakingCenter: speakingCenter.en,
@@ -57,7 +55,6 @@ const dictionaries = {
   },
   ko: {
     ...ko,
-    daily: daily.ko,
     notFound: notFound.ko,
     payment: payment.ko,
     speakingCenter: speakingCenter.ko,

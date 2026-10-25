@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../contexts/auth_context";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { dailyDisplay } from "../fonts";
+import { dailyCopy } from "../copy";
+import { dailyWordmark } from "../fonts";
 import { cn } from "./DailyUI";
 import "../daily.css";
 
 // Replaces the global NewNavbar on /daily: the 1cup logo stays, the rest is Daily's own.
 export default function DailyNavbar() {
-  const { t, locale, setLocale } = useI18n();
   const { currentUser } = useAuth();
-  const copy = t.daily.nav;
+  const copy = dailyCopy.nav;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -30,7 +29,7 @@ export default function DailyNavbar() {
     <nav
       className={cn(
         "daily-nav fixed inset-x-0 top-0 z-50 border-b bg-white/95 backdrop-blur-[14px] transition-colors",
-        dailyDisplay.variable,
+        dailyWordmark.variable,
         scrolled ? "border-[#e5e7eb]" : "border-transparent",
       )}
     >
@@ -39,7 +38,7 @@ export default function DailyNavbar() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
           <span aria-hidden className="h-4 w-px bg-[#cbd5e1]" />
-          <span className="text-[1.05rem] tracking-[0.02em] text-[#050505] [font-family:var(--font-daily-display),sans-serif]">
+          <span className="text-[1.3rem] font-semibold uppercase leading-none tracking-[0.03em] text-[#050505] [font-family:var(--font-daily-wordmark),sans-serif]">
             {copy.brand}
           </span>
         </Link>
@@ -58,13 +57,6 @@ export default function DailyNavbar() {
         </ul>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setLocale(locale === "en" ? "ko" : "en")}
-            className="hidden rounded-full px-3 py-2 text-[0.82rem] font-bold text-[#64748b] hover:text-[#050505] min-[1000px]:inline-flex"
-          >
-            {locale === "en" ? "한국어" : "EN"}
-          </button>
           <Link
             href="/"
             className="hidden rounded-full px-3 py-2 text-[0.88rem] font-bold text-[#334155] hover:text-[#050505] min-[1000px]:inline-flex"
@@ -80,7 +72,7 @@ export default function DailyNavbar() {
             </Link>
           )}
           <a
-            href="#pricing"
+            href="/daily#pricing"
             onClick={close}
             className="inline-flex h-10 items-center rounded-full bg-[#f47a4a] px-4 text-[0.9rem] font-black text-[#050505]"
           >
@@ -127,13 +119,6 @@ export default function DailyNavbar() {
                 {copy.login}
               </Link>
             )}
-            <button
-              type="button"
-              onClick={() => setLocale(locale === "en" ? "ko" : "en")}
-              className="ml-auto rounded-full px-3 py-2.5 text-[#64748b]"
-            >
-              {locale === "en" ? "한국어" : "EN"}
-            </button>
           </div>
         </div>
       )}
