@@ -346,22 +346,26 @@ export default function DailyClient() {
         </ul>
       </Panel>
 
-      {/* Relatedness: a person behind every lesson, and people to use it with */}
+      {/* Relatedness: other learners, visible where the lesson happens */}
       <Panel className="bg-[#050505] text-white">
         <h2 className={h2Class}>
           <Headline text={copy.relatedness.title} accent={copy.relatedness.accent} accentClassName="text-[#f47a4a]" />
         </h2>
-        <ul className="m-0 mt-9 grid list-none gap-3 p-0 min-[900px]:grid-cols-3">
-          {copy.relatedness.items.map((item) => (
-            <li key={item.title} className="rounded-[24px] bg-white/[0.08] p-6">
-              <Emoji label={item.label} className="text-[2.4rem]">
-                {item.emoji}
-              </Emoji>
-              <p className="mt-4 text-[1.12rem] font-black">{item.title}</p>
-              <p className="mt-1.5 text-[0.9rem] font-semibold leading-relaxed text-white/70">{item.detail}</p>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-3 text-[1rem] font-semibold text-white/70">{copy.relatedness.sub}</p>
+        <div className="mt-9 grid gap-5 min-[900px]:grid-cols-[320px_minmax(0,1fr)] min-[900px]:items-start">
+          <SentenceWall />
+          <ul className="m-0 grid list-none gap-3 p-0 min-[600px]:grid-cols-2">
+            {copy.relatedness.points.map((point) => (
+              <li key={point.title} className="rounded-[24px] bg-white/[0.08] p-5">
+                <Emoji label={point.label} className="text-[2.1rem]">
+                  {point.emoji}
+                </Emoji>
+                <p className="mt-3 text-[1.02rem] font-black leading-snug">{point.title}</p>
+                <p className="mt-1.5 text-[0.84rem] font-semibold leading-relaxed text-white/65">{point.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </Panel>
 
       {/* P11: pricing */}
@@ -459,6 +463,53 @@ export default function DailyClient() {
       </Panel>
 
       <StickyBar visible={pastHero && !reachedPricing} />
+    </div>
+  );
+}
+
+// An example of the shared sentence wall on the lesson page (labelled as an example:
+// the sentences, names and the count are illustrations, not real people's posts).
+function SentenceWall() {
+  const feed = dailyCopy.relatedness.feed;
+  return (
+    <div className="relative mx-auto w-full max-w-[340px] rounded-[28px] bg-white p-5 text-left text-[#050505] shadow-[0_24px_60px_-28px_rgba(0,0,0,0.6)]">
+      <span className="absolute right-4 top-4 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[0.7rem] font-bold text-[#64748b]">
+        {feed.label}
+      </span>
+      <p className="text-[0.75rem] font-extrabold text-[#d95f2d]">{feed.heading}</p>
+      <p className="text-[1.5rem] font-black leading-tight">{feed.expression}</p>
+      <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#fff8dc] px-3 py-2 text-[0.78rem] font-bold text-[#475569]">
+        <Emoji className="text-[1rem]">☕</Emoji>
+        {feed.together}
+      </p>
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#e5e7eb] px-3 py-2">
+        <span className="flex-1 text-[0.8rem] text-[#94a3b8]">{feed.prompt}</span>
+        <span className="rounded-lg bg-[#050505] px-2.5 py-1 text-[0.72rem] font-black text-white">{feed.send}</span>
+      </div>
+      <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+        {feed.sentences.map((sentence) => (
+          <li
+            key={sentence.text}
+            className={cn("rounded-2xl px-3 py-2.5", sentence.pick ? "bg-[#fff1ea] ring-1 ring-[#f47a4a]/40" : "bg-[#f5f5f4]")}
+          >
+            <div className="flex items-center gap-2 text-[0.72rem] font-bold text-[#64748b]">
+              <span className="flex size-5 items-center justify-center rounded-full bg-[#050505] text-[0.6rem] font-black text-white">
+                {sentence.initial}
+              </span>
+              {sentence.name}
+              {sentence.pick && (
+                <span className="ml-auto rounded-full bg-[#f47a4a] px-2 py-0.5 text-[0.65rem] font-black text-[#050505]">
+                  {feed.pick}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[0.86rem] font-bold leading-snug">
+              <Highlighted text={sentence.text} highlight={feed.expression} />
+            </p>
+            <p className="mt-1 text-right text-[0.72rem] font-bold text-[#64748b]">☕ {sentence.cups}</p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
