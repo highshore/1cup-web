@@ -168,7 +168,7 @@ export default function StartClient() {
                   )}
                 >
                   <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#f5f5f4] text-[1.9rem]">
-                    <Emoji label={item.emojiLabel} motion={selected ? "wiggle" : "none"}>
+                    <Emoji label={item.emojiLabel} motion={selected ? "animate" : "none"}>
                       {item.emoji}
                     </Emoji>
                   </span>

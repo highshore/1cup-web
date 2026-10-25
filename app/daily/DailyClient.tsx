@@ -74,7 +74,7 @@ export default function DailyClient() {
           ref={heroRef}
           className="mx-auto grid w-full max-w-[720px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_290px] min-[900px]:gap-8"
         >
-          <div className="flex flex-col items-start">
+          <div className="flex flex-col items-center text-center min-[900px]:items-start min-[900px]:text-left">
             <span className="relative mb-4 inline-block text-[2.6rem]">
               <Emoji>☕</Emoji>
             </span>
@@ -89,7 +89,7 @@ export default function DailyClient() {
               {copy.hero.lead}
             </p>
             <TrialButton label={copy.hero.cta} className="mt-7 w-full min-[520px]:w-auto" />
-            <ul className="m-0 mt-4 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[0.88rem] font-bold">
+            <ul className="m-0 mt-4 flex list-none flex-wrap justify-center gap-x-4 gap-y-1 p-0 text-[0.88rem] font-bold min-[900px]:justify-start">
               {copy.hero.trust.map((item) => (
                 <li key={item} className="flex items-center gap-1">
                   <CheckIcon className="size-4" aria-hidden />
@@ -118,8 +118,8 @@ export default function DailyClient() {
           className="-z-10 object-cover opacity-80"
         />
         <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0)_30%,rgba(5,5,5,0.85))] min-[900px]:bg-[linear-gradient(90deg,rgba(5,5,5,0.85),rgba(5,5,5,0.1)_70%)]" />
-        <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col justify-end px-4 py-12 min-[900px]:min-h-[560px] min-[900px]:justify-center">
-          <Pill className="self-start bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
+        <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
+          <Pill className="bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
           <h2 className={cn(h2Class, "mt-4 text-white min-[900px]:text-[3.5rem]")}>
             <Headline text={copy.photo.title} />
           </h2>
@@ -138,7 +138,7 @@ export default function DailyClient() {
             <li
               key={item}
               className={cn(
-                "max-w-[30rem] rounded-[22px] bg-white/10 px-5 py-4 text-[1rem] font-bold leading-snug",
+                "max-w-[30rem] rounded-[22px] bg-white/10 px-5 py-4 text-left text-[1rem] font-bold leading-snug",
                 index % 2 === 1 ? "self-end rounded-br-[6px]" : "rounded-bl-[6px]",
               )}
             >
@@ -147,7 +147,7 @@ export default function DailyClient() {
           ))}
         </ul>
         <div className="mt-14 flex flex-col items-center text-center">
-          <Emoji motion="float" className="text-[2.4rem]">👇</Emoji>
+          <Emoji className="text-[2.4rem]">👇</Emoji>
           <h2 className={cn(h2Class, "mt-3")}>
             <Headline text={copy.pain.goalTitle} accent={copy.pain.goalAccent} accentClassName="text-[#f47a4a]" />
           </h2>
@@ -157,7 +157,7 @@ export default function DailyClient() {
             <li
               key={goal}
               className={cn(
-                "max-w-[30rem] rounded-[22px] bg-[#f47a4a] px-5 py-4 text-[1rem] font-black leading-snug text-[#050505]",
+                "max-w-[30rem] rounded-[22px] bg-[#f47a4a] px-5 py-4 text-left text-[1rem] font-black leading-snug text-[#050505]",
                 index % 2 === 0 ? "self-end rounded-br-[6px]" : "rounded-bl-[6px]",
               )}
             >
@@ -230,7 +230,7 @@ export default function DailyClient() {
         <h2 className={h2Class}>
           <Headline text={copy.beforeAfter.title} accent={copy.beforeAfter.accent} accentClassName="text-[#f47a4a]" />
         </h2>
-        <ul className="m-0 mt-9 flex list-none flex-col gap-4 p-0">
+        <ul className="m-0 mt-9 flex list-none flex-col gap-4 p-0 text-left">
           {copy.beforeAfter.pairs.map((pair) => (
             <li key={pair.after} className="grid gap-2 min-[900px]:grid-cols-2 min-[900px]:gap-3">
               <div className="rounded-[20px] bg-white/[0.08] px-5 py-4">
@@ -260,7 +260,7 @@ export default function DailyClient() {
             const Icon = sceneIcons[scene.icon as keyof typeof sceneIcons];
             return (
               <li key={scene.title} className="rounded-[24px] bg-white p-5">
-                <span className="flex size-11 items-center justify-center rounded-2xl bg-[#050505] text-[#f47a4a]">
+                <span className="flex size-11 items-center justify-center rounded-2xl bg-[#050505] text-[#f47a4a] max-[899px]:mx-auto">
                   <Icon className="size-6" aria-hidden />
                 </span>
                 <p className="mt-4 text-[1.1rem] font-black">{scene.title}</p>
@@ -269,6 +269,28 @@ export default function DailyClient() {
             );
           })}
         </ul>
+      </Panel>
+
+      {/* Mastery: progress people can see */}
+      <Panel>
+        <h2 className={h2Class}>
+          <Headline text={copy.mastery.title} accent={copy.mastery.accent} accentClassName="text-[#f47a4a]" />
+        </h2>
+        <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.mastery.sub}</p>
+        <div className="mt-9 grid gap-4 min-[900px]:grid-cols-[minmax(0,1fr)_280px] min-[900px]:items-center">
+          <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
+            {copy.mastery.steps.map((step) => (
+              <li key={step.title} className="rounded-[24px] bg-[#f5f5f4] p-5">
+                <Emoji label={step.label} className="text-[2.2rem]">
+                  {step.emoji}
+                </Emoji>
+                <p className="mt-3 text-[1.08rem] font-black">{step.title}</p>
+                <p className="mt-1 text-[0.86rem] font-semibold leading-snug text-[#64748b]">{step.detail}</p>
+              </li>
+            ))}
+          </ul>
+          <ProgressCard />
+        </div>
       </Panel>
 
       {/* P9: tracks */}
@@ -288,7 +310,7 @@ export default function DailyClient() {
               <div className="p-6">
                 <h3 className="text-[1.45rem] font-black">{track.title}</h3>
                 <p className="mt-1 text-[0.98rem] font-semibold text-[#475569]">{track.tagline}</p>
-                <div className="mt-5 flex items-center gap-3">
+                <div className="mt-5 flex items-center gap-3 max-[899px]:justify-center">
                   <Pill className="bg-[#f47a4a] text-[#050505]">{copy.tracks.free}</Pill>
                   <span className="text-[0.92rem] font-bold text-[#475569]">
                     {copy.tracks.price.replace("{price}", price)}
@@ -302,14 +324,14 @@ export default function DailyClient() {
 
       {/* P10: founder credentials — no name or photo by design */}
       <Panel id="founder" className="bg-[#fff8dc]">
-        <Emoji className="text-[2.6rem]">🎙️</Emoji>
+        <Emoji className="text-[2.6rem]">🗣️</Emoji>
         <div className="mt-4">
           <Pill className="bg-[#050505] text-white">{copy.founder.label}</Pill>
         </div>
         <h2 className={cn(displayClass, "mt-4 text-[1.65rem] leading-[1.3] min-[900px]:text-[2.6rem]")}>
           <Headline text={copy.founder.title} accent={copy.founder.accent} accentClassName="text-[#d95f2d]" />
         </h2>
-        <ul className="m-0 mt-8 grid list-none gap-2.5 p-0 min-[900px]:grid-cols-2">
+        <ul className="m-0 mt-8 grid list-none gap-2.5 p-0 text-left min-[900px]:grid-cols-2">
           {copy.founder.credentials.map((credential) => {
             const Icon = credentialIcons[credential.icon as keyof typeof credentialIcons];
             return (
@@ -324,6 +346,24 @@ export default function DailyClient() {
         </ul>
       </Panel>
 
+      {/* Relatedness: a person behind every lesson, and people to use it with */}
+      <Panel className="bg-[#050505] text-white">
+        <h2 className={h2Class}>
+          <Headline text={copy.relatedness.title} accent={copy.relatedness.accent} accentClassName="text-[#f47a4a]" />
+        </h2>
+        <ul className="m-0 mt-9 grid list-none gap-3 p-0 min-[900px]:grid-cols-3">
+          {copy.relatedness.items.map((item) => (
+            <li key={item.title} className="rounded-[24px] bg-white/[0.08] p-6">
+              <Emoji label={item.label} className="text-[2.4rem]">
+                {item.emoji}
+              </Emoji>
+              <p className="mt-4 text-[1.12rem] font-black">{item.title}</p>
+              <p className="mt-1.5 text-[0.9rem] font-semibold leading-relaxed text-white/70">{item.detail}</p>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
       {/* P11: pricing */}
       <Panel id="pricing" className="bg-[#f47a4a]">
         <div ref={pricingRef}>
@@ -334,13 +374,13 @@ export default function DailyClient() {
           <p className="mt-3 text-[1rem] font-semibold text-[rgba(5,5,5,0.78)]">{copy.pricing.trial}</p>
           <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
 
-          <div className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-9">
+          <div className="mt-8 rounded-[28px] bg-white p-6 text-left min-[900px]:p-9">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[1.15rem] font-black">{copy.pricing.subscription.name}</p>
               <Pill className="bg-[#050505] text-white">{copy.pricing.subscription.badge}</Pill>
             </div>
             <div className="mt-5 flex items-center gap-4 rounded-[20px] bg-[#fff8dc] px-5 py-4">
-              <Emoji motion="float" className="text-[2.4rem]">☕</Emoji>
+              <Emoji className="text-[2.4rem]">☕</Emoji>
               <div>
                 <p className="text-[1.02rem] font-black leading-snug">{copy.pricing.subscription.espresso}</p>
                 <p className="mt-0.5 flex items-baseline gap-1.5">
@@ -361,7 +401,7 @@ export default function DailyClient() {
             </ul>
           </div>
 
-          <div className="mt-3 rounded-[28px] bg-white/90 p-6 min-[900px]:p-9">
+          <div className="mt-3 rounded-[28px] bg-white/90 p-6 text-left min-[900px]:p-9">
             <p className="text-[1rem] font-black">{copy.pricing.passes.title}</p>
             <ul className="m-0 mt-4 grid list-none gap-2 p-0 min-[600px]:grid-cols-3">
               {DAILY_PASSES.map((pass) => (
@@ -390,7 +430,7 @@ export default function DailyClient() {
         <h2 className={h2Class}>{copy.faq.title}</h2>
         <div className="mt-8 flex flex-col gap-3">
           {copy.faq.items.map((item) => (
-            <details key={item.q} className="daily-faq group rounded-[20px] bg-[#f5f5f4]">
+            <details key={item.q} className="daily-faq group rounded-[20px] bg-[#f5f5f4] text-left">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[1.02rem] font-extrabold">
                 {item.q}
                 <PlusIcon className="daily-faq-icon size-5 shrink-0 transition-transform duration-200" aria-hidden />
@@ -406,9 +446,53 @@ export default function DailyClient() {
             {copy.pricing.terms}
           </a>
         </p>
+        <p className="mt-2 text-center text-[0.75rem] font-semibold text-[#94a3b8]">
+          <a
+            href="https://googlefonts.github.io/noto-emoji-animation/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2"
+          >
+            {copy.emojiCredit}
+          </a>
+        </p>
       </Panel>
 
       <StickyBar visible={pastHero && !reachedPricing} />
+    </div>
+  );
+}
+
+// An example of the progress view (labelled as an example; not anyone's real numbers).
+function ProgressCard() {
+  const card = dailyCopy.mastery.card;
+  return (
+    <div className="relative mx-auto w-full max-w-[300px] rounded-[28px] bg-[#050505] p-6 text-left text-white shadow-[0_24px_60px_-28px_rgba(5,5,5,0.6)]">
+      <span className="absolute right-5 top-5 rounded-full bg-white/10 px-2.5 py-1 text-[0.7rem] font-bold text-white/70">
+        {card.label}
+      </span>
+      <p className="flex items-center gap-2 text-[1.6rem] font-black">
+        <Emoji className="text-[2rem]">🔥</Emoji>
+        {card.streak}
+      </p>
+      <ol className="m-0 mt-4 flex list-none justify-between p-0">
+        {card.days.map((day) => (
+          <li key={day} className="flex flex-col items-center gap-1.5">
+            <span className="flex size-9 items-center justify-center rounded-full bg-[#f47a4a] text-[#050505]">
+              <CheckIcon className="size-4" strokeWidth={3} aria-hidden />
+            </span>
+            <span className="text-[0.72rem] font-bold text-white/60">{day}</span>
+          </li>
+        ))}
+      </ol>
+      <dl className="m-0 mt-5 flex flex-col gap-2.5 border-t border-white/10 pt-4">
+        {card.rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between text-[0.9rem]">
+            <dt className="font-semibold text-white/70">{row.label}</dt>
+            <dd className="m-0 font-black">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH } from "../constants";
 import { dailyCopy } from "../copy";
+import { usePrefersReducedMotion } from "../hooks";
 
 export const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
@@ -41,31 +42,54 @@ export function Headline({
   );
 }
 
-// Native emoji with a periodic wiggle; decorative unless a label is given.
+// Google's Noto Animated Emoji (https://googlefonts.github.io/noto-emoji-animation/,
+// CC BY 4.0, credited on the page), served from Google's font CDN like Roundy does.
+// Sized by the surrounding font-size. Falls back to the native emoji when the
+// animation does not exist or fails to load, and under reduced motion. motion="none"
+// always uses the still native emoji, for small inline marks.
+function notoCodepoint(emoji: string): string {
+  return Array.from(emoji)
+    .map((char) => char.codePointAt(0)!.toString(16))
+    .filter((cp) => cp !== "fe0f")
+    .join("_");
+}
+
 export function Emoji({
   children,
   label,
-  motion = "wiggle",
+  motion = "animate",
   className,
 }: {
   children: string;
   label?: string;
-  motion?: "wiggle" | "float" | "none";
+  motion?: "animate" | "none";
   className?: string;
 }) {
+  const reduced = usePrefersReducedMotion();
+  const [failed, setFailed] = useState(false);
+  const still = motion === "none" || reduced || failed;
+
   return (
     <span
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className={cn(
-        motion === "wiggle" && "daily-emoji",
-        motion === "float" && "daily-emoji-float",
-        "leading-none",
-        className,
-      )}
+      className={cn("inline-block leading-none", className)}
     >
-      {children}
+      {still ? (
+        children
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://fonts.gstatic.com/s/e/notoemoji/latest/${notoCodepoint(children)}/512.webp`}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="inline-block size-[1.15em] align-[-0.15em]"
+        />
+      )}
     </span>
   );
 }
@@ -107,7 +131,8 @@ export function Panel({
 }) {
   return (
     <section id={id} className={cn("scroll-mt-[60px] px-4 py-16 min-[900px]:py-24", className)}>
-      <div className={cn("mx-auto w-full max-w-[720px]", inner)}>{children}</div>
+      {/* Centered on phones; things that read better ranged left opt out with text-left. */}
+      <div className={cn("mx-auto w-full max-w-[720px] max-[899px]:text-center", inner)}>{children}</div>
     </section>
   );
 }
