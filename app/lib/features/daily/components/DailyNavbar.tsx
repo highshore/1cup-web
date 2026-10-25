@@ -32,7 +32,7 @@ export default function DailyNavbar() {
       )}
     >
       <div className="mx-auto flex h-[60px] w-full max-w-[1200px] items-center gap-4 px-4 min-[900px]:px-8">
-        <Link href="/daily" onClick={close} className="flex shrink-0 items-center gap-2.5" aria-label="1cup Daily">
+        <Link href="/daily" onClick={close} className="flex shrink-0 items-center gap-2.5" aria-label="One Cup Daily">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
           <span aria-hidden className="h-4 w-px bg-[#cbd5e1]" />

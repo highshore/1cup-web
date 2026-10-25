@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowPathIcon,
   ChevronLeftIcon,
@@ -11,7 +11,17 @@ import {
   SpeakerWaveIcon,
 } from "@heroicons/react/24/solid";
 import { dailyCopy } from "../copy";
+import { usePrefersReducedMotion, useVisible } from "../hooks";
 import { CupMark, cn } from "./DailyUI";
+
+// The 1cup app mark: a white cup on black, as on the channel profile and app icon.
+function AppMark({ className, cupClassName }: { className: string; cupClassName: string }) {
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center bg-[#050505]", className)}>
+      <CupMark className={cupClassName} color="#ffffff" />
+    </span>
+  );
+}
 
 // An iPhone-style device: titanium rim, Dynamic Island, status bar, home indicator.
 export function IPhone({
@@ -51,7 +61,7 @@ function StatusBar({ className }: { className: string }) {
     <div
       aria-hidden
       className={cn(
-        "relative z-10 flex h-[46px] shrink-0 items-center justify-between px-7 pt-1.5 text-[0.8rem] font-bold",
+        "relative z-10 flex h-[46px] shrink-0 items-center justify-between px-7 pt-1.5 text-[0.8rem] font-bold transition-colors duration-300 motion-reduce:transition-none",
         className,
       )}
     >
@@ -74,8 +84,9 @@ function StatusBar({ className }: { className: string }) {
   );
 }
 
-// KakaoTalk chat with the 영어 한잔 channel showing today's Alimtalk.
-export function KakaoChat() {
+// KakaoTalk chat with the 영어 한잔 channel showing today's Alimtalk. `tapping` shows a
+// finger press on the lesson button (used by the hero demo).
+export function KakaoChat({ tapping = false }: { tapping?: boolean }) {
   const copy = dailyCopy.kakao;
 
   return (
@@ -85,33 +96,35 @@ export function KakaoChat() {
         <span className="flex-1">{copy.channel}</span>
         <MagnifyingGlassIcon className="size-4 opacity-70" aria-hidden />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-3 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-2.5 pt-1">
         <p className="mx-auto rounded-full bg-black/10 px-3 py-1 text-[0.66rem] font-semibold text-[#3b4a59]">
           {copy.date}
         </p>
         <div className="daily-arrive flex gap-2 [animation-delay:600ms]">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[14px] bg-[#f47a4a]">
-            <CupMark className="h-5 w-4" color="#050505" />
-          </span>
-          <div className="min-w-0">
+          <AppMark className="size-9 rounded-[14px]" cupClassName="h-5 w-4" />
+          <div className="min-w-0 flex-1">
             <p className="mb-1 text-[0.7rem] font-semibold text-[#3b4a59]">{copy.channel}</p>
-            <div className="flex items-end gap-1.5">
-              <div className="w-[176px] overflow-hidden rounded-[14px] rounded-tl-[4px] bg-white shadow-[0_1px_0_rgba(0,0,0,0.06)]">
-                <p className="bg-[#fee500] px-3 py-1.5 text-[0.66rem] font-extrabold">{copy.alimtalk}</p>
-                <div className="px-3 pb-3 pt-2.5">
-                  <p className="text-[0.68rem] font-bold text-[#64748b]">{copy.intro}</p>
-                  <p className="mt-1.5 text-[1.12rem] font-black leading-tight">{copy.expression}</p>
-                  <p className="mt-0.5 text-[0.7rem] font-semibold text-[#475569]">{copy.meaning}</p>
-                  <p className="mt-2 rounded-lg bg-[#f5f5f5] px-2 py-1.5 text-[0.68rem] leading-snug text-[#334155]">
-                    {copy.example}
-                  </p>
-                  <p className="mt-2.5 rounded-lg bg-[#f2f2f2] py-2 text-center text-[0.72rem] font-extrabold">
-                    {copy.open}
-                  </p>
-                </div>
+            <div className="overflow-hidden rounded-[14px] rounded-tl-[4px] bg-white shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+              <p className="bg-[#fee500] px-3 py-1.5 text-[0.68rem] font-extrabold">{copy.alimtalk}</p>
+              <div className="px-3 pb-3 pt-2.5">
+                <p className="text-[0.7rem] font-bold text-[#64748b]">{copy.intro}</p>
+                <p className="mt-1.5 text-[1.2rem] font-black leading-tight">{copy.expression}</p>
+                <p className="mt-0.5 text-[0.74rem] font-semibold text-[#475569]">{copy.meaning}</p>
+                <p className="mt-2 rounded-lg bg-[#f5f5f5] px-2.5 py-2 text-[0.7rem] leading-snug text-[#334155]">
+                  {copy.example}
+                </p>
+                <p
+                  className={cn(
+                    "relative mt-2.5 rounded-lg py-2.5 text-center text-[0.76rem] font-extrabold transition-[transform,background-color] duration-150",
+                    tapping ? "scale-[0.97] bg-[#dcdcdc]" : "bg-[#f2f2f2]",
+                  )}
+                >
+                  {copy.open}
+                  {tapping && <span aria-hidden className="daily-tap absolute left-1/2 top-1/2 size-12 rounded-full bg-[#050505]/35 ring-2 ring-white/70" />}
+                </p>
               </div>
-              <span className="shrink-0 text-[0.58rem] text-[#3b4a59]">{copy.time}</span>
             </div>
+            <p className="mt-1 text-right text-[0.58rem] text-[#3b4a59]">{copy.time}</p>
           </div>
         </div>
       </div>
@@ -119,6 +132,53 @@ export function KakaoChat() {
         <PlusIcon className="size-5 text-[#94a3b8]" aria-hidden />
         <span className="flex-1 rounded-full bg-[#f2f2f2] px-3 py-1.5 text-[0.7rem] text-[#94a3b8]">{copy.input}</span>
       </div>
+    </div>
+  );
+}
+
+type DemoPhase = "chat" | "tap" | "lesson";
+
+// How long each step of the hero demo holds before the next.
+const DEMO_HOLD: Record<DemoPhase, number> = { chat: 2600, tap: 850, lesson: 4600 };
+
+// The hero phone: today's Alimtalk arrives, a finger taps "오늘의 레슨 보기", and the lesson
+// page slides in, then back to the chat, on a loop. It only runs while on screen, and
+// with reduced motion it stays on the chat.
+export function HeroPhoneDemo({ className }: { className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const visible = useVisible(ref);
+  const reduced = usePrefersReducedMotion();
+  const [phase, setPhase] = useState<DemoPhase>("chat");
+  const running = visible && !reduced;
+
+  useEffect(() => {
+    if (!running) {
+      setPhase("chat");
+      return;
+    }
+    const next: Record<DemoPhase, DemoPhase> = { chat: "tap", tap: "lesson", lesson: "chat" };
+    const timer = window.setTimeout(() => setPhase(next[phase]), DEMO_HOLD[phase]);
+    return () => window.clearTimeout(timer);
+  }, [phase, running]);
+
+  const onLesson = phase === "lesson";
+  const slide = "absolute inset-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none";
+
+  return (
+    <div ref={ref} role="img" aria-label={dailyCopy.hero.demoLabel}>
+      <IPhone
+        className={className}
+        statusClassName={onLesson ? "bg-[#f47a4a] text-[#050505]" : "bg-[#bacee0] text-[#050505]"}
+      >
+        <div aria-hidden className="relative h-full overflow-hidden">
+          <div className={cn(slide, onLesson ? "-translate-x-1/4 opacity-60" : "translate-x-0")}>
+            <KakaoChat tapping={phase === "tap"} />
+          </div>
+          <div className={cn(slide, "shadow-[-8px_0_24px_rgba(5,5,5,0.12)]", onLesson ? "translate-x-0" : "translate-x-full")}>
+            <LessonScreen />
+          </div>
+        </div>
+      </IPhone>
     </div>
   );
 }
@@ -134,9 +194,7 @@ export function IosNotification({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[#f47a4a]">
-        <CupMark className="h-6 w-5" color="#050505" />
-      </span>
+      <AppMark className="size-10 rounded-[10px]" cupClassName="h-6 w-5" />
       <div className="min-w-0 flex-1">
         <p className="flex justify-between text-[0.82rem] font-extrabold">
           {copy.app}

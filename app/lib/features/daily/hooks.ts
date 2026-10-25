@@ -69,3 +69,18 @@ export function useReached<T extends Element>(ref: RefObject<T | null>) {
 
   return reached;
 }
+
+// True while the element is at least partly on screen.
+export function useVisible<T extends Element>(ref: RefObject<T | null>) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return visible;
+}
