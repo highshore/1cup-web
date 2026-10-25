@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useAuth } from "../../../contexts/auth_context";
 import { dailyCopy } from "../copy";
 import { dailyWordmark } from "../fonts";
 import { cn } from "./DailyUI";
@@ -11,7 +10,6 @@ import "../daily.css";
 
 // Replaces the global NewNavbar on /daily: the 1cup logo stays, the rest is Daily's own.
 export default function DailyNavbar() {
-  const { currentUser } = useAuth();
   const copy = dailyCopy.nav;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -63,14 +61,6 @@ export default function DailyNavbar() {
           >
             {copy.home}
           </Link>
-          {!currentUser && (
-            <Link
-              href={`/auth?redirect=${encodeURIComponent("/daily")}`}
-              className="hidden rounded-full px-3 py-2 text-[0.88rem] font-bold text-[#334155] hover:text-[#050505] min-[1000px]:inline-flex"
-            >
-              {copy.login}
-            </Link>
-          )}
           <a
             href="/daily#pricing"
             onClick={close}
@@ -110,15 +100,6 @@ export default function DailyNavbar() {
             <Link href="/" onClick={close} className="rounded-full bg-[#f5f5f5] px-4 py-2.5">
               {copy.home}
             </Link>
-            {!currentUser && (
-              <Link
-                href={`/auth?redirect=${encodeURIComponent("/daily")}`}
-                onClick={close}
-                className="rounded-full bg-[#f5f5f5] px-4 py-2.5"
-              >
-                {copy.login}
-              </Link>
-            )}
           </div>
         </div>
       )}

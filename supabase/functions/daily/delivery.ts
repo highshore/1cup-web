@@ -16,7 +16,7 @@ export type DeliveryKind = "lesson" | "review" | "trial_ended";
 
 export interface Subscription {
   id: string;
-  uid: string;
+  customer_id: string;
   track: Track;
   recipient_phone: string;
   recipient_name: string | null;
@@ -445,7 +445,7 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
 
   const { data: due, error } = await db
     .from("daily_subscriptions")
-    .select("id, uid, track, recipient_phone, recipient_name, delivery_time, status, next_send_at")
+    .select("id, customer_id, track, recipient_phone, recipient_name, delivery_time, status, next_send_at")
     .in("status", ["trial", "active"])
     .lte("next_send_at", now.toISOString())
     .order("next_send_at", { ascending: true })

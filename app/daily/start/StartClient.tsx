@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, ClockIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
-import { useAuth } from "../../lib/contexts/auth_context";
-import { invokeFunction } from "../../lib/supabase/client";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
 import { DAILY_TERMS_VERSION, type DailyTrack } from "../../lib/features/daily/constants";
@@ -26,6 +24,26 @@ interface StartResult {
   nextSendAt: string;
 }
 
+class DailyApiError extends Error {
+  constructor(message: string, readonly code: string, readonly status: number) {
+    super(message);
+  }
+}
+
+// Everything goes through /api/daily, which holds the Daily session in an httpOnly cookie.
+async function dailyApi<T>(action: string, body: Record<string, unknown> = {}): Promise<T> {
+  const response = await fetch(`/api/daily/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.success === false) {
+    throw new DailyApiError(payload.message ?? "", payload.errorCode ?? "", response.status);
+  }
+  return payload as T;
+}
+
 // 06:00–22:00 in 30-minute steps: the range daily_subscriptions.delivery_time allows.
 const TIMES = Array.from({ length: 33 }, (_, i) => {
   const minutes = 6 * 60 + i * 30;
@@ -43,48 +61,49 @@ const ERRORS: Record<string, string> = {
   "not-open": "무료 체험은 아직 열리지 않았어요. 곧 열릴 예정이에요.",
   "trial-used": "이 휴대폰 번호로 이 트랙의 무료 체험을 이미 받았어요.",
   "already-subscribed": "이미 이 트랙을 받고 있어요.",
-  "no-phone": "계정에 휴대폰 번호가 없어요. 내 계정에서 번호를 등록한 뒤 다시 시도해 주세요.",
   "no-lesson": "보낼 레슨을 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
   "consent-required": "필수 항목에 모두 동의해 주세요.",
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
-  "login-required": "로그인이 필요해요. 다시 로그인해 주세요.",
+  "login-required": "인증이 만료됐어요. 휴대폰 번호를 다시 인증해 주세요.",
 };
 
 const TRACKS = dailyCopy.tracks.items;
 
 export default function StartClient() {
   const params = useSearchParams();
-  const { currentUser, isLoading } = useAuth();
 
   const [track, setTrack] = useState<DailyTrack>(params.get("track") === "tech" ? "tech" : "business");
   const [time, setTime] = useState(TIMES.includes(params.get("time") ?? "") ? (params.get("time") as string) : "08:00");
   const [name, setName] = useState("");
-  const [info, setInfo] = useState<StartInfo | null>(null);
+  // undefined: checking; null: not signed in.
+  const [info, setInfo] = useState<StartInfo | null | undefined>(undefined);
   const [infoError, setInfoError] = useState("");
   const [consentOpen, setConsentOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<StartResult | null>(null);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    let active = true;
-    invokeFunction<StartInfo>("daily", { action: "start-info" })
-      .then((data) => {
-        if (!active) return;
-        setInfo(data);
-        setName((current) => current || data.name || "");
-      })
-      .catch(() => active && setInfoError("신청 정보를 불러오지 못했어요. 새로고침해 주세요."));
-    return () => {
-      active = false;
-    };
-  }, [currentUser]);
+  const loadInfo = useCallback(async () => {
+    setInfoError("");
+    try {
+      const data = await dailyApi<StartInfo>("start-info");
+      setInfo(data);
+      setName((current) => current || data.name || "");
+    } catch (e) {
+      if (e instanceof DailyApiError && e.status === 401) setInfo(null);
+      else setInfoError("신청 정보를 불러오지 못했어요. 새로고침해 주세요.");
+    }
+  }, []);
 
-  const loginHref = useMemo(
-    () => `/auth?redirect=${encodeURIComponent(`/daily/start?track=${track}&time=${time}`)}`,
-    [track, time],
-  );
+  useEffect(() => {
+    void loadInfo();
+  }, [loadInfo]);
+
+  const signOut = async () => {
+    await dailyApi("logout").catch(() => undefined);
+    setInfo(null);
+    setName("");
+  };
 
   const trackState = (key: string) =>
     info?.liveTracks.includes(key) ? "받는 중" : info?.usedTrialTracks.includes(key) ? "체험 완료" : null;
@@ -94,8 +113,7 @@ export default function StartClient() {
     setBusy(true);
     setError("");
     try {
-      const data = await invokeFunction<StartResult>("daily", {
-        action: "start-trial",
+      const data = await dailyApi<StartResult>("start-trial", {
         track,
         time,
         name,
@@ -106,8 +124,9 @@ export default function StartClient() {
       setResult(data);
       setConsentOpen(false);
     } catch (e) {
-      const code = (e as { code?: string }).code ?? "";
+      const code = e instanceof DailyApiError ? e.code : "";
       setError(ERRORS[code] ?? "신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
+      if (code === "login-required") setInfo(null);
     } finally {
       setBusy(false);
     }
@@ -115,7 +134,8 @@ export default function StartClient() {
 
   if (result) return <Done result={result} track={track} time={time} />;
 
-  const canSubmit = Boolean(currentUser && info?.open && info.phone && !selectedBlocked);
+  const signedIn = Boolean(info);
+  const canSubmit = Boolean(info?.open && !selectedBlocked);
 
   return (
     <div className={cn("daily-page min-h-[80vh] bg-[#fff8dc] px-4 pb-20 pt-8 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
@@ -193,25 +213,24 @@ export default function StartClient() {
           </p>
         </Step>
 
-        <Step number={3} title="받는 분을 확인해 주세요">
-          {isLoading ? (
+        <Step number={3} title="받을 휴대폰 번호를 인증해 주세요">
+          {info === undefined && !infoError ? (
             <div className="h-[88px] animate-pulse rounded-[22px] bg-white/70" />
-          ) : !currentUser ? (
-            <div className="rounded-[22px] bg-white p-5">
-              <p className="text-[0.95rem] font-semibold text-[#475569]">
-                레슨은 영어 한잔 계정의 휴대폰 번호로 보내드려요. 카카오로 1초 만에 로그인할 수 있어요.
-              </p>
-              <a
-                href={loginHref}
-                className="mt-4 inline-flex h-[52px] w-full items-center justify-center rounded-2xl bg-[#fee500] text-[1rem] font-black text-[#191600]"
-              >
-                로그인하고 계속하기
-              </a>
-            </div>
+          ) : info === null ? (
+            <PhoneVerification onVerified={loadInfo} />
           ) : (
             <div className="rounded-[22px] bg-white p-5">
-              <label className="block">
-                <span className="text-[0.82rem] font-bold text-[#64748b]">카톡에서 부를 이름</span>
+              <div className="flex items-center gap-2.5">
+                <DevicePhoneMobileIcon className="size-5 text-[#f47a4a]" />
+                <span className="flex-1 text-[1rem] font-black">{info?.phone ?? infoError}</span>
+                {info && (
+                  <button type="button" onClick={signOut} className="text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
+                    다른 번호로
+                  </button>
+                )}
+              </div>
+              <label className="mt-4 block">
+                <span className="text-[0.82rem] font-bold text-[#64748b]">카톡에서 부를 이름 (선택)</span>
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value.slice(0, 20))}
@@ -219,34 +238,17 @@ export default function StartClient() {
                   className="mt-1 h-11 w-full rounded-xl bg-[#f5f5f4] px-3 text-[1rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
                 />
               </label>
-              <div className="mt-4 flex items-center gap-2.5">
-                <DevicePhoneMobileIcon className="size-5 text-[#f47a4a]" />
-                {info ? (
-                  info.phone ? (
-                    <span className="text-[1rem] font-black">{info.phone}</span>
-                  ) : (
-                    <span className="text-[0.92rem] font-semibold text-[#b91c1c]">
-                      계정에 휴대폰 번호가 없어요.{" "}
-                      <Link href="/profile/account" className="underline underline-offset-2">
-                        내 계정에서 등록하기
-                      </Link>
-                    </span>
-                  )
-                ) : (
-                  <span className="text-[0.92rem] text-[#94a3b8]">{infoError || "불러오는 중…"}</span>
-                )}
-              </div>
             </div>
           )}
         </Step>
 
-        {currentUser && info && !info.open && (
+        {info && !info.open && (
           <p className="mt-6 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
             <Emoji className="mr-1.5">⏳</Emoji>
             무료 체험은 곧 열려요. 열리면 이 페이지에서 바로 신청할 수 있어요.
           </p>
         )}
-        {currentUser && info && selectedBlocked && (
+        {info && selectedBlocked && (
           <p className="mt-6 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
             {trackState(track) === "받는 중"
               ? "이미 이 트랙을 받고 있어요."
@@ -254,7 +256,7 @@ export default function StartClient() {
           </p>
         )}
 
-        {currentUser && (
+        {signedIn && (
           <button
             type="button"
             disabled={!canSubmit}
@@ -271,6 +273,101 @@ export default function StartClient() {
 
       {consentOpen && (
         <DailyConsentDialog busy={busy} error={error} onAccept={start} onClose={() => setConsentOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+// Daily's own sign-in: a code to the number, no 1cup account involved.
+function PhoneVerification({ onVerified }: { onVerified: () => Promise<void> }) {
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const send = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi("otp-send", { phone });
+      setSent(true);
+      setCode("");
+      setMessage("인증번호를 카카오톡(또는 문자)으로 보냈어요.");
+    } catch (e) {
+      setMessage(e instanceof DailyApiError && e.message ? e.message : "인증번호를 보내지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi("otp-verify", { phone, code });
+      await onVerified();
+    } catch (e) {
+      setMessage(e instanceof DailyApiError && e.message ? e.message : "인증하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field =
+    "h-12 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[1.05rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]";
+  const button =
+    "h-12 shrink-0 rounded-xl px-4 text-[0.92rem] font-black transition-opacity disabled:opacity-35";
+
+  return (
+    <div className="rounded-[22px] bg-white p-5">
+      <p className="text-[0.92rem] font-semibold text-[#475569]">
+        레슨을 받을 번호예요. 회원가입 없이 인증번호로만 확인해요.
+      </p>
+      <div className="mt-4 flex gap-2">
+        <input
+          inputMode="numeric"
+          autoComplete="tel"
+          placeholder="010-1234-5678"
+          aria-label="휴대폰 번호"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value.replace(/[^\d-]/g, "").slice(0, 13))}
+          className={field}
+        />
+        <button
+          type="button"
+          onClick={send}
+          disabled={busy || phone.replace(/\D/g, "").length < 10}
+          className={cn(button, sent ? "bg-[#f5f5f4] text-[#050505]" : "bg-[#050505] text-white")}
+        >
+          {sent ? "다시 받기" : "인증번호 받기"}
+        </button>
+      </div>
+      {sent && (
+        <div className="mt-2 flex gap-2">
+          <input
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="인증번호 6자리"
+            aria-label="인증번호"
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            className={field}
+          />
+          <button
+            type="button"
+            onClick={verify}
+            disabled={busy || code.length !== 6}
+            className={cn(button, "bg-[#f47a4a] text-[#050505]")}
+          >
+            확인
+          </button>
+        </div>
+      )}
+      {message && (
+        <p role="status" className="mt-2.5 text-[0.86rem] font-semibold text-[#475569]">
+          {message}
+        </p>
       )}
     </div>
   );

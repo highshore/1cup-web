@@ -5,7 +5,6 @@ export const dailyCopy = {
   nav: {
     brand: "DAILY",
     home: "1cup 홈",
-    login: "로그인",
     cta: "무료로 받기",
     menu: "메뉴 열기",
     links: [
