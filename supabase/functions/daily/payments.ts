@@ -29,6 +29,7 @@ export interface PaymentCustomer {
   id: string;
   phone: string;
   name: string | null;
+  verified: boolean;
 }
 
 type ProductId = "sub_30d" | "pass_1m" | "pass_3m" | "pass_6m";
@@ -162,6 +163,7 @@ export async function billingInfo(db: SupabaseClient, customer: PaymentCustomer)
   ]);
   return {
     paymentsOpen: open,
+    verified: customer.verified,
     phone: `${customer.phone.slice(0, 3)}-****-${customer.phone.slice(-4)}`,
     subscriptions: (subs ?? []).map((s) => ({
       track: s.track,

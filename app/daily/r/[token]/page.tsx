@@ -15,5 +15,5 @@ export default async function DailyReviewPage({ params }: { params: Promise<{ to
   const { token } = await params;
   const delivery = await getDeliveryByToken(token);
   if (!delivery || delivery.kind !== "review" || delivery.lessons.length === 0) notFound();
-  return <ReviewPage lessons={delivery.lessons} />;
+  return <ReviewPage lessons={delivery.lessons} linkToken={token} />;
 }
