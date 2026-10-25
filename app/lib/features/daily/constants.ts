@@ -11,10 +11,10 @@ export const DAILY_PASSES = [
   { id: "pass_6m", label: "6개월 이용권", days: 180, priceKrw: 27000 },
 ] as const;
 
-// Free-trial signup. The landing page's trial buttons stay in their "opening soon" state
-// until this flips; the server separately refuses public trials until DAILY_TRIAL_OPEN is
-// set on the `daily` function, so admins can test end to end first.
-export const DAILY_TRIAL_OPEN = false;
+// Free-trial signup. When false, the landing page's trial buttons show "opening soon"
+// instead of linking to the signup. The server has its own switch,
+// daily_config.trial_open, which decides whether a trial can actually start.
+export const DAILY_TRIAL_OPEN = true;
 export const DAILY_TRIAL_PATH = "/daily/start";
 export const DAILY_TERMS_PATH = "/daily/terms";
 export const DAILY_PRIVACY_PATH = "/daily/privacy";
