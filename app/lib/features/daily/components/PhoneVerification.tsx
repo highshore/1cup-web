@@ -64,7 +64,7 @@ export default function PhoneVerification({
       </p>
       <div className="mt-4 flex gap-2">
         {maskedPhone ? (
-          <span className="flex h-12 min-w-0 flex-1 items-center rounded-xl bg-[#f5f5f4] px-3 text-[1.05rem] font-bold">
+          <span className="flex h-12 min-w-0 flex-1 items-center whitespace-nowrap rounded-xl bg-[#f5f5f4] px-3 text-[1rem] font-bold">
             {maskedPhone}
           </span>
         ) : (

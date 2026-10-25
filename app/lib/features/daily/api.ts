@@ -27,6 +27,11 @@ export async function dailyApi<T>(action: string, body: Record<string, unknown> 
   return await request<T>(action, body);
 }
 
+// Fired after anything that can sign the browser in or out, so the navbar's account
+// link follows without a reload.
+export const DAILY_SESSION_EVENT = "daily:session";
+const SESSION_ACTIONS = new Set(["otp-verify", "logout", "link-signin"]);
+
 async function request<T>(action: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`/api/daily/${action}`, {
     method: "POST",
@@ -34,6 +39,7 @@ async function request<T>(action: string, body: Record<string, unknown>): Promis
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({}));
+  if (SESSION_ACTIONS.has(action) && typeof window !== "undefined") window.dispatchEvent(new Event(DAILY_SESSION_EVENT));
   if (!response.ok || payload.success === false) {
     throw new DailyApiError(payload.message ?? "", payload.errorCode ?? "", response.status);
   }

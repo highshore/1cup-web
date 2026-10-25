@@ -82,7 +82,7 @@ async function getProduct(db: SupabaseClient, id: unknown): Promise<ProductRow> 
 // Payple calls (same requests as supabase/functions/checkout)
 // ---------------------------------------------------------------------------
 
-async function paypleAuth() {
+async function paypleAuth(cancel = false) {
   const response = await fetch(PAYPLE_AUTH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", referer: PAYPLE_HOSTNAME },
@@ -92,7 +92,7 @@ async function paypleAuth() {
       PCD_PAY_TYPE: "card",
       PCD_SIMPLE_FLAG: "Y",
       PCD_PAY_WORK: "CERT",
-      PCD_PAYCANCEL_FLAG: "N",
+      PCD_PAYCANCEL_FLAG: cancel ? "Y" : "N",
     }),
   });
   const data = await response.json();
@@ -145,6 +145,36 @@ async function chargeBillingKey(args: {
     ok: data?.PCD_PAY_RST === "success",
     data,
     message: String(data?.PCD_PAY_MSG ?? "결제에 실패했어요."),
+  };
+}
+
+/**
+ * Cancels `amount` of a completed charge (a partial amount is a partial cancel), the
+ * same request as the 1cup membership refund. The charge is identified by Payple's own
+ * PCD_PAY_OID and the date in PCD_PAY_TIME from the stored payment result.
+ */
+export async function refundCharge(args: { paymentResult: Record<string, unknown>; fallbackOid: string; completedAt: string; amount: number }): Promise<ChargeResult> {
+  const auth = await paypleAuth(true);
+  const payTime = String(args.paymentResult?.PCD_PAY_TIME ?? "");
+  const response = await fetch(`${PAYPLE_HOST}/php/account/api/cPayCAct.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", referer: PAYPLE_HOSTNAME },
+    body: JSON.stringify({
+      PCD_CST_ID: auth.cst_id,
+      PCD_CUST_KEY: auth.custKey,
+      PCD_AUTH_KEY: auth.AuthKey,
+      PCD_REFUND_KEY: env("PAYPLE_REFUND_KEY"),
+      PCD_PAYCANCEL_FLAG: "Y",
+      PCD_PAY_OID: String(args.paymentResult?.PCD_PAY_OID || args.fallbackOid),
+      PCD_PAY_DATE: payTime.length >= 8 ? payTime.slice(0, 8) : yyyymmdd(new Date(args.completedAt)),
+      PCD_REFUND_TOTAL: args.amount.toString(),
+    }),
+  });
+  const data = (await response.json()) as Record<string, unknown>;
+  return {
+    ok: data?.PCD_PAY_RST === "success",
+    data,
+    message: String(data?.PCD_PAY_MSG ?? "환불에 실패했어요."),
   };
 }
 

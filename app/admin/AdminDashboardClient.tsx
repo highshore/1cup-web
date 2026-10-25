@@ -69,6 +69,7 @@ const QUICK_ACTIONS = [
   ["notifications", "/admin/notifications"],
   ["gifts", "/admin/gifts"],
   ["testCenter", "/admin/test-center"],
+  ["dailyRefunds", "/admin/daily-refunds"],
 ] as const;
 
 const EMPTY_STATS: DashboardStats = {

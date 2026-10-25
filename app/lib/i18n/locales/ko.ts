@@ -1071,6 +1071,10 @@ const ko = {
           label: "테스트 센터",
           description: "스피킹 테스트를 만들고 결과를 확인합니다.",
         },
+        dailyRefunds: {
+          label: "Daily 환불",
+          description: "One Cup Daily 환불 요청을 승인하거나 반려합니다.",
+        },
       },
       stats: {
         totalMembers: { label: "전체 멤버", description: "가입한 모든 사용자" },

@@ -23,10 +23,13 @@ export const runtime = "nodejs";
 //   link-signin { token }        sign in from a Kakao message's button link (link scope);
 //                               never replaces a phone session
 //   logout                       revoke the session and clear the cookie
+//   session-info                 whether this browser is signed in (the navbar's account link)
 //   review-status / review-submit  the signed-in customer's review (verified, pending
 //                                until approved)
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                                Payple payments, forwarded the same way
+//   account-info / account-update / resume-renewal / refund-request
+//                                the account page, forwarded the same way
 //   start-info / start-trial     forwarded to the `daily` Edge Function with the
 //                                session token, which never reaches page JavaScript
 
@@ -37,6 +40,10 @@ const FORWARDED = new Set([
   "checkout-window",
   "checkout-verify",
   "cancel-renewal",
+  "account-info",
+  "account-update",
+  "resume-renewal",
+  "refund-request",
 ]);
 
 function clientIp(req: Request): string | null {
@@ -85,6 +92,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       if (signedIn) await revokeDailySession(current);
       setSession(session);
       return NextResponse.json({ success: true, signedIn: true });
+    }
+
+    if (action === "session-info") {
+      const customer = await customerForSession(current);
+      return NextResponse.json({ success: true, signedIn: Boolean(customer), verified: customer?.verified ?? false });
     }
 
     if (action === "logout") {
