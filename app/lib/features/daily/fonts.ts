@@ -1,4 +1,4 @@
-import { Barlow_Condensed, Black_Han_Sans } from "next/font/google";
+import { Black_Han_Sans, Noto_Sans } from "next/font/google";
 
 // Display face for /daily headlines. Korean glyphs come in unicode-range chunks,
 // so nothing is preloaded; the browser fetches only the chunks a page uses.
@@ -10,11 +10,11 @@ export const dailyDisplay = Black_Han_Sans({
   variable: "--font-daily-display",
 });
 
-// The "DAILY" wordmark next to the 1cup logo: the closest Google face to the logo's
-// condensed capitals.
-export const dailyWordmark = Barlow_Condensed({
-  weight: "600",
+// The "DAILY" wordmark next to the 1cup logo: Noto Sans ExtraCondensed, i.e. the
+// variable Noto Sans at wdth 62.5 (set with font-stretch where it's used).
+export const dailyWordmark = Noto_Sans({
   subsets: ["latin"],
+  axes: ["wdth"],
   display: "swap",
   variable: "--font-daily-wordmark",
 });
