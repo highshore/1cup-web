@@ -48,6 +48,8 @@ interface ClaimedDelivery extends PlannedDelivery {
 }
 
 export interface TemplateCodes {
+  // Which variables the codes expect; see the daily_template_config migration.
+  style: "daily" | "send-article";
   lesson: string;
   review: string;
   trialEnded: string;
@@ -89,12 +91,18 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function templateCodes(): TemplateCodes | null {
-  const lesson = Deno.env.get("DAILY_TEMPLATE_LESSON");
-  const review = Deno.env.get("DAILY_TEMPLATE_REVIEW");
-  const trialEnded = Deno.env.get("DAILY_TEMPLATE_TRIAL_ENDED");
+/** Template codes from daily_config, falling back to the DAILY_TEMPLATE_* secrets. */
+export async function templateCodes(db: SupabaseClient): Promise<TemplateCodes | null> {
+  const { data } = await db
+    .from("daily_config")
+    .select("template_style, lesson_template, review_template, trial_ended_template")
+    .eq("id", "settings")
+    .maybeSingle();
+  const lesson = data?.lesson_template || Deno.env.get("DAILY_TEMPLATE_LESSON");
+  const review = data?.review_template || Deno.env.get("DAILY_TEMPLATE_REVIEW");
+  const trialEnded = data?.trial_ended_template || Deno.env.get("DAILY_TEMPLATE_TRIAL_ENDED");
   if (!lesson || !review || !trialEnded) return null;
-  return { lesson, review, trialEnded };
+  return { style: data?.template_style === "send-article" ? "send-article" : "daily", lesson, review, trialEnded };
 }
 
 function siteUrl(): string {
@@ -244,8 +252,36 @@ async function claim(db: SupabaseClient, plans: PlannedDelivery[]): Promise<Clai
 // Sending
 // ---------------------------------------------------------------------------
 
+function siteHost(): string {
+  return siteUrl().replace(/^https?:\/\//, "");
+}
+
+function linkPath(d: ClaimedDelivery): string {
+  if (d.kind === "lesson") return `/daily/l/${d.accessToken}`;
+  if (d.kind === "review") return `/daily/r/${d.accessToken}`;
+  return `/daily/subscribe?t=${d.accessToken}`;
+}
+
+// The approved 1cup article template, reused for the dry run: one title line, the name,
+// and a button to https://#{article-link} (the template adds the scheme itself).
+function sendArticleParameter(d: ClaimedDelivery): Record<string, string> {
+  const track = TRACK_LABEL[d.sub.track];
+  const title =
+    d.kind === "lesson" && d.lesson
+      ? `[${track}] 오늘의 표현 ${d.lesson.expression}: ${d.lesson.meaning}`
+      : d.kind === "review" && d.reviewLessons
+      ? `[영어 한잔 Daily] 이번 주 복습: ${d.reviewLessons.map((l) => l.expression).join(", ")}`
+      : `[영어 한잔 Daily] ${track} 무료 체험이 끝났어요`;
+  return {
+    "korean-title": title,
+    "customer-name": customerName(d.sub),
+    "article-link": `${siteHost()}${linkPath(d)}`,
+  };
+}
+
 // Variable names must match the approved templates exactly (see ALIMTALK_TEMPLATES.md).
-function templateParameter(d: ClaimedDelivery): Record<string, string> {
+function templateParameter(d: ClaimedDelivery, style: TemplateCodes["style"] = "daily"): Record<string, string> {
+  if (style === "send-article") return sendArticleParameter(d);
   const name = customerName(d.sub);
   const track = TRACK_LABEL[d.sub.track];
   if (d.kind === "lesson" && d.lesson) {
@@ -288,14 +324,18 @@ interface SendResult {
   requestId: string | null;
 }
 
-async function sendBatch(deliveries: ClaimedDelivery[], templateCode: string): Promise<SendResult> {
+async function sendBatch(
+  deliveries: ClaimedDelivery[],
+  templateCode: string,
+  style: TemplateCodes["style"],
+): Promise<SendResult> {
   const result: SendResult = { sentIds: [], failed: [], requestId: null };
   if (deliveries.length === 0) return result;
 
   const smsFallback = Deno.env.get("DAILY_SMS_FALLBACK") !== "false";
   const recipientList = deliveries.map((d) => ({
     recipientNo: d.sub.recipient_phone,
-    templateParameter: templateParameter(d),
+    templateParameter: templateParameter(d, style),
     recipientGroupingKey: d.id,
     ...(smsFallback
       ? {
@@ -343,9 +383,9 @@ export async function sendClaimed(
   for (const d of claimed) byKind[d.kind].push(d);
 
   const results = await Promise.all([
-    sendBatch(byKind.lesson, codes.lesson),
-    sendBatch(byKind.review, codes.review),
-    sendBatch(byKind.trial_ended, codes.trialEnded),
+    sendBatch(byKind.lesson, codes.lesson, codes.style),
+    sendBatch(byKind.review, codes.review, codes.style),
+    sendBatch(byKind.trial_ended, codes.trialEnded, codes.style),
   ]);
 
   const now = new Date().toISOString();
@@ -436,7 +476,7 @@ export interface TickStats {
 export async function runTick(db: SupabaseClient, now = new Date()): Promise<TickStats> {
   const stats: TickStats = { due: 0, sent: 0, failed: 0, stale: 0, missingLesson: 0, noReview: 0 };
 
-  const codes = templateCodes();
+  const codes = await templateCodes(db);
   if (!codes) {
     // Not an error: until Kakao approves the templates there is nothing we may send.
     // Schedules are left alone so nobody's slot is consumed in the meantime.

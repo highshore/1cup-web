@@ -4,9 +4,9 @@ Three templates for the `daily` Edge Function. Register them in **NHN Cloud Cons
 Notification → KakaoTalk Bizmessage → 알림톡 → 템플릿 관리**, under the same sender
 profile (발신 프로필) the existing `send-article` template uses.
 
-Kakao reviews each one, usually in 1–3 business days. Once all three show **승인**, set
-their codes as function secrets (bottom of this file). Until then the delivery job runs
-but sends nothing.
+Kakao reviews each one, usually in 1–3 business days. Once all three show **승인**, point
+`daily_config` at their codes (bottom of this file). Until codes are set the delivery job
+runs but sends nothing.
 
 The variable names (`#{name}`, `#{token}`…) must stay exactly as written; the function
 fills them by these names (`templateParameter` in `delivery.ts`). The fixed wording can
@@ -123,12 +123,19 @@ Common settings for all three:
 
 ## After approval
 
-Set the approved codes on the function (they are not secret, but this is where the
-function reads them from):
+Point Daily at the approved codes in the `daily_config` row (no redeploy needed):
 
-```bash
-npx supabase@2.115.0 secrets set --project-ref hetiycbotgjeluteicyk DAILY_TEMPLATE_LESSON=DAILY_LESSON DAILY_TEMPLATE_REVIEW=DAILY_REVIEW DAILY_TEMPLATE_TRIAL_ENDED=DAILY_TRIAL_END
+```sql
+update public.daily_config
+   set template_style = 'daily',
+       lesson_template = 'DAILY_LESSON',
+       review_template = 'DAILY_REVIEW',
+       trial_ended_template = 'DAILY_TRIAL_END'
+ where id = 'settings';
 ```
+
+Until then, the dry run uses the already-approved 1cup article template for every message
+kind (`template_style = 'send-article'`, all three codes `send-article`).
 
 Then send each one to your own phone as an admin, before opening signup:
 
