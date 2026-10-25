@@ -89,6 +89,8 @@ export function LessonBody({ lesson, compact = false }: { lesson: DailyLessonCon
         )}
       </section>
 
+      {lesson.clip && <ClipSection clip={lesson.clip} expression={lesson.expression} />}
+
       {lesson.nuance && (
         <Section emoji="💡" title="이럴 때 써요" className="bg-[#fff8dc]">
           <p className="text-[1rem] leading-[1.7] text-[#334155]">{lesson.nuance}</p>
@@ -201,6 +203,36 @@ export function LessonBody({ lesson, compact = false }: { lesson: DailyLessonCon
         </Section>
       )}
     </div>
+  );
+}
+
+// The expression in use, from a clip the founder supplied with the rights to show it.
+function ClipSection({ clip, expression }: { clip: NonNullable<DailyLessonContent["clip"]>; expression: string }) {
+  const at = clip.caption ? clip.caption.toLowerCase().indexOf(expression.toLowerCase()) : -1;
+  return (
+    <Section emoji="🎬" title="실제 장면" className="bg-[#050505] text-white">
+      <video
+        src={clip.url}
+        controls
+        playsInline
+        preload="metadata"
+        className="aspect-video w-full rounded-2xl bg-black object-contain"
+      />
+      {clip.caption && (
+        <p className="mt-3 text-[1rem] font-bold leading-snug">
+          {at < 0 ? (
+            clip.caption
+          ) : (
+            <>
+              {clip.caption.slice(0, at)}
+              <span className="rounded-md bg-[#f47a4a] px-1 text-[#050505]">{clip.caption.slice(at, at + expression.length)}</span>
+              {clip.caption.slice(at + expression.length)}
+            </>
+          )}
+        </p>
+      )}
+      {clip.source && <p className="mt-2 text-[0.78rem] font-semibold text-white/50">{clip.source}</p>}
+    </Section>
   );
 }
 
