@@ -30,11 +30,16 @@ export default function DailyNavbar() {
       )}
     >
       <div className="mx-auto flex h-[60px] w-full max-w-[752px] items-center justify-between gap-4 px-4">
-        <Link href="/daily" className="flex shrink-0 items-center gap-2.5" aria-label="One Cup Daily">
+        {/* DAILY is set in the logo's own face (Noto Sans ExtraCondensed Bold) at its cap
+            height: 35.34 of the logo's 54-unit viewBox, i.e. 14.4px at h-22 → 20.16px type.
+            The row aligns on baseline, which puts every item's baseline on the logo's bottom
+            edge; the logo's lettering sits 2.55px above that edge, so DAILY rises by that
+            much and the 16px divider rises 3px to stay centred on the 22px logo. */}
+        <Link href="/daily" className="flex h-[22px] shrink-0 items-baseline gap-2.5" aria-label="One Cup Daily">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
-          <span aria-hidden className="h-4 w-px bg-[#cbd5e1]" />
-          <span className="text-[1.3rem] font-light uppercase leading-none tracking-[0.03em] text-[#050505] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
+          <span aria-hidden className="relative -top-[3px] h-4 w-px bg-[#cbd5e1]" />
+          <span className="relative -top-[2.55px] text-[20.16px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
             {copy.brand}
           </span>
         </Link>
