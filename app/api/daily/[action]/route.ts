@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { ReviewError, reviewStatus, submitReview } from "../../../lib/features/daily/server/reviews";
 import {
+  customerForSession,
   DAILY_SESSION_COOKIE,
   DailyAuthError,
   revokeDailySession,
@@ -14,6 +16,8 @@ export const runtime = "nodejs";
 //   otp-send   { phone }         send a Daily sign-in code
 //   otp-verify { phone, code }   sign in; sets the httpOnly daily_session cookie
 //   logout                       revoke the session and clear the cookie
+//   review-status / review-submit  the signed-in customer's review (verified, pending
+//                                until approved)
 //   start-info / start-trial     forwarded to the `daily` Edge Function with the
 //                                session token, which never reaches page JavaScript
 
@@ -53,6 +57,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       return NextResponse.json({ success: true });
     }
 
+    if (action === "review-status" || action === "review-submit") {
+      const customer = await customerForSession(jar.get(DAILY_SESSION_COOKIE)?.value);
+      if (!customer) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
+      if (action === "review-status") return NextResponse.json({ success: true, ...(await reviewStatus(customer)) });
+      await submitReview(customer, {
+        rating: Number(body.rating),
+        body: String(body.body ?? ""),
+        displayName: String(body.displayName ?? ""),
+      });
+      return NextResponse.json({ success: true });
+    }
+
     if (FORWARDED.has(action)) {
       const token = jar.get(DAILY_SESSION_COOKIE)?.value;
       if (!token) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
@@ -70,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
 
     return NextResponse.json({ success: false, errorCode: "unknown-action" }, { status: 404 });
   } catch (error) {
-    if (error instanceof DailyAuthError) {
+    if (error instanceof DailyAuthError || error instanceof ReviewError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.status });
     }
     console.error(`api/daily/${action}:`, error);
