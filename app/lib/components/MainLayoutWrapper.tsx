@@ -49,7 +49,8 @@ export default function MainLayoutWrapper({
         {children}
       </div>
       <Footer />
-      <NonKoreanApplicantPrompt />
+      {/* The 1cup membership's invitation for international members; not part of Daily. */}
+      {!isDailyPage && <NonKoreanApplicantPrompt />}
     </div>
   );
 }
