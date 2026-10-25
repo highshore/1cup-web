@@ -6,11 +6,11 @@
 @keyframes daily-phone-in {
   from {
     opacity: 0;
-    transform: translateY(28px) rotate(0deg);
+    transform: translateY(28px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) rotate(-4deg);
+    transform: none;
   }
 }
 
@@ -33,33 +33,6 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes daily-wiggle {
-  0%,
-  70%,
-  100% {
-    transform: rotate(0deg) scale(1);
-  }
-  76% {
-    transform: rotate(-12deg) scale(1.08);
-  }
-  84% {
-    transform: rotate(10deg) scale(1.08);
-  }
-  92% {
-    transform: rotate(-4deg) scale(1.02);
-  }
-}
-
-@keyframes daily-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
   }
 }
 
@@ -120,17 +93,6 @@
 
 .daily-arrive {
   animation: daily-arrive 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.daily-emoji {
-  display: inline-block;
-  animation: daily-wiggle 3.6s ease-in-out infinite;
-  transform-origin: 50% 70%;
-}
-
-.daily-emoji-float {
-  display: inline-block;
-  animation: daily-float 3s ease-in-out infinite;
 }
 
 .daily-steam {
@@ -201,16 +163,10 @@
   .daily-phone-in,
   .daily-drop,
   .daily-arrive,
-  .daily-emoji,
-  .daily-emoji-float,
   .daily-steam,
   .daily-marker[data-seen="true"],
   .daily-wave span {
     animation: none;
-  }
-
-  .daily-phone-in {
-    transform: rotate(-4deg);
   }
 
   .daily-marker[data-seen="false"] {

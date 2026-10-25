@@ -59,10 +59,10 @@ export const dailyCopy = {
     title: "카톡으로 매일 받는\n비즈니스·테크 영어",
     accent: "비즈니스·테크 영어",
     items: [
-      { emoji: "📱", label: "휴대폰", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
+      { emoji: "💬", label: "말풍선", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
       { emoji: "⏰", label: "알람 시계", title: "하루 딱 5분", detail: "출근길에 읽고 듣고 끝" },
       { emoji: "🎁", label: "선물", title: "첫 하루 무료", detail: "받아보고 결정하세요" },
-      { emoji: "🔁", label: "반복", title: "언제든 해지", detail: "약정 없이 한 달 단위" },
+      { emoji: "👋", label: "손 흔들기", title: "언제든 해지", detail: "약정 없이 한 달 단위" },
     ],
   },
   lesson: {
@@ -116,6 +116,56 @@ export const dailyCopy = {
       { icon: "standup", title: "스탠드업", detail: "진행 상황을 짧게" },
     ],
   },
+  // Mastery (RAMP): progress people can see. Every item here is a product promise:
+  // the quiz and Saturday review exist in the delivery design; the streak and 내 표현장
+  // belong on the lesson page and must ship with it.
+  mastery: {
+    title: "매일 조금씩,\n확실히 쌓여요",
+    accent: "확실히 쌓여요",
+    sub: "읽고 끝나지 않게, 내 것이 될 때까지 이어서 챙겨요.",
+    steps: [
+      { emoji: "🎯", label: "과녁", title: "1분 퀴즈", detail: "레슨 끝에 바로 풀고, 정답과 이유까지 확인해요" },
+      { emoji: "🧠", label: "뇌", title: "토요일 복습", detail: "그 주에 받은 표현을 한 번에 다시 꺼내 봐요" },
+      { emoji: "🔥", label: "불꽃", title: "연속 기록", detail: "며칠째 이어 왔는지 레슨 페이지에서 보여줘요" },
+      { emoji: "📚", label: "책", title: "내 표현장", detail: "받은 표현이 모두 쌓여 언제든 다시 볼 수 있어요" },
+    ],
+    card: {
+      label: "예시 화면",
+      streak: "5일 연속",
+      days: ["월", "화", "수", "목", "금"],
+      rows: [
+        { label: "이번 주 표현", value: "5/5" },
+        { label: "토요일 복습 퀴즈", value: "4/5 정답" },
+        { label: "내 표현장", value: "23개" },
+      ],
+    },
+  },
+  // Relatedness (RAMP): a person behind every lesson, and people to use it with.
+  // The field note is a content promise: each lesson carries one from the interpreter.
+  relatedness: {
+    title: "혼자 하는 공부처럼\n느껴지지 않게",
+    accent: "느껴지지 않게",
+    items: [
+      {
+        emoji: "🗣️",
+        label: "말하는 사람",
+        title: "통역사의 현장 메모",
+        detail: "이 표현이 실제 회의에서 어떤 장면에 나왔는지, 통역사가 레슨마다 한 줄로 남겨요.",
+      },
+      {
+        emoji: "💌",
+        label: "편지",
+        title: "동료에게 보내기",
+        detail: "오늘의 표현 카드를 카톡으로 바로 보내고, 다음 회의에서 같이 써봐요.",
+      },
+      {
+        emoji: "🤝",
+        label: "악수",
+        title: "같이 시작하기",
+        detail: "팀이나 친구와 같은 트랙을 받으면, 같은 날 같은 표현으로 이야기할 수 있어요.",
+      },
+    ],
+  },
   tracks: {
     title: "두 가지 트랙 중\n골라서 받아요",
     accent: "골라서 받아요",
@@ -124,8 +174,8 @@ export const dailyCopy = {
     items: [
       {
         key: "business",
-        emoji: "💼",
-        emojiLabel: "서류 가방",
+        emoji: "🤝",
+        emojiLabel: "악수",
         title: "비즈니스 영어",
         tagline: "회의·메일에서 바로 쓰는 표현",
         image: "/assets/daily/meeting.webp",
@@ -205,4 +255,5 @@ export const dailyCopy = {
   sticky: { title: "첫 하루 무료", sub: "이후 월 ₩{price} · 언제든 해지", cta: "받아보기" },
   soon: "곧 오픈",
   operatedBy: "영어 한잔 Daily는 영어 한잔이 운영해요.",
+  emojiCredit: "애니메이션 이모지: Noto Animated Emoji by Google, CC BY 4.0",
 } as const;
