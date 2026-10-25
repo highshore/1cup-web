@@ -16,5 +16,13 @@ export default async function DailyLessonPage({ params }: { params: Promise<{ to
   const delivery = await getDeliveryByToken(token);
   const lesson = delivery?.kind === "lesson" ? delivery.lessons[0] : undefined;
   if (!delivery || !lesson) notFound();
-  return <LessonPage lesson={lesson} isTrial={delivery.isTrial} subscribeHref={`/daily/subscribe?t=${token}`} linkToken={token} />;
+  return (
+    <LessonPage
+      lesson={lesson}
+      isTrial={delivery.isTrial}
+      paidOtherTrack={delivery.paidOtherTrack}
+      subscribeHref={`/daily/subscribe?t=${token}&track=${lesson.track}`}
+      linkToken={token}
+    />
+  );
 }

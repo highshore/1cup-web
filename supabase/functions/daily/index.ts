@@ -15,6 +15,12 @@
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                Signed-in Daily customer: plans, starting a Payple checkout, settling
 //                it (idempotent), and turning off auto-renew.
+//   account-info / account-update / resume-renewal / refund-request
+//                Signed-in Daily customer: the account page (account.ts). Changing
+//                anything needs a phone-code session; refunds are only requested here.
+//   admin-refunds / admin-refund-decide
+//                1cup staff admins: list refund requests, approve (Payple cancel) or
+//                reject them.
 //   POST /daily/callback  Payple's server callback (no auth): keeps the billing key on
 //                the order and redirects the browser to /daily/subscribe/result.
 //   resend-trial Server only (Vault scheduler secret). Sends a trial its free lesson
@@ -41,6 +47,14 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid, recordSchedulerHeartbeat } from "../_shared/db.ts";
 import { krPhone, sendKakaoMessages } from "../_shared/kakao.ts";
+import {
+  accountInfo,
+  adminDecideRefund,
+  adminRefunds,
+  requestRefund,
+  resumeRenewal,
+  updateSettings,
+} from "./account.ts";
 import {
   billingInfo,
   cancelRenewal,
@@ -94,7 +108,14 @@ interface Customer {
 
 // What a link session may not do: these record consent or move money, and a message
 // link can be forwarded. The page asks for the phone code, then retries.
-const NEEDS_PHONE_CODE = new Set(["start-trial", "checkout-window", "cancel-renewal"]);
+const NEEDS_PHONE_CODE = new Set([
+  "start-trial",
+  "checkout-window",
+  "cancel-renewal",
+  "account-update",
+  "resume-renewal",
+  "refund-request",
+]);
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -306,7 +327,11 @@ Deno.serve(async (req) => {
       case "billing-info":
       case "checkout-window":
       case "checkout-verify":
-      case "cancel-renewal": {
+      case "cancel-renewal":
+      case "account-info":
+      case "account-update":
+      case "resume-renewal":
+      case "refund-request": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
         if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
@@ -314,13 +339,17 @@ Deno.serve(async (req) => {
         }
         const db = admin();
         try {
-          const result = action === "billing-info"
-            ? await billingInfo(db, customer)
-            : action === "checkout-window"
-            ? await createCheckoutWindow(db, customer, body)
-            : action === "checkout-verify"
-            ? await verifyCheckout(db, customer, body)
-            : await cancelRenewal(db, customer, body);
+          const handlers: Record<string, () => Promise<Record<string, unknown>>> = {
+            "billing-info": () => billingInfo(db, customer),
+            "checkout-window": () => createCheckoutWindow(db, customer, body),
+            "checkout-verify": () => verifyCheckout(db, customer, body),
+            "cancel-renewal": () => cancelRenewal(db, customer, body),
+            "account-info": () => accountInfo(db, customer),
+            "account-update": () => updateSettings(db, customer, body),
+            "resume-renewal": () => resumeRenewal(db, customer, body),
+            "refund-request": () => requestRefund(db, customer, body),
+          };
+          const result = await handlers[action]();
           return json(req, { success: true, ...result });
         } catch (e) {
           if (e instanceof PaymentError) {
@@ -342,6 +371,22 @@ Deno.serve(async (req) => {
         } catch (e) {
           if (e instanceof StartError) {
             return json(req, { success: false, errorCode: e.code, message: e.code }, e.status);
+          }
+          throw e;
+        }
+      }
+      case "admin-refunds":
+      case "admin-refund-decide": {
+        const uid = await callerUid(req);
+        if (!uid || !(await callerIsAdmin(req))) {
+          return json(req, { success: false, error: "Admin access is required" }, 403);
+        }
+        try {
+          const result = action === "admin-refunds" ? await adminRefunds(admin()) : await adminDecideRefund(admin(), uid, body);
+          return json(req, { success: true, ...result });
+        } catch (e) {
+          if (e instanceof PaymentError) {
+            return json(req, { success: false, errorCode: e.code, message: e.message }, e.status);
           }
           throw e;
         }

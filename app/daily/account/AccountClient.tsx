@@ -1,0 +1,510 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
+import { cn, displayClass, Pill } from "../../lib/features/daily/components/DailyUI";
+import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
+import {
+  DAILY_GUIDE_PATH,
+  DAILY_MONTHLY_PRICE_KRW,
+  DAILY_TERMS_PATH,
+  DAILY_TRIAL_PATH,
+  formatKrw,
+  type DailyTrack,
+} from "../../lib/features/daily/constants";
+import { dailyCopy } from "../../lib/features/daily/copy";
+import { dailyDisplay } from "../../lib/features/daily/fonts";
+import "../../lib/features/daily/daily.css";
+
+type SubscriptionStatus = "trial" | "trial_ended" | "active" | "cancelled";
+type RefundStatus = "requested" | "refunding" | "refunded" | "rejected" | "failed";
+
+interface Subscription {
+  track: DailyTrack;
+  status: SubscriptionStatus;
+  plan: string | null;
+  paidUntil: string | null;
+  autoRenew: boolean;
+  deliveryTime: string;
+  nextSendAt: string | null;
+  canResume: boolean;
+}
+
+interface Payment {
+  orderNumber: string;
+  kind: "checkout" | "renewal";
+  productName: string;
+  recurring: boolean;
+  amount: number;
+  track: DailyTrack;
+  paidAt: string;
+  refund: { status: RefundStatus; amount: number; refundedAt: string | null; note: string | null } | null;
+  quote: { amount: number; daysRefunded: number; fullRefund: boolean } | null;
+}
+
+interface AccountInfo {
+  phone: string;
+  verified: boolean;
+  name: string | null;
+  marketing: boolean;
+  subscriptions: Subscription[];
+  payments: Payment[];
+}
+
+const copy = dailyCopy.account;
+const TRACK_TITLE: Record<DailyTrack, string> = { business: "비즈니스 영어", tech: "테크 영어" };
+
+const TIMES = Array.from({ length: 33 }, (_, i) => {
+  const minutes = 6 * 60 + i * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+
+function timeLabel(value: string) {
+  const [h, m] = value.split(":").map(Number);
+  return `${h < 12 ? "오전" : "오후"} ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")}`;
+}
+
+function dateLabel(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
+}
+
+function fullDateLabel(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" });
+}
+
+function errorMessage(e: unknown) {
+  if (e instanceof DailyApiError) {
+    if (e.code === "verify-required") return copy.errors["verify-required"];
+    if (e.message) return e.message;
+  }
+  return copy.errors.generic;
+}
+
+const cardFrame = "rounded-[24px] p-5 min-[900px]:p-6";
+const card = `${cardFrame} bg-white`;
+const sectionTitle = "text-center text-[1.15rem] font-black min-[900px]:text-left";
+const smallButton =
+  "inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-[0.88rem] font-black transition-opacity disabled:opacity-35";
+
+// Only the latest subscription per track: an old cancelled one next to a live one is noise.
+function latestPerTrack(subscriptions: Subscription[]) {
+  const seen = new Set<string>();
+  return subscriptions.filter((s) => (seen.has(s.track) ? false : (seen.add(s.track), true)));
+}
+
+function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
+  const [name, setName] = useState(info.name ?? "");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const router = useRouter();
+
+  const save = async (patch: Record<string, unknown>) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi("account-update", patch);
+      setMessage(copy.profile.saved);
+      await onChanged();
+    } catch (e) {
+      setMessage(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const logout = async () => {
+    await dailyApi("logout").catch(() => undefined);
+    router.push("/daily");
+  };
+
+  return (
+    <section className={card}>
+      <h2 className={sectionTitle}>{copy.profile.title}</h2>
+      <dl className="m-0 mt-4 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-[0.9rem] font-bold text-[#64748b]">{copy.profile.phone}</dt>
+          <dd className="m-0 text-[1rem] font-black">{info.phone}</dd>
+        </div>
+        <div>
+          <dt>
+            <label htmlFor="daily-name" className="text-[0.9rem] font-bold text-[#64748b]">
+              {copy.profile.name}
+            </label>
+          </dt>
+          <dd className="m-0 mt-1.5 flex gap-2">
+            <input
+              id="daily-name"
+              value={name}
+              disabled={!info.verified}
+              onChange={(event) => setName(event.target.value.slice(0, 20))}
+              placeholder={copy.profile.namePlaceholder}
+              className="h-11 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
+            />
+            <button
+              type="button"
+              disabled={!info.verified || busy || name === (info.name ?? "")}
+              onClick={() => save({ name })}
+              className={cn(smallButton, "bg-[#050505] text-white")}
+            >
+              {copy.profile.save}
+            </button>
+          </dd>
+        </div>
+      </dl>
+      <label className="mt-4 flex cursor-pointer items-center gap-3 text-[0.95rem] font-bold">
+        <input
+          type="checkbox"
+          checked={info.marketing}
+          disabled={!info.verified || busy}
+          onChange={(event) => save({ marketing: event.target.checked })}
+          className="size-5 accent-[#f47a4a]"
+        />
+        {copy.profile.marketing}
+      </label>
+      {message && (
+        <p role="status" className="mt-3 text-[0.86rem] font-semibold text-[#475569]">
+          {message}
+        </p>
+      )}
+      <button type="button" onClick={logout} className="mt-5 text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
+        {copy.profile.logout}
+      </button>
+    </section>
+  );
+}
+
+function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; verified: boolean; onChanged: () => Promise<void> }) {
+  const s = copy.subscriptions;
+  const [time, setTime] = useState(sub.deliveryTime);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const live = sub.status === "trial" || sub.status === "active";
+
+  const run = async (action: string, body: Record<string, unknown>, done?: string) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi(action, body);
+      if (done) setMessage(done);
+      await onChanged();
+    } catch (e) {
+      setMessage(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li className={card}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[1.1rem] font-black">{TRACK_TITLE[sub.track]}</p>
+        <Pill className={cn("px-2.5 py-1 text-[0.75rem]", live ? "bg-[#f47a4a] text-[#050505]" : "bg-[#f1f5f9] text-[#475569]")}>
+          {s.status[sub.status]}
+        </Pill>
+      </div>
+
+      {sub.status === "active" && sub.paidUntil && (
+        <p className="mt-2 text-[0.92rem] font-semibold text-[#475569]">
+          {sub.autoRenew
+            ? s.nextCharge.replace("{date}", dateLabel(sub.paidUntil)).replace("{price}", formatKrw(DAILY_MONTHLY_PRICE_KRW))
+            : `${s.paidUntil.replace("{date}", dateLabel(sub.paidUntil))} · ${s.autoRenewOff}`}
+        </p>
+      )}
+      {sub.status === "trial" && sub.nextSendAt && (
+        <p className="mt-2 text-[0.92rem] font-semibold text-[#475569]">{s.trialNext.replace("{date}", dateLabel(sub.nextSendAt))}</p>
+      )}
+
+      {live && (
+        <label className="mt-4 flex items-center gap-2">
+          <span className="w-[4.5rem] shrink-0 text-[0.9rem] font-bold text-[#64748b]">{s.time}</span>
+          <select
+            value={time}
+            disabled={!verified || busy}
+            onChange={(event) => setTime(event.target.value)}
+            className="h-11 min-w-0 flex-1 cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-black outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
+          >
+            {TIMES.map((value) => (
+              <option key={value} value={value}>
+                {timeLabel(value)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!verified || busy || time === sub.deliveryTime}
+            onClick={() => run("account-update", { track: sub.track, time }, s.timeSaved)}
+            className={cn(smallButton, "bg-[#050505] text-white")}
+          >
+            {copy.profile.save}
+          </button>
+        </label>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {sub.status === "active" && sub.autoRenew && (
+          <button
+            type="button"
+            disabled={!verified || busy}
+            onClick={() => window.confirm(s.cancelConfirm) && run("cancel-renewal", { track: sub.track })}
+            className={cn(smallButton, "bg-[#f5f5f4] text-[#050505]")}
+          >
+            {s.cancel}
+          </button>
+        )}
+        {sub.canResume && (
+          <button
+            type="button"
+            disabled={!verified || busy}
+            onClick={() => run("resume-renewal", { track: sub.track })}
+            className={cn(smallButton, "bg-[#f5f5f4] text-[#050505]")}
+          >
+            {s.resume}
+          </button>
+        )}
+        {(sub.status === "trial" || sub.status === "trial_ended" || sub.status === "cancelled" || !sub.autoRenew) && (
+          <Link href="/daily/subscribe" className={cn(smallButton, "bg-[#f47a4a] text-[#050505]")}>
+            {s.subscribe}
+          </Link>
+        )}
+      </div>
+      {message && (
+        <p role="status" className="mt-3 text-[0.86rem] font-semibold text-[#475569]">
+          {message}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: () => Promise<void>; onClose: () => void }) {
+  const r = copy.refund;
+  const quote = payment.quote!;
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const submit = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await dailyApi("refund-request", { orderNumber: payment.orderNumber, reason });
+      await onDone();
+    } catch (e) {
+      setMessage(errorMessage(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-[20px] bg-[#fff8dc] p-4">
+      <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
+      <p className="text-[1.5rem] font-black">₩{formatKrw(quote.amount)}</p>
+      <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
+        {quote.fullRefund ? r.full : r.partial.replace("{days}", String(quote.daysRefunded))}
+      </p>
+      <ul className="m-0 mt-3 flex list-disc flex-col gap-1 pl-5 text-[0.85rem] font-semibold leading-relaxed text-[#57534e]">
+        {(payment.recurring ? [...r.effects, r.recurringEffect] : r.effects).map((effect) => (
+          <li key={effect}>{effect}</li>
+        ))}
+      </ul>
+      <label className="mt-4 block">
+        <span className="text-[0.85rem] font-bold text-[#64748b]">{r.reason}</span>
+        <textarea
+          value={reason}
+          onChange={(event) => setReason(event.target.value.slice(0, 500))}
+          placeholder={r.reasonPlaceholder}
+          rows={2}
+          className="mt-1 w-full resize-none rounded-xl bg-white p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+        />
+      </label>
+      {message && (
+        <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
+          {message}
+        </p>
+      )}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={submit}
+          className="h-12 flex-1 rounded-xl bg-[#050505] text-[0.95rem] font-black text-white disabled:opacity-35"
+        >
+          {busy ? "보내는 중…" : r.submit.replace("{amount}", formatKrw(quote.amount))}
+        </button>
+        <button type="button" onClick={onClose} className="h-12 rounded-xl bg-white px-4 text-[0.95rem] font-black">
+          {r.cancel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
+  const p = copy.payments;
+  const [open, setOpen] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+
+  return (
+    <section className={card}>
+      <h2 className={sectionTitle}>{p.title}</h2>
+      {notice && (
+        <p role="status" className="mt-3 rounded-2xl bg-[#fff8dc] px-4 py-3 text-[0.9rem] font-bold">
+          {notice}
+        </p>
+      )}
+      {info.payments.length === 0 ? (
+        <p className="mt-3 text-center text-[0.92rem] font-semibold text-[#64748b] min-[900px]:text-left">{p.empty}</p>
+      ) : (
+        <ul className="m-0 mt-3 flex list-none flex-col p-0">
+          {info.payments.map((payment) => {
+            const refund = payment.refund;
+            const canRequest = payment.quote && (!refund || refund.status === "rejected");
+            return (
+              <li key={payment.orderNumber} className="border-t border-[#f1f5f9] py-4 first:border-t-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[0.98rem] font-black">
+                      {payment.productName.replace("영어 한잔 Daily ", "")}
+                      {payment.kind === "renewal" && <span className="ml-1.5 text-[0.8rem] font-bold text-[#64748b]">{p.renewal}</span>}
+                    </p>
+                    <p className="text-[0.84rem] font-semibold text-[#64748b]">
+                      {fullDateLabel(payment.paidAt)} · {TRACK_TITLE[payment.track]}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-[1rem] font-black">₩{formatKrw(payment.amount)}</p>
+                </div>
+                {refund && (
+                  <p className="mt-1.5 text-[0.86rem] font-bold text-[#b45309]">
+                    {p.status[refund.status].replace("{amount}", formatKrw(refund.amount))}
+                    {refund.status === "rejected" && refund.note ? ` · ${refund.note}` : ""}
+                  </p>
+                )}
+                {canRequest && open !== payment.orderNumber && (
+                  <button
+                    type="button"
+                    disabled={!info.verified}
+                    onClick={() => {
+                      setNotice("");
+                      setOpen(payment.orderNumber);
+                    }}
+                    className="mt-2 text-[0.86rem] font-bold text-[#050505] underline underline-offset-2 disabled:text-[#94a3b8] disabled:no-underline"
+                  >
+                    {p.refundButton}
+                  </button>
+                )}
+                {open === payment.orderNumber && payment.quote && (
+                  <RefundForm
+                    payment={payment}
+                    onClose={() => setOpen(null)}
+                    onDone={async () => {
+                      setOpen(null);
+                      setNotice(copy.refund.done);
+                      await onChanged();
+                    }}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export default function AccountClient() {
+  // undefined: loading; null: not signed in.
+  const [info, setInfo] = useState<AccountInfo | null | undefined>(undefined);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      setInfo(await dailyApi<AccountInfo>("account-info"));
+      setError("");
+    } catch (e) {
+      if (e instanceof DailyApiError && e.status === 401) setInfo(null);
+      else setError(copy.errors.generic);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const subscriptions = info ? latestPerTrack(info.subscriptions) : [];
+
+  return (
+    <div className={cn("daily-page min-h-[80vh] bg-[#fff8dc] px-4 pb-20 pt-10 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
+      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
+        <h1 className={cn(displayClass, "text-center text-[2.3rem] leading-tight min-[900px]:text-left")}>{copy.title}</h1>
+
+        {error && (
+          <p role="alert" className="rounded-2xl bg-[#fef2f2] px-4 py-3 text-[0.9rem] font-semibold text-[#b91c1c]">
+            {error}
+          </p>
+        )}
+
+        {info === undefined && !error && <div className="h-40 animate-pulse rounded-[24px] bg-white/70" />}
+
+        {info === null && (
+          <section className={card}>
+            <h2 className={sectionTitle}>{copy.signInTitle}</h2>
+            <p className="mb-4 mt-1 text-center text-[0.92rem] font-semibold text-[#475569] min-[900px]:text-left">{copy.signInDetail}</p>
+            <PhoneVerification onVerified={load} />
+          </section>
+        )}
+
+        {info && !info.verified && (
+          <section className={cn(cardFrame, "bg-[#050505] text-white")}>
+            <h2 className={sectionTitle}>{copy.verifyTitle}</h2>
+            <p className="mb-4 mt-1 text-center text-[0.9rem] font-semibold text-white/70 min-[900px]:text-left">{copy.verifyDetail}</p>
+            <div className="text-[#050505]">
+              <PhoneVerification maskedPhone={info.phone} onVerified={load} />
+            </div>
+          </section>
+        )}
+
+        {info && (
+          <>
+            <section className="flex flex-col gap-3">
+              <h2 className={cn(sectionTitle, "mt-2")}>{copy.subscriptions.title}</h2>
+              {subscriptions.length === 0 ? (
+                <div className={cn(card, "text-center")}>
+                  <p className="text-[0.95rem] font-semibold text-[#475569]">{copy.subscriptions.empty}</p>
+                  <Link
+                    href={DAILY_TRIAL_PATH}
+                    className="mt-4 inline-flex h-12 items-center rounded-2xl bg-[#f47a4a] px-6 text-[0.95rem] font-black text-[#050505]"
+                  >
+                    {copy.subscriptions.start}
+                  </Link>
+                </div>
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-3 p-0">
+                  {subscriptions.map((sub) => (
+                    // Keyed on what the server says, so a save resets local edits.
+                    <SubscriptionCard key={`${sub.track}-${sub.deliveryTime}-${sub.status}`} sub={sub} verified={info.verified} onChanged={load} />
+                  ))}
+                </ul>
+              )}
+            </section>
+            <Payments info={info} onChanged={load} />
+            <Profile key={`${info.name}-${info.marketing}`} info={info} onChanged={load} />
+          </>
+        )}
+
+        <p className="mt-4 text-center text-[0.85rem] font-semibold text-[rgba(5,5,5,0.72)]">
+          {copy.help}{" "}
+          <Link href={DAILY_GUIDE_PATH} className="underline underline-offset-2">
+            {dailyCopy.pricing.guide}
+          </Link>
+          {" · "}
+          <Link href={DAILY_TERMS_PATH} className="underline underline-offset-2">
+            {dailyCopy.pricing.terms}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
