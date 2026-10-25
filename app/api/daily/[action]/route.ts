@@ -18,10 +18,19 @@ export const runtime = "nodejs";
 //   logout                       revoke the session and clear the cookie
 //   review-status / review-submit  the signed-in customer's review (verified, pending
 //                                until approved)
+//   billing-info / checkout-window / checkout-verify / cancel-renewal
+//                                Payple payments, forwarded the same way
 //   start-info / start-trial     forwarded to the `daily` Edge Function with the
 //                                session token, which never reaches page JavaScript
 
-const FORWARDED = new Set(["start-info", "start-trial"]);
+const FORWARDED = new Set([
+  "start-info",
+  "start-trial",
+  "billing-info",
+  "checkout-window",
+  "checkout-verify",
+  "cancel-renewal",
+]);
 
 function clientIp(req: Request): string | null {
   const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();

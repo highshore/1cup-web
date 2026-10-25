@@ -242,6 +242,7 @@ export const dailyCopy = {
       perMonth: "월 ₩{price}",
     },
     cta: "하루 무료로 받아보기",
+    subscribeNow: "체험 없이 바로 구독하기",
     note: "결제는 페이플(Payple)로 안전하게 처리돼요. 무료 체험에는 카드 등록이 필요 없어요.",
     terms: "이용약관 · 환불 규정",
   },

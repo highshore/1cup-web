@@ -387,6 +387,12 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           </h2>
           <p className="mt-3 text-[1rem] font-semibold text-[rgba(5,5,5,0.78)]">{copy.pricing.trial}</p>
           <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
+          <a
+            href="/daily/subscribe"
+            className="mt-2 flex h-[50px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
+          >
+            {copy.pricing.subscribeNow}
+          </a>
 
           <div className="mt-8 rounded-[28px] bg-white p-6 text-left min-[900px]:p-9">
             <div className="flex flex-wrap items-center justify-between gap-2">
