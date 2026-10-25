@@ -102,6 +102,9 @@ export default function SubscribeClient() {
         setTrack(latest.track);
         setTime(latest.deliveryTime);
       }
+      // A lesson page's banner links here with its own track ("also get business").
+      const wanted = new URLSearchParams(window.location.search).get("track");
+      if (wanted === "business" || wanted === "tech") setTrack(wanted);
     } catch (e) {
       setInfo(e instanceof DailyApiError && e.status === 401 ? null : undefined);
       if (!(e instanceof DailyApiError && e.status === 401)) setError("정보를 불러오지 못했어요. 새로고침해 주세요.");

@@ -234,6 +234,8 @@ function ShareButton({ expression }: { expression: string }) {
   );
 }
 
+const TRACK_TITLE = { business: "비즈니스 영어", tech: "테크 영어" } as const;
+
 // Opening a message's button signs the browser in as the subscriber (a link-scoped
 // session, see server/session.ts). Render it before anything that loads Daily data on
 // mount: effects run in tree order, and every later dailyApi call waits for this one.
@@ -247,11 +249,13 @@ function LinkSignIn({ token }: { token: string }) {
 export function LessonPage({
   lesson,
   isTrial,
+  paidOtherTrack,
   subscribeHref,
   linkToken,
 }: {
   lesson: DailyLessonContent;
   isTrial: boolean;
+  paidOtherTrack: "business" | "tech" | null;
   subscribeHref: string;
   linkToken: string;
 }) {
@@ -276,16 +280,18 @@ export function LessonPage({
           <section className="rounded-[28px] bg-[#050505] p-6 text-white">
             <p className="flex items-center gap-2 text-[1.1rem] font-black">
               <Emoji className="text-[1.6rem]">🎁</Emoji>
-              오늘은 무료 체험 레슨이에요
+              {TRACK_TITLE[lesson.track]} 무료 체험 레슨이에요
             </p>
             <p className="mt-2 text-[0.95rem] font-semibold text-white/70">
-              평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩3,700 · 언제든 해지.
+              {paidOtherTrack
+                ? `지금 ${TRACK_TITLE[paidOtherTrack]}를 받고 있어요. ${TRACK_TITLE[lesson.track]}도 평일마다 받아보세요. 월 ₩3,700 · 언제든 해지.`
+                : "평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩3,700 · 언제든 해지."}
             </p>
             <Link
               href={subscribeHref}
               className="mt-5 flex h-[52px] items-center justify-center rounded-2xl bg-[#f47a4a] text-[1rem] font-black text-[#050505]"
             >
-              구독 안내 보기
+              {paidOtherTrack ? `${TRACK_TITLE[lesson.track]}도 받기` : "구독 안내 보기"}
             </Link>
           </section>
         )}
