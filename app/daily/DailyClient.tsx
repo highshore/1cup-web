@@ -34,6 +34,7 @@ import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/fea
 import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
+  DAILY_GUIDE_PATH,
   DAILY_TERMS_PATH,
   formatKrw,
 } from "../lib/features/daily/constants";
@@ -448,6 +449,13 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
       {/* P12: FAQ */}
       <Panel id="faq">
         <h2 className={h2Class}>{copy.faq.title}</h2>
+        <p className="mt-3 text-center text-[0.95rem] font-semibold text-[#475569] min-[900px]:text-left">
+          {copy.faq.more}{" "}
+          <a href={DAILY_GUIDE_PATH} className="font-extrabold text-[#050505] underline underline-offset-2">
+            {copy.pricing.guide}
+          </a>
+          {copy.faq.moreSuffix}
+        </p>
         <div className="mt-8 flex flex-col gap-3">
           {copy.faq.items.map((item) => (
             <details key={item.q} className="daily-faq group rounded-[20px] bg-[#f5f5f4] text-left">
@@ -459,9 +467,12 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             </details>
           ))}
         </div>
-        <p className="mt-10 flex items-center justify-center gap-2 text-[0.85rem] font-semibold text-[#64748b]">
+        <p className="mt-10 flex flex-wrap items-center justify-center gap-2 text-[0.85rem] font-semibold text-[#64748b]">
           <CupMark className="h-4 w-3" />
           {copy.operatedBy}
+          <a href={DAILY_GUIDE_PATH} className="underline underline-offset-2">
+            {copy.pricing.guide}
+          </a>
           <a href={DAILY_TERMS_PATH} className="underline underline-offset-2">
             {copy.pricing.terms}
           </a>

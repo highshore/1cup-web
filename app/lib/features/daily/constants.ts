@@ -17,6 +17,7 @@ export const DAILY_PASSES = [
 export const DAILY_TRIAL_OPEN = true;
 export const DAILY_TRIAL_PATH = "/daily/start";
 export const DAILY_TERMS_PATH = "/daily/terms";
+export const DAILY_GUIDE_PATH = "/daily/guide";
 export const DAILY_PRIVACY_PATH = "/daily/privacy";
 
 // Bump when the Daily terms or the consent wording change; stored with each signup.

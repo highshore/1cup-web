@@ -8,7 +8,7 @@ import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
-import { DAILY_TERMS_VERSION, type DailyTrack } from "../../lib/features/daily/constants";
+import { DAILY_GUIDE_PATH, DAILY_TERMS_VERSION, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
 import "../../lib/features/daily/daily.css";
@@ -317,7 +317,7 @@ function Done({ result, track, time }: { result: StartResult; track: DailyTrack;
         </h1>
         <p className="mt-4 text-[1.02rem] font-semibold text-[rgba(5,5,5,0.78)]">
           {result.sent
-            ? `${trackTitle} 오늘의 레슨이 카카오톡(또는 문자)으로 도착해요. 알림을 눌러 레슨을 열어보세요.`
+            ? `${trackTitle} 오늘의 레슨이 카카오톡으로 도착해요. 알림을 눌러 레슨을 열어보세요.`
             : "신청은 완료됐어요. 다음 발송 시간에 다시 보내드릴게요."}
         </p>
 
@@ -340,10 +340,10 @@ function Done({ result, track, time }: { result: StartResult; track: DailyTrack;
             가격 보기
           </Link>
           <Link
-            href="/daily"
+            href={DAILY_GUIDE_PATH}
             className="flex h-[54px] flex-1 items-center justify-center rounded-2xl bg-white/70 text-[1rem] font-black"
           >
-            Daily 소개로
+            이용 가이드 보기
           </Link>
         </div>
       </div>

@@ -15,7 +15,7 @@ import {
 // Any change here that affects people's rights needs DAILY_TERMS_VERSION bumped (and the
 // matching TERMS_VERSION in supabase/functions/daily/index.ts), so consent is re-asked.
 
-const BUSINESS = {
+export const DAILY_BUSINESS = {
   name: "네이티브피티",
   service: "영어 한잔 Daily",
   ceo: "김수겸",
@@ -49,7 +49,7 @@ export function DailyTermsDocument() {
 
       <Article title="제1조 (목적)">
         <p>
-          이 약관은 {BUSINESS.name}(이하 &ldquo;회사&rdquo;)가 제공하는 {BUSINESS.service}(이하
+          이 약관은 {DAILY_BUSINESS.name}(이하 &ldquo;회사&rdquo;)가 제공하는 {DAILY_BUSINESS.service}(이하
           &ldquo;서비스&rdquo;)의 이용 조건과 절차, 회사와 이용자의 권리·의무를 정합니다. 서비스는
           영어 한잔 멤버십·밋업과 별개의 서비스이며, 이 약관에 정하지 않은 사항은 영어 한잔
           이용약관과 관계 법령에 따릅니다.
@@ -131,7 +131,7 @@ export function DailyTermsDocument() {
           <li>예를 들어 3개월 이용권({formatKrw(13500)}원)을 결제하고 30일이 지나 환불을 요청하면 {formatKrw(13500)}원 × 60 ÷ 90 = {formatKrw(9000)}원을 환불합니다.</li>
           <li>회사의 사정으로 서비스를 제공하지 못했거나, 관계 법령이 이용자에게 더 유리한 청약철회·환불 권리를 인정하는 경우에는 그에 따릅니다.</li>
           <li>환불은 결제한 수단의 승인 취소로 처리하며, 카드사·결제대행사 사정에 따라 반영까지 영업일 기준 3~7일이 걸릴 수 있습니다.</li>
-          <li>환불 요청: {BUSINESS.email} 또는 {BUSINESS.phone}</li>
+          <li>환불 요청: {DAILY_BUSINESS.email} 또는 {DAILY_BUSINESS.phone}</li>
         </List>
       </Article>
 
@@ -158,7 +158,7 @@ export function DailyTermsDocument() {
         <List>
           <li>레슨을 받은 이용자는 휴대폰 번호 인증 후 별점과 후기를 남길 수 있으며, 1명당 하나의 후기를 남길 수 있습니다.</li>
           <li>후기는 회사의 확인을 거친 뒤 서비스 소개 페이지에 별점, 내용, 이용자가 정한 이름(또는 익명), 트랙, 받은 레슨 수와 함께 게시될 수 있습니다. 회사는 후기 내용을 고치지 않으며, 대가를 주고 후기를 받지 않습니다.</li>
-          <li>이용자는 게시된 후기를 {BUSINESS.email}로 요청해 언제든 내릴 수 있습니다. 개인정보나 다른 사람에게 해가 되는 내용이 담긴 후기는 게시하지 않습니다.</li>
+          <li>이용자는 게시된 후기를 {DAILY_BUSINESS.email}로 요청해 언제든 내릴 수 있습니다. 개인정보나 다른 사람에게 해가 되는 내용이 담긴 후기는 게시하지 않습니다.</li>
         </List>
       </Article>
 
@@ -205,7 +205,7 @@ export function DailyPrivacyDocument() {
           <li>함께 쓰는 문장: 직접 지울 때까지. 구독 정보가 삭제될 때 함께 삭제합니다.</li>
           <li>후기: 내려달라고 요청할 때까지. 휴대폰 번호와 이름이 삭제될 때 함께 삭제합니다.</li>
           <li>결제·환불 기록: 전자상거래 등에서의 소비자보호에 관한 법률에 따라 5년.</li>
-          <li>삭제를 원하면 {BUSINESS.email}로 요청할 수 있으며, 법령상 보관 의무가 없는 정보는 지체 없이 삭제합니다.</li>
+          <li>삭제를 원하면 {DAILY_BUSINESS.email}로 요청할 수 있으며, 법령상 보관 의무가 없는 정보는 지체 없이 삭제합니다.</li>
         </List>
       </Article>
 
@@ -236,14 +236,14 @@ function BusinessInfo() {
   return (
     <div className="mt-10 rounded-[16px] bg-[#f5f5f4] px-5 py-4 text-[0.82rem] leading-[1.7] text-[#475569]">
       <p className="font-bold text-[#050505]">
-        {BUSINESS.name} · {BUSINESS.service}
+        {DAILY_BUSINESS.name} · {DAILY_BUSINESS.service}
       </p>
       <p>
-        대표자 {BUSINESS.ceo} · 사업자등록번호 {BUSINESS.registration} · 통신판매업 신고번호 {BUSINESS.mailOrder}
+        대표자 {DAILY_BUSINESS.ceo} · 사업자등록번호 {DAILY_BUSINESS.registration} · 통신판매업 신고번호 {DAILY_BUSINESS.mailOrder}
       </p>
-      <p>{BUSINESS.address}</p>
+      <p>{DAILY_BUSINESS.address}</p>
       <p>
-        {BUSINESS.email} · {BUSINESS.phone}
+        {DAILY_BUSINESS.email} · {DAILY_BUSINESS.phone}
       </p>
     </div>
   );

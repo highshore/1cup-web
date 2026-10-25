@@ -7,7 +7,7 @@ import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dail
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
-import { DAILY_TERMS_PATH, DAILY_TERMS_VERSION, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
+import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
 import "../../lib/features/daily/daily.css";
@@ -326,6 +326,10 @@ export default function SubscribeClient() {
         )}
 
         <p className="mt-5 text-center text-[0.85rem] font-semibold text-[rgba(5,5,5,0.72)]">
+          <Link href={DAILY_GUIDE_PATH} className="underline underline-offset-2">
+            {pricing.guide}
+          </Link>
+          {" · "}
           <Link href={DAILY_TERMS_PATH} className="underline underline-offset-2">
             {pricing.terms}
           </Link>
