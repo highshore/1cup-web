@@ -422,6 +422,9 @@ verify_jwt = false          # admin actions check the caller; pg_cron calls it w
 [functions.admin-article]
 verify_jwt = false          # custom admin + private scheduler checks inside
 
+[functions.daily]
+verify_jwt = false          # pg_cron tick presents the Vault scheduler secret; test-send checks the caller
+
 [functions.account-delete]
 verify_jwt = true           # self-service action; the function also resolves the caller server-side
 
