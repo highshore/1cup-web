@@ -227,15 +227,17 @@ async function claim(db: SupabaseClient, plans: PlannedDelivery[]): Promise<Clai
     claimed.set(`${row.subscription_id}|${row.kind}|${row.for_date}`, row);
   }
 
-  // Rows left pending by a tick that died before sending are this tick's to finish.
+  // Rows left pending by a tick that died before sending, and rows whose send failed,
+  // are this call's to (re)send. A subscription is due once per slot, so a failed row is
+  // retried at most once per slot, never in a loop.
   const unclaimed = plans.filter((p) => !claimed.has(`${p.sub.id}|${p.kind}|${p.forDate}`));
   if (unclaimed.length > 0) {
+    const orphanCutoff = new Date(Date.now() - ORPHAN_AFTER_MS).toISOString();
     const { data: orphans, error: orphanError } = await db
       .from("daily_deliveries")
       .select("id, subscription_id, kind, for_date, access_token")
       .in("subscription_id", unclaimed.map((p) => p.sub.id))
-      .eq("status", "pending")
-      .lt("created_at", new Date(Date.now() - ORPHAN_AFTER_MS).toISOString());
+      .or(`status.eq.failed,and(status.eq.pending,created_at.lt.${orphanCutoff})`);
     if (orphanError) throw new Error(`orphan lookup failed: ${orphanError.message}`);
     for (const row of orphans ?? []) {
       claimed.set(`${row.subscription_id}|${row.kind}|${row.for_date}`, row);
@@ -332,7 +334,9 @@ async function sendBatch(
   const result: SendResult = { sentIds: [], failed: [], requestId: null };
   if (deliveries.length === 0) return result;
 
-  const smsFallback = Deno.env.get("DAILY_SMS_FALLBACK") !== "false";
+  // Off unless asked for: NHN rejects the whole message (-2502) when the Kakao channel
+  // has no text-resend (대체 발송) setting, which ours does not have yet.
+  const smsFallback = Deno.env.get("DAILY_SMS_FALLBACK") === "true";
   const recipientList = deliveries.map((d) => ({
     recipientNo: d.sub.recipient_phone,
     templateParameter: templateParameter(d, style),
