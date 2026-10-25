@@ -84,3 +84,37 @@ export function useVisible<T extends Element>(ref: RefObject<T | null>) {
 
   return visible;
 }
+
+// The browser's own English voice reads expressions and examples aloud until lessons
+// carry recorded audio (daily_lessons.audio_path).
+export function useSpeech() {
+  const [supported, setSupported] = useState(false);
+  const [speaking, setSpeaking] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ok = typeof window !== "undefined" && "speechSynthesis" in window;
+    setSupported(ok);
+    return () => {
+      if (ok) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const speak = (text: string, rate = 0.92) => {
+    if (!supported) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    if (speaking === text) {
+      setSpeaking(null);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = rate;
+    utterance.onend = () => setSpeaking(null);
+    utterance.onerror = () => setSpeaking(null);
+    setSpeaking(text);
+    synth.speak(utterance);
+  };
+
+  return { supported, speaking, speak };
+}
