@@ -86,6 +86,20 @@
   }
 }
 
+@keyframes daily-tap {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+}
+
 @keyframes daily-wave {
   0%,
   100% {
@@ -137,6 +151,10 @@
 
 .daily-marker[data-seen="true"] {
   animation: daily-marker 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.daily-tap {
+  animation: daily-tap 800ms ease-out both;
 }
 
 .daily-wave span {

@@ -26,7 +26,7 @@ import {
   cn,
   displayClass,
 } from "../lib/features/daily/components/DailyUI";
-import { IosNotification, IPhone, KakaoChat, LessonScreen } from "../lib/features/daily/components/Phone";
+import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
 import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
@@ -72,7 +72,7 @@ export default function DailyClient() {
       <section className="overflow-hidden bg-[#f47a4a] px-4 pb-16 pt-10 min-[900px]:pb-24 min-[900px]:pt-20">
         <div
           ref={heroRef}
-          className="mx-auto grid w-full max-w-[720px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_270px] min-[900px]:gap-8"
+          className="mx-auto grid w-full max-w-[720px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_290px] min-[900px]:gap-8"
         >
           <div className="flex flex-col items-start">
             <span className="relative mb-4 inline-block text-[2.6rem]">
@@ -100,11 +100,8 @@ export default function DailyClient() {
           </div>
 
           <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10">
-            <span aria-hidden className="absolute inset-x-6 bottom-6 top-16 rounded-[44px] bg-[#050505]/10" />
             <div className="daily-phone-in relative">
-              <IPhone className="w-[270px]">
-                <KakaoChat />
-              </IPhone>
+              <HeroPhoneDemo className="w-[290px]" />
             </div>
             <IosNotification className="daily-drop absolute left-1/2 top-0 w-[min(300px,calc(100%-8px))] -translate-x-1/2 min-[900px]:w-[280px]" />
           </div>

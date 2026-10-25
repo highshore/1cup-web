@@ -23,6 +23,7 @@ export const dailyCopy = {
     cta: "하루 무료로 받아보기",
     trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
     notification: { app: "영어 한잔", time: "지금", body: "오늘의 영어 표현이 도착했어요 ☕" },
+    demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
   kakao: {
     channel: "영어 한잔",
