@@ -17,9 +17,12 @@
 // Opening trials to everyone, and the numbers allowed to try the flow first, live in the
 // daily_config row (trial_open, tester_phones), not in secrets.
 //
+// Template codes live in daily_config too (template_style, lesson_template,
+// review_template, trial_ended_template); until all three resolve, nothing is sent.
+//
 // Secrets (supabase secrets set …)
 //   DAILY_TEMPLATE_LESSON, DAILY_TEMPLATE_REVIEW, DAILY_TEMPLATE_TRIAL_ENDED
-//       Approved Alimtalk template codes. Until all three are set, tick sends nothing.
+//       Fallback template codes when daily_config has none.
 //   DAILY_SMS_FALLBACK   "false" to turn off the LMS fallback (default on).
 //   DAILY_SITE_URL       Base URL in fallback texts (default https://1cupenglish.com).
 //   KAKAO_APPKEY, KAKAO_SECRET_KEY, KAKAO_SENDER_KEY  shared with messaging.
@@ -106,7 +109,7 @@ async function handleStartInfo(customer: Customer) {
     trialsOpenFor(customer),
   ]);
   return {
-    open: open && templateCodes() !== null,
+    open: open && (await templateCodes(db)) !== null,
     phone: maskPhone(customer.phone),
     name: customer.name,
     usedTrialTracks: (claims ?? []).map((c) => c.track),
@@ -125,7 +128,7 @@ async function handleStartTrial(
   body: { track?: unknown; time?: unknown; name?: unknown; marketing?: unknown; agreements?: unknown; termsVersion?: unknown },
 ) {
   if (!(await trialsOpenFor(customer))) throw new StartError("not-open", 403);
-  const codes = templateCodes();
+  const codes = await templateCodes(admin());
   if (!codes) throw new StartError("not-open", 403);
 
   const track = body.track;
@@ -174,7 +177,7 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
   const track = (body.track ?? "business") as Track;
   if (track !== "business" && track !== "tech") throw new Error("unknown track");
 
-  const codes = templateCodes();
+  const codes = await templateCodes(admin());
   if (!codes) throw new Error("template codes are not configured");
 
   const { data: lesson } = await admin()
@@ -190,11 +193,18 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
   const example = lesson?.examples?.[0]?.en ?? "Let's circle back on pricing after the launch.";
   const trackLabel = track === "business" ? "비즈니스 영어" : "테크 영어";
 
-  const params: Record<DeliveryKind, Record<string, string>> = {
-    lesson: { name: "테스트", track: trackLabel, expression, meaning, example, token: "test" },
-    review: { name: "테스트", count: "1", expressions: `· ${expression}`, token: "test" },
-    trial_ended: { name: "테스트", track: trackLabel, token: "test" },
-  };
+  const params: Record<DeliveryKind, Record<string, string>> =
+    codes.style === "send-article"
+      ? {
+        lesson: { "korean-title": `[${trackLabel}] 오늘의 표현 ${expression}: ${meaning}`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
+        review: { "korean-title": `[영어 한잔 Daily] 이번 주 복습: ${expression}`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
+        trial_ended: { "korean-title": `[영어 한잔 Daily] ${trackLabel} 무료 체험이 끝났어요`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
+      }
+      : {
+        lesson: { name: "테스트", track: trackLabel, expression, meaning, example, token: "test" },
+        review: { name: "테스트", count: "1", expressions: `· ${expression}`, token: "test" },
+        trial_ended: { name: "테스트", track: trackLabel, token: "test" },
+      };
   const code = kind === "lesson" ? codes.lesson : kind === "review" ? codes.review : codes.trialEnded;
   return await sendKakaoMessages([{ recipientNo: phone, templateParameter: params[kind] }], code);
 }
