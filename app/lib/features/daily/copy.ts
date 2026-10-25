@@ -4,16 +4,7 @@
 export const dailyCopy = {
   nav: {
     brand: "DAILY",
-    home: "1cup 홈",
     cta: "무료로 받기",
-    menu: "메뉴 열기",
-    links: [
-      { href: "/daily#tracks", label: "트랙" },
-      { href: "/daily#lesson", label: "레슨 미리보기" },
-      { href: "/daily#founder", label: "만든 사람" },
-      { href: "/daily#pricing", label: "가격" },
-      { href: "/daily#faq", label: "자주 묻는 질문" },
-    ],
   },
   hero: {
     tagline: "통역사가 매일 직접 올리는 카톡 영어",
