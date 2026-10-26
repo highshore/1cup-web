@@ -37,11 +37,11 @@ interface RefundRow {
 }
 
 const STATUS_LABEL: Record<Status, string> = {
-  requested: "대기 중",
+  requested: "처리 전",
   refunding: "처리 중 (페이플 응답 확인 필요)",
   refunded: "환불 완료",
   rejected: "반려",
-  failed: "실패 (다시 승인 가능)",
+  failed: "실패 (다시 처리 가능)",
 };
 const STATUS_CLASS: Record<Status, string> = {
   requested: "bg-[#f47a4a] text-[#050505]",
@@ -114,7 +114,7 @@ export default function AdminDailyRefundsClient() {
         관리자 홈
       </Link>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-[28px] font-black">Daily 환불 요청</h1>
+        <h1 className="m-0 text-[28px] font-black">Daily 환불</h1>
         <div className="flex gap-2">
           <button type="button" onClick={() => setShowAll((v) => !v)} className={`${buttonClass} bg-[#f5f5f4]`}>
             {showAll ? "처리할 것만 보기" : "전체 보기"}
@@ -125,7 +125,7 @@ export default function AdminDailyRefundsClient() {
         </div>
       </div>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
-        금액은 고객이 요청한 시점에 이용약관 제7조로 계산했어요. 승인하면 그 금액을 페이플에서 바로 취소하고, 이 결제로 받은 기간을 줄여요.
+        환불은 고객이 누르는 순간 이용약관 제7조로 계산한 금액만큼 페이플에서 바로 취소돼요(계정 삭제 때도 같아요). 여기서는 페이플이 거절한 건을 다시 처리하거나, 응답이 없던 건을 페이플 관리자에서 확인한 뒤 정리해요.
       </p>
 
       {message && <p className="mt-4 rounded-xl bg-[#fff8dc] px-4 py-3 text-[14px] font-bold">{message}</p>}
@@ -173,7 +173,7 @@ export default function AdminDailyRefundsClient() {
                     onClick={() => decide(row, "approve")}
                     className={`${buttonClass} bg-[#050505] text-white`}
                   >
-                    {busy === row.id ? "처리 중…" : `${won(row.amount)} 환불 승인`}
+                    {busy === row.id ? "처리 중…" : `${won(row.amount)} 다시 환불`}
                   </button>
                   {row.status === "requested" && (
                     <button

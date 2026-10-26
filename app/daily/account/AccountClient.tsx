@@ -282,7 +282,15 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
 // The select's value for "기타"; never stored as is.
 const OTHER = "__other__";
 
-function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: () => Promise<void>; onClose: () => void }) {
+function RefundForm({
+  payment,
+  onDone,
+  onClose,
+}: {
+  payment: Payment;
+  onDone: (result: { amount: number; status: "refunded" | "failed" | "unknown" }) => Promise<void>;
+  onClose: () => void;
+}) {
   const r = copy.refund;
   const quote = payment.quote!;
   const [choice, setChoice] = useState("");
@@ -297,8 +305,11 @@ function RefundForm({ payment, onDone, onClose }: { payment: Payment; onDone: ()
     setBusy(true);
     setMessage("");
     try {
-      await dailyApi("refund-request", { orderNumber: payment.orderNumber, reason });
-      await onDone();
+      const { refund } = await dailyApi<{ refund: { amount: number; status: "refunded" | "failed" | "unknown" } }>("refund-request", {
+        orderNumber: payment.orderNumber,
+        reason,
+      });
+      await onDone(refund);
     } catch (e) {
       setMessage(errorMessage(e));
       setBusy(false);
@@ -425,9 +436,13 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
                   <RefundForm
                     payment={payment}
                     onClose={() => setOpen(null)}
-                    onDone={async () => {
+                    onDone={async (result) => {
                       setOpen(null);
-                      setNotice(copy.refund.done);
+                      setNotice(
+                        result.status === "refunded"
+                          ? copy.refund.done.replace("{amount}", formatKrw(result.amount))
+                          : copy.refund.pending,
+                      );
                       await onChanged();
                     }}
                   />
@@ -517,6 +532,8 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
   const billing = info.subscriptions.some((s) => s.status === "active" && s.autoRenew);
   const refundOpen = info.payments.some((p) => p.refund && (p.refund.status === "requested" || p.refund.status === "refunding"));
   const blocked = billing ? d.billingFirst : refundOpen ? d.refundOpen : "";
+  // What deleting refunds on the spot: each payment's amount still refundable under the terms.
+  const refundTotal = info.payments.reduce((sum, p) => sum + (p.quote?.amount ?? 0), 0);
 
   useEffect(() => {
     if (!open) return;
@@ -565,6 +582,11 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
             </h2>
             <p className="mt-3 text-[0.92rem] font-semibold leading-relaxed text-[#334155]">{d.body}</p>
             <p className="mt-2 text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">{d.remaining}</p>
+            {refundTotal > 0 && !blocked && (
+              <p className="mt-2 rounded-xl bg-[#fff8dc] px-3 py-2 text-[0.9rem] font-black">
+                {d.refundTotal.replace("{amount}", formatKrw(refundTotal))}
+              </p>
+            )}
             <p className="mt-2 text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">{d.kept}</p>
             {blocked ? (
               <p role="alert" className="mt-4 rounded-2xl bg-[#fef2f2] px-4 py-3 text-[0.9rem] font-bold text-[#b91c1c]">
