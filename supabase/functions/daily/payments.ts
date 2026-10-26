@@ -17,7 +17,7 @@ const PAYPLE_HOSTNAME = Deno.env.get("PAYPLE_HOSTNAME") || "https://1cupenglish.
 const SITE_URL = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/\/+$/, "");
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-export const PAYMENT_TERMS_VERSION = "2026-10-26";
+export const PAYMENT_TERMS_VERSION = "2026-10-27";
 
 export class PaymentError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) {
@@ -178,6 +178,21 @@ export async function refundCharge(args: { paymentResult: Record<string, unknown
   };
 }
 
+// Invite rewards for a payment that just completed (terms 제5조의2). The database
+// function applies each reward once; a failure here never fails the payment, and the
+// next payment of the same customer picks up anything an inviter is still owed.
+async function applyInvite(db: SupabaseClient, orderNumber: string) {
+  const { error } = await db.rpc("daily_apply_invite", { p_order_number: orderNumber });
+  if (error) console.error("daily invite reward failed:", orderNumber, error.message);
+}
+
+// The invite a first checkout arrived with: a live customer's code, not the payer's own.
+async function validInviteCode(db: SupabaseClient, customerId: string, code: unknown): Promise<string | null> {
+  if (typeof code !== "string" || !/^[A-Z2-9]{8}$/.test(code)) return null;
+  const { data } = await db.from("daily_customers").select("id").eq("invite_code", code).is("deleted_at", null).maybeSingle();
+  return data && data.id !== customerId ? code : null;
+}
+
 // ---------------------------------------------------------------------------
 // Customer actions
 // ---------------------------------------------------------------------------
@@ -249,6 +264,7 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
     status: "pending_auth",
     terms_version: PAYMENT_TERMS_VERSION,
     marketing_consent: body.marketing === true,
+    invite_code: await validInviteCode(db, customer.id, body.inviteCode),
   });
   if (error) throw new PaymentError("주문을 만들지 못했어요. 다시 시도해 주세요.", "order-create-failed", 500);
 
@@ -343,6 +359,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
         p_billing_key: order.billing_key,
       });
       if (error) throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 문의해 주세요.", "settle-failed", 500);
+      await applyInvite(db, orderNumber);
       return { success: true, subscription: await subscriptionSummary(db, subId as string) };
     }
     throw new PaymentError("결제를 처리하고 있어요. 잠시 후 새로고침해 주세요.", "payment-in-progress", 409);
@@ -390,6 +407,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
   if (settleError) {
     throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 새로고침해 주세요.", "settle-failed", 500);
   }
+  await applyInvite(db, orderNumber);
   return { success: true, subscription: await subscriptionSummary(db, subId as string) };
 }
 
@@ -517,8 +535,10 @@ export async function runBilling(db: SupabaseClient): Promise<BillingStats> {
       p_payment_result: charge.data,
       p_error: charge.ok ? null : charge.message,
     });
-    if (charge.ok) stats.charged += 1;
-    else stats.failed += 1;
+    if (charge.ok) {
+      stats.charged += 1;
+      await applyInvite(db, orderNumber);
+    } else stats.failed += 1;
   }
 
   // Paid access that ran out and will not renew: stop deliveries for good.
