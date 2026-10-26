@@ -6,6 +6,7 @@ import { signInWithLink } from "../api";
 import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick } from "./Community";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
+import { DAILY_FIELD_LABEL, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
 import { useSpeech } from "../hooks";
 import { dailyDisplay } from "../fonts";
 import { Waveform } from "./Phone";
@@ -13,7 +14,7 @@ import { cn, displayClass, Emoji, Pill } from "./DailyUI";
 import ReviewCard from "./ReviewCard";
 import "../daily.css";
 
-const TRACK_LABEL = { business: "비즈니스 영어", tech: "테크 영어" } as const;
+const TRACK_LABEL = DAILY_TRACK_LABEL;
 
 export function lessonDateLabel(date: string) {
   const d = new Date(`${date}T00:00:00+09:00`);
@@ -81,6 +82,7 @@ export function LessonBody({
       <section className={cn("rounded-[28px] bg-[#f47a4a] p-6 text-[#050505] min-[900px]:p-8", compact && "p-5")}>
         <div className="flex flex-wrap items-center gap-2">
           <Pill className="bg-[#050505] text-white">{TRACK_LABEL[lesson.track]}</Pill>
+          {lesson.field && <Pill className="bg-white text-[#050505]">{DAILY_FIELD_LABEL[lesson.field]}</Pill>}
           <span className="text-[0.85rem] font-bold text-[rgba(5,5,5,0.7)]">{lessonDateLabel(lesson.publishOn)}</span>
         </div>
         <p className="mt-5 text-[0.85rem] font-extrabold text-[rgba(5,5,5,0.7)]">오늘의 표현</p>
@@ -257,7 +259,6 @@ function ShareButton({ expression }: { expression: string }) {
   );
 }
 
-const TRACK_TITLE = { business: "비즈니스 영어", tech: "테크 영어" } as const;
 
 // Opening a message's button signs the browser in as the subscriber (a link-scoped
 // session, see server/session.ts). Render it before anything that loads Daily data on
@@ -302,7 +303,7 @@ export function LessonPage({
 }: {
   lesson: DailyLessonContent;
   isTrial: boolean;
-  paidOtherTrack: "business" | "tech" | null;
+  paidOtherTrack: DailyTrack | null;
   subscribeHref: string;
   linkToken: string;
 }) {
@@ -318,18 +319,18 @@ export function LessonPage({
           <section className="rounded-[28px] bg-[#050505] p-6 text-white">
             <p className="flex items-center gap-2 text-[1.1rem] font-black">
               <Emoji className="text-[1.6rem]">🎁</Emoji>
-              {TRACK_TITLE[lesson.track]} 무료 체험 레슨이에요
+              {TRACK_LABEL[lesson.track]} 무료 체험 레슨이에요
             </p>
             <p className="mt-2 text-[0.95rem] font-semibold text-white/70">
               {paidOtherTrack
-                ? `지금 ${TRACK_TITLE[paidOtherTrack]}를 받고 있어요. ${TRACK_TITLE[lesson.track]}도 평일마다 받아보세요. 월 ₩3,700 · 언제든 해지.`
+                ? `지금 ${TRACK_LABEL[paidOtherTrack]} 레벨을 받고 있어요. ${TRACK_LABEL[lesson.track]} 레벨도 평일마다 받아보세요. 월 ₩3,700 · 언제든 해지.`
                 : "평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩3,700 · 언제든 해지."}
             </p>
             <Link
               href={subscribeHref}
               className="mt-5 flex h-[52px] items-center justify-center rounded-2xl bg-[#f47a4a] text-[1rem] font-black text-[#050505]"
             >
-              {paidOtherTrack ? `${TRACK_TITLE[lesson.track]}도 받기` : "구독 안내 보기"}
+              {paidOtherTrack ? `${TRACK_LABEL[lesson.track]}도 받기` : "구독 안내 보기"}
             </Link>
           </section>
         )}

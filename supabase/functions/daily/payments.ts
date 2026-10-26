@@ -9,6 +9,7 @@
 // and a renewal is created once per subscription period.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isTrack } from "./delivery.ts";
 
 const PAYPLE_HOST = (Deno.env.get("PAYPLE_HOST") || "https://cpay.payple.kr").replace(/\/+$/, "");
 const PAYPLE_AUTH_URL = Deno.env.get("PAYPLE_AUTH_URL") || `${PAYPLE_HOST}/php/auth.php`;
@@ -17,7 +18,7 @@ const PAYPLE_HOSTNAME = Deno.env.get("PAYPLE_HOSTNAME") || "https://1cupenglish.
 const SITE_URL = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/\/+$/, "");
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-export const PAYMENT_TERMS_VERSION = "2026-10-27";
+export const PAYMENT_TERMS_VERSION = "2026-10-26.3";
 
 export class PaymentError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) {
@@ -226,7 +227,7 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
   if (!(await paymentsOpen(db))) throw new PaymentError("결제는 곧 열려요.", "payments-closed", 403);
   const product = await getProduct(db, body.product);
   const track = body.track;
-  if (track !== "business" && track !== "tech") throw new PaymentError("트랙을 골라 주세요.", "invalid-track");
+  if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
   const time = typeof body.time === "string" ? body.time : "";
   if (!/^([01][0-9]|2[0-2]):(00|30)$/.test(time) || time < "06:00" || time > "22:00") {
     throw new PaymentError("받는 시간을 골라 주세요.", "invalid-time");
@@ -249,7 +250,7 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
       .eq("status", "active")
       .eq("auto_renew", true)
       .maybeSingle();
-    if (live) throw new PaymentError("이미 이 트랙을 정기구독하고 있어요.", "already-subscribed", 409);
+    if (live) throw new PaymentError("이미 이 레벨을 정기구독하고 있어요.", "already-subscribed", 409);
   }
 
   const orderNumber = `DLY${yyyymmdd()}${randomDigits(8)}`;
@@ -413,7 +414,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
 
 export async function cancelRenewal(db: SupabaseClient, customer: PaymentCustomer, body: Record<string, unknown>) {
   const track = body.track;
-  if (track !== "business" && track !== "tech") throw new PaymentError("트랙을 골라 주세요.", "invalid-track");
+  if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
   const { error } = await db
     .from("daily_subscriptions")
     .update({ auto_renew: false, cancelled_at: new Date().toISOString() })

@@ -29,7 +29,7 @@ interface RefundRow {
     order_number: string;
     kind: "checkout" | "renewal";
     amount: number;
-    track: "business" | "tech";
+    track: "basic" | "advanced";
     completed_at: string;
     product_row: { name: string } | null;
   } | null;
@@ -50,7 +50,7 @@ const STATUS_CLASS: Record<Status, string> = {
   rejected: "bg-[#f1f5f9] text-[#475569]",
   failed: "bg-[#fee2e2] text-[#991b1b]",
 };
-const TRACK = { business: "비즈니스", tech: "테크" } as const;
+const TRACK = { basic: "초중급", advanced: "고급" } as const;
 
 const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 const when = (iso: string) =>

@@ -8,6 +8,9 @@ Kakao reviews each one, usually in 1–3 business days. Once all three show **�
 `daily_config` at their codes (bottom of this file). Until codes are set the delivery job
 runs but sends nothing.
 
+`#{track}` is the level: `초중급` or `고급` (Daily has one business-English track in two
+levels; the variable kept its name).
+
 The variable names (`#{name}`, `#{token}`…) must stay exactly as written; the function
 fills them by these names (`templateParameter` in `delivery.ts`). The fixed wording can
 be edited before submitting, but if Kakao asks for a variable to be renamed, change the

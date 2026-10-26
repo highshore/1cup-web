@@ -11,11 +11,11 @@ export const dailyCopy = {
     tagline: "통역사가 매일 직접 올리는 카톡 영어",
     title: "출근길 5분,\n카톡으로 오는\n영어 한잔",
     accent: "영어 한잔",
-    lead: "통역사가 매일 아침 회의와 테크 현장에서 바로 쓰는 표현 하나를 카카오톡으로 올려드려요.",
+    lead: "통역사가 매일 아침 컨설팅·금융·테크·소비재 현장의 회의에서 바로 쓰는 비즈니스 표현 하나를 카카오톡으로 올려드려요.",
     cta: "하루 무료로 받아보기",
     trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
     // A KakaoTalk notification: the channel's name, then the message's first line.
-    notification: { app: "영어 한잔", time: "지금", body: "[비즈니스 영어] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
+    notification: { app: "영어 한잔", time: "지금", body: "[초중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
   // The hero phone's KakaoTalk chat. Mirrors the message customers get today: the
@@ -25,7 +25,7 @@ export const dailyCopy = {
     channel: "영어 한잔",
     date: "2026년 10월 27일 화요일",
     alimtalk: "알림톡 도착",
-    title: "[비즈니스 영어] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다",
+    title: "[초중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다",
     greeting: "Good Morning, 지수 님! 오늘의 영어 한잔을 전달드립니다 ☕️",
     prompt: "아래 버튼을 클릭해주세요! 🥰",
     open: "아티클 확인하기",
@@ -51,8 +51,8 @@ export const dailyCopy = {
     goals: ["회의에서 한 문장으로 말하기 💬", "메일 첫 줄 바로 쓰기 ✉️", "동료 표현 바로 알아듣기 👂"],
   },
   benefits: {
-    title: "카톡으로 매일 받는\n비즈니스·테크 영어",
-    accent: "비즈니스·테크 영어",
+    title: "카톡으로 매일 받는\n현장 비즈니스 영어",
+    accent: "현장 비즈니스 영어",
     items: [
       { emoji: "💬", label: "말풍선", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
       { emoji: "⏰", label: "알람 시계", title: "하루 딱 5분", detail: "출근길에 읽고 듣고 끝" },
@@ -69,7 +69,7 @@ export const dailyCopy = {
     screen: {
       pageTitle: "오늘의 레슨 | One Cup Daily",
       url: "1cupenglish.com",
-      track: "비즈니스 영어",
+      track: "초중급",
       date: "10월 27일 화요일",
       label: "오늘의 표현",
       expression: "circle back",
@@ -152,7 +152,7 @@ export const dailyCopy = {
       label: "예시 화면",
       heading: "오늘의 표현",
       expression: "circle back",
-      together: "오늘 아침 비즈니스 트랙에서 같은 표현을 받은 사람 128명",
+      together: "오늘 아침 초중급에서 같은 표현을 받은 사람 128명",
       prompt: "오늘 표현으로 한 문장 써보기…",
       send: "올리기",
       pick: "통역사 PICK",
@@ -197,29 +197,39 @@ export const dailyCopy = {
     anonymous: "익명",
     lessons: "레슨 {count}개 받음",
   },
+  // The two levels (daily_subscriptions.track). Example expressions: 초중급 from this
+  // week's lessons, 고급 from the interpreter's word list (word_list tab), word for word.
   tracks: {
-    title: "두 가지 트랙 중\n골라서 받아요",
-    accent: "골라서 받아요",
+    title: "내 실력에 맞춰\n두 레벨 중 골라요",
+    accent: "두 레벨 중 골라요",
+    sub: "레벨마다 컨설팅·금융·테크·소비재 현장의 비즈니스 표현을 골라 보내드려요.",
+    examplesLabel: "이런 표현을 받아요",
     free: "첫 하루 무료",
     price: "이후 월 ₩{price}",
     items: [
       {
-        key: "business",
-        emoji: "🤝",
-        emojiLabel: "악수",
-        title: "비즈니스 영어",
-        tagline: "회의·메일에서 바로 쓰는 표현",
-        image: "/assets/daily/meeting.webp",
-        alt: "노트북과 커피가 놓인 사무실 회의 테이블",
+        key: "basic",
+        emoji: "🌱",
+        emojiLabel: "새싹",
+        title: "초중급",
+        tagline: "회의·메일에서 매일 쓰는 기본 표현",
+        examples: [
+          { en: "loop in", ko: "(논의에) 함께하게 하다" },
+          { en: "on the same page", ko: "같은 내용으로 이해하고 있는" },
+          { en: "wrap up", ko: "정리하며 마무리하다" },
+        ],
       },
       {
-        key: "tech",
+        key: "advanced",
         emoji: "🚀",
         emojiLabel: "로켓",
-        title: "테크 영어",
-        tagline: "실리콘밸리 뉴스 속 핵심 표현",
-        image: "/assets/daily/devdesk.webp",
-        alt: "코드가 띄워진 노트북과 커피잔이 있는 아침 책상",
+        title: "고급",
+        tagline: "보고·협상·경영진 회의에서 쓰는 한 단계 위 표현",
+        examples: [
+          { en: "zero in on", ko: "주의를 집중하다, 조준하다" },
+          { en: "yield a big win", ko: "큰 성과를 거두다" },
+          { en: "zero-tolerance policy", ko: "무관용 정책" },
+        ],
       },
     ],
   },
@@ -234,6 +244,36 @@ export const dailyCopy = {
       { icon: "school", title: "SKY 학부 출신" },
       { icon: "chip", title: "Fortune 500 기업 경력" },
     ],
+  },
+  // Right below the founder's background. The interpreter's own word list (Google Sheet,
+  // word_list tab, ~7,000 entries): nobody gets the whole sheet; subscribers get its
+  // entries one at a time, as lessons. The rows shown are real rows, word for word.
+  wordbook: {
+    lead: "수년간 대기업, 실리콘밸리 기업, 연합사, 외국계에 근무하며 모아놓은",
+    title: "통역사의 단어장\n완전 공개",
+    accent: "완전 공개",
+    sub: "통역 현장에서 한 줄씩 적어 온 7,000개가 넘는 표현이에요. 구독하면 이 단어장을 매일 한 표현씩, 레슨으로 풀어 공개해요.",
+    points: [
+      { emoji: "📒", label: "공책", title: "7,000개+ 표현", detail: "회의·보고·협상에서 실제로 들은 표현" },
+      { emoji: "🔎", label: "돋보기", title: "뜻·비슷한 표현·예문", detail: "한 줄에 한국어 뜻과 쓰임까지" },
+      { emoji: "🔓", label: "열린 자물쇠", title: "하루 한 표현씩 공개", detail: "구독자에게만 레슨으로 열려요" },
+    ],
+    sheet: {
+      file: "영단어 암기 리스트",
+      tab: "word_list",
+      label: "실제 단어장 일부",
+      columns: ["English", "Korean", "Synonym", "Example"],
+      // Ascending, like the sheet with a filter on; real rows, word for word.
+      rows: [
+        { n: 33, en: "a slew of", ko: "많은", syn: "a multitude of, a plethora of, a bounty of", ex: "He received a slew of invitations to attend various events." },
+        { n: 36, en: "a toss-up", ko: "반반의 가능성", syn: "uncertainty, dilemma, coin flip", ex: "Deciding on our vacation destination was a toss-up between going to the beach or going on a mountain retreat." },
+        { n: 39, en: "a ways to go", ko: "아직 갈 길이 먼 (=a long way to go)", syn: "a long way to go, still a ways off, still have some way to go", ex: "We still have a ways to go before we reach our destination." },
+        { n: 7007, en: "yield a big win", ko: "큰 성과를 거두다", syn: "triumph, secure a major victory, achieve a significant success", ex: "The underdog's determination and hard work yielded a big win for the team." },
+        { n: 7020, en: "YTD", ko: "연간누계 (year to date)", syn: "year-to-date, current year, cumulative year", ex: "YTD stands for \"Year to Date\" and is often used in financial reports to refer to the period starting from the beginning of the year until the present time." },
+      ],
+      locked: "나머지 7,000개는 구독자에게 매일 하나씩 공개돼요",
+      count: "7,024행",
+    },
   },
   pricing: {
     title: "첫 하루는\n무료예요",
@@ -275,7 +315,7 @@ export const dailyCopy = {
       },
       {
         q: "받는 시간을 바꾸고 싶어요",
-        a: "로그인하면 위쪽의 '내 계정'에서 트랙별로 받는 시간을 바꿀 수 있어요. 바꾼 시간은 다음 레슨부터 적용돼요.",
+        a: "로그인하면 위쪽의 '내 계정'에서 레벨별로 받는 시간을 바꿀 수 있어요. 바꾼 시간은 다음 레슨부터 적용돼요.",
       },
       {
         q: "친구를 초대하면 혜택이 있나요?",
@@ -317,14 +357,14 @@ export const dailyCopy = {
       title: "무료 체험 신청하기",
       sub: "카드 등록 없이 레슨 1회를 먼저 받아봐요. 1분이면 끝나요.",
       steps: [
-        { title: "트랙 고르기", detail: "회의·메일에서 쓰는 비즈니스 영어, 실리콘밸리 뉴스 속 테크 영어 중 하나를 골라요." },
+        { title: "레벨 고르기", detail: "회의·메일에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
         { title: "받는 시간 고르기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요. 출근길에 읽을 수 있는 시간이 좋아요." },
         { title: "카카오로 시작하거나 번호 인증", detail: "카카오로 시작하면 카카오계정의 휴대폰 번호로 바로 들어와요. 휴대폰 번호에 인증번호를 받아 입력해도 돼요. 회원가입이나 비밀번호는 없어요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
         { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
       ],
       rules: [
-        "무료 체험은 번호마다 트랙별로 한 번씩이에요. 비즈니스와 테크를 각각 한 번씩 받아볼 수 있어요.",
+        "무료 체험은 번호마다 레벨별로 한 번씩이에요. 초중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
         "체험 다음 발송 시간(최소 12시간 뒤)에 체험이 끝났다는 안내가 와요. 그 뒤로는 구독해야 계속 받아요.",
       ],
       cta: "하루 무료로 받아보기",
@@ -349,7 +389,7 @@ export const dailyCopy = {
         { emoji: "💬", label: "말풍선", title: "대화로 보기", detail: "짧은 대화 속에서 표현이 어떻게 오가는지 보고, 전체를 이어서 들을 수 있어요." },
         { emoji: "⚡", label: "번개", title: "1분 퀴즈", detail: "방금 배운 표현으로 문제를 풀면 정답과 이유를 바로 알려줘요. 같이 푼 사람이 10명을 넘으면 정답률과 가장 헷갈린 보기도 보여줘요." },
         { emoji: "✍️", label: "글 쓰는 손", title: "함께 쓰는 문장", detail: "오늘 표현으로 한 문장을 써서 올리고, 같은 레슨을 받은 사람들의 문장에 ☕를 보내요. 이름을 쓸지 익명으로 할지는 직접 정해요." },
-        { emoji: "🏆", label: "트로피", title: "통역사 PICK", detail: "통역사가 레슨마다 잘 쓴 문장 하나를 골라, 같은 트랙의 다음 레슨 맨 위에 소개해요." },
+        { emoji: "🏆", label: "트로피", title: "통역사 PICK", detail: "통역사가 레슨마다 잘 쓴 문장 하나를 골라, 같은 레벨의 다음 레슨 맨 위에 소개해요." },
         { emoji: "🔥", label: "불꽃", title: "연속 기록과 내 표현장", detail: "퀴즈를 푼 날이 이어지면 연속 기록이 쌓여요. 받은 표현은 모두 내 표현장에 모여요." },
         { emoji: "📤", label: "보내기", title: "동료에게 보내기", detail: "오늘의 표현과 Daily 소개 링크를 보내요. 내 레슨 링크는 들어가지 않아요." },
       ],
@@ -360,7 +400,7 @@ export const dailyCopy = {
       title: "로그인과 본인 확인",
       items: [
         { title: "평소엔 버튼으로 바로", detail: "카카오톡 메시지의 버튼으로 들어오면 따로 로그인하지 않아도 돼요." },
-        { title: "결제·신청·변경은 인증번호 한 번", detail: "버튼으로 들어온 상태에서 결제, 새 트랙 신청, 설정 변경, 자동 결제 해지, 환불 요청을 하려면 내 번호로 가는 인증번호를 한 번 입력해요. 화면에는 010-****-1234처럼 가린 번호만 보여요." },
+        { title: "결제·신청·변경은 인증번호 한 번", detail: "버튼으로 들어온 상태에서 결제, 새 레벨 신청, 설정 변경, 자동 결제 해지, 환불 요청을 하려면 내 번호로 가는 인증번호를 한 번 입력해요. 화면에는 010-****-1234처럼 가린 번호만 보여요." },
         { title: "메시지는 그대로 전달하지 마세요", detail: "메시지 버튼은 내 계정으로 들어가는 링크예요. 친구에게 알려주고 싶다면 레슨 페이지의 '동료에게 보내기'를 써주세요." },
         { title: "다른 기기에서는 카카오나 번호로", detail: "PC나 다른 브라우저에서는 내 계정이나 신청·구독 페이지에서 '카카오로 시작하기'나 휴대폰 번호 인증으로 들어와요." },
       ],
@@ -373,7 +413,7 @@ export const dailyCopy = {
       subscription: { name: "30일 정기구독", how: "30일마다 자동 결제 · 언제든 해지" },
       passHow: "한 번만 결제 · 자동 결제 없음",
       steps: [
-        "상품, 트랙, 받는 시간을 골라요.",
+        "상품, 레벨, 받는 시간을 골라요.",
         "약관과 환불 규정에 동의해요.",
         "페이플 결제창에서 카드를 등록하면 그 자리에서 결제돼요.",
         "결제 결과 화면이 뜨면 끝이에요. 다음 발송 시간부터 레슨이 와요.",
@@ -391,9 +431,9 @@ export const dailyCopy = {
       items: [
         { title: "내 계정", detail: "로그인하면 맨 위 오른쪽 버튼이 '내 계정'으로 바뀌어요. 구독, 결제 내역, 내 정보를 한곳에서 봐요." },
         { title: "자동 결제 해지", detail: "내 계정의 구독 카드에서 '자동 결제 해지'를 누르면 돼요. 이미 결제한 기간이 끝날 때까지는 계속 받고, 그 안에는 다시 켤 수도 있어요." },
-        { title: "받는 시간·이름 바꾸기", detail: "내 계정에서 트랙별 받는 시간과 카톡에서 부를 이름을 바꿔요. 바꾼 시간은 다음 레슨부터 적용돼요." },
+        { title: "받는 시간·이름 바꾸기", detail: "내 계정에서 레벨별 받는 시간과 카톡에서 부를 이름을 바꿔요. 바꾼 시간은 다음 레슨부터 적용돼요." },
         { title: "친구 초대", detail: "내 계정의 초대 링크로 들어온 친구가 처음 결제하면 두 사람 모두 7일을 더 받아요. 내가 그때 구독 중이 아니면 다음 결제 때 더해져요." },
-        { title: "트랙 바꾸기", detail: "다른 트랙은 따로 신청해요. 지금 트랙을 그만 받으려면 자동 결제를 해지하면 돼요." },
+        { title: "레벨 바꾸기", detail: "다른 레벨은 따로 신청해요. 지금 레벨을 그만 받으려면 자동 결제를 해지하면 돼요." },
         { title: "계정 삭제", detail: "내 계정 맨 아래 '계정 삭제'에서 '계정 삭제'를 입력하면 바로 지워져요. 자동 결제 중이면 먼저 해지해 주세요. 남은 기간은 환불되지 않으니 환불을 원하면 먼저 요청해 주세요." },
       ],
     },
@@ -470,7 +510,7 @@ export const dailyCopy = {
     },
     subscriptions: {
       title: "내 구독",
-      empty: "아직 신청한 트랙이 없어요.",
+      empty: "아직 신청한 레벨이 없어요.",
       start: "하루 무료로 받아보기",
       status: { trial: "무료 체험 중", trial_ended: "체험 끝", active: "받는 중", cancelled: "끝남" },
       time: "받는 시간",

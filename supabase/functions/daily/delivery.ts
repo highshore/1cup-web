@@ -11,7 +11,12 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendKakaoMessages } from "../_shared/kakao.ts";
 
-export type Track = "business" | "tech";
+// The level a subscription and a lesson belong to (the column is still called track).
+export type Track = "basic" | "advanced";
+
+export function isTrack(value: unknown): value is Track {
+  return value === "basic" || value === "advanced";
+}
 export type DeliveryKind = "lesson" | "review" | "trial_ended";
 
 export interface Subscription {
@@ -63,9 +68,9 @@ const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 const ORPHAN_AFTER_MS = 10 * 60 * 1000;
 const DUE_BATCH = 500;
 
-const TRACK_LABEL: Record<Track, string> = {
-  business: "비즈니스 영어",
-  tech: "테크 영어",
+export const TRACK_LABEL: Record<Track, string> = {
+  basic: "초중급",
+  advanced: "고급",
 };
 
 const KST_DATE = new Intl.DateTimeFormat("en-CA", {
