@@ -652,7 +652,7 @@ export default function AccountClient() {
           <section className={card}>
             <h2 className={sectionTitle}>{copy.signInTitle}</h2>
             <p className="mb-4 mt-1 text-center text-[0.92rem] font-semibold text-[#475569] min-[900px]:text-left">{copy.signInDetail}</p>
-            <PhoneVerification onVerified={load} />
+            <PhoneVerification bare onVerified={load} />
           </section>
         )}
 

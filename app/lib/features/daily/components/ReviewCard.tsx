@@ -78,7 +78,7 @@ export default function ReviewCard() {
           <p className="mb-3 text-[0.92rem] font-semibold text-[#475569]">
             레슨을 받은 번호로 인증하면 한 줄 후기를 남길 수 있어요.
           </p>
-          <PhoneVerification onVerified={load} />
+          <PhoneVerification bare onVerified={load} />
         </div>
       ) : !status.eligible ? (
         <p className="mt-3 text-[0.92rem] font-semibold text-[#64748b]">
