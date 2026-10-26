@@ -110,9 +110,10 @@ function siteUrl(): string {
   return (Deno.env.get("DAILY_SITE_URL") ?? "https://1cupenglish.com").replace(/\/$/, "");
 }
 
+// Every template adds "님" after the name itself, so the fallback is "고객", not "고객님".
 function customerName(sub: Subscription): string {
   const name = (sub.recipient_name ?? "").trim();
-  return name !== "" ? name : "고객님";
+  return name !== "" ? name : "고객";
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +150,19 @@ async function hasSentLesson(db: SupabaseClient, subscriptionId: string): Promis
   return (count ?? 0) > 0;
 }
 
+// Someone already paying for another track has subscribed; telling them a trial ended
+// reads as if their subscription had.
+async function paysForAnotherTrack(db: SupabaseClient, sub: Subscription): Promise<boolean> {
+  const { data, error } = await db
+    .from("daily_subscriptions")
+    .select("id, paid_until")
+    .eq("customer_id", sub.customer_id)
+    .eq("status", "active")
+    .neq("track", sub.track);
+  if (error) throw new Error(`paid lookup failed: ${error.message}`);
+  return (data ?? []).some((row) => !row.paid_until || new Date(row.paid_until).getTime() > Date.now());
+}
+
 async function weekLessons(
   db: SupabaseClient,
   subscriptionId: string,
@@ -171,13 +185,14 @@ async function weekLessons(
 
 /**
  * What a subscription gets for the slot on `forDate`, or a reason it gets nothing.
- * A trial that has already had its lesson gets the trial-ended notice instead.
+ * A trial that has already had its lesson gets the trial-ended notice instead, unless the
+ * customer already pays for another track: then the trial ends without one.
  */
 export async function planSlot(
   db: SupabaseClient,
   sub: Subscription,
   forDate: string,
-): Promise<PlannedDelivery | { skip: "no-lesson" | "no-review" | "sunday" | "unpaid" }> {
+): Promise<PlannedDelivery | { skip: "no-lesson" | "no-review" | "sunday" | "unpaid" | "paid-elsewhere" }> {
   const dow = isoDow(forDate);
   if (dow === 7) return { skip: "sunday" };
   // A paid subscription past the end of its paid period gets nothing until a renewal
@@ -188,6 +203,8 @@ export async function planSlot(
 
   if (sub.status === "trial") {
     if (await hasSentLesson(db, sub.id)) {
+      // The trial still ends; the tick just sends no notice for it.
+      if (await paysForAnotherTrack(db, sub)) return { skip: "paid-elsewhere" };
       return { sub, kind: "trial_ended", forDate };
     }
     // The free lesson. On a Saturday there is no lesson for the day, so the most
@@ -481,11 +498,12 @@ export interface TickStats {
   missingLesson: number;
   noReview: number;
   unpaid: number;
+  trialsEndedQuietly: number;
   skipped?: string;
 }
 
 export async function runTick(db: SupabaseClient, now = new Date()): Promise<TickStats> {
-  const stats: TickStats = { due: 0, sent: 0, failed: 0, stale: 0, missingLesson: 0, noReview: 0, unpaid: 0 };
+  const stats: TickStats = { due: 0, sent: 0, failed: 0, stale: 0, missingLesson: 0, noReview: 0, unpaid: 0, trialsEndedQuietly: 0 };
 
   const codes = await templateCodes(db);
   if (!codes) {
@@ -508,6 +526,7 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
   if (subs.length === 0) return stats;
 
   const plans: PlannedDelivery[] = [];
+  const quietlyEnded: string[] = [];
   for (const sub of subs) {
     const slot = new Date(sub.next_send_at as string);
     if (now.getTime() - slot.getTime() > STALE_AFTER_MS) {
@@ -519,6 +538,7 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
       if (plan.skip === "no-lesson") stats.missingLesson += 1;
       if (plan.skip === "no-review") stats.noReview += 1;
       if (plan.skip === "unpaid") stats.unpaid += 1;
+      if (plan.skip === "paid-elsewhere") quietlyEnded.push(sub.id);
       continue;
     }
     plans.push(plan);
@@ -528,6 +548,18 @@ export async function runTick(db: SupabaseClient, now = new Date()): Promise<Tic
   const outcome = await sendClaimed(db, claimed, codes);
   stats.sent = outcome.sent;
   stats.failed = outcome.failed;
+
+  // Trials of people who already pay for another track end without a notice, exactly
+  // as a sent notice would end them, so they are not planned again.
+  if (quietlyEnded.length > 0) {
+    const { error: endError } = await db
+      .from("daily_subscriptions")
+      .update({ status: "trial_ended", trial_ended_at: new Date().toISOString(), next_send_at: null })
+      .in("id", quietlyEnded)
+      .eq("status", "trial");
+    if (endError) console.error("ending paid customers' trials failed:", endError.message);
+    else stats.trialsEndedQuietly = quietlyEnded.length;
+  }
 
   // Every due subscription moves on, sent or skipped; ended trials already have
   // next_send_at cleared and the function leaves them alone.
