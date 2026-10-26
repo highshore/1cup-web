@@ -33,7 +33,8 @@ interface RefundRow {
     completed_at: string;
     product_row: { name: string } | null;
   } | null;
-  customer: { phone: string; name: string | null } | null;
+  // A deleted account keeps its payments with no phone or name.
+  customer: { phone: string | null; name: string | null } | null;
 }
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -55,7 +56,7 @@ const TRACK = { basic: "초중급", advanced: "고급" } as const;
 const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 const when = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const phone = (p: string) => p.replace(/^(\d{3})(\d{3,4})(\d{4})$/, "$1-$2-$3");
+const phone = (p: string | null) => (p ? p.replace(/^(\d{3})(\d{3,4})(\d{4})$/, "$1-$2-$3") : "삭제된 계정");
 
 const panelClass = "rounded-2xl border border-[#e9e8e5] bg-white p-4 shadow-[0_3px_18px_rgba(0,0,0,0.035)] sm:p-5";
 const buttonClass = "inline-flex h-10 items-center justify-center rounded-xl px-4 text-[14px] font-black disabled:opacity-40";
