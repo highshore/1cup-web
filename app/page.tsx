@@ -45,9 +45,12 @@ export const metadata: Metadata = {
   },
 };
 
-// These queries depend on live Supabase data. Rendering on request keeps a
-// temporary database slowdown from preventing otherwise unrelated deployments.
-export const dynamic = "force-dynamic";
+// Served from the CDN and re-rendered in the background at most once a minute,
+// so visitors never wait on Supabase. The timeout keeps a slow database from
+// stalling a build or a background re-render; the page falls back to empty data.
+export const revalidate = 60;
+
+const HOME_DATA_TIMEOUT_MS = 8000;
 
 export default async function HomePage() {
   let upcomingEvents: MeetupEvent[] = [];
@@ -59,10 +62,15 @@ export default async function HomePage() {
   let topics: HomeTopicArticle[] = [];
 
   try {
-    [upcomingEvents, stats, topics] = await Promise.all([
-      fetchUpcomingMeetupEventsServer(),
-      fetchHomeStats(),
-      fetchHomeTopics(),
+    [upcomingEvents, stats, topics] = await Promise.race([
+      Promise.all([
+        fetchUpcomingMeetupEventsServer(),
+        fetchHomeStats(),
+        fetchHomeTopics(),
+      ]),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Home data timed out")), HOME_DATA_TIMEOUT_MS),
+      ),
     ]);
   } catch (error) {
     console.error("Error fetching home data at build time:", error);

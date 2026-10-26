@@ -1,6 +1,8 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import dynamic from "next/dynamic";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import type { LottieRefCurrentProps } from "lottie-react";
 import { DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH } from "../constants";
 import { dailyCopy } from "../copy";
 import { usePrefersReducedMotion } from "../hooks";
@@ -42,11 +44,16 @@ export function Headline({
   );
 }
 
+// lottie-web is only downloaded on pages that animate an emoji.
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+
 // Google's Noto Animated Emoji (https://googlefonts.github.io/noto-emoji-animation/,
 // CC BY 4.0, credited on the page), served from Google's font CDN like Roundy does.
-// Sized by the surrounding font-size. Falls back to the native emoji when the
-// animation does not exist or fails to load, and under reduced motion. motion="none"
-// always uses the still native emoji, for small inline marks.
+// Uses the Lottie version (~8KB) rather than the 512px WebP (~200–700KB each, ~7MB
+// for the storefront); it loads when the emoji nears the viewport and only plays
+// while visible. Sized by the surrounding font-size. Falls back to the native emoji
+// when the animation does not exist or fails to load, and under reduced motion.
+// motion="none" always uses the still native emoji, for small inline marks.
 function notoCodepoint(emoji: string): string {
   return Array.from(emoji)
     .map((char) => char.codePointAt(0)!.toString(16))
@@ -68,6 +75,40 @@ export function Emoji({
   const reduced = usePrefersReducedMotion();
   const [failed, setFailed] = useState(false);
   const still = motion === "none" || reduced || failed;
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const lottieRef = useRef<LottieRefCurrentProps | null>(null);
+  const [near, setNear] = useState(false);
+  const [animation, setAnimation] = useState<object | null>(null);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (still || !box) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setNear(true);
+          lottieRef.current?.play();
+        } else {
+          lottieRef.current?.pause();
+        }
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [still]);
+
+  useEffect(() => {
+    if (still || !near || animation) return;
+    let cancelled = false;
+    fetch(`https://fonts.gstatic.com/s/e/notoemoji/latest/${notoCodepoint(children)}/lottie.json`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data) => !cancelled && setAnimation(data))
+      .catch(() => !cancelled && setFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [still, near, animation, children]);
 
   return (
     <span
@@ -79,16 +120,17 @@ export function Emoji({
       {still ? (
         children
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`https://fonts.gstatic.com/s/e/notoemoji/latest/${notoCodepoint(children)}/512.webp`}
-          alt=""
-          aria-hidden
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-          className="inline-block size-[1.15em] align-[-0.15em]"
-        />
+        <span ref={boxRef} aria-hidden className="inline-block size-[1.15em] align-[-0.15em]">
+          {animation && (
+            <Lottie
+              animationData={animation}
+              lottieRef={lottieRef}
+              loop
+              autoplay
+              className="size-full"
+            />
+          )}
+        </span>
       )}
     </span>
   );
