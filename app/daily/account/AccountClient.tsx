@@ -141,7 +141,7 @@ function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Prom
               disabled={!info.verified}
               onChange={(event) => setName(event.target.value.slice(0, 20))}
               placeholder={copy.profile.namePlaceholder}
-              className="h-11 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
+              className="h-12 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
             />
             <button
               type="button"
@@ -224,7 +224,7 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
             value={time}
             disabled={!verified || busy}
             onChange={(event) => setTime(event.target.value)}
-            className="h-11 min-w-0 flex-1 cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-black outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
+            className="h-12 min-w-0 flex-1 cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-black outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
           >
             {TIMES.map((value) => (
               <option key={value} value={value}>
@@ -481,18 +481,18 @@ function InviteCard() {
       </h2>
       <p className="mt-2 text-[0.9rem] font-semibold leading-relaxed text-[#475569]">{i.body}</p>
       <div className="mt-4 flex gap-2">
-        <span className="flex h-11 min-w-0 flex-1 items-center truncate rounded-xl bg-[#f5f5f4] px-3 text-[0.88rem] font-bold">{link.replace(/^https?:\/\//, "")}</span>
+        <span className="flex h-12 min-w-0 flex-1 items-center truncate rounded-xl bg-[#f5f5f4] px-3 text-[0.88rem] font-bold">{link.replace(/^https?:\/\//, "")}</span>
         <button
           type="button"
           onClick={async () => {
             await navigator.clipboard?.writeText(link);
             setCopied(true);
           }}
-          className={cn(smallButton, "h-11 bg-[#f5f5f4] text-[#050505]")}
+          className={cn(smallButton, "h-12 bg-[#f5f5f4] text-[#050505]")}
         >
           {copied ? i.copied : i.copy}
         </button>
-        <button type="button" onClick={share} className={cn(smallButton, "h-11 bg-[#050505] text-white")}>
+        <button type="button" onClick={share} className={cn(smallButton, "h-12 bg-[#050505] text-white")}>
           {i.share}
         </button>
       </div>
@@ -675,7 +675,7 @@ export default function AccountClient() {
                   <p className="text-[0.95rem] font-semibold text-[#475569]">{copy.subscriptions.empty}</p>
                   <Link
                     href={DAILY_TRIAL_PATH}
-                    className="mt-4 inline-flex h-12 items-center rounded-2xl bg-[#f47a4a] px-6 text-[0.95rem] font-black text-[#050505]"
+                    className="mt-4 inline-flex h-[54px] items-center rounded-2xl bg-[#f47a4a] px-6 text-[0.95rem] font-black text-[#050505]"
                   >
                     {copy.subscriptions.start}
                   </Link>

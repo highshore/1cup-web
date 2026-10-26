@@ -149,7 +149,7 @@ export default function DailyConsentDialog({
               <button
                 type="button"
                 onClick={() => setView("summary")}
-                className="h-[52px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
+                className="h-[54px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
               >
                 확인했어요
               </button>
@@ -170,14 +170,14 @@ export default function DailyConsentDialog({
             <button
               type="button"
               onClick={() => setView("summary")}
-              className="mt-6 h-[52px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
+              className="mt-6 h-[54px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
             >
               약관 확인하기
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="mt-2 h-[48px] w-full rounded-2xl text-[0.95rem] font-bold text-[#64748b]"
+              className="mt-2 h-12 w-full rounded-2xl text-[0.95rem] font-bold text-[#64748b]"
             >
               다음에 할게요
             </button>
@@ -264,7 +264,7 @@ export default function DailyConsentDialog({
               type="button"
               disabled={busy}
               onClick={() => setView("refused")}
-              className="mt-2 h-[44px] w-full rounded-2xl text-[0.92rem] font-bold text-[#64748b]"
+              className="mt-2 h-12 w-full rounded-2xl text-[0.92rem] font-bold text-[#64748b]"
             >
               다음에 할게요
             </button>

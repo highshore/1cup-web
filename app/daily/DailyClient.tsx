@@ -441,7 +441,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
           <a
             href="/daily/subscribe"
-            className="mt-2 flex h-[50px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
+            className="mt-2 flex h-[54px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
           >
             {copy.pricing.subscribeNow}
           </a>
@@ -723,7 +723,7 @@ function StickyBar({ visible }: { visible: boolean }) {
           <p className="text-[1rem] font-black">{copy.title}</p>
           <p className="truncate text-[0.78rem] font-semibold text-white/60">{copy.sub.replace("{price}", price)}</p>
         </div>
-        <TrialButton label={copy.cta} tone="orange" className="min-h-[46px] shrink-0 px-4 text-[0.95rem]" />
+        <TrialButton label={copy.cta} tone="orange" className="min-h-12 shrink-0 px-4 text-[0.95rem]" />
       </div>
     </div>
   );

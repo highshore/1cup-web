@@ -318,7 +318,7 @@ export default function SubscribeClient() {
                   setError("");
                   setConsentOpen(true);
                 }}
-                className="mt-5 h-[56px] w-full rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white transition-opacity disabled:opacity-35"
+                className="mt-5 h-[54px] w-full rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white transition-opacity disabled:opacity-35"
               >
                 {selected ? `₩${formatKrw(selected.amount)} 결제하기` : "결제하기"}
               </button>
