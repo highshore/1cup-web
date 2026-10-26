@@ -13,6 +13,7 @@
 // are never padded.
 import crypto from "crypto";
 import { admin } from "../../../supabase/server";
+import type { DailyTrack } from "../constants";
 import type { DailySessionCustomer } from "./session";
 
 /** "같이 푼 퀴즈" and "같은 표현을 받은 사람" appear only from this many people. */
@@ -29,7 +30,7 @@ interface LessonRef {
   lessonId: string;
   subscriptionId: string;
   ownerId: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   publishOn: string;
   quiz: { options: string[]; answer: number } | null;
 }
@@ -46,7 +47,7 @@ async function lessonRef(token: string): Promise<LessonRef> {
     lesson_id: string | null;
     subscription_id: string;
     subscription: { customer_id: string } | null;
-    lesson: { track: "business" | "tech"; publish_on: string; quiz: LessonRef["quiz"] } | null;
+    lesson: { track: DailyTrack; publish_on: string; quiz: LessonRef["quiz"] } | null;
   } | null;
   if (!row || row.kind !== "lesson" || !row.lesson_id || !row.lesson || !row.subscription) {
     throw new CommunityError("레슨을 찾을 수 없어요.", 404);
@@ -260,7 +261,7 @@ const KST_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year
 interface BookRow {
   for_date: string;
   access_token: string;
-  lesson: { id: string; track: "business" | "tech"; expression: string; meaning: string; quiz: unknown } | null;
+  lesson: { id: string; track: DailyTrack; expression: string; meaning: string; quiz: unknown } | null;
 }
 
 async function deliveredLessons(customerId: string) {

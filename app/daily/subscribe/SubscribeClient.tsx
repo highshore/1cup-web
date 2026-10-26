@@ -7,7 +7,7 @@ import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dail
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
-import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
+import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LABEL, DAILY_TRACKS, isDailyTrack, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
 import "../../lib/features/daily/daily.css";
@@ -62,7 +62,7 @@ function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
 }
 
-const TRACK_TITLE: Record<DailyTrack, string> = { business: "비즈니스 영어", tech: "테크 영어" };
+const TRACK_TITLE = DAILY_TRACK_LABEL;
 
 // Payple's script needs jQuery first, as on the 1cup payment page.
 function loadPayple() {
@@ -87,7 +87,7 @@ function loadPayple() {
 export default function SubscribeClient() {
   const [info, setInfo] = useState<BillingInfo | null | undefined>(undefined);
   const [product, setProduct] = useState<Product["id"]>("sub_30d");
-  const [track, setTrack] = useState<DailyTrack>("business");
+  const [track, setTrack] = useState<DailyTrack>("basic");
   const [time, setTime] = useState("08:00");
   const [consentOpen, setConsentOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -102,9 +102,9 @@ export default function SubscribeClient() {
         setTrack(latest.track);
         setTime(latest.deliveryTime);
       }
-      // A lesson page's banner links here with its own track ("also get business").
+      // A lesson page's banner links here with its own track ("also get 초중급").
       const wanted = new URLSearchParams(window.location.search).get("track");
-      if (wanted === "business" || wanted === "tech") setTrack(wanted);
+      if (isDailyTrack(wanted)) setTrack(wanted);
     } catch (e) {
       setInfo(e instanceof DailyApiError && e.status === 401 ? null : undefined);
       if (!(e instanceof DailyApiError && e.status === 401)) setError("정보를 불러오지 못했어요. 새로고침해 주세요.");
@@ -255,9 +255,9 @@ export default function SubscribeClient() {
                 ))}
               </ul>
 
-              <p className="mt-6 text-[1.05rem] font-black">2. 트랙과 받는 시간</p>
+              <p className="mt-6 text-[1.05rem] font-black">2. 레벨과 받는 시간</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {(["business", "tech"] as const).map((key) => (
+                {DAILY_TRACKS.map((key) => (
                   <button
                     key={key}
                     type="button"
@@ -297,7 +297,7 @@ export default function SubscribeClient() {
 
               {blocked && (
                 <p className="mt-4 rounded-2xl bg-[#fff1ea] px-4 py-3 text-[0.9rem] font-bold text-[#b45309]">
-                  이 트랙은 이미 정기구독 중이에요. 이용권으로 기간을 늘리거나 다른 트랙을 골라 주세요.
+                  이 레벨은 이미 정기구독 중이에요. 이용권으로 기간을 늘리거나 다른 레벨을 골라 주세요.
                 </p>
               )}
               {error && !consentOpen && (

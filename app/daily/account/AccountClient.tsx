@@ -10,6 +10,7 @@ import {
   DAILY_GUIDE_PATH,
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_TERMS_PATH,
+  DAILY_TRACK_LABEL,
   DAILY_TRIAL_PATH,
   formatKrw,
   type DailyTrack,
@@ -54,7 +55,7 @@ interface AccountInfo {
 }
 
 const copy = dailyCopy.account;
-const TRACK_TITLE: Record<DailyTrack, string> = { business: "비즈니스 영어", tech: "테크 영어" };
+const TRACK_TITLE = DAILY_TRACK_LABEL;
 
 const TIMES = Array.from({ length: 33 }, (_, i) => {
   const minutes = 6 * 60 + i * 30;

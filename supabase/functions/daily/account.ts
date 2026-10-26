@@ -8,19 +8,18 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendKakaoMessages } from "../_shared/kakao.ts";
-import { templateCodes } from "./delivery.ts";
+import { isTrack, templateCodes, TRACK_LABEL } from "./delivery.ts";
 import { PaymentError, refundCharge, type PaymentCustomer } from "./payments.ts";
 
 const SITE_HOST = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/^https?:\/\//, "").replace(/\/+$/, "");
-const TRACK_LABEL: Record<string, string> = { business: "비즈니스 영어", tech: "테크 영어" };
 const OPEN_REFUND = ["requested", "refunding"];
 
 function won(amount: number): string {
   return `₩${amount.toLocaleString("ko-KR")}`;
 }
 
-function assertTrack(track: unknown): asserts track is "business" | "tech" {
-  if (track !== "business" && track !== "tech") throw new PaymentError("트랙을 골라 주세요.", "invalid-track");
+function assertTrack(track: unknown): asserts track is "basic" | "advanced" {
+  if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
 }
 
 // Notices go out through the approved general-purpose template (template_style
@@ -213,7 +212,7 @@ export async function requestRefund(db: SupabaseClient, customer: PaymentCustome
   await notify(
     db,
     config?.admin_phones ?? [],
-    `[Daily 환불 요청] ${TRACK_LABEL[order?.track ?? ""] ?? ""} ${productName} ${won(refund.amount)}`.replace(/\s+/g, " "),
+    `[Daily 환불 요청] ${isTrack(order?.track) ? TRACK_LABEL[order.track] : ""} ${productName} ${won(refund.amount)}`.replace(/\s+/g, " "),
     "관리자",
     "/admin/daily-refunds",
   );

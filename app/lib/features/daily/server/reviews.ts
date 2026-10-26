@@ -1,6 +1,7 @@
 // Server-only: Daily reviews. Written by verified customers (Daily phone sign-in plus at
 // least one delivered lesson), shown publicly only after the founder approves them.
 import { admin } from "../../../supabase/server";
+import type { DailyTrack } from "../constants";
 import type { DailySessionCustomer } from "./session";
 
 export interface DailyReviewInput {
@@ -11,7 +12,7 @@ export interface DailyReviewInput {
 
 export interface PublicDailyReview {
   id: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   rating: number;
   body: string;
   displayName: string | null;
@@ -33,14 +34,14 @@ async function deliveredLessons(customerId: string) {
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
   const ids = (subs ?? []).map((s) => s.id);
-  if (ids.length === 0) return { count: 0, track: null as "business" | "tech" | null };
+  if (ids.length === 0) return { count: 0, track: null as DailyTrack | null };
   const { count } = await db
     .from("daily_deliveries")
     .select("id", { count: "exact", head: true })
     .in("subscription_id", ids)
     .eq("kind", "lesson")
     .eq("status", "sent");
-  return { count: count ?? 0, track: (subs?.[0]?.track ?? null) as "business" | "tech" | null };
+  return { count: count ?? 0, track: (subs?.[0]?.track ?? null) as DailyTrack | null };
 }
 
 export async function reviewStatus(customer: DailySessionCustomer) {

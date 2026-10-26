@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
-import { DAILY_ACCOUNT_PATH } from "../../lib/features/daily/constants";
+import { DAILY_ACCOUNT_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
 import "../../lib/features/daily/daily.css";
@@ -13,14 +13,14 @@ import "../../lib/features/daily/daily.css";
 interface BookItem {
   date: string;
   token: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   expression: string;
   meaning: string;
   quiz: "correct" | "wrong" | "open" | null;
 }
 
 const copy = dailyCopy.book;
-const TRACK_TITLE = { business: "비즈니스 영어", tech: "테크 영어" } as const;
+const TRACK_TITLE = DAILY_TRACK_LABEL;
 const QUIZ_CLASS = { correct: "bg-[#dcfce7] text-[#166534]", wrong: "bg-[#fee2e2] text-[#991b1b]", open: "bg-[#f1f5f9] text-[#475569]" } as const;
 
 function dateLabel(date: string) {

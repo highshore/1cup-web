@@ -10,11 +10,12 @@ import {
   dailyApi,
 } from "../../../lib/features/daily/api";
 import { cn, displayClass, Emoji } from "../../../lib/features/daily/components/DailyUI";
+import { DAILY_TRACK_LABEL, type DailyTrack } from "../../../lib/features/daily/constants";
 import { dailyDisplay } from "../../../lib/features/daily/fonts";
 import "../../../lib/features/daily/daily.css";
 
 interface Settled {
-  subscription: { track: "business" | "tech"; plan: string; paidUntil: string; autoRenew: boolean; deliveryTime: string } | null;
+  subscription: { track: DailyTrack; plan: string; paidUntil: string; autoRenew: boolean; deliveryTime: string } | null;
 }
 
 type State =
@@ -22,7 +23,7 @@ type State =
   | { kind: "done"; settled: Settled }
   | { kind: "failed"; message: string };
 
-const TRACK_TITLE = { business: "비즈니스 영어", tech: "테크 영어" } as const;
+const TRACK_TITLE = DAILY_TRACK_LABEL;
 
 function readResponse(params: URLSearchParams): Record<string, string> {
   const fromQuery: Record<string, string> = {};

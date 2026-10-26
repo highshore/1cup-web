@@ -1,11 +1,13 @@
 // Server-only: finds what a Kakao message's button opens. The token in the link is the
 // credential (36 random hex characters per delivery), so these pages need no login.
 import { admin } from "../../../supabase/server";
+import type { DailyField, DailyTrack } from "../constants";
 
 export interface DailyLessonContent {
   id: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   publishOn: string;
+  field: DailyField | null;
   expression: string;
   meaning: string;
   pronunciation: string | null;
@@ -20,22 +22,23 @@ export interface DailyLessonContent {
 export interface DailyDeliveryView {
   kind: "lesson" | "review" | "trial_ended";
   forDate: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   name: string | null;
   isTrial: boolean;
   /** Another track this subscriber already pays for, so a trial lesson can say "also get this one". */
-  paidOtherTrack: "business" | "tech" | null;
+  paidOtherTrack: DailyTrack | null;
   deliveryTime: string;
   lessons: DailyLessonContent[];
 }
 
 const LESSON_COLUMNS =
-  "id, track, publish_on, expression, meaning, pronunciation, stress, nuance, similar_expressions, examples, dialogue, quiz";
+  "id, track, publish_on, field, expression, meaning, pronunciation, stress, nuance, similar_expressions, examples, dialogue, quiz";
 
 type LessonRow = {
   id: string;
-  track: "business" | "tech";
+  track: DailyTrack;
   publish_on: string;
+  field: DailyField | null;
   expression: string;
   meaning: string;
   pronunciation: string | null;
@@ -52,6 +55,7 @@ function toContent(row: LessonRow): DailyLessonContent {
     id: row.id,
     track: row.track,
     publishOn: row.publish_on,
+    field: row.field,
     expression: row.expression,
     meaning: row.meaning,
     pronunciation: row.pronunciation,
@@ -74,7 +78,7 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
     .maybeSingle();
   if (!data) return null;
   const sub = (data as unknown as {
-    subscription: { customer_id: string; track: "business" | "tech"; recipient_name: string | null; status: string; delivery_time: string } | null;
+    subscription: { customer_id: string; track: DailyTrack; recipient_name: string | null; status: string; delivery_time: string } | null;
   }).subscription;
   if (!sub) return null;
 

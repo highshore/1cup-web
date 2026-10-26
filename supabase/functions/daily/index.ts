@@ -72,6 +72,8 @@ import {
   trialLessonFor,
   type DeliveryKind,
   type Subscription,
+  isTrack,
+  TRACK_LABEL,
   type Track,
 } from "./delivery.ts";
 
@@ -94,7 +96,7 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
 }
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-const TERMS_VERSION = "2026-10-27";
+const TERMS_VERSION = "2026-10-26.3";
 
 // A Daily customer, signed in with a Daily phone code. Daily customers are not 1cup
 // members: this never reads public.users or Supabase Auth.
@@ -184,7 +186,7 @@ async function handleStartTrial(
   if (!codes) throw new StartError("not-open", 403);
 
   const track = body.track;
-  if (track !== "business" && track !== "tech") throw new StartError("invalid-track");
+  if (!isTrack(track)) throw new StartError("invalid-track");
   const time = typeof body.time === "string" ? body.time : "";
   const match = /^([01][0-9]|2[0-2]):(00|30)$/.exec(time);
   if (!match || time < "06:00" || time > "22:00") throw new StartError("invalid-time");
@@ -249,8 +251,8 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
   if (!/^01[0-9]{8,9}$/.test(phone)) throw new Error("phone must be a Korean mobile number");
   const kind = (body.kind ?? "lesson") as DeliveryKind;
   if (!["lesson", "review", "trial_ended"].includes(kind)) throw new Error("unknown kind");
-  const track = (body.track ?? "business") as Track;
-  if (track !== "business" && track !== "tech") throw new Error("unknown track");
+  const track = (body.track ?? "basic") as Track;
+  if (!isTrack(track)) throw new Error("unknown track");
 
   const codes = await templateCodes(admin());
   if (!codes) throw new Error("template codes are not configured");
@@ -266,7 +268,7 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
   const expression = lesson?.expression ?? "circle back";
   const meaning = lesson?.meaning ?? "(논의를) 나중에 다시 이어가다";
   const example = lesson?.examples?.[0]?.en ?? "Let's circle back on pricing after the launch.";
-  const trackLabel = track === "business" ? "비즈니스 영어" : "테크 영어";
+  const trackLabel = TRACK_LABEL[track];
 
   const params: Record<DeliveryKind, Record<string, string>> =
     codes.style === "send-article"

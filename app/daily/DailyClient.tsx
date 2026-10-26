@@ -31,6 +31,7 @@ import {
   displayClass,
 } from "../lib/features/daily/components/DailyUI";
 import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
+import WordbookSheet from "../lib/features/daily/components/WordbookSheet";
 import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
@@ -309,32 +310,46 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
       </Panel>
 
-      {/* P9: tracks */}
+      {/* P9: levels (the code still says tracks) */}
       <Panel id="tracks">
         <h2 className={h2Class}>
           <Headline text={copy.tracks.title} accent={copy.tracks.accent} accentClassName="text-[#f47a4a]" />
         </h2>
+        <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.tracks.sub}</p>
         <ul className="m-0 mt-9 grid list-none gap-4 p-0 min-[900px]:grid-cols-2">
-          {copy.tracks.items.map((track) => (
-            <li key={track.key} className="overflow-hidden rounded-[28px] bg-[#f5f5f4]">
-              <div className="relative aspect-[16/10]">
-                <Image src={track.image} alt={track.alt} fill sizes="(min-width: 900px) 480px, 100vw" className="object-cover" />
-                <span className="absolute left-4 top-4 flex size-14 items-center justify-center rounded-2xl bg-white text-[1.9rem] shadow-[0_8px_20px_-8px_rgba(5,5,5,0.4)]">
-                  <Emoji label={track.emojiLabel}>{track.emoji}</Emoji>
-                </span>
-              </div>
-              <div className="p-6">
-                <h3 className="text-[1.45rem] font-black">{track.title}</h3>
-                <p className="mt-1 text-[0.98rem] font-semibold text-[#475569]">{track.tagline}</p>
-                <div className="mt-5 flex items-center gap-3 max-[899px]:justify-center">
+          {copy.tracks.items.map((track) => {
+            const dark = track.key === "advanced";
+            return (
+              <li key={track.key} className={cn("flex flex-col rounded-[28px] p-6 text-left min-[900px]:p-7", dark ? "bg-[#050505] text-white" : "bg-[#f5f5f4]")}>
+                <div className="flex items-center gap-3.5">
+                  <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white text-[1.9rem]">
+                    <Emoji label={track.emojiLabel}>{track.emoji}</Emoji>
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-[1.55rem] font-black leading-tight">{track.title}</h3>
+                    <p className={cn("mt-0.5 text-[0.95rem] font-semibold", dark ? "text-white/70" : "text-[#475569]")}>{track.tagline}</p>
+                  </div>
+                </div>
+                <p className={cn("mt-6 text-[0.8rem] font-extrabold", dark ? "text-[#f47a4a]" : "text-[#d95f2d]")}>{copy.tracks.examplesLabel}</p>
+                <ul className="m-0 mt-2 flex list-none flex-col gap-2 p-0">
+                  {track.examples.map((example) => (
+                    <li key={example.en} className={cn("rounded-2xl px-4 py-3", dark ? "bg-white/[0.08]" : "bg-white")}>
+                      <span lang="en" className={cn(displayClass, "block text-[1.3rem] leading-tight")}>
+                        {example.en}
+                      </span>
+                      <span className={cn("mt-0.5 block text-[0.86rem] font-semibold", dark ? "text-white/65" : "text-[#64748b]")}>{example.ko}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 flex items-center gap-3 max-[899px]:justify-center">
                   <Pill className="bg-[#f47a4a] text-[#050505]">{copy.tracks.free}</Pill>
-                  <span className="text-[0.92rem] font-bold text-[#475569]">
+                  <span className={cn("text-[0.92rem] font-bold", dark ? "text-white/70" : "text-[#475569]")}>
                     {copy.tracks.price.replace("{price}", price)}
                   </span>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </Panel>
 
@@ -359,6 +374,35 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               </li>
             );
           })}
+        </ul>
+      </Panel>
+
+      {/* The interpreter's word list, right below the founder's background */}
+      <Panel id="wordbook">
+        <h2>
+          <span className="mx-auto block max-w-[26rem] text-[1.05rem] font-extrabold leading-snug text-[#475569] min-[900px]:mx-0 min-[900px]:max-w-none min-[900px]:text-[1.2rem]">
+            {copy.wordbook.lead}
+          </span>
+          <span className={cn(h2Class, "mt-3 block")}>
+            <Headline text={copy.wordbook.title} accent={copy.wordbook.accent} accentClassName="text-[#f47a4a]" />
+          </span>
+        </h2>
+        <p className="mx-auto mt-4 max-w-[36rem] text-[1rem] font-semibold leading-relaxed text-[#475569] min-[900px]:mx-0">{copy.wordbook.sub}</p>
+        <div className="mt-9">
+          <WordbookSheet />
+        </div>
+        <ul className="m-0 mt-5 grid list-none gap-3 p-0 text-left min-[900px]:grid-cols-3">
+          {copy.wordbook.points.map((point) => (
+            <li key={point.title} className="flex items-center gap-3.5 rounded-[20px] bg-[#f5f5f4] px-4 py-3.5">
+              <Emoji label={point.label} className="text-[1.8rem]" motion="none">
+                {point.emoji}
+              </Emoji>
+              <span className="min-w-0">
+                <span className="block text-[1rem] font-black">{point.title}</span>
+                <span className="block text-[0.84rem] font-semibold text-[#64748b]">{point.detail}</span>
+              </span>
+            </li>
+          ))}
         </ul>
       </Panel>
 

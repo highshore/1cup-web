@@ -43,8 +43,8 @@ function timeLabel(value: string) {
 
 const ERRORS: Record<string, string> = {
   "not-open": "무료 체험은 아직 열리지 않았어요. 곧 열릴 예정이에요.",
-  "trial-used": "이 휴대폰 번호로 이 트랙의 무료 체험을 이미 받았어요.",
-  "already-subscribed": "이미 이 트랙을 받고 있어요.",
+  "trial-used": "이 휴대폰 번호로 이 레벨의 무료 체험을 이미 받았어요.",
+  "already-subscribed": "이미 이 레벨을 받고 있어요.",
   "no-lesson": "보낼 레슨을 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
   "consent-required": "필수 항목에 모두 동의해 주세요.",
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
@@ -57,7 +57,7 @@ const TRACKS = dailyCopy.tracks.items;
 export default function StartClient() {
   const params = useSearchParams();
 
-  const [track, setTrack] = useState<DailyTrack>(params.get("track") === "tech" ? "tech" : "business");
+  const [track, setTrack] = useState<DailyTrack>(params.get("track") === "advanced" ? "advanced" : "basic");
   const [time, setTime] = useState(TIMES.includes(params.get("time") ?? "") ? (params.get("time") as string) : "08:00");
   const [name, setName] = useState("");
   // undefined: checking; null: not signed in.
@@ -137,7 +137,7 @@ export default function StartClient() {
           카드 등록 없이, 오늘의 레슨 1회를 바로 카카오톡으로 보내드려요.
         </p>
 
-        <Step number={1} title="트랙을 골라주세요">
+        <Step number={1} title="레벨을 골라주세요">
           <div className="grid gap-3 min-[600px]:grid-cols-2">
             {TRACKS.map((item) => {
               const state = trackState(item.key);
@@ -161,6 +161,9 @@ export default function StartClient() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-[1.08rem] font-black">{item.title}</span>
                     <span className="block text-[0.86rem] font-semibold text-[#64748b]">{item.tagline}</span>
+                    <span lang="en" className="mt-1 block text-[0.84rem] font-bold text-[#050505]">
+                      {item.examples.map((example) => example.en).join(" · ")}
+                    </span>
                     {state && <span className="mt-1 inline-block rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[0.75rem] font-bold text-[#475569]">{state}</span>}
                   </span>
                   <span
@@ -244,8 +247,8 @@ export default function StartClient() {
         {info && selectedBlocked && (
           <p className="mt-6 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
             {trackState(track) === "받는 중"
-              ? "이미 이 트랙을 받고 있어요."
-              : "이 트랙의 무료 체험은 이미 받았어요. 다른 트랙을 고르거나 구독해 주세요."}
+              ? "이미 이 레벨을 받고 있어요."
+              : "이 레벨의 무료 체험은 이미 받았어요. 다른 레벨을 고르거나 구독해 주세요."}
           </p>
         )}
 

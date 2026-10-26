@@ -17,10 +17,10 @@ interface Row {
   created_at: string;
   lesson_id: string;
   cups: number;
-  lesson: { expression: string; track: "business" | "tech"; publish_on: string } | null;
+  lesson: { expression: string; track: "basic" | "advanced"; publish_on: string } | null;
 }
 
-const TRACK = { business: "비즈니스", tech: "테크" } as const;
+const TRACK = { basic: "초중급", advanced: "고급" } as const;
 const buttonClass = "inline-flex h-9 items-center justify-center rounded-xl px-3 text-[13px] font-black disabled:opacity-40";
 
 export default function AdminDailySentencesClient() {
@@ -78,7 +78,7 @@ export default function AdminDailySentencesClient() {
         </button>
       </div>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
-        레슨마다 하나를 통역사 PICK으로 고르면 같은 트랙의 다음 레슨 위쪽에 소개돼요. 숨긴 문장은 쓴 사람에게만 보여요.
+        레슨마다 하나를 통역사 PICK으로 고르면 같은 레벨의 다음 레슨 위쪽에 소개돼요. 숨긴 문장은 쓴 사람에게만 보여요.
       </p>
       {message && <p className="mt-4 rounded-xl bg-[#fff8dc] px-4 py-3 text-[14px] font-bold">{message}</p>}
 
