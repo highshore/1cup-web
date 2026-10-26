@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   CheckBadgeIcon,
@@ -38,6 +38,7 @@ import {
   DAILY_TERMS_PATH,
   formatKrw,
 } from "../lib/features/daily/constants";
+import { dailyApi } from "../lib/features/daily/api";
 import { dailyCopy } from "../lib/features/daily/copy";
 import type { PublicDailyReview } from "../lib/features/daily/server/reviews";
 import { dailyDisplay } from "../lib/features/daily/fonts";
@@ -68,6 +69,12 @@ const h2Class = cn(displayClass, "text-[2.25rem] leading-[1.18] min-[900px]:text
 const MIN_REVIEWS = 3;
 
 export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] }) {
+  // Arrived through a friend's invite link (?invite=CODE): the server keeps the code in a
+  // cookie so this browser's first payment rewards both people.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("invite");
+    if (code) void dailyApi("invite-capture", { code }).catch(() => undefined);
+  }, []);
   const copy = dailyCopy;
   const heroRef = useRef<HTMLDivElement>(null);
   const pricingRef = useRef<HTMLDivElement>(null);

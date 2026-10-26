@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signInWithLink } from "../api";
+import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick } from "./Community";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
 import { useSpeech } from "../hooks";
@@ -49,9 +50,27 @@ function Section({ emoji, title, children, className }: { emoji: string; title: 
 
 // One lesson, as opened from the Kakao button. Shared by the lesson page and the
 // Saturday review (compact).
-export function LessonBody({ lesson, compact = false }: { lesson: DailyLessonContent; compact?: boolean }) {
+export function LessonBody({
+  lesson,
+  compact = false,
+  recordedAnswer = null,
+  onAnswer,
+  quizExtra,
+}: {
+  lesson: DailyLessonContent;
+  compact?: boolean;
+  /** The reader's recorded answer, when they solved this quiz before. */
+  recordedAnswer?: number | null;
+  onAnswer?: (choice: number) => void;
+  /** Shown under the explanation once answered (the crowd numbers). */
+  quizExtra?: React.ReactNode;
+}) {
   const { supported, speaking, speak } = useSpeech();
-  const [picked, setPicked] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(recordedAnswer);
+  // A recorded answer can arrive after the first render.
+  useEffect(() => {
+    if (recordedAnswer !== null) setPicked((current) => current ?? recordedAnswer);
+  }, [recordedAnswer]);
   const quiz = lesson.quiz;
   const answered = picked !== null;
   const correct = quiz && picked === quiz.answer;
@@ -176,7 +195,10 @@ export function LessonBody({ lesson, compact = false }: { lesson: DailyLessonCon
                   <button
                     type="button"
                     disabled={answered}
-                    onClick={() => setPicked(index)}
+                    onClick={() => {
+                      setPicked(index);
+                      onAnswer?.(index);
+                    }}
                     className={cn(
                       "flex w-full items-center justify-between rounded-2xl px-4 py-3.5 text-left text-[1rem] font-bold transition-colors",
                       !answered && "bg-white/10 hover:bg-white/15",
@@ -199,6 +221,7 @@ export function LessonBody({ lesson, compact = false }: { lesson: DailyLessonCon
               {quiz.explanation}
             </p>
           )}
+          {answered && quizExtra}
         </Section>
       )}
     </div>
@@ -246,6 +269,30 @@ function LinkSignIn({ token }: { token: string }) {
   return null;
 }
 
+// Rendered after LinkSignIn, so the community data loads with the link's session.
+function LessonPageBody({ lesson, token }: { lesson: DailyLessonContent; token: string }) {
+  const { data, reload, answer } = useLessonCommunity(token);
+  return (
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
+      <YesterdayPick pick={data?.yesterdayPick ?? null} />
+      <LessonBody lesson={lesson} recordedAnswer={data?.quiz.answered ?? null} onAnswer={answer} quizExtra={<QuizCrowd stats={data?.quiz.stats ?? null} />} />
+      {data && <SentenceWall token={token} expression={lesson.expression} data={data} reload={reload} />}
+
+      <section className="rounded-[28px] bg-[#fff8dc] p-6 text-center">
+        <Emoji className="text-[2.6rem]">☕</Emoji>
+        <p className="mt-2 text-[1.2rem] font-black">오늘의 레슨 끝!</p>
+        <p className="mt-1 text-[0.95rem] font-semibold text-[#475569]">오늘 회의에서 한 번 써보세요.</p>
+        <div className="mt-5">
+          <ProgressLink progress={data?.progress ?? null} />
+        </div>
+        <div className="mt-3 flex gap-2">
+          <ShareButton expression={lesson.expression} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function LessonPage({
   lesson,
   isTrial,
@@ -262,17 +309,8 @@ export function LessonPage({
   return (
     <div className={cn("daily-page min-h-[80vh] bg-white px-4 pb-20 pt-6 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
       <LinkSignIn token={linkToken} />
-      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
-        <LessonBody lesson={lesson} />
-
-        <section className="rounded-[28px] bg-[#fff8dc] p-6 text-center">
-          <Emoji className="text-[2.6rem]">☕</Emoji>
-          <p className="mt-2 text-[1.2rem] font-black">오늘의 레슨 끝!</p>
-          <p className="mt-1 text-[0.95rem] font-semibold text-[#475569]">오늘 회의에서 한 번 써보세요.</p>
-          <div className="mt-5 flex gap-2">
-            <ShareButton expression={lesson.expression} />
-          </div>
-        </section>
+      <LessonPageBody lesson={lesson} token={linkToken} />
+      <div className="mx-auto mt-4 flex w-full max-w-[720px] flex-col gap-4">
 
         <ReviewCard />
 

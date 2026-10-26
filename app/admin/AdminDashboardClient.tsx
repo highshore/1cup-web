@@ -70,6 +70,7 @@ const QUICK_ACTIONS = [
   ["gifts", "/admin/gifts"],
   ["testCenter", "/admin/test-center"],
   ["dailyRefunds", "/admin/daily-refunds"],
+  ["dailySentences", "/admin/daily-sentences"],
 ] as const;
 
 const EMPTY_STATS: DashboardStats = {

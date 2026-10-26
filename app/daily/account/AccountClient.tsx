@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
-import { cn, displayClass, Pill } from "../../lib/features/daily/components/DailyUI";
+import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
 import {
   DAILY_GUIDE_PATH,
@@ -440,6 +440,72 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
   );
 }
 
+interface InviteInfo {
+  code: string;
+  joined: number;
+  rewardedDays: number;
+  pendingDays: number;
+}
+
+// 친구 초대 (terms 제5조의2): the reader's link, and what it has earned so far.
+function InviteCard() {
+  const i = dailyCopy.invite;
+  const [info, setInfo] = useState<InviteInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    dailyApi<InviteInfo>("invite-info").then(setInfo).catch(() => setInfo(null));
+  }, []);
+
+  if (!info) return null;
+  const link = `${window.location.origin}/daily?invite=${info.code}`;
+  const share = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "영어 한잔 Daily", text: i.shareText, url: link });
+        return;
+      } catch {
+        // Closed the share sheet: fall back to copying.
+      }
+    }
+    await navigator.clipboard?.writeText(`${i.shareText}\n${link}`);
+    setCopied(true);
+  };
+
+  return (
+    <section className={card}>
+      <h2 className={cn(sectionTitle, "flex items-center justify-center gap-2 min-[900px]:justify-start")}>
+        <Emoji className="text-[1.4rem]">💌</Emoji>
+        {i.title}
+      </h2>
+      <p className="mt-2 text-[0.9rem] font-semibold leading-relaxed text-[#475569]">{i.body}</p>
+      <div className="mt-4 flex gap-2">
+        <span className="flex h-11 min-w-0 flex-1 items-center truncate rounded-xl bg-[#f5f5f4] px-3 text-[0.88rem] font-bold">{link.replace(/^https?:\/\//, "")}</span>
+        <button
+          type="button"
+          onClick={async () => {
+            await navigator.clipboard?.writeText(link);
+            setCopied(true);
+          }}
+          className={cn(smallButton, "h-11 bg-[#f5f5f4] text-[#050505]")}
+        >
+          {copied ? i.copied : i.copy}
+        </button>
+        <button type="button" onClick={share} className={cn(smallButton, "h-11 bg-[#050505] text-white")}>
+          {i.share}
+        </button>
+      </div>
+      {info.joined > 0 && (
+        <p className="mt-3 text-[0.86rem] font-bold text-[#475569]">
+          {i.joined.replace("{count}", String(info.joined))}
+          {info.rewardedDays > 0 && ` · ${i.rewarded.replace("{days}", String(info.rewardedDays))}`}
+          {info.pendingDays > 0 && ` · ${i.pending.replace("{days}", String(info.pendingDays))}`}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function DeleteAccount({ info }: { info: AccountInfo }) {
   const d = copy.delete;
   const router = useRouter();
@@ -622,6 +688,16 @@ export default function AccountClient() {
                 </ul>
               )}
             </section>
+            <Link href="/daily/book" className={cn(card, "flex items-center justify-between gap-3")}>
+              <span className="flex items-center gap-2 text-[1.05rem] font-black">
+                <Emoji className="text-[1.4rem]" motion="none">
+                  📚
+                </Emoji>
+                {dailyCopy.book.title}
+              </span>
+              <span aria-hidden className="text-[1.2rem] font-black">›</span>
+            </Link>
+            <InviteCard />
             <Payments info={info} onChanged={load} />
             <Profile key={`${info.name}-${info.marketing}`} info={info} onChanged={load} />
             <DeleteAccount info={info} />

@@ -1071,6 +1071,10 @@ const ko = {
           label: "테스트 센터",
           description: "스피킹 테스트를 만들고 결과를 확인합니다.",
         },
+        dailySentences: {
+          label: "Daily 문장",
+          description: "One Cup Daily 함께 쓰는 문장을 숨기거나 통역사 PICK을 고릅니다.",
+        },
         dailyRefunds: {
           label: "Daily 환불",
           description: "One Cup Daily 환불 요청을 승인하거나 반려합니다.",

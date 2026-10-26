@@ -1,5 +1,17 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import {
+  answerQuiz,
+  CommunityError,
+  deleteSentence,
+  expressionBook,
+  inviteCodeExists,
+  inviteInfo,
+  isInviteCode,
+  lessonCommunity,
+  saveSentence,
+  toggleCup,
+} from "../../../lib/features/daily/server/community";
 import { ReviewError, reviewStatus, submitReview } from "../../../lib/features/daily/server/reviews";
 import {
   customerForSession,
@@ -15,6 +27,10 @@ import {
 
 export const runtime = "nodejs";
 
+// Who invited this browser: kept until its first payment, which carries the code.
+const INVITE_COOKIE = "daily_invite";
+const INVITE_DAYS = 30;
+
 // POST /api/daily/<action> — the browser's only door into Daily.
 //   otp-send   { phone }         send a Daily sign-in code
 //   otp-verify { phone, code }   sign in; sets the httpOnly daily_session cookie
@@ -26,6 +42,13 @@ export const runtime = "nodejs";
 //   session-info                 whether this browser is signed in (the navbar's account link)
 //   review-status / review-submit  the signed-in customer's review (verified, pending
 //                                until approved)
+//   lesson-community { token }   a lesson page's sentences, quiz numbers, PICK, progress
+//   sentence-save / sentence-delete { token, ... }   the reader's own sentence
+//   sentence-cup { sentenceId }  ☕ on someone's sentence, or take it back
+//   quiz-answer { token, choice }  the first answer counts
+//   expression-book              내 표현장 and the streak
+//   invite-info                  the reader's invite link and what it earned
+//   invite-capture { code }      remembers who invited this browser, for its first payment
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                                Payple payments, forwarded the same way
 //   account-info / account-update / resume-renewal / refund-request / account-delete
@@ -119,13 +142,52 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       return NextResponse.json({ success: true });
     }
 
+    if (action === "invite-capture") {
+      const code = String(body.code ?? "").toUpperCase();
+      if (isInviteCode(code) && (await inviteCodeExists(code))) {
+        jar.set(INVITE_COOKIE, code, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: INVITE_DAYS * 24 * 60 * 60,
+        });
+        return NextResponse.json({ success: true, kept: true });
+      }
+      return NextResponse.json({ success: true, kept: false });
+    }
+
+    if (action === "lesson-community") {
+      const viewer = await customerForSession(current);
+      return NextResponse.json({ success: true, ...(await lessonCommunity(String(body.token ?? ""), viewer)) });
+    }
+
+    if (["sentence-save", "sentence-delete", "sentence-cup", "quiz-answer", "expression-book", "invite-info"].includes(action)) {
+      const viewer = await customerForSession(current);
+      const token = String(body.token ?? "");
+      if (action === "sentence-save") await saveSentence(token, viewer, { body: body.body, displayName: body.displayName });
+      else if (action === "sentence-delete") await deleteSentence(token, viewer);
+      else if (action === "sentence-cup") return NextResponse.json({ success: true, cupped: await toggleCup(body.sentenceId, viewer) });
+      else if (action === "quiz-answer") return NextResponse.json({ success: true, ...(await answerQuiz(token, viewer, body.choice)) });
+      else {
+        if (!viewer) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
+        return NextResponse.json({ success: true, ...(action === "expression-book" ? await expressionBook(viewer) : await inviteInfo(viewer)) });
+      }
+      return NextResponse.json({ success: true });
+    }
+
     if (FORWARDED.has(action)) {
       const token = current;
       if (!token) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
       const upstream = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/daily`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-daily-session": token },
-        body: JSON.stringify({ ...body, action }),
+        // A first checkout carries the invite this browser arrived with (terms 제5조의2).
+        body: JSON.stringify({
+          ...body,
+          action,
+          ...(action === "checkout-window" && jar.get(INVITE_COOKIE)?.value ? { inviteCode: jar.get(INVITE_COOKIE)?.value } : {}),
+        }),
         cache: "no-store",
       });
       const payload = await upstream.json().catch(() => ({ success: false }));
@@ -137,7 +199,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
 
     return NextResponse.json({ success: false, errorCode: "unknown-action" }, { status: 404 });
   } catch (error) {
-    if (error instanceof DailyAuthError || error instanceof ReviewError) {
+    if (error instanceof DailyAuthError || error instanceof ReviewError || error instanceof CommunityError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.status });
     }
     console.error(`api/daily/${action}:`, error);
