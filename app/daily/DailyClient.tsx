@@ -118,7 +118,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
 
           <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10">
             <div className="daily-phone-in relative">
-              <HeroPhoneDemo className="w-[min(320px,calc(100vw-48px))]" />
+              <HeroPhoneDemo className="w-[min(360px,calc(100vw-32px))]" />
             </div>
             <IosNotification className="daily-drop absolute left-1/2 top-0 w-[min(300px,calc(100%-8px))] -translate-x-1/2 min-[900px]:w-[280px]" />
           </div>
@@ -212,7 +212,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.lesson.sub}</p>
         </div>
         <div className="relative mx-auto mt-12 w-fit">
-          <IPhone className="w-[min(320px,calc(100vw-48px))]" statusClassName="bg-white text-[#050505]">
+          <IPhone className="w-[min(360px,calc(100vw-32px))]" statusClassName="bg-white text-[#050505]">
             <LessonScreen />
           </IPhone>
           <Callout className="left-[-28px] top-[96px] min-[900px]:left-[-150px]" emoji="🔊">
@@ -441,7 +441,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
           <a
             href="/daily/subscribe"
-            className="mt-2 flex h-[50px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
+            className="mt-2 flex h-[54px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
           >
             {copy.pricing.subscribeNow}
           </a>
@@ -723,7 +723,7 @@ function StickyBar({ visible }: { visible: boolean }) {
           <p className="text-[1rem] font-black">{copy.title}</p>
           <p className="truncate text-[0.78rem] font-semibold text-white/60">{copy.sub.replace("{price}", price)}</p>
         </div>
-        <TrialButton label={copy.cta} tone="orange" className="min-h-[46px] shrink-0 px-4 text-[0.95rem]" />
+        <TrialButton label={copy.cta} tone="orange" className="min-h-12 shrink-0 px-4 text-[0.95rem]" />
       </div>
     </div>
   );

@@ -19,9 +19,12 @@ const KAKAO_ERRORS: Record<string, string> = {
 export default function PhoneVerification({
   onVerified,
   maskedPhone,
+  bare = false,
 }: {
   onVerified: () => Promise<void>;
   maskedPhone?: string;
+  // Drop the white card when the caller already renders one, so the row isn't padded twice.
+  bare?: boolean;
 }) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -77,7 +80,7 @@ export default function PhoneVerification({
     "h-12 shrink-0 rounded-xl px-4 text-[0.92rem] font-black transition-opacity disabled:opacity-35";
 
   return (
-    <div className="rounded-[22px] bg-white p-5">
+    <div className={bare ? undefined : "rounded-[22px] bg-white p-5"}>
       <p className="text-[0.92rem] font-semibold text-[#475569]">
         {maskedPhone
           ? "카카오톡 링크로 들어오셨어요. 결제와 신청은 본인 확인을 한 번 거쳐요."

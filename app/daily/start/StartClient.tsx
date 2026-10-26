@@ -231,7 +231,7 @@ export default function StartClient() {
                   value={name}
                   onChange={(event) => setName(event.target.value.slice(0, 20))}
                   placeholder="이름"
-                  className="mt-1 h-11 w-full rounded-xl bg-[#f5f5f4] px-3 text-[1rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+                  className="mt-1 h-12 w-full rounded-xl bg-[#f5f5f4] px-3 text-[1rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
                 />
               </label>
             </div>
@@ -260,7 +260,7 @@ export default function StartClient() {
               setError("");
               setConsentOpen(true);
             }}
-            className="mt-8 h-[58px] w-full rounded-2xl bg-[#050505] text-[1.08rem] font-black text-white transition-opacity disabled:opacity-35"
+            className="mt-8 h-[54px] w-full rounded-2xl bg-[#050505] text-[1.08rem] font-black text-white transition-opacity disabled:opacity-35"
           >
             무료 레슨 받기
           </button>
@@ -338,13 +338,13 @@ function Done({ result, track, time }: { result: StartResult; track: DailyTrack;
         <div className="mt-4 flex flex-col gap-2 min-[600px]:flex-row">
           <Link
             href="/daily#pricing"
-            className="flex h-[54px] flex-1 items-center justify-center rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
+            className="flex h-[54px] items-center min-[600px]:flex-1 justify-center rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
           >
             가격 보기
           </Link>
           <Link
             href={DAILY_GUIDE_PATH}
-            className="flex h-[54px] flex-1 items-center justify-center rounded-2xl bg-white/70 text-[1rem] font-black"
+            className="flex h-[54px] items-center min-[600px]:flex-1 justify-center rounded-2xl bg-white/70 text-[1rem] font-black"
           >
             이용 가이드 보기
           </Link>

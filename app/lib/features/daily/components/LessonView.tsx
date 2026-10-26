@@ -251,7 +251,7 @@ function ShareButton({ expression }: { expression: string }) {
     <button
       type="button"
       onClick={share}
-      className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
+      className="flex h-[54px] flex-1 items-center justify-center gap-2 rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
     >
       <ShareIcon className="size-5 text-[#f47a4a]" />
       {copied ? "링크를 복사했어요" : "동료에게 보내기"}
@@ -328,7 +328,7 @@ export function LessonPage({
             </p>
             <Link
               href={subscribeHref}
-              className="mt-5 flex h-[52px] items-center justify-center rounded-2xl bg-[#f47a4a] text-[1rem] font-black text-[#050505]"
+              className="mt-5 flex h-[54px] items-center justify-center rounded-2xl bg-[#f47a4a] text-[1rem] font-black text-[#050505]"
             >
               {paidOtherTrack ? `${TRACK_LABEL[lesson.track]}도 받기` : "구독 안내 보기"}
             </Link>

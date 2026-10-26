@@ -195,7 +195,7 @@ export default function SubscribeClient() {
         {info === null && (
           <div className="mt-8 rounded-[28px] bg-white p-6">
             <p className="mb-3 text-[1rem] font-black">받는 휴대폰 번호를 인증해 주세요</p>
-            <PhoneVerification onVerified={load} />
+            <PhoneVerification bare onVerified={load} />
           </div>
         )}
 
@@ -264,7 +264,7 @@ export default function SubscribeClient() {
                     aria-pressed={track === key}
                     onClick={() => setTrack(key)}
                     className={cn(
-                      "rounded-2xl px-4 py-3 text-[0.95rem] font-black ring-2",
+                      "h-12 rounded-2xl px-4 text-[0.95rem] font-black ring-2",
                       track === key ? "bg-[#fff8dc] ring-[#050505]" : "bg-[#f5f5f4] ring-transparent",
                     )}
                   >
@@ -308,7 +308,7 @@ export default function SubscribeClient() {
 
               {!info.verified ? (
                 <div className="mt-5">
-                  <PhoneVerification maskedPhone={info.phone} onVerified={load} />
+                  <PhoneVerification bare maskedPhone={info.phone} onVerified={load} />
                 </div>
               ) : (
               <button
@@ -318,7 +318,7 @@ export default function SubscribeClient() {
                   setError("");
                   setConsentOpen(true);
                 }}
-                className="mt-5 h-[56px] w-full rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white transition-opacity disabled:opacity-35"
+                className="mt-5 h-[54px] w-full rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white transition-opacity disabled:opacity-35"
               >
                 {selected ? `₩${formatKrw(selected.amount)} 결제하기` : "결제하기"}
               </button>

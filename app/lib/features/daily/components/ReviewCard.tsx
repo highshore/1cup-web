@@ -78,7 +78,7 @@ export default function ReviewCard() {
           <p className="mb-3 text-[0.92rem] font-semibold text-[#475569]">
             레슨을 받은 번호로 인증하면 한 줄 후기를 남길 수 있어요.
           </p>
-          <PhoneVerification onVerified={load} />
+          <PhoneVerification bare onVerified={load} />
         </div>
       ) : !status.eligible ? (
         <p className="mt-3 text-[0.92rem] font-semibold text-[#64748b]">
@@ -114,7 +114,7 @@ export default function ReviewCard() {
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value.slice(0, 12))}
               placeholder="예: 마케터 J"
-              className="mt-1 h-11 w-full rounded-xl bg-white px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+              className="mt-1 h-12 w-full rounded-xl bg-white px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
             />
           </label>
           <p className="mt-2 text-[0.78rem] leading-relaxed text-[#64748b]">
@@ -129,7 +129,7 @@ export default function ReviewCard() {
             type="button"
             onClick={submit}
             disabled={busy || rating === 0 || body.trim().length < 10}
-            className="mt-3 h-[52px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white transition-opacity disabled:opacity-35"
+            className="mt-3 h-[54px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white transition-opacity disabled:opacity-35"
           >
             {busy ? "보내는 중…" : "후기 보내기"}
           </button>

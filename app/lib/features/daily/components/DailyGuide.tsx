@@ -116,7 +116,7 @@ function Week() {
 }
 
 const primaryButton =
-  "inline-flex h-[52px] w-full items-center justify-center rounded-2xl px-6 text-[1rem] font-black min-[600px]:w-auto";
+  "inline-flex h-[54px] w-full items-center justify-center rounded-2xl px-6 text-[1rem] font-black min-[600px]:w-auto";
 
 export default function DailyGuide() {
   const monthly = formatKrw(DAILY_MONTHLY_PRICE_KRW);

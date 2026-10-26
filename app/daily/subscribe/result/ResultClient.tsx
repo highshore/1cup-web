@@ -125,7 +125,7 @@ export default function ResultClient() {
                 </p>
               </div>
             )}
-            <Link href="/daily" className="mt-6 inline-flex h-[52px] items-center rounded-2xl bg-[#050505] px-6 font-black text-white">
+            <Link href="/daily" className="mt-6 inline-flex h-[54px] items-center rounded-2xl bg-[#050505] px-6 font-black text-white">
               Daily 소개로
             </Link>
           </>
@@ -135,7 +135,7 @@ export default function ResultClient() {
             <Emoji className="text-[3rem]">😭</Emoji>
             <h1 className={cn(displayClass, "mt-4 text-[2.2rem]")}>결제가 완료되지 않았어요</h1>
             <p className="mt-3 font-semibold text-[rgba(5,5,5,0.8)]">{state.message}</p>
-            <Link href="/daily/subscribe" className="mt-6 inline-flex h-[52px] items-center rounded-2xl bg-[#050505] px-6 font-black text-white">
+            <Link href="/daily/subscribe" className="mt-6 inline-flex h-[54px] items-center rounded-2xl bg-[#050505] px-6 font-black text-white">
               다시 시도하기
             </Link>
           </>

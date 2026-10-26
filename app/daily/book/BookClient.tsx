@@ -58,7 +58,7 @@ export default function BookClient() {
           <section className="rounded-[24px] bg-white p-5 min-[900px]:p-6">
             <h2 className="text-center text-[1.1rem] font-black min-[900px]:text-left">{copy.signIn}</h2>
             <div className="mt-4">
-              <PhoneVerification onVerified={load} />
+              <PhoneVerification bare onVerified={load} />
             </div>
           </section>
         )}
