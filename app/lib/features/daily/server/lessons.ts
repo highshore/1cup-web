@@ -15,6 +15,7 @@ export interface DailyLessonContent {
   examples: Array<{ context?: string; en: string; ko?: string }>;
   dialogue: Array<{ speaker?: string; role?: string; en: string; ko?: string }>;
   quiz: { prompt: string; options: string[]; answer: number; explanation?: string } | null;
+  clip: { url: string; caption: string | null; source: string | null } | null;
 }
 
 export interface DailyDeliveryView {
@@ -30,7 +31,10 @@ export interface DailyDeliveryView {
 }
 
 const LESSON_COLUMNS =
-  "id, track, publish_on, expression, meaning, pronunciation, stress, nuance, similar_expressions, examples, dialogue, quiz";
+  "id, track, publish_on, expression, meaning, pronunciation, stress, nuance, similar_expressions, examples, dialogue, quiz, clip_path, clip_caption, clip_source";
+
+// Signed clip links outlive a long lesson read but not a forwarded screenshot of the URL.
+const CLIP_URL_TTL_SECONDS = 6 * 60 * 60;
 
 type LessonRow = {
   id: string;
@@ -45,9 +49,20 @@ type LessonRow = {
   examples: DailyLessonContent["examples"] | null;
   dialogue: DailyLessonContent["dialogue"] | null;
   quiz: DailyLessonContent["quiz"];
+  clip_path: string | null;
+  clip_caption: string | null;
+  clip_source: string | null;
 };
 
-function toContent(row: LessonRow): DailyLessonContent {
+async function clipUrl(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  if (/^https:\/\//.test(path)) return path;
+  const { data } = await admin().storage.from("daily-clips").createSignedUrl(path, CLIP_URL_TTL_SECONDS);
+  return data?.signedUrl ?? null;
+}
+
+async function toContent(row: LessonRow): Promise<DailyLessonContent> {
+  const url = await clipUrl(row.clip_path);
   return {
     id: row.id,
     track: row.track,
@@ -61,6 +76,7 @@ function toContent(row: LessonRow): DailyLessonContent {
     examples: row.examples ?? [],
     dialogue: row.dialogue ?? [],
     quiz: row.quiz,
+    clip: url ? { url, caption: row.clip_caption, source: row.clip_source } : null,
   };
 }
 
@@ -82,9 +98,9 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
   let lessons: DailyLessonContent[] = [];
   if (ids.length > 0) {
     const { data: rows } = await db.from("daily_lessons").select(LESSON_COLUMNS).in("id", ids);
-    lessons = ((rows ?? []) as LessonRow[])
-      .map(toContent)
-      .sort((a, b) => a.publishOn.localeCompare(b.publishOn));
+    lessons = (await Promise.all(((rows ?? []) as LessonRow[]).map(toContent))).sort((a, b) =>
+      a.publishOn.localeCompare(b.publishOn),
+    );
   }
 
   let paidOtherTrack: DailyDeliveryView["paidOtherTrack"] = null;
