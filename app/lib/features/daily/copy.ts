@@ -232,7 +232,7 @@ export const dailyCopy = {
       { icon: "trophy", title: "토플 118/120점, 오픽 AL" },
       { icon: "school", title: "SKY 학부 출신" },
     ],
-    profile: "스펙이 안 믿기시나요? 프로필 시원하게 공개합니다",
+    profile: "스펙이 안 믿기시나요?\n프로필 시원하게 공개합니다",
     linkedIn: "LinkedIn 프로필 보기",
     linkedInUrl: "https://www.linkedin.com/in/sk-kyle-kim/",
   },
