@@ -13,10 +13,10 @@ import {
   CheckIcon,
   CpuChipIcon,
   GlobeAltIcon,
-  PhoneIcon,
   PlusIcon,
   PresentationChartBarIcon,
   ShieldCheckIcon,
+  SunIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { ShieldCheckIcon as ShieldCheckSolid } from "@heroicons/react/24/solid";
@@ -50,7 +50,7 @@ const price = formatKrw(DAILY_MONTHLY_PRICE_KRW);
 
 const sceneIcons = {
   meeting: PresentationChartBarIcon,
-  call: PhoneIcon,
+  daily: SunIcon,
   chat: ChatBubbleLeftRightIcon,
   standup: UserGroupIcon,
 } as const;
@@ -213,20 +213,24 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
         <div className="relative mx-auto mt-12 w-fit">
           <IPhone className="w-[min(360px,calc(100vw-32px))]" statusClassName="bg-white text-[#050505]">
-            <LessonScreen />
+            <LessonScreen scroll />
           </IPhone>
-          <Callout className="left-[-28px] top-[96px] min-[900px]:left-[-150px]" emoji="🔊">
-            {copy.lesson.callouts.audio}
-          </Callout>
-          <Callout className="right-[-30px] top-[190px] min-[900px]:right-[-150px]" emoji="💡">
-            {copy.lesson.callouts.nuance}
-          </Callout>
-          <Callout className="left-[-30px] top-[330px] min-[900px]:left-[-150px]" emoji="🗣️">
-            {copy.lesson.callouts.examples}
-          </Callout>
-          <Callout className="bottom-[70px] right-[-26px] min-[900px]:right-[-150px]" emoji="⚡">
-            {copy.lesson.callouts.quiz}
-          </Callout>
+          {/* Beside the phone on wide screens; on phones there is no room beside it, so
+              the same labels wrap in a row underneath. */}
+          <ul className="m-0 mt-6 flex list-none flex-wrap justify-center gap-2 p-0 min-[900px]:contents">
+            <Callout className="min-[900px]:left-[-150px] min-[900px]:top-[150px]" emoji="🔊">
+              {copy.lesson.callouts.audio}
+            </Callout>
+            <Callout className="min-[900px]:right-[-150px] min-[900px]:top-[250px]" emoji="💡">
+              {copy.lesson.callouts.nuance}
+            </Callout>
+            <Callout className="min-[900px]:left-[-150px] min-[900px]:top-[400px]" emoji="🗣️">
+              {copy.lesson.callouts.examples}
+            </Callout>
+            <Callout className="min-[900px]:bottom-[110px] min-[900px]:right-[-150px]" emoji="⚡">
+              {copy.lesson.callouts.quiz}
+            </Callout>
+          </ul>
         </div>
       </Panel>
 
@@ -659,15 +663,15 @@ function ProgressCard() {
 
 function Callout({ children, emoji, className }: { children: string; emoji: string; className: string }) {
   return (
-    <span
+    <li
       className={cn(
-        "absolute z-10 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#050505] px-3.5 py-2 text-[0.82rem] font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(5,5,5,0.6)]",
+        "z-10 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#050505] px-3.5 py-2 text-[0.82rem] font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(5,5,5,0.6)] min-[900px]:absolute",
         className,
       )}
     >
       <Emoji motion="none">{emoji}</Emoji>
       {children}
-    </span>
+    </li>
   );
 }
 

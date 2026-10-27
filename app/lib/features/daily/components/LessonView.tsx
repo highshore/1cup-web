@@ -9,8 +9,7 @@ import type { DailyLessonContent } from "../server/lessons";
 import { DAILY_FIELD_LABEL, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
 import { useSpeech } from "../hooks";
 import { dailyDisplay } from "../fonts";
-import { Waveform } from "./Phone";
-import { cn, displayClass, Emoji, Pill } from "./DailyUI";
+import { cn, displayClass, Emoji, Pill, Waveform } from "./DailyUI";
 import ReviewCard from "./ReviewCard";
 import "../daily.css";
 
@@ -57,16 +56,21 @@ export function LessonBody({
   recordedAnswer = null,
   onAnswer,
   quizExtra,
+  preview = false,
 }: {
   lesson: DailyLessonContent;
   compact?: boolean;
+  /** The landing page's phone: shows the audio controls before the browser says it can speak. */
+  preview?: boolean;
   /** The reader's recorded answer, when they solved this quiz before. */
   recordedAnswer?: number | null;
   onAnswer?: (choice: number) => void;
   /** Shown under the explanation once answered (the crowd numbers). */
   quizExtra?: React.ReactNode;
 }) {
-  const { supported, speaking, speak } = useSpeech();
+  const speech = useSpeech();
+  const { speaking, speak } = speech;
+  const supported = speech.supported || preview;
   const [picked, setPicked] = useState<number | null>(recordedAnswer);
   // A recorded answer can arrive after the first render.
   useEffect(() => {

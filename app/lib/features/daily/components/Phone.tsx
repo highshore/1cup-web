@@ -6,15 +6,15 @@ import {
   EllipsisHorizontalIcon,
   LockClosedIcon,
   MagnifyingGlassIcon,
-  PlayIcon,
   PlusIcon,
-  SpeakerWaveIcon,
   XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { dailyCopy } from "../copy";
-import { dailyWordmark } from "../fonts";
+import { dailyDisplay, dailyWordmark } from "../fonts";
 import { usePrefersReducedMotion, useVisible } from "../hooks";
+import type { DailyLessonContent } from "../server/lessons";
 import { CupMark, cn } from "./DailyUI";
+import { LessonBody } from "./LessonView";
 
 // The 1cup app mark: a white cup on black, as on the channel profile and app icon.
 function AppMark({ className, cupClassName }: { className: string; cupClassName: string }) {
@@ -220,14 +220,71 @@ export function IosNotification({ className }: { className?: string }) {
   );
 }
 
-// The lesson page that opens from the Kakao button, inside KakaoTalk's in-app browser:
-// the page's own top (track and date, today's expression, the pronunciation player) and
-// the start of "이럴 때 써요", the same blocks as LessonBody.
-export function LessonScreen() {
+// A real lesson (basic, 2026-10-23), word for word, dated like the chat above it.
+const SAMPLE_LESSON: DailyLessonContent = {
+  id: "sample",
+  track: "basic",
+  publishOn: "2026-10-27",
+  field: null,
+  expression: "circle back",
+  meaning: "(논의를) 나중에 다시 이어가다",
+  pronunciation: "/ˈsɜːrkəl bæk/",
+  stress: "써클 백",
+  nuance: "결론을 지금 내지 않고 다음에 다시 다루자고 할 때 써요. 'talk later'보다 업무적이고 정중해요.",
+  similar: ["follow up on", "revisit", "touch base"],
+  examples: [
+    { context: "회의", en: "Let's circle back on pricing after the launch.", ko: "가격 얘기는 출시 후에 다시 하죠." },
+    { context: "일정", en: "Can we circle back to this on Friday?", ko: "이건 금요일에 다시 얘기할 수 있을까요?" },
+    { context: "메일", en: "I'll circle back once I have the numbers.", ko: "수치가 나오면 다시 연락드릴게요." },
+  ],
+  dialogue: [
+    { speaker: "A", role: "Manager", en: "We're running out of time. What about the budget?", ko: "시간이 없네요. 예산은요?" },
+    { speaker: "B", role: "You", en: "Let's circle back on that next week.", ko: "그건 다음 주에 다시 이야기하죠." },
+  ],
+  quiz: {
+    prompt: "We're out of time. Let's ______ on the budget next week.",
+    options: ["circle back", "loop in", "move the needle"],
+    answer: 0,
+    explanation: "논의를 나중에 다시 이어갈 때는 circle back을 써요.",
+  },
+};
+
+// The width the lesson page is laid out at inside the phone, before it is shrunk to fit.
+const PAGE_WIDTH = 390;
+
+// The lesson page that opens from the Kakao button, inside KakaoTalk's in-app browser.
+// It is the real page: the Daily navbar and LessonBody at a phone's width, shrunk to the
+// screen, so it cannot drift from what subscribers get. With `scroll`, it reads slowly
+// down to the quiz and back while on screen.
+export function LessonScreen({ scroll = false }: { scroll?: boolean }) {
   const copy = dailyCopy.lesson.screen;
+  const viewport = useRef<HTMLDivElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const visible = useVisible(viewport);
+  const reduced = usePrefersReducedMotion();
+  const [scale, setScale] = useState(0.88);
+  const [travel, setTravel] = useState(0);
+
+  useEffect(() => {
+    const frame = viewport.current;
+    const content = page.current;
+    if (!frame || !content) return;
+    const measure = () => {
+      const next = frame.clientWidth / PAGE_WIDTH;
+      setScale(next);
+      setTravel(Math.max(0, Math.round(content.offsetHeight * next - frame.clientHeight)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
+  const reading = scroll && !reduced && travel > 0;
 
   return (
-    <div className={cn("flex h-full flex-col bg-white text-[#050505]", dailyWordmark.variable)}>
+    <div className={cn("flex h-full flex-col bg-white text-[#050505]", dailyWordmark.variable, dailyDisplay.variable)}>
       <div className="flex items-center gap-2 border-b border-[#ececec] px-3 pb-2">
         <XMarkIcon className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 text-center">
@@ -239,52 +296,16 @@ export function LessonScreen() {
         </span>
         <EllipsisHorizontalIcon className="size-4 shrink-0" aria-hidden />
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="flex items-baseline gap-1.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[11px] w-auto" />
-            <span className="text-[10px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
-              {dailyCopy.nav.brand}
-            </span>
-          </span>
-          <span className="rounded-full bg-[#050505] px-2 py-0.5 text-[0.52rem] font-black text-white">내 계정</span>
-        </div>
-        <div className="flex flex-col gap-2 px-2.5">
-          <div className="rounded-[18px] bg-[#f47a4a] p-3.5">
-            <div className="flex items-center gap-1.5">
-              <span className="rounded-full bg-[#050505] px-2 py-0.5 text-[0.54rem] font-black text-white">{copy.track}</span>
-              <span className="text-[0.56rem] font-bold text-[rgba(5,5,5,0.7)]">{copy.date}</span>
+      <div ref={viewport} aria-hidden inert className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          className={cn(reading && "daily-read")}
+          style={{ ["--daily-read" as string]: `${travel}px`, animationPlayState: visible ? "running" : "paused" }}
+        >
+          <div ref={page} style={{ width: PAGE_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+            <LessonNavbar />
+            <div className="daily-page bg-white px-4 pb-10 pt-6 text-[#050505] [word-break:keep-all]">
+              <LessonBody lesson={SAMPLE_LESSON} preview />
             </div>
-            <p className="mt-3 text-[0.56rem] font-extrabold text-[rgba(5,5,5,0.7)]">{copy.label}</p>
-            <p className="text-[1.75rem] leading-[1.05] [font-family:var(--font-daily-display),sans-serif]">{copy.expression}</p>
-            <p className="mt-1 text-[0.72rem] font-bold">{copy.meaning}</p>
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#050505] px-2 py-1.5 text-white">
-              <span className="flex size-6 items-center justify-center rounded-full bg-[#f47a4a] text-[#050505]">
-                <PlayIcon className="size-3" aria-hidden />
-              </span>
-              <Waveform className="h-4 flex-1" />
-              <span className="text-[0.56rem] font-bold text-white/70">{copy.listen}</span>
-            </div>
-            <p className="mt-2 text-[0.58rem] font-bold text-[rgba(5,5,5,0.75)]">{copy.pronunciation}</p>
-          </div>
-          <div className="rounded-[18px] bg-[#fff8dc] p-3.5">
-            <p className="text-[0.72rem] font-black">💡 {copy.nuanceTitle}</p>
-            <p className="mt-1.5 text-[0.64rem] leading-[1.6] text-[#334155]">{copy.nuance}</p>
-          </div>
-          <div className="rounded-[18px] bg-[#f5f5f4] p-3.5">
-            <p className="text-[0.72rem] font-black">🗣️ {copy.examplesTitle}</p>
-            <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
-              {copy.examples.map((example) => (
-                <li key={example.en} className="flex gap-2 rounded-xl bg-white p-2">
-                  <SpeakerWaveIcon className="mt-0.5 size-3 shrink-0 text-[#f47a4a]" aria-hidden />
-                  <span>
-                    <span className="block text-[0.64rem] font-bold leading-snug">{example.en}</span>
-                    <span className="block text-[0.56rem] text-[#64748b]">{example.ko}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </div>
@@ -293,18 +314,21 @@ export function LessonScreen() {
   );
 }
 
-const WAVE = [5, 9, 6, 12, 8, 14, 7, 11, 5, 9, 13, 6, 10, 7, 12, 5, 8];
-
-export function Waveform({ className }: { className?: string }) {
+// DailyNavbar as a signed-in reader sees it: opening the message's button signs them in.
+function LessonNavbar() {
   return (
-    <span aria-hidden className={cn("daily-wave flex items-center gap-[2px]", className)}>
-      {WAVE.map((height, index) => (
-        <span
-          key={index}
-          className="w-[2px] rounded-full bg-[#f47a4a]"
-          style={{ height: `${height}px`, animationDelay: `${(index % 6) * 120}ms` }}
-        />
-      ))}
-    </span>
+    <div className="daily-nav flex h-[60px] items-center justify-between gap-4 bg-white px-4">
+      <span className="flex h-[22px] shrink-0 items-baseline gap-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
+        <span className="relative -top-[3px] h-4 w-px bg-[#cbd5e1]" />
+        <span className="relative -top-[2.55px] text-[20.16px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
+          {dailyCopy.nav.brand}
+        </span>
+      </span>
+      <span className="inline-flex h-10 items-center rounded-full bg-[#050505] px-4 text-[0.9rem] font-black text-white">
+        {dailyCopy.nav.account}
+      </span>
+    </div>
   );
 }

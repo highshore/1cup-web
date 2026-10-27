@@ -5,14 +5,14 @@ import { dailyCopy } from "../copy";
 import { cn } from "./DailyUI";
 
 // The interpreter's word list as a spreadsheet window: the file's real header and real
-// rows (copy.wordbook.sheet), then rows that stay locked, since subscribers get the list
-// one entry a day. Drawn in code rather than as a screenshot, so it stays sharp and the
+// rows (copy.wordbook.sheet), then blurred rows: the list itself stays private, and
+// subscribers get one entry a day as a lesson. Drawn in code rather than as a screenshot, so it stays sharp and the
 // rows stay in sync with the copy. No spreadsheet vendor's branding.
 
 const sheet = dailyCopy.wordbook.sheet;
 const COLUMNS = ["A", "B", "C", "D", "E"];
 
-// The rows that follow, blurred: real rows with their real row numbers, opened later.
+// The rows that follow, blurred: real rows with their real row numbers.
 const LOCKED = [
   { n: 7021, en: "zany", ko: "어릿광대 같은", syn: "wacky, eccentric, clownish", ex: "The comedian's zany antics had the audience in stitches throughout the entire show." },
   { n: 7022, en: "zen", ko: "평온한", syn: "serenity, tranquility, calmness", ex: "After a long day of work, she sat in her garden, surrounded by the tranquil beauty of nature." },
@@ -129,7 +129,6 @@ export default function WordbookSheet() {
       {/* Sheet tabs */}
       <div className="flex items-center gap-1 border-t border-[#e2e8f0] bg-[#f8fafc] px-3 py-1.5 text-[0.75rem]">
         <span className="rounded-t-md border-b-2 border-[#f47a4a] bg-white px-3 py-1 font-bold">{sheet.tab}</span>
-        <span className="ml-auto font-semibold text-[#94a3b8]">{sheet.count}</span>
       </div>
     </figure>
   );
