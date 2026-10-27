@@ -284,7 +284,7 @@ export function LessonScreen({ scroll = false }: { scroll?: boolean }) {
   const reading = scroll && !reduced && travel > 0;
 
   return (
-    <div className={cn("flex h-full flex-col bg-white text-[#050505]", dailyWordmark.variable, dailyDisplay.variable)}>
+    <div className={cn("flex h-full flex-col bg-white text-left text-[#050505]", dailyWordmark.variable, dailyDisplay.variable)}>
       <div className="flex items-center gap-2 border-b border-[#ececec] px-3 pb-2">
         <XMarkIcon className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 text-center">
@@ -303,7 +303,7 @@ export function LessonScreen({ scroll = false }: { scroll?: boolean }) {
         >
           <div ref={page} style={{ width: PAGE_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
             <LessonNavbar />
-            <div className="daily-page bg-white px-4 pb-10 pt-6 text-[#050505] [word-break:keep-all]">
+            <div className="daily-page bg-white px-4 pb-10 pt-6 text-left text-[#050505] [word-break:keep-all]">
               <LessonBody lesson={SAMPLE_LESSON} preview />
             </div>
           </div>
