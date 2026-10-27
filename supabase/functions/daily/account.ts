@@ -125,6 +125,7 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
       .map((o) => o.subscription_id),
   );
   const now = Date.now();
+  const liveTracks = new Set((subs ?? []).filter((s) => s.status === "trial" || s.status === "active").map((s) => s.track));
   const { data: me } = await db.from("daily_customers").select("name, workplace, job_category").eq("id", customer.id).maybeSingle();
 
   return {
@@ -145,6 +146,9 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
       nextSendAt: s.next_send_at,
       canResume: s.status === "active" && !s.auto_renew && Boolean(s.billing_key) && s.plan === "sub_30d" &&
         Boolean(s.paid_until) && new Date(s.paid_until).getTime() > now && !openRefundSubs.has(s.id),
+      // 레벨 바꾸기 (daily_switch_track): a running paid period, and not already getting the other level.
+      canSwitch: s.status === "active" && Boolean(s.paid_until) && new Date(s.paid_until).getTime() > now &&
+        !openRefundSubs.has(s.id) && !liveTracks.has(s.track === "basic" ? "advanced" : "basic"),
     })),
     payments,
   };
@@ -180,6 +184,31 @@ export async function updateSettings(db: SupabaseClient, customer: PaymentCustom
   });
   if (error) throw new PaymentError("저장하지 못했어요. 다시 시도해 주세요.", "settings-failed", 500);
   return { success: true };
+}
+
+// 레벨 바꾸기: the paid subscription moves to the other level; the next lesson comes from it.
+export async function switchLevel(db: SupabaseClient, customer: PaymentCustomer, body: Record<string, unknown>) {
+  assertTrack(body.track);
+  assertTrack(body.to);
+  const { data, error } = await db.rpc("daily_switch_track", {
+    p_customer_id: customer.id,
+    p_from: body.track,
+    p_to: body.to,
+  });
+  if (error) throw new PaymentError("레벨을 바꾸지 못했어요. 다시 시도해 주세요.", "switch-failed", 500);
+  const to = TRACK_LABEL[body.to];
+  switch (data as string) {
+    case "switched":
+      return { success: true };
+    case "already-live":
+      throw new PaymentError(`이미 ${to} 레벨을 받고 있어요.`, "already-live", 409);
+    case "refund-open":
+      throw new PaymentError("환불을 처리하는 중이라 레벨을 바꿀 수 없어요.", "refund-open", 409);
+    case "not-active":
+      throw new PaymentError("결제한 기간이 남아 있는 구독만 레벨을 바꿀 수 있어요.", "not-active", 409);
+    default:
+      throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
+  }
 }
 
 export async function resumeRenewal(db: SupabaseClient, customer: PaymentCustomer, body: Record<string, unknown>) {

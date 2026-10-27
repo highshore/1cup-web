@@ -64,6 +64,7 @@ const FORWARDED = new Set([
   "account-info",
   "account-update",
   "resume-renewal",
+  "switch-level",
   "refund-request",
   "account-delete",
 ]);
