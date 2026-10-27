@@ -145,7 +145,7 @@ function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Prom
             />
             <button
               type="button"
-              disabled={!info.verified || busy || name === (info.name ?? "")}
+              disabled={!info.verified || busy || name.trim() === "" || name === (info.name ?? "")}
               onClick={() => save({ name })}
               className={cn(smallButton, "bg-[#050505] text-white")}
             >
@@ -458,16 +458,19 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
 }
 
 interface InviteInfo {
-  code: string;
+  code: string | null;
   joined: number;
   rewardedDays: number;
   pendingDays: number;
 }
 
-// 친구 초대 (terms 제5조의2): the reader's link, and what it has earned so far.
+// 친구 초대 (terms 제5조의2): the reader makes their code, then shares a link that fills
+// it in on a friend's signup and subscribe pages. Shows what it has earned so far.
 function InviteCard() {
   const i = dailyCopy.invite;
   const [info, setInfo] = useState<InviteInfo | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -475,7 +478,18 @@ function InviteCard() {
   }, []);
 
   if (!info) return null;
-  const link = `${window.location.origin}/daily?invite=${info.code}`;
+  const create = async () => {
+    setCreating(true);
+    setMessage("");
+    try {
+      setInfo(await dailyApi<InviteInfo>("invite-create"));
+    } catch (e) {
+      setMessage(errorMessage(e));
+    } finally {
+      setCreating(false);
+    }
+  };
+  const link = info.code ? `${window.location.origin}/daily?invite=${info.code}` : "";
   const share = async () => {
     if (navigator.share) {
       try {
@@ -496,22 +510,43 @@ function InviteCard() {
         {i.title}
       </h2>
       <p className="mt-2 text-[0.9rem] font-semibold leading-relaxed text-[#475569]">{i.body}</p>
-      <div className="mt-4 flex gap-2">
-        <span className="flex h-12 min-w-0 flex-1 items-center truncate rounded-xl bg-[#f5f5f4] px-3 text-[0.88rem] font-bold">{link.replace(/^https?:\/\//, "")}</span>
+      {!info.code ? (
         <button
           type="button"
-          onClick={async () => {
-            await navigator.clipboard?.writeText(link);
-            setCopied(true);
-          }}
-          className={cn(smallButton, "h-12 bg-[#f5f5f4] text-[#050505]")}
+          disabled={creating}
+          onClick={create}
+          className="mt-4 h-12 w-full rounded-xl bg-[#050505] text-[0.95rem] font-black text-white disabled:opacity-60"
         >
-          {copied ? i.copied : i.copy}
+          {creating ? i.creating : i.create}
         </button>
-        <button type="button" onClick={share} className={cn(smallButton, "h-12 bg-[#050505] text-white")}>
-          {i.share}
-        </button>
-      </div>
+      ) : (
+        <>
+          <p className="mt-4 text-center text-[0.82rem] font-bold text-[#64748b] min-[900px]:text-left">{i.codeLabel}</p>
+          <p className="text-center text-[1.9rem] font-black leading-tight tracking-[0.12em] min-[900px]:text-left">{info.code}</p>
+          <div className="mt-3 flex gap-2">
+            <span className="flex h-12 min-w-0 flex-1 items-center truncate rounded-xl bg-[#f5f5f4] px-3 text-[0.88rem] font-bold">{link.replace(/^https?:\/\//, "")}</span>
+            <button
+              type="button"
+              onClick={async () => {
+                await navigator.clipboard?.writeText(link);
+                setCopied(true);
+              }}
+              className={cn(smallButton, "h-12 bg-[#f5f5f4] text-[#050505]")}
+            >
+              {copied ? i.copied : i.copy}
+            </button>
+            <button type="button" onClick={share} className={cn(smallButton, "h-12 bg-[#050505] text-white")}>
+              {i.share}
+            </button>
+          </div>
+          <p className="mt-2 text-[0.84rem] font-semibold text-[#64748b]">{i.linkNote}</p>
+        </>
+      )}
+      {message && (
+        <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
+          {message}
+        </p>
+      )}
       {info.joined > 0 && (
         <p className="mt-3 text-[0.86rem] font-bold text-[#475569]">
           {i.joined.replace("{count}", String(info.joined))}

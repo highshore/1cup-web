@@ -356,11 +356,15 @@ export function isInviteCode(value: unknown): value is string {
   return typeof value === "string" && /^[A-Z2-9]{8}$/.test(value);
 }
 
-export async function inviteInfo(viewer: DailySessionCustomer) {
+/**
+ * The reader's invite code and what it has earned. The code is made only when they ask
+ * for one (`create`), so nobody gets a code they never chose to share.
+ */
+export async function inviteInfo(viewer: DailySessionCustomer, create = false) {
   const db = admin();
   const { data: me } = await db.from("daily_customers").select("invite_code").eq("id", viewer.id).single();
   let code = me?.invite_code as string | null;
-  for (let attempt = 0; !code && attempt < 5; attempt += 1) {
+  for (let attempt = 0; create && !code && attempt < 5; attempt += 1) {
     const candidate = newInviteCode();
     const { error } = await db.from("daily_customers").update({ invite_code: candidate }).eq("id", viewer.id).is("invite_code", null);
     if (!error) {
@@ -368,7 +372,7 @@ export async function inviteInfo(viewer: DailySessionCustomer) {
       code = reread?.invite_code ?? null;
     }
   }
-  if (!code) throw new CommunityError("초대 링크를 만들지 못했어요. 다시 시도해 주세요.", 500);
+  if (create && !code) throw new CommunityError("초대 코드를 만들지 못했어요. 다시 시도해 주세요.", 500);
   const { data: invites } = await db.from("daily_invites").select("inviter_rewarded_at").eq("inviter_customer_id", viewer.id);
   return {
     code,
@@ -378,8 +382,8 @@ export async function inviteInfo(viewer: DailySessionCustomer) {
   };
 }
 
-/** Whether a code belongs to a live customer (checked before it is kept in a cookie). */
-export async function inviteCodeExists(code: string): Promise<boolean> {
+/** The live customer a code belongs to, if any (checked before it is kept in a cookie). */
+export async function inviteCodeOwner(code: string): Promise<string | null> {
   const { data } = await admin().from("daily_customers").select("id").eq("invite_code", code).is("deleted_at", null).maybeSingle();
-  return Boolean(data);
+  return (data?.id as string | undefined) ?? null;
 }

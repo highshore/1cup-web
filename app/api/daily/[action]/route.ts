@@ -5,7 +5,7 @@ import {
   CommunityError,
   deleteSentence,
   expressionBook,
-  inviteCodeExists,
+  inviteCodeOwner,
   inviteInfo,
   isInviteCode,
   lessonCommunity,
@@ -40,8 +40,12 @@ const INVITE_DAYS = 30;
 //   sentence-cup { sentenceId }  ☕ on someone's sentence, or take it back
 //   quiz-answer { token, choice }  the first answer counts
 //   expression-book              내 학습 기록 and the streak
-//   invite-info                  the reader's invite link and what it earned
-//   invite-capture { code }      remembers who invited this browser, for its first payment
+//   invite-info / invite-create  the reader's invite code (made only on invite-create)
+//                                and what it earned
+//   invite-current               the invite code this browser holds, if any
+//   invite-capture { code }      remembers who invited this browser, for its first
+//                                payment; an empty code forgets it
+//   client-error { path, ... }   what the Daily error screen caught, into the logs
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
 //                                Payple payments, forwarded the same way
 //   account-info / account-update / resume-renewal / refund-request / account-delete
@@ -114,19 +118,49 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       return NextResponse.json({ success: true });
     }
 
+    // The invite code on the signup and subscribe pages: what this browser holds, and
+    // keeping (or clearing) the one typed or arriving in a link.
+    if (action === "invite-current") {
+      return NextResponse.json({ success: true, code: jar.get(INVITE_COOKIE)?.value ?? null });
+    }
+
     if (action === "invite-capture") {
-      const code = String(body.code ?? "").toUpperCase();
-      if (isInviteCode(code) && (await inviteCodeExists(code))) {
-        jar.set(INVITE_COOKIE, code, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: INVITE_DAYS * 24 * 60 * 60,
-        });
-        return NextResponse.json({ success: true, kept: true });
+      const code = String(body.code ?? "").trim().toUpperCase();
+      if (code === "") {
+        jar.delete(INVITE_COOKIE);
+        return NextResponse.json({ success: true, kept: false });
       }
-      return NextResponse.json({ success: true, kept: false });
+      const owner = isInviteCode(code) ? await inviteCodeOwner(code) : null;
+      if (!owner) return NextResponse.json({ success: false, errorCode: "invite-invalid", message: "없는 초대 코드예요. 다시 확인해 주세요." }, { status: 400 });
+      const viewer = await customerForSession(current);
+      if (viewer?.id === owner) {
+        return NextResponse.json({ success: false, errorCode: "invite-own", message: "내 초대 코드는 쓸 수 없어요." }, { status: 400 });
+      }
+      jar.set(INVITE_COOKIE, code, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: INVITE_DAYS * 24 * 60 * 60,
+      });
+      return NextResponse.json({ success: true, kept: true });
+    }
+
+    // The Daily error screen reports what broke, so a crash someone only saw on their
+    // phone shows up in the logs. Paths only: a lesson link's token is cut out.
+    if (action === "client-error") {
+      const clip = (value: unknown, length: number) => String(value ?? "").slice(0, length);
+      console.error(
+        "daily client error:",
+        JSON.stringify({
+          path: clip(body.path, 120).replace(/^(\/daily\/[lr]\/)[^/?#]+/, "$1:token").split("?")[0],
+          message: clip(body.message, 500),
+          stack: clip(body.stack, 2000),
+          digest: clip(body.digest, 40),
+          agent: clip(req.headers.get("user-agent"), 200),
+        }),
+      );
+      return NextResponse.json({ success: true });
     }
 
     if (action === "lesson-community") {
@@ -134,7 +168,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       return NextResponse.json({ success: true, ...(await lessonCommunity(String(body.token ?? ""), viewer)) });
     }
 
-    if (["sentence-save", "sentence-delete", "sentence-cup", "quiz-answer", "expression-book", "invite-info"].includes(action)) {
+    if (["sentence-save", "sentence-delete", "sentence-cup", "quiz-answer", "expression-book", "invite-info", "invite-create"].includes(action)) {
       const viewer = await customerForSession(current);
       const token = String(body.token ?? "");
       if (action === "sentence-save") await saveSentence(token, viewer, { body: body.body });
@@ -143,7 +177,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       else if (action === "quiz-answer") return NextResponse.json({ success: true, ...(await answerQuiz(token, viewer, body.choice)) });
       else {
         if (!viewer) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
-        return NextResponse.json({ success: true, ...(action === "expression-book" ? await expressionBook(viewer) : await inviteInfo(viewer)) });
+        if (action === "expression-book") return NextResponse.json({ success: true, ...(await expressionBook(viewer)) });
+        return NextResponse.json({ success: true, ...(await inviteInfo(viewer, action === "invite-create")) });
       }
       return NextResponse.json({ success: true });
     }

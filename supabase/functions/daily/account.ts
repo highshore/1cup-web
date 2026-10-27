@@ -154,6 +154,8 @@ export async function updateSettings(db: SupabaseClient, customer: PaymentCustom
   }
   if (time !== null) assertTrack(body.track);
   const name = typeof body.name === "string" ? body.name : null;
+  // The lesson messages need something to call them by.
+  if (name !== null && name.trim() === "") throw new PaymentError("카톡에서 부를 이름을 적어 주세요.", "name-required");
   const marketing = typeof body.marketing === "boolean" ? body.marketing : null;
   const { error } = await db.rpc("daily_update_settings", {
     p_customer_id: customer.id,

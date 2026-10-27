@@ -6,6 +6,7 @@ import { CheckIcon } from "@heroicons/react/24/solid";
 import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi, signInWithLink } from "../../lib/features/daily/api";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
+import { InviteCodeField, useInviteCode } from "../../lib/features/daily/components/InviteCode";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LABEL, DAILY_TRACKS, isDailyTrack, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
@@ -92,6 +93,8 @@ export default function SubscribeClient() {
   const [consentOpen, setConsentOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const invite = useInviteCode();
 
   const load = useCallback(async () => {
     try {
@@ -286,6 +289,14 @@ export default function SubscribeClient() {
               </select>
               <p className="mt-1.5 text-[0.82rem] font-semibold text-[#64748b]">받는 번호: {info.phone}</p>
 
+              <p className="mt-6 flex items-center gap-2 text-[1.05rem] font-black">
+                3. {dailyCopy.invite.field.title}
+                <span className="text-[0.85rem] font-bold text-[#94a3b8]">{dailyCopy.invite.field.optional}</span>
+              </p>
+              <div className="mt-3">
+                <InviteCodeField value={invite.code} onChange={invite.setCode} inputClassName="bg-[#f5f5f4]" />
+              </div>
+
               <ul className="m-0 mt-5 flex list-none flex-col gap-2 p-0">
                 {pricing.subscription.benefits.map((benefit) => (
                   <li key={benefit} className="flex items-start gap-2 text-[0.92rem] font-bold">
@@ -313,10 +324,19 @@ export default function SubscribeClient() {
               ) : (
               <button
                 type="button"
-                disabled={!selected || blocked || busy}
-                onClick={() => {
+                disabled={!selected || blocked || busy || checking}
+                onClick={async () => {
                   setError("");
-                  setConsentOpen(true);
+                  setChecking(true);
+                  try {
+                    // The checkout carries the kept code (see checkout-window in /api/daily).
+                    await invite.apply();
+                    setConsentOpen(true);
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "");
+                  } finally {
+                    setChecking(false);
+                  }
                 }}
                 className="mt-5 h-[54px] w-full rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white transition-opacity disabled:opacity-35"
               >
