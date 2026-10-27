@@ -17,6 +17,8 @@ type Reward = "applied" | "pending" | "already";
 
 interface ReviewStatus {
   eligible: boolean;
+  // False for a session from a message link: writing needs Kakao Login.
+  verified: boolean;
   workplace: string;
   jobCategory: string;
   existing: {
@@ -61,7 +63,9 @@ export default function ReviewClient() {
       }
     } catch (e) {
       setStatus(
-        e instanceof DailyApiError && e.status === 401 ? null : { eligible: false, workplace: "", jobCategory: "", existing: null },
+        e instanceof DailyApiError && e.status === 401
+          ? null
+          : { eligible: false, verified: false, workplace: "", jobCategory: "", existing: null },
       );
     }
   }, []);
@@ -134,11 +138,18 @@ export default function ReviewClient() {
           </section>
         )}
 
+        {status?.eligible && !status.verified && !done && existing?.status !== "approved" && (
+          <section className="rounded-[24px] bg-white p-5">
+            <p className="mb-4 text-center text-[0.95rem] font-semibold text-[#475569]">{copy.verify}</p>
+            <KakaoSignIn bare confirm detail={null} />
+          </section>
+        )}
+
         {status?.eligible && !done && existing?.status === "approved" && (
           <p className="rounded-[24px] bg-white p-6 text-center text-[0.95rem] font-bold">{copy.approved}</p>
         )}
 
-        {status?.eligible && !done && existing?.status !== "approved" && (
+        {status?.eligible && status.verified && !done && existing?.status !== "approved" && (
           <section className="flex flex-col gap-6 rounded-[24px] bg-white p-5 min-[600px]:p-6">
             {existing && (
               <p className="text-[0.9rem] font-bold text-[#475569]">

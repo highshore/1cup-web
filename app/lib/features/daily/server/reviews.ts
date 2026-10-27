@@ -61,10 +61,12 @@ export async function reviewStatus(customer: DailySessionCustomer) {
     db.from("daily_reviews").select("rating, body, display_name, status, reward_earned_at, reward_applied_at").eq("customer_id", customer.id).maybeSingle(),
     db.from("daily_customers").select("workplace, job_category").eq("id", customer.id).maybeSingle(),
   ]);
+  // A message-link session may be someone the link was forwarded to: no 소속·직종 for it.
   return {
     eligible: count > 0,
-    workplace: (me?.workplace as string | null) ?? "",
-    jobCategory: (me?.job_category as string | null) ?? "",
+    verified: customer.verified,
+    workplace: customer.verified ? ((me?.workplace as string | null) ?? "") : "",
+    jobCategory: customer.verified ? ((me?.job_category as string | null) ?? "") : "",
     existing: existing
       ? {
           rating: existing.rating,

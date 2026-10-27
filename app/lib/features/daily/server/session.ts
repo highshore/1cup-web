@@ -11,15 +11,17 @@
 //          being the only way in; the scope column still says "phone".)
 //   link   from opening a Kakao message's button link (signInFromLink). The link can be
 //          forwarded, so it only covers what touches the reader's own learning; actions
-//          that record consent or move money ask for Kakao Login first.
+//          that record consent, change the account or move money ask for Kakao Login
+//          first. It lasts LINK_SESSION_DAYS, and the row keeps the delivery it came from.
 import crypto from "crypto";
 import { admin } from "../../../supabase/server";
 
 export const DAILY_SESSION_COOKIE = "daily_session";
 export const DAILY_SESSION_DAYS = 30;
 // A message's button signs in for this long after it was sent; after that it still
-// opens the lesson, only without signing anyone in.
+// opens the lesson, only without signing anyone in. The session it starts lasts as long.
 const LINK_SIGNIN_DAYS = 14;
+const LINK_SESSION_DAYS = 14;
 
 export class DailyAuthError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -47,7 +49,8 @@ async function createSession(
 ): Promise<{ token: string; expiresAt: Date }> {
   const now = new Date();
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(now.getTime() + DAILY_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const days = scope === "link" ? LINK_SESSION_DAYS : DAILY_SESSION_DAYS;
+  const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   const { error } = await admin().from("daily_sessions").insert({
     customer_id: customerId,
     token_hash: sha256(token),
