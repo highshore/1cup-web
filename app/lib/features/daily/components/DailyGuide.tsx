@@ -14,7 +14,7 @@ import {
 import { dailyCopy } from "../copy";
 import { dailyDisplay } from "../fonts";
 import { DAILY_BUSINESS } from "./DailyLegal";
-import { cn, displayClass, Emoji } from "./DailyUI";
+import { cn, displayClass, Emoji, PassPerMonth } from "./DailyUI";
 import "../daily.css";
 
 // /daily/guide: how to use Daily, from signup to refunds. Copy in dailyCopy.guide.
@@ -226,7 +226,10 @@ export default function DailyGuide() {
                       {pass.label}
                       <span className="block text-[0.8rem] font-semibold text-[#78716c] min-[600px]:hidden">{subscribe.passHow}</span>
                     </th>
-                    <td className="px-4 py-3 font-black">₩{formatKrw(pass.priceKrw)}</td>
+                    <td className="px-4 py-3 font-black">
+                      ₩{formatKrw(pass.priceKrw)}
+                      <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} />
+                    </td>
                     <td className="hidden px-4 py-3 text-[#57534e] min-[600px]:table-cell">{subscribe.passHow}</td>
                   </tr>
                 ))}

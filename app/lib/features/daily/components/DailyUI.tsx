@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH } from "../constants";
+import { DAILY_PASS_MONTHLY_BASE_KRW, DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH, dailyPassPerMonth, formatKrw } from "../constants";
 import { dailyCopy } from "../copy";
 import { usePrefersReducedMotion } from "../hooks";
 
@@ -101,6 +101,22 @@ export function CupMark({ className, color = "currentColor" }: { className?: str
       <path d="M36.85 6.75H34.86L33.88 2.91L4.53 0L3.43 6.75H1.57L0 10.21H38.42L36.85 6.75Z" />
       <path d="M2.94 14.22L3.44 18.22L4.39 25.88L4.89 29.88L5.84 37.55L6.34 41.55L7.3 49.22L7.78 53.13H30.63L31.12 49.22L32.07 41.55L32.57 37.55L33.53 29.88L34.02 25.88L34.98 18.22L35.48 14.22H2.94Z" />
     </svg>
+  );
+}
+
+// "월 ₩4,100 ₩4,500" under a pass's price: what it comes to per month, with the 1개월
+// 이용권 price struck through when the pass is cheaper. Small and grey on purpose.
+export function PassPerMonth({ priceKrw, days, className }: { priceKrw: number; days: number; className?: string }) {
+  const perMonth = dailyPassPerMonth(priceKrw, days);
+  return (
+    <span className={cn("block text-[0.78rem] font-semibold text-[#94a3b8]", className)}>
+      월 ₩{formatKrw(perMonth)}
+      {perMonth < DAILY_PASS_MONTHLY_BASE_KRW && (
+        <s className="ml-1.5 font-medium text-[#cbd5e1]">
+          <span className="sr-only">정가 </span>₩{formatKrw(DAILY_PASS_MONTHLY_BASE_KRW)}
+        </s>
+      )}
+    </span>
   );
 }
 
