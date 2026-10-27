@@ -6,7 +6,7 @@ import { CheckIcon } from "@heroicons/react/24/solid";
 import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi, signInWithLink } from "../../lib/features/daily/api";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import DailyLoading from "../../lib/features/daily/components/DailyLoading";
-import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
+import { cn, displayClass, Emoji, PassPerMonth } from "../../lib/features/daily/components/DailyUI";
 import { InviteCodeField, useInviteCode } from "../../lib/features/daily/components/InviteCode";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LABEL, DAILY_TRACKS, isDailyTrack, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
@@ -255,7 +255,10 @@ export default function SubscribeClient() {
                           {p.recurring ? "30일마다 자동 결제 · 언제든 해지" : `${p.days}일 · 한 번만 결제`}
                         </span>
                       </span>
-                      <span className="text-[1.15rem] font-black">₩{formatKrw(p.amount)}</span>
+                      <span className="shrink-0 text-right text-[1.15rem] font-black">
+                        ₩{formatKrw(p.amount)}
+                        {!p.recurring && <PassPerMonth priceKrw={p.amount} days={p.days} />}
+                      </span>
                     </button>
                   </li>
                 ))}

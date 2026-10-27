@@ -19,9 +19,14 @@ export const DAILY_MONTHLY_PRICE_KRW = 3700;
 
 export const DAILY_PASSES = [
   { id: "pass_1m", label: "1개월 이용권", days: 30, priceKrw: 4500 },
-  { id: "pass_3m", label: "3개월 이용권", days: 90, priceKrw: 13500 },
-  { id: "pass_6m", label: "6개월 이용권", days: 180, priceKrw: 27000 },
+  { id: "pass_3m", label: "3개월 이용권", days: 90, priceKrw: 12300 },
+  { id: "pass_6m", label: "6개월 이용권", days: 180, priceKrw: 23400 },
 ] as const;
+
+// A pass's price per 30 days, and the 1개월 이용권 price it is compared with (struck through
+// under the longer passes).
+export const DAILY_PASS_MONTHLY_BASE_KRW = DAILY_PASSES[0].priceKrw;
+export const dailyPassPerMonth = (priceKrw: number, days: number) => Math.round((priceKrw * 30) / days);
 
 // Free-trial signup. When false, the landing page's trial buttons show "opening soon"
 // instead of linking to the signup. The server has its own switch,
@@ -64,6 +69,6 @@ export const DAILY_JOB_CATEGORIES = [
 
 // Bump when the Daily terms or the consent wording change; stored with each signup. The
 // date is when the version took effect; a later revision the same day adds ".n".
-export const DAILY_TERMS_VERSION = "2026-10-27.1";
+export const DAILY_TERMS_VERSION = "2026-10-27.2";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");

@@ -25,6 +25,7 @@ import {
   Emoji,
   Headline,
   Panel,
+  PassPerMonth,
   Pill,
   TrialButton,
   cn,
@@ -484,9 +485,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
                 <li key={pass.id} className="rounded-[18px] border border-[#e5e7eb] bg-white px-4 py-3.5">
                   <p className="text-[0.92rem] font-bold text-[#475569]">{pass.label}</p>
                   <p className="mt-1 text-[1.3rem] font-black">₩{formatKrw(pass.priceKrw)}</p>
-                  <p className="text-[0.8rem] font-semibold text-[#64748b]">
-                    {copy.pricing.passes.perMonth.replace("{price}", formatKrw(Math.round((pass.priceKrw * 30) / pass.days)))}
-                  </p>
+                  <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} className="mt-0.5" />
                 </li>
               ))}
             </ul>
