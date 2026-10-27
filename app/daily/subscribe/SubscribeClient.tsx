@@ -196,7 +196,7 @@ export default function SubscribeClient() {
           </p>
         </div>
 
-        {info === undefined && !error && <DailyLoading label="구독 정보를 불러오고 있어요" className="mt-6" />}
+        {info === undefined && !error && <DailyLoading label="구독 정보를 불러오고 있어요" />}
 
         {info === null && (
           <div className="mt-8 rounded-[28px] bg-white p-6">
