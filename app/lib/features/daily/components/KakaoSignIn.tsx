@@ -47,7 +47,7 @@ export default function KakaoSignIn({
         <p className="mb-4 text-[0.92rem] font-semibold text-[#475569]">
           {detail ??
             (confirm
-              ? "카카오톡 버튼으로 들어오셨어요. 결제와 신청은 카카오로 한 번 더 확인해요."
+              ? "결제나 신청처럼 중요한 작업은 안전을 위해 다시 한번 로그인해 주세요."
               : "카카오계정으로 바로 시작해요. 레슨은 카카오계정의 휴대폰 번호로 알림톡이 가요.")}
         </p>
       )}
@@ -58,7 +58,7 @@ export default function KakaoSignIn({
         <svg viewBox="0 0 24 22" className="size-5" fill="currentColor" aria-hidden>
           <path d="M12 0C5.4 0 0 4.2 0 9.4c0 3.4 2.3 6.4 5.7 8l-1.2 4.3c-.1.4.3.7.6.5l5-3.3c.6.1 1.2.1 1.9.1 6.6 0 12-4.2 12-9.4S18.6 0 12 0Z" />
         </svg>
-        {confirm ? "카카오로 확인하기" : "카카오로 시작하기"}
+        {confirm ? "카카오로 다시 로그인하기" : "카카오로 시작하기"}
       </a>
       {message && (
         <p role="status" className="mt-2.5 text-[0.86rem] font-semibold text-[#b91c1c]">

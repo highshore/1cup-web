@@ -51,7 +51,7 @@ const ERRORS: Record<string, string> = {
   "consent-required": "필수 항목에 모두 동의해 주세요.",
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
   "login-required": "로그인이 끝났어요. 카카오로 다시 시작해 주세요.",
-  "verify-required": "신청 전에 카카오로 한 번 확인해 주세요.",
+  "verify-required": "신청하려면 다시 한번 로그인해 주세요.",
 };
 
 // What happens, shown before the Kakao button so leaving for Kakao isn't a surprise.
