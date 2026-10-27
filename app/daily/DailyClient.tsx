@@ -383,7 +383,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           })}
         </ul>
         <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
-          <p className="text-[1.05rem] font-black">{copy.founder.profile}</p>
+          <p className="whitespace-pre-line text-center text-[1.05rem] font-black leading-snug min-[900px]:text-left">{copy.founder.profile}</p>
           <a
             href={copy.founder.linkedInUrl}
             target="_blank"
