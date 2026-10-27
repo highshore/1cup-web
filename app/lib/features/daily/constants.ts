@@ -3,7 +3,7 @@
 export const DAILY_TRACKS = ["basic", "advanced"] as const;
 export type DailyTrack = (typeof DAILY_TRACKS)[number];
 
-export const DAILY_TRACK_LABEL: Record<DailyTrack, string> = { basic: "초중급", advanced: "고급" };
+export const DAILY_TRACK_LABEL: Record<DailyTrack, string> = { basic: "초·중급", advanced: "고급" };
 
 export function isDailyTrack(value: unknown): value is DailyTrack {
   return value === "basic" || value === "advanced";

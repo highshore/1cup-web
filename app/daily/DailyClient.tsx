@@ -17,7 +17,6 @@ import {
   PresentationChartBarIcon,
   ShieldCheckIcon,
   SunIcon,
-  TrophyIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { ShieldCheckIcon as ShieldCheckSolid } from "@heroicons/react/24/solid";
@@ -49,6 +48,7 @@ import { useReached, useScrolledPast, useSeen } from "../lib/features/daily/hook
 import "../lib/features/daily/daily.css";
 
 const price = formatKrw(DAILY_MONTHLY_PRICE_KRW);
+const pricePerDay = formatKrw(Math.round(DAILY_MONTHLY_PRICE_KRW / 30));
 
 const sceneIcons = {
   meeting: PresentationChartBarIcon,
@@ -63,7 +63,6 @@ const credentialIcons = {
   shield: ShieldCheckIcon,
   school: AcademicCapIcon,
   briefcase: BriefcaseIcon,
-  trophy: TrophyIcon,
 } as const;
 
 // Display sizes: mobile from Figma 43:2, desktop ×1.35 (Figma 48:428).
@@ -373,7 +372,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           {copy.founder.credentials.map((credential) => {
             const Icon = credentialIcons[credential.icon as keyof typeof credentialIcons];
             return (
-              <li key={credential.title} className="flex items-center gap-3.5 rounded-[20px] bg-white px-4 py-3.5">
+              <li key={credential.title} className="flex items-center gap-3.5 rounded-[20px] bg-white px-4 py-3.5 min-[900px]:odd:last:col-span-2">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f47a4a] text-[#050505]">
                   <Icon className="size-5" aria-hidden />
                 </span>
@@ -476,10 +475,13 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               <span className={cn(displayClass, "text-[3rem] leading-none")}>₩{price}</span>
               <span className="text-[0.95rem] font-bold text-[#64748b]">{copy.pricing.subscription.period}</span>
             </p>
-            <p className="mt-4 flex items-center gap-2.5 rounded-2xl bg-[#fff8dc] px-4 py-3 text-[0.95rem] font-bold leading-snug">
-              <Emoji className="shrink-0 text-[1.5rem]">☕</Emoji>
-              {copy.pricing.subscription.espresso}
-            </p>
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff8dc] px-4 py-3.5">
+              <Emoji className="shrink-0 text-[1.7rem]">☕</Emoji>
+              <p className="leading-snug">
+                <span className="block text-[1.25rem] font-black text-[#d95f2d]">{copy.pricing.subscription.perDay.replace("{price}", pricePerDay)}</span>
+                <span className="block text-[0.92rem] font-bold">{copy.pricing.subscription.espresso}</span>
+              </p>
+            </div>
             <ul className="m-0 mt-6 flex list-none flex-col gap-3 p-0">
               {copy.pricing.subscription.benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-2.5 text-[1rem] font-bold">

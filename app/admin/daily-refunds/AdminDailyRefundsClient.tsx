@@ -51,7 +51,7 @@ const STATUS_CLASS: Record<Status, string> = {
   rejected: "bg-[#f1f5f9] text-[#475569]",
   failed: "bg-[#fee2e2] text-[#991b1b]",
 };
-const TRACK = { basic: "초중급", advanced: "고급" } as const;
+const TRACK = { basic: "초·중급", advanced: "고급" } as const;
 
 const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 const when = (iso: string) =>

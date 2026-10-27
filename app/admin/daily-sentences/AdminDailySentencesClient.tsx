@@ -20,7 +20,7 @@ interface Row {
   lesson: { expression: string; track: "basic" | "advanced"; publish_on: string } | null;
 }
 
-const TRACK = { basic: "초중급", advanced: "고급" } as const;
+const TRACK = { basic: "초·중급", advanced: "고급" } as const;
 const buttonClass = "inline-flex h-9 items-center justify-center rounded-xl px-3 text-[13px] font-black disabled:opacity-40";
 
 export default function AdminDailySentencesClient() {

@@ -106,7 +106,7 @@ export default function SubscribeClient() {
         setTrack(latest.track);
         setTime(latest.deliveryTime);
       }
-      // A lesson page's banner links here with its own track ("also get 초중급").
+      // A lesson page's banner links here with its own track ("also get 초·중급").
       const wanted = new URLSearchParams(window.location.search).get("track");
       if (isDailyTrack(wanted)) setTrack(wanted);
     } catch (e) {
