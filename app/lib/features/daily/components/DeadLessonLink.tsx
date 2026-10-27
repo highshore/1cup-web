@@ -1,7 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { DAILY_ACCOUNT_PATH, DAILY_MONTHLY_PRICE_KRW, formatKrw } from "../constants";
 import { dailyDisplay } from "../fonts";
-import type { DeadLinkVisitor } from "../server/lessons";
 import { cn, displayClass, Emoji } from "./DailyUI";
 import "../daily.css";
 
@@ -10,8 +11,9 @@ const primary = "flex h-[54px] items-center justify-center rounded-2xl px-6 text
 
 // What a lesson or review link that matches no message opens, instead of a 404: the
 // link is no longer valid, and where to go from here. A subscriber finds every lesson
-// they received under 내 계정 (내 학습 기록); anyone else needs to subscribe.
-export default function DeadLessonLink({ visitor }: { visitor: DeadLinkVisitor }) {
+// they received under 내 계정 (내 학습 기록); anyone else needs to subscribe. A client
+// component because DailyUI (cn, Emoji) is client-only; `visitor` comes from the page.
+export default function DeadLessonLink({ visitor }: { visitor: "subscriber" | "not-subscriber" | "unknown" }) {
   const subscribe = (
     <Link href="/daily/subscribe" className={cn(primary, "bg-[#050505] text-white")}>
       구독하고 계속 받기
