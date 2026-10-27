@@ -1,12 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import loadingAnimation from "../../../public/animations/loading.json";
 
 // Dynamic import for Lottie to avoid SSR issues
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+
+// The Lottie chunk loads on first show. If that request fails (offline, or cancelled
+// because the page is navigating away), show no animation rather than letting the
+// chunk error take down the layout this loader sits in.
+class LottieBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 const containerSizeClasses: Record<"small" | "medium" | "large", string> = {
   small:
@@ -55,7 +68,9 @@ export default function GlobalLoadingScreen({
       <div
         className={`flex -translate-y-[60px] items-center justify-center max-[768px]:-translate-y-[50px] ${containerSizeClasses[size]}`}
       >
-        <Lottie animationData={loadingAnimation} loop={true} autoplay={true} />
+        <LottieBoundary>
+          <Lottie animationData={loadingAnimation} loop={true} autoplay={true} />
+        </LottieBoundary>
       </div>
     </div>
   );
