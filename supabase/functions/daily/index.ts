@@ -190,6 +190,9 @@ async function handleStartTrial(
   const time = typeof body.time === "string" ? body.time : "";
   const match = /^([01][0-9]|2[0-2]):(00|30)$/.exec(time);
   if (!match || time < "06:00" || time > "22:00") throw new StartError("invalid-time");
+  // What the lesson messages call them; the signup page fills it from the Kakao nickname.
+  const name = typeof body.name === "string" ? body.name.trim().slice(0, 20) : "";
+  if (!name) throw new StartError("name-required");
 
   // The three required agreements, checked here as well as in the dialog: the record
   // this writes is the proof of consent, so it must not depend on the client alone.
@@ -203,7 +206,6 @@ async function handleStartTrial(
   const lesson = await trialLessonFor(db, track);
   if (!lesson) throw new StartError("no-lesson", 503);
 
-  const name = typeof body.name === "string" ? body.name.trim().slice(0, 20) : "";
   const { data: sub, error } = await db.rpc("daily_start_trial", {
     p_customer_id: customer.id,
     p_track: track,
