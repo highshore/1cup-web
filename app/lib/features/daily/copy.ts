@@ -8,10 +8,10 @@ export const dailyCopy = {
     account: "내 계정",
   },
   hero: {
-    tagline: "통역사가 매일 직접 올리는 카톡 영어",
+    tagline: "글로벌 임원 통역사가 직접 고른 영어",
     title: "출근길 5분,\n카톡으로 오는\n영어 한잔",
     accent: "영어 한잔",
-    lead: "통역사가 매일 아침 컨설팅·금융·테크 업계에서 바로 쓰는 비즈니스 표현 하나를 카카오톡으로 올려드려요.",
+    lead: "통역사가 매일 실무에서 바로 쓸 수 있는 비즈니스 표현 하나를 카카오톡으로 올려드려요.",
     cta: "하루 무료로 받아보기",
     trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
     // A KakaoTalk notification: the channel's name, then the message's first line.
@@ -51,8 +51,8 @@ export const dailyCopy = {
     goals: ["회의에서 한 문장으로 말하기 💬", "일상 대화에서 바로 받아치기 ☕", "동료 표현 바로 알아듣기 👂"],
   },
   benefits: {
-    title: "카톡으로 매일 받는\n현장 비즈니스 영어",
-    accent: "현장 비즈니스 영어",
+    title: "글로벌 비즈니스 현장의 영어를,\n매일 카톡으로",
+    accent: "매일 카톡으로",
     items: [
       { emoji: "💬", label: "말풍선", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
       { emoji: "⏰", label: "알람 시계", title: "하루 딱 5분", detail: "출근길에 읽고 듣고 끝" },

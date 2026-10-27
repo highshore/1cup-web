@@ -6,7 +6,7 @@ import { approvedReviews } from "../lib/features/daily/server/reviews";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "One Cup Daily | 통역사가 매일 직접 올리는 카톡 영어",
+  title: "One Cup Daily | 글로벌 임원 통역사가 직접 고른 영어",
   description:
     "출근길 5분, 카카오톡으로 오는 현장 비즈니스 영어. 통역사가 컨설팅·금융·테크 업계 회의에서 실제로 오간 표현을 토익 900점을 기준으로 초·중급, 고급 두 레벨로 나눠 매일 보내드려요. 첫 하루 무료.",
   // Not indexed until the free trial opens.
