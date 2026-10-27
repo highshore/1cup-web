@@ -152,7 +152,7 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
 
 export async function updateSettings(db: SupabaseClient, customer: PaymentCustomer, body: Record<string, unknown>) {
   const time = body.time === undefined ? null : String(body.time);
-  if (time !== null && (!/^([01][0-9]|2[0-2]):(00|30)$/.test(time) || time < "06:00" || time > "22:00")) {
+  if (time !== null && (!/^([01][0-9]|2[0-2]):00$/.test(time) || time < "06:00" || time > "22:00")) {
     throw new PaymentError("받는 시간을 골라 주세요.", "invalid-time");
   }
   if (time !== null) assertTrack(body.track);

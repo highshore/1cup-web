@@ -30,11 +30,8 @@ interface StartResult {
   nextSendAt: string;
 }
 
-// 06:00–22:00 in 30-minute steps: the range daily_subscriptions.delivery_time allows.
-const TIMES = Array.from({ length: 33 }, (_, i) => {
-  const minutes = 6 * 60 + i * 30;
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${minutes % 60 === 0 ? "00" : "30"}`;
-});
+// 06:00–22:00 on the hour: the range daily_subscriptions.delivery_time allows.
+const TIMES = Array.from({ length: 17 }, (_, i) => `${String(6 + i).padStart(2, "0")}:00`);
 
 function timeLabel(value: string) {
   const [h, m] = value.split(":").map(Number);
