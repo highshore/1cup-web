@@ -229,7 +229,7 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
   const track = body.track;
   if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
   const time = typeof body.time === "string" ? body.time : "";
-  if (!/^([01][0-9]|2[0-2]):(00|30)$/.test(time) || time < "06:00" || time > "22:00") {
+  if (!/^([01][0-9]|2[0-2]):00$/.test(time) || time < "06:00" || time > "22:00") {
     throw new PaymentError("받는 시간을 골라 주세요.", "invalid-time");
   }
   const agreements = (body.agreements ?? {}) as Record<string, unknown>;

@@ -188,7 +188,7 @@ async function handleStartTrial(
   const track = body.track;
   if (!isTrack(track)) throw new StartError("invalid-track");
   const time = typeof body.time === "string" ? body.time : "";
-  const match = /^([01][0-9]|2[0-2]):(00|30)$/.exec(time);
+  const match = /^([01][0-9]|2[0-2]):00$/.exec(time);
   if (!match || time < "06:00" || time > "22:00") throw new StartError("invalid-time");
   // What the lesson messages call them: the Kakao nickname saved at sign-in. A name in
   // the body (older clients) still overrides it; with neither, messages say "고객 님".
