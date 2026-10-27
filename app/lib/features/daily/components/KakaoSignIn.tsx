@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 // Daily's only sign-in: Kakao Login, which supplies the account's verified phone number
 // (where the Alimtalk lessons go) and nickname. Nobody types a number, and no 1cup
@@ -28,6 +28,9 @@ export default function KakaoSignIn({
 }) {
   const [message, setMessage] = useState("");
   const [href, setHref] = useState("/api/daily/kakao");
+  // Between the tap and Kakao's page loading there is a pause of a second or more,
+  // long enough that people tap again or think nothing happened.
+  const [pending, setPending] = useState(false);
 
   // Back from Kakao Login: say why it did not sign in, and come back to this page next time.
   useEffect(() => {
@@ -39,7 +42,25 @@ export default function KakaoSignIn({
       window.history.replaceState(null, "", url.toString());
     }
     setHref(`/api/daily/kakao?next=${encodeURIComponent(url.pathname + url.search)}`);
+
+    // Backing out of Kakao's page restores this one from the back-forward cache with the
+    // spinner still going.
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setPending(false);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
   }, []);
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+    // A modified click opens a new tab and leaves this page where it is.
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setPending(true);
+  };
 
   return (
     <div className={bare ? undefined : "rounded-[22px] bg-white p-5"}>
@@ -53,12 +74,24 @@ export default function KakaoSignIn({
       )}
       <a
         href={href}
-        className="flex h-[54px] items-center justify-center gap-2 rounded-2xl bg-[#fee500] text-[1.05rem] font-black text-[#191600]"
+        onClick={handleClick}
+        aria-busy={pending}
+        aria-disabled={pending}
+        className={`flex h-[54px] items-center justify-center gap-2 rounded-2xl bg-[#fee500] text-[1.05rem] font-black text-[#191600] ${
+          pending ? "cursor-progress" : ""
+        }`}
       >
-        <svg viewBox="0 0 24 22" className="size-5" fill="currentColor" aria-hidden>
-          <path d="M12 0C5.4 0 0 4.2 0 9.4c0 3.4 2.3 6.4 5.7 8l-1.2 4.3c-.1.4.3.7.6.5l5-3.3c.6.1 1.2.1 1.9.1 6.6 0 12-4.2 12-9.4S18.6 0 12 0Z" />
-        </svg>
-        {confirm ? "카카오로 다시 로그인하기" : "카카오로 시작하기"}
+        {pending ? (
+          <span
+            className="size-5 animate-spin rounded-full border-[2.5px] border-[#191600]/25 border-t-[#191600]"
+            aria-hidden
+          />
+        ) : (
+          <svg viewBox="0 0 24 22" className="size-5" fill="currentColor" aria-hidden>
+            <path d="M12 0C5.4 0 0 4.2 0 9.4c0 3.4 2.3 6.4 5.7 8l-1.2 4.3c-.1.4.3.7.6.5l5-3.3c.6.1 1.2.1 1.9.1 6.6 0 12-4.2 12-9.4S18.6 0 12 0Z" />
+          </svg>
+        )}
+        {pending ? "카카오로 이동하고 있어요" : confirm ? "카카오로 다시 로그인하기" : "카카오로 시작하기"}
       </a>
       {message && (
         <p role="status" className="mt-2.5 text-[0.86rem] font-semibold text-[#b91c1c]">
