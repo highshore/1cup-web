@@ -66,9 +66,16 @@ export default function RouteTransitionLoader() {
       const nextUrl = new URL(anchor.href, window.location.href);
       const currentUrl = new URL(window.location.href);
 
+      // A link to a route handler (e.g. /api/daily/kakao, which redirects to Kakao) is a
+      // full navigation, not a client transition. Mounting the loader then makes it fetch
+      // the Lottie chunk while the page is already unloading; mobile Safari cancels that
+      // request and the failed chunk crashed the root layout into the global error page
+      // until Kakao loaded. Daily has its own loader (app/daily/loading.tsx).
       if (
         nextUrl.origin !== currentUrl.origin ||
-        nextUrl.pathname === currentUrl.pathname
+        nextUrl.pathname === currentUrl.pathname ||
+        nextUrl.pathname.startsWith("/api/") ||
+        currentUrl.pathname.startsWith("/daily")
       ) {
         return;
       }
