@@ -103,7 +103,7 @@ export default function ResultClient() {
       <div className="mx-auto w-full max-w-[720px] text-center min-[900px]:text-left">
         {state.kind === "working" && (
           <>
-            <DailyLoading label="잠시만요" className="items-center py-0 min-[900px]:items-start" />
+            <DailyLoading label="결제를 확인하고 있어요" />
             <h1 className={cn(displayClass, "mt-2 text-[2.2rem]")}>결제를 확인하고 있어요</h1>
             <p className="mt-2 font-semibold text-[rgba(5,5,5,0.75)]">이 창을 닫지 말고 잠시만 기다려 주세요.</p>
           </>

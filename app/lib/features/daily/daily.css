@@ -179,6 +179,48 @@
   }
 }
 
+@keyframes daily-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes daily-dot-fade {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* The loader's dots (DailyLoading): Daily orange, bouncing one after another. */
+.daily-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #f47a4a;
+  animation: daily-dot 1.05s ease-in-out infinite;
+}
+
+.daily-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.daily-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .daily-phone-in,
   .daily-drop,
@@ -188,6 +230,10 @@
   .daily-read,
   .daily-wave span {
     animation: none;
+  }
+
+  .daily-dot {
+    animation-name: daily-dot-fade;
   }
 
   .daily-marker[data-seen="false"] {

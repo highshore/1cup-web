@@ -175,7 +175,7 @@ export default function StartClient() {
           </p>
         )}
 
-        {info === undefined && !infoError && <DailyLoading label="신청 정보를 불러오고 있어요" className="mt-8" />}
+        {info === undefined && !infoError && <DailyLoading label="신청 정보를 불러오고 있어요" />}
 
         {info === null && (
           <section className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-8">
