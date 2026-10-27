@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
-import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
+import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_ACCOUNT_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
@@ -58,7 +58,7 @@ export default function BookClient() {
           <section className="rounded-[24px] bg-white p-5 min-[900px]:p-6">
             <h2 className="text-center text-[1.1rem] font-black min-[900px]:text-left">{copy.signIn}</h2>
             <div className="mt-4">
-              <PhoneVerification bare onVerified={load} />
+              <KakaoSignIn bare />
             </div>
           </section>
         )}

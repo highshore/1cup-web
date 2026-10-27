@@ -5,7 +5,7 @@
 //              trial-ended notices. Authorized by the Vault-held daily_scheduler_secret.
 //   start-info   Signed-in Daily customer (x-daily-session, forwarded by the Next.js
 //                /api/daily route from its httpOnly cookie; a session from a message
-//                link may read but not start trials or pay, see NEEDS_PHONE_CODE). What the signup page needs:
+//                link may read but not start trials or pay, see NEEDS_KAKAO_LOGIN). What the signup page needs:
 //                whether trials are open to them, the masked phone, and which tracks
 //                they already used or hold.
 //   start-trial  Signed-in Daily customer. Records consent, uses up the phone's free
@@ -17,7 +17,7 @@
 //                it (idempotent), and turning off auto-renew.
 //   account-info / account-update / resume-renewal / refund-request / account-delete
 //                Signed-in Daily customer: the account page (account.ts). Changing
-//                anything needs a phone-code session; refunds are only requested here.
+//                anything needs a Kakao Login session; refunds are only requested here.
 //   admin-refunds / admin-refund-decide
 //                1cup staff admins: list refund requests, approve (Payple cancel) or
 //                reject them.
@@ -96,22 +96,22 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
 }
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-const TERMS_VERSION = "2026-10-26.3";
+const TERMS_VERSION = "2026-10-27";
 
-// A Daily customer, signed in with a Daily phone code. Daily customers are not 1cup
+// A Daily customer, signed in with Kakao Login. Daily customers are not 1cup
 // members: this never reads public.users or Supabase Auth.
 interface Customer {
   id: string;
   phone: string;
   name: string | null;
-  // Signed in with a phone code, not from a message link (see the
+  // Signed in with Kakao Login, not from a message link (see the
   // 20261026010000_daily_link_sessions migration).
   verified: boolean;
 }
 
 // What a link session may not do: these record consent or move money, and a message
-// link can be forwarded. The page asks for the phone code, then retries.
-const NEEDS_PHONE_CODE = new Set([
+// link can be forwarded. The page asks for Kakao Login, then retries.
+const NEEDS_KAKAO_LOGIN = new Set([
   "start-trial",
   "checkout-window",
   "cancel-renewal",
@@ -339,7 +339,7 @@ Deno.serve(async (req) => {
       case "account-delete": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
-        if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
+        if (NEEDS_KAKAO_LOGIN.has(action) && !customer.verified) {
           return json(req, { success: false, errorCode: "verify-required" }, 403);
         }
         const db = admin();
@@ -368,7 +368,7 @@ Deno.serve(async (req) => {
       case "start-trial": {
         const customer = await loadCustomer(req);
         if (!customer) return json(req, { success: false, errorCode: "login-required" }, 401);
-        if (NEEDS_PHONE_CODE.has(action) && !customer.verified) {
+        if (NEEDS_KAKAO_LOGIN.has(action) && !customer.verified) {
           return json(req, { success: false, errorCode: "verify-required" }, 403);
         }
         if (action === "start-info") return json(req, { success: true, ...(await handleStartInfo(customer)) });

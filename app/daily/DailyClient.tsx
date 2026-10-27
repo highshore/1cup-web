@@ -12,8 +12,8 @@ import {
   ChatBubbleLeftRightIcon,
   CheckIcon,
   CpuChipIcon,
-  EnvelopeIcon,
   GlobeAltIcon,
+  PhoneIcon,
   PlusIcon,
   PresentationChartBarIcon,
   ShieldCheckIcon,
@@ -50,7 +50,7 @@ const price = formatKrw(DAILY_MONTHLY_PRICE_KRW);
 
 const sceneIcons = {
   meeting: PresentationChartBarIcon,
-  mail: EnvelopeIcon,
+  call: PhoneIcon,
   chat: ChatBubbleLeftRightIcon,
   standup: UserGroupIcon,
 } as const;
@@ -596,35 +596,26 @@ function SentenceWall() {
       </span>
       <p className="text-[0.75rem] font-extrabold text-[#d95f2d]">{feed.heading}</p>
       <p className="text-[1.5rem] font-black leading-tight">{feed.expression}</p>
-      <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#fff8dc] px-3 py-2 text-[0.78rem] font-bold text-[#475569]">
+      <p className="mt-1.5 flex items-center gap-1.5 text-[0.78rem] font-bold text-[#475569]">
         <Emoji className="text-[1rem]">☕</Emoji>
         {feed.together}
       </p>
-      <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#e5e7eb] px-3 py-2">
-        <span className="flex-1 text-[0.8rem] text-[#94a3b8]">{feed.prompt}</span>
-        <span className="rounded-lg bg-[#050505] px-2.5 py-1 text-[0.72rem] font-black text-white">{feed.send}</span>
+      {/* The same shape as the real 함께 쓰는 문장: a field, then plain rows, never a box in a box in a box. */}
+      <div className="mt-3 flex items-center gap-2">
+        <span className="flex h-10 flex-1 items-center rounded-xl bg-[#f5f5f4] px-3 text-[0.8rem] text-[#94a3b8]">{feed.prompt}</span>
+        <span className="flex h-10 items-center rounded-xl bg-[#050505] px-3 text-[0.75rem] font-black text-white">{feed.send}</span>
       </div>
-      <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+      <ul className="m-0 mt-2 list-none divide-y divide-[#e7e5e4] p-0">
         {feed.sentences.map((sentence) => (
-          <li
-            key={sentence.text}
-            className={cn("rounded-2xl px-3 py-2.5", sentence.pick ? "bg-[#fff1ea] ring-1 ring-[#f47a4a]/40" : "bg-[#f5f5f4]")}
-          >
-            <div className="flex items-center gap-2 text-[0.72rem] font-bold text-[#64748b]">
-              <span className="flex size-5 items-center justify-center rounded-full bg-[#050505] text-[0.6rem] font-black text-white">
-                {sentence.initial}
-              </span>
-              {sentence.name}
-              {sentence.pick && (
-                <span className="ml-auto rounded-full bg-[#f47a4a] px-2 py-0.5 text-[0.65rem] font-black text-[#050505]">
-                  {feed.pick}
-                </span>
-              )}
+          <li key={sentence.text} className="flex items-start gap-2.5 py-3">
+            <div className="min-w-0 flex-1">
+              {sentence.pick && <p className="text-[0.68rem] font-black text-[#d95f2d]">🏆 {feed.pick}</p>}
+              <p className="text-[0.86rem] font-bold leading-snug">
+                <Highlighted text={sentence.text} highlight={feed.expression} />
+              </p>
+              <p className="mt-1 text-[0.72rem] font-semibold text-[#78716c]">{sentence.name}</p>
             </div>
-            <p className="mt-1 text-[0.86rem] font-bold leading-snug">
-              <Highlighted text={sentence.text} highlight={feed.expression} />
-            </p>
-            <p className="mt-1 text-right text-[0.72rem] font-bold text-[#64748b]">☕ {sentence.cups}</p>
+            <span className="flex h-7 shrink-0 items-center rounded-full bg-[#f5f5f4] px-2.5 text-[0.72rem] font-black text-[#475569]">☕ {sentence.cups}</span>
           </li>
         ))}
       </ul>

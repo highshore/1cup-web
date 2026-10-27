@@ -43,12 +43,12 @@ export const dailyCopy = {
     accent: "머리가 하얘지나요?",
     items: [
       "할 말은 있는데 \"I think...\"에서 멈춰요",
-      "메일 한 통에 번역기를 세 번 돌려요",
+      "통화에서 맞장구 한마디가 안 나와요",
       "외국계 공고, 영어 면접 때문에 망설여요",
     ],
     goalTitle: "이런 순간을 위해\n만들었어요",
     goalAccent: "만들었어요",
-    goals: ["회의에서 한 문장으로 말하기 💬", "메일 첫 줄 바로 쓰기 ✉️", "동료 표현 바로 알아듣기 👂"],
+    goals: ["회의에서 한 문장으로 말하기 💬", "통화에서 바로 받아치기 📞", "동료 표현 바로 알아듣기 👂"],
   },
   benefits: {
     title: "카톡으로 매일 받는\n현장 비즈니스 영어",
@@ -102,7 +102,7 @@ export const dailyCopy = {
     after: "After",
     pairs: [
       { before: "I will tell you later.", after: "I'll circle back once I have the numbers.", highlight: "circle back" },
-      { before: "Please add him to the email.", after: "Could you loop him in on this thread?", highlight: "loop him in" },
+      { before: "Please let him join this talk too.", after: "Could you loop him in on this?", highlight: "loop him in" },
       { before: "The old code makes work slow.", after: "Tech debt is slowing us down.", highlight: "Tech debt" },
     ],
   },
@@ -111,13 +111,13 @@ export const dailyCopy = {
     accent: "바로 써요",
     items: [
       { icon: "meeting", title: "회의", detail: "의견을 한 문장으로" },
-      { icon: "mail", title: "메일", detail: "첫 줄부터 자연스럽게" },
+      { icon: "call", title: "통화", detail: "바로 받아치는 한마디" },
       { icon: "chat", title: "1:1 미팅", detail: "부드럽게 피드백" },
       { icon: "standup", title: "스탠드업", detail: "진행 상황을 짧게" },
     ],
   },
   // Mastery (RAMP): progress people can see. Every item here is a product promise:
-  // the quiz and Saturday review exist in the delivery design; the streak and 내 표현장
+  // the quiz and Saturday review exist in the delivery design; the streak and 내 학습 기록
   // belong on the lesson page and must ship with it.
   mastery: {
     title: "매일 조금씩,\n확실히 쌓여요",
@@ -127,7 +127,7 @@ export const dailyCopy = {
       { emoji: "🎯", label: "과녁", title: "1분 퀴즈", detail: "레슨 끝에 바로 풀고, 정답과 이유까지 확인해요" },
       { emoji: "🧠", label: "뇌", title: "토요일 복습", detail: "그 주에 받은 표현을 한 번에 다시 꺼내 봐요" },
       { emoji: "🔥", label: "불꽃", title: "연속 기록", detail: "며칠째 이어 왔는지 레슨 페이지에서 보여줘요" },
-      { emoji: "📚", label: "책", title: "내 표현장", detail: "받은 표현이 모두 쌓여 언제든 다시 볼 수 있어요" },
+      { emoji: "📚", label: "책", title: "내 학습 기록", detail: "받은 표현과 퀴즈 결과가 모두 쌓여 언제든 다시 볼 수 있어요" },
     ],
     card: {
       label: "예시 화면",
@@ -136,7 +136,7 @@ export const dailyCopy = {
       rows: [
         { label: "이번 주 표현", value: "5/5" },
         { label: "토요일 복습 퀴즈", value: "4/5 정답" },
-        { label: "내 표현장", value: "23개" },
+        { label: "내 학습 기록", value: "표현 23개" },
       ],
     },
   },
@@ -157,9 +157,9 @@ export const dailyCopy = {
       send: "올리기",
       pick: "통역사 PICK",
       sentences: [
-        { name: "익명의 PM", initial: "P", text: "Let's circle back on the timeline after QA.", cups: 12, pick: true },
-        { name: "마케터 J", initial: "J", text: "I'll circle back with the final numbers by Friday.", cups: 8, pick: false },
-        { name: "익명", initial: "?", text: "Can we circle back to the hiring plan next sprint?", cups: 5, pick: false },
+        { name: "김*연", text: "Let's circle back on the timeline after QA.", cups: 12, pick: true },
+        { name: "J***n", text: "I'll circle back with the final numbers by Friday.", cups: 8, pick: false },
+        { name: "이*호", text: "Can we circle back to the hiring plan next sprint?", cups: 5, pick: false },
       ],
     },
     points: [
@@ -173,7 +173,7 @@ export const dailyCopy = {
         emoji: "🏆",
         label: "트로피",
         title: "통역사 PICK",
-        detail: "통역사가 매일 잘 쓴 문장을 골라 다음 날 레슨에 소개해요. 이름을 밝힐지 익명으로 할지는 직접 정해요.",
+        detail: "통역사가 매일 잘 쓴 문장을 골라 다음 날 레슨에 소개해요. 이름은 카카오 닉네임 일부를 가려서 보여줘요.",
       },
       {
         emoji: "📊",
@@ -212,7 +212,7 @@ export const dailyCopy = {
         emoji: "🌱",
         emojiLabel: "새싹",
         title: "초중급",
-        tagline: "회의·메일에서 매일 쓰는 기본 표현",
+        tagline: "회의·통화에서 매일 쓰는 기본 표현",
         examples: [
           { en: "loop in", ko: "(논의에) 함께하게 하다" },
           { en: "on the same page", ko: "같은 내용으로 이해하고 있는" },
@@ -311,7 +311,7 @@ export const dailyCopy = {
       },
       {
         q: "카톡이 오지 않아요",
-        a: "레슨은 카카오 알림톡으로 가서 채널을 추가하지 않아도 받을 수 있어요. 신청한 번호로 카카오톡을 쓰고 있는지 확인해주세요. 지금은 카카오톡으로만 보내드려요.",
+        a: "레슨은 카카오 알림톡으로 가서 채널을 추가하지 않아도 받을 수 있어요. 신청한 카카오계정의 휴대폰에서 카카오톡을 쓰고 있는지 확인해주세요. 지금은 카카오톡으로만 보내드려요.",
       },
       {
         q: "받는 시간을 바꾸고 싶어요",
@@ -357,14 +357,14 @@ export const dailyCopy = {
       title: "무료 체험 신청하기",
       sub: "카드 등록 없이 레슨 1회를 먼저 받아봐요. 1분이면 끝나요.",
       steps: [
-        { title: "레벨 고르기", detail: "회의·메일에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
+        { title: "레벨 고르기", detail: "회의·통화에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
         { title: "받는 시간 고르기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요. 출근길에 읽을 수 있는 시간이 좋아요." },
-        { title: "카카오로 시작하거나 번호 인증", detail: "카카오로 시작하면 카카오계정의 휴대폰 번호로 바로 들어와요. 휴대폰 번호에 인증번호를 받아 입력해도 돼요. 회원가입이나 비밀번호는 없어요." },
+        { title: "카카오로 시작하기", detail: "카카오계정으로 바로 들어와요. 레슨은 카카오계정의 휴대폰 번호로 알림톡이 가요. 번호를 입력하거나 회원가입할 필요는 없어요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
         { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
       ],
       rules: [
-        "무료 체험은 번호마다 레벨별로 한 번씩이에요. 초중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
+        "무료 체험은 카카오계정마다 레벨별로 한 번씩이에요. 초중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
         "체험 다음 발송 시간(최소 12시간 뒤)에 체험이 끝났다는 안내가 와요. 그 뒤로는 구독해야 계속 받아요.",
       ],
       cta: "하루 무료로 받아보기",
@@ -373,7 +373,7 @@ export const dailyCopy = {
       id: "receive",
       title: "카카오톡으로 레슨 받기",
       items: [
-        { emoji: "💬", label: "말풍선", title: "'영어 한잔' 알림톡으로 와요", detail: "채널을 추가하지 않아도 받아요. 신청한 번호로 카카오톡을 쓰고 있어야 해요." },
+        { emoji: "💬", label: "말풍선", title: "'영어 한잔' 알림톡으로 와요", detail: "채널을 추가하지 않아도 받아요. 카카오계정의 휴대폰에서 카카오톡을 쓰고 있어야 해요." },
         { emoji: "👆", label: "가리키는 손", title: "'오늘의 레슨 보기'를 눌러요", detail: "메시지 버튼을 누르면 카카오톡 안에서 오늘의 레슨 페이지가 열려요. 앱 설치는 필요 없어요." },
         { emoji: "🔑", label: "열쇠", title: "버튼으로 열면 자동으로 로그인돼요", detail: "메시지를 받은 뒤 14일 동안은 버튼만 눌러도 내 계정으로 들어가요. 후기도 바로 남길 수 있어요." },
       ],
@@ -385,12 +385,12 @@ export const dailyCopy = {
       parts: [
         { emoji: "🔊", label: "스피커", title: "오늘의 표현과 발음", detail: "'발음 듣기'를 누르면 또박또박 조금 천천히 읽어줘요. 발음과 강세 위치도 함께 적혀 있어요." },
         { emoji: "💡", label: "전구", title: "이럴 때 써요", detail: "어떤 상황에서, 어떤 뉘앙스로 쓰는지 통역사가 짚어줘요. 비슷한 표현도 함께 있어요." },
-        { emoji: "🗣️", label: "말하는 얼굴", title: "실제 사용 예시", detail: "회의·메일·슬랙에서 실제로 쓰는 문장이에요. 문장마다 듣기 버튼이 있어요." },
+        { emoji: "🗣️", label: "말하는 얼굴", title: "실제 사용 예시", detail: "회의·통화·슬랙에서 실제로 쓰는 문장이에요. 문장마다 듣기 버튼이 있어요." },
         { emoji: "💬", label: "말풍선", title: "대화로 보기", detail: "짧은 대화 속에서 표현이 어떻게 오가는지 보고, 전체를 이어서 들을 수 있어요." },
         { emoji: "⚡", label: "번개", title: "1분 퀴즈", detail: "방금 배운 표현으로 문제를 풀면 정답과 이유를 바로 알려줘요. 같이 푼 사람이 10명을 넘으면 정답률과 가장 헷갈린 보기도 보여줘요." },
-        { emoji: "✍️", label: "글 쓰는 손", title: "함께 쓰는 문장", detail: "오늘 표현으로 한 문장을 써서 올리고, 같은 레슨을 받은 사람들의 문장에 ☕를 보내요. 이름을 쓸지 익명으로 할지는 직접 정해요." },
+        { emoji: "✍️", label: "글 쓰는 손", title: "함께 쓰는 문장", detail: "오늘 표현으로 한 문장을 써서 올리고, 같은 레슨을 받은 사람들의 문장에 ☕를 보내요. 이름은 카카오 닉네임 일부를 가려서 보여줘요(예: 김*수)." },
         { emoji: "🏆", label: "트로피", title: "통역사 PICK", detail: "통역사가 레슨마다 잘 쓴 문장 하나를 골라, 같은 레벨의 다음 레슨 맨 위에 소개해요." },
-        { emoji: "🔥", label: "불꽃", title: "연속 기록과 내 표현장", detail: "퀴즈를 푼 날이 이어지면 연속 기록이 쌓여요. 받은 표현은 모두 내 표현장에 모여요." },
+        { emoji: "🔥", label: "불꽃", title: "연속 기록과 내 학습 기록", detail: "퀴즈를 푼 날이 이어지면 연속 기록이 쌓여요. 받은 표현과 퀴즈 결과는 모두 내 학습 기록에 모여요." },
         { emoji: "📤", label: "보내기", title: "동료에게 보내기", detail: "오늘의 표현과 Daily 소개 링크를 보내요. 내 레슨 링크는 들어가지 않아요." },
       ],
       tip: "소리가 나지 않으면 휴대폰 무음 모드를 풀어주세요. 듣기는 휴대폰에 설치된 영어 음성으로 읽어줘요.",
@@ -400,9 +400,9 @@ export const dailyCopy = {
       title: "로그인과 본인 확인",
       items: [
         { title: "평소엔 버튼으로 바로", detail: "카카오톡 메시지의 버튼으로 들어오면 따로 로그인하지 않아도 돼요." },
-        { title: "결제·신청·변경은 인증번호 한 번", detail: "버튼으로 들어온 상태에서 결제, 새 레벨 신청, 설정 변경, 자동 결제 해지, 환불 요청을 하려면 내 번호로 가는 인증번호를 한 번 입력해요. 화면에는 010-****-1234처럼 가린 번호만 보여요." },
+        { title: "결제·신청·변경은 카카오로 한 번 더", detail: "버튼으로 들어온 상태에서 결제, 새 레벨 신청, 설정 변경, 자동 결제 해지, 환불 요청을 하려면 '카카오로 확인하기'를 한 번 눌러요." },
         { title: "메시지는 그대로 전달하지 마세요", detail: "메시지 버튼은 내 계정으로 들어가는 링크예요. 친구에게 알려주고 싶다면 레슨 페이지의 '동료에게 보내기'를 써주세요." },
-        { title: "다른 기기에서는 카카오나 번호로", detail: "PC나 다른 브라우저에서는 내 계정이나 신청·구독 페이지에서 '카카오로 시작하기'나 휴대폰 번호 인증으로 들어와요." },
+        { title: "다른 기기에서는 카카오로", detail: "PC나 다른 브라우저에서는 내 계정이나 신청·구독 페이지에서 '카카오로 시작하기'를 눌러 들어와요." },
       ],
     },
     subscribe: {
@@ -466,19 +466,19 @@ export const dailyCopy = {
       items: [
         {
           q: "카카오톡이 오지 않아요",
-          a: "신청한 번호로 카카오톡을 쓰고 있는지 확인해 주세요. '영어 한잔' 채널을 차단했다면 알림톡도 오지 않으니 차단을 풀어주세요. 그래도 오지 않으면 번호와 함께 알려주세요.",
+          a: "카카오계정의 휴대폰에서 카카오톡을 쓰고 있는지 확인해 주세요. '영어 한잔' 채널을 차단했다면 알림톡도 오지 않으니 차단을 풀어주세요. 그래도 오지 않으면 카카오 닉네임과 함께 알려주세요.",
         },
         {
-          q: "인증번호가 오지 않아요",
-          a: "인증번호도 카카오톡으로 가요. 30초가 지나면 '다시 받기'를 누를 수 있고, 한 번호로는 한 시간에 다섯 번까지 받을 수 있어요.",
+          q: "카카오로 시작하기가 안 돼요",
+          a: "카카오 동의 화면에서 전화번호 제공에 동의해야 해요. 레슨이 그 번호로 가기 때문이에요. 카카오계정에 국내 휴대폰 번호가 등록돼 있어야 알림톡을 받을 수 있어요.",
         },
         {
           q: "결제를 처리하고 있다는 화면에서 멈췄어요",
           a: "다시 결제하지 말고 잠시 뒤 새로고침해 주세요. 계속 같은 화면이면 화면의 주문번호(DLY로 시작)와 함께 알려주세요. 두 번 청구되는 일이 없도록 확인해 드려요.",
         },
         {
-          q: "결제하기 버튼 대신 인증번호 칸이 보여요",
-          a: "카카오톡 버튼으로 들어온 상태라서 그래요. 가린 번호로 인증번호를 한 번 받아 입력하면 결제할 수 있어요.",
+          q: "결제하기 버튼 대신 '카카오로 확인하기'가 보여요",
+          a: "카카오톡 버튼으로 들어온 상태라서 그래요. '카카오로 확인하기'를 한 번 누르면 결제할 수 있어요.",
         },
         {
           q: "레슨 링크가 열리지 않아요",
@@ -488,16 +488,16 @@ export const dailyCopy = {
     },
     contact: {
       title: "그래도 해결되지 않으면",
-      detail: "신청한 휴대폰 번호와 함께 보내주시면 가장 빨리 확인할 수 있어요.",
+      detail: "카카오 닉네임과 신청한 레벨을 함께 보내주시면 가장 빨리 확인할 수 있어요.",
     },
   },
   // /daily/account.
   account: {
     title: "내 계정",
-    signInTitle: "카카오나 휴대폰 번호로 들어와 주세요",
-    signInDetail: "레슨을 받는 번호로 인증하면 구독과 결제 내역을 볼 수 있어요.",
-    verifyTitle: "바꾸려면 본인 확인을 한 번 해 주세요",
-    verifyDetail: "지금은 볼 수만 있어요. 설정 변경과 환불 요청은 인증번호를 입력한 뒤에 할 수 있어요.",
+    signInTitle: "카카오로 들어와 주세요",
+    signInDetail: "레슨을 받는 카카오계정으로 들어오면 구독과 결제 내역을 볼 수 있어요.",
+    verifyTitle: "바꾸려면 카카오로 한 번 확인해 주세요",
+    verifyDetail: "지금은 볼 수만 있어요. 설정 변경과 환불 요청은 카카오로 확인한 뒤에 할 수 있어요.",
     profile: {
       title: "내 정보",
       phone: "받는 번호",
@@ -586,7 +586,7 @@ export const dailyCopy = {
     },
     errors: {
       generic: "잠시 후 다시 시도해 주세요.",
-      "verify-required": "먼저 위에서 본인 확인을 해 주세요.",
+      "verify-required": "먼저 위에서 카카오로 확인해 주세요.",
     },
     help: "도움이 필요하면",
   },
@@ -600,14 +600,15 @@ export const dailyCopy = {
     wallSub: "오늘 표현으로 한 문장 써보세요. 같은 레슨을 받은 사람들에게 보여요.",
     together: "같은 표현을 받은 사람 {count}명",
     placeholder: "예: Let's {expression} on this next week.",
-    nameLabel: "표시 이름",
-    namePlaceholder: "비워두면 익명",
+    postAs: "{name} 이름으로 올라가요",
+    usesExpression: "{expression} 들어갔어요",
     post: "올리기",
-    update: "고치기",
+    update: "고쳐서 올리기",
+    edit: "고치기",
+    cancel: "취소",
     remove: "지우기",
     removeConfirm: "내 문장을 지울까요?",
-    posted: "올렸어요",
-    signIn: "레슨을 받은 번호로 들어오면 문장을 남길 수 있어요.",
+    signIn: "레슨을 받은 카카오계정으로 들어오면 문장을 남길 수 있어요.",
     notOwner: "이 레슨을 받은 사람만 문장을 남길 수 있어요.",
     empty: "아직 올라온 문장이 없어요. 첫 문장을 남겨 보세요.",
     anonymous: "익명",
@@ -615,15 +616,16 @@ export const dailyCopy = {
     hidden: "숨김 처리됨 · 나에게만 보여요",
     pick: "통역사 PICK",
     cupLabel: "☕ 보내기",
+    cupCount: "☕ {count}개",
     streak: "{days}일 연속",
     streakZero: "오늘 퀴즈를 풀면 연속 기록이 시작돼요",
-    book: "내 표현장 {count}개",
+    book: "내 학습 기록 · 표현 {count}개",
   },
   // /daily/book.
   book: {
-    title: "내 표현장",
-    sub: "받은 표현이 모두 여기 쌓여요. 누르면 그날 레슨이 열려요.",
-    signIn: "레슨을 받은 번호로 들어와 주세요",
+    title: "내 학습 기록",
+    sub: "받은 표현과 퀴즈 결과가 모두 여기 쌓여요. 누르면 그날 레슨이 열려요.",
+    signIn: "레슨을 받은 카카오계정으로 들어와 주세요",
     empty: "아직 받은 레슨이 없어요.",
     streak: "🔥 {days}일 연속",
     total: "표현 {count}개",

@@ -2,11 +2,12 @@
 //
 // It uses the same Kakao application and registered redirect URI (/kakao_callback) as
 // 1cup's own Kakao login, but never touches Supabase Auth or public.users: Kakao only
-// supplies the account's verified phone number and nickname, and the Daily customer
-// and session are made from those exactly as after a phone code. /kakao_callback hands
+// supplies the account's verified phone number (where the Alimtalk lessons go) and
+// nickname, and the Daily customer and session are made from those. It is the only way
+// into Daily, including the step-up from a message-link session. /kakao_callback hands
 // a request over here when it carries the Daily state cookie set by /api/daily/kakao.
 import { NextRequest, NextResponse } from "next/server";
-import { DAILY_SESSION_COOKIE, DailyAuthError, signInVerifiedPhone } from "./session";
+import { DAILY_SESSION_COOKIE, DailyAuthError, revokeDailySession, signInVerifiedPhone } from "./session";
 
 export const DAILY_KAKAO_STATE_COOKIE = "daily-kakao-oauth-state";
 export const DAILY_KAKAO_NEXT_COOKIE = "daily-kakao-oauth-next";
@@ -108,11 +109,13 @@ export async function finishDailyKakaoLogin(request: NextRequest): Promise<NextR
     });
     const me = (await meResponse.json()) as KakaoMe;
     const phone = me.kakao_account?.phone_number;
-    // The phone number is the Daily identity; without consent to share it, fall back
-    // to the phone code.
+    // The phone number is the Daily identity and where lessons go; without consent to
+    // share it there is nothing to sign in.
     if (!meResponse.ok || !phone) return back("no-phone");
 
     const session = await signInVerifiedPhone(phone, me.kakao_account?.profile?.nickname ?? null);
+    // A message-link session this replaces stops working.
+    await revokeDailySession(request.cookies.get(DAILY_SESSION_COOKIE)?.value);
     const response = back();
     response.cookies.set(DAILY_SESSION_COOKIE, session.token, {
       httpOnly: true,
@@ -124,6 +127,6 @@ export async function finishDailyKakaoLogin(request: NextRequest): Promise<NextR
     return response;
   } catch (e) {
     console.error("daily kakao login failed:", e instanceof DailyAuthError ? e.message : e);
-    return back(e instanceof DailyAuthError && e.status === 400 ? "no-phone" : "failed");
+    return back(e instanceof DailyAuthError && e.status === 400 ? "unsupported-phone" : "failed");
   }
 }

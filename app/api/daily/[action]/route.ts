@@ -18,11 +18,7 @@ import {
   DAILY_SESSION_COOKIE,
   DailyAuthError,
   revokeDailySession,
-  sendDailyCode,
-  sendDailyCodeForSession,
   signInFromLink,
-  verifyDailyCode,
-  verifyDailyCodeForSession,
 } from "../../../lib/features/daily/server/session";
 
 export const runtime = "nodejs";
@@ -32,12 +28,9 @@ const INVITE_COOKIE = "daily_invite";
 const INVITE_DAYS = 30;
 
 // POST /api/daily/<action> — the browser's only door into Daily.
-//   otp-send   { phone }         send a Daily sign-in code
-//   otp-verify { phone, code }   sign in; sets the httpOnly daily_session cookie
-//              { session: true } instead of phone: the step-up for a link session, sent
-//                               to the signed-in subscriber's own number
+//   (sign-in itself is Kakao Login: GET /api/daily/kakao, finished in /kakao_callback)
 //   link-signin { token }        sign in from a Kakao message's button link (link scope);
-//                               never replaces a phone session
+//                               never replaces a Kakao Login session
 //   logout                       revoke the session and clear the cookie
 //   session-info                 whether this browser is signed in (the navbar's account link)
 //   review-status / review-submit  the signed-in customer's review (verified, pending
@@ -46,7 +39,7 @@ const INVITE_DAYS = 30;
 //   sentence-save / sentence-delete { token, ... }   the reader's own sentence
 //   sentence-cup { sentenceId }  ☕ on someone's sentence, or take it back
 //   quiz-answer { token, choice }  the first answer counts
-//   expression-book              내 표현장 and the streak
+//   expression-book              내 학습 기록 and the streak
 //   invite-info                  the reader's invite link and what it earned
 //   invite-capture { code }      remembers who invited this browser, for its first payment
 //   billing-info / checkout-window / checkout-verify / cancel-renewal
@@ -70,11 +63,6 @@ const FORWARDED = new Set([
   "account-delete",
 ]);
 
-function clientIp(req: Request): string | null {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || req.headers.get("x-real-ip") || null;
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -91,24 +79,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       });
     const current = jar.get(DAILY_SESSION_COOKIE)?.value;
 
-    if (action === "otp-send") {
-      if (body.session === true) await sendDailyCodeForSession(current, clientIp(req));
-      else await sendDailyCode(String(body.phone ?? ""), clientIp(req));
-      return NextResponse.json({ success: true });
-    }
-
-    if (action === "otp-verify") {
-      setSession(
-        body.session === true
-          ? await verifyDailyCodeForSession(current, String(body.code ?? ""))
-          : await verifyDailyCode(String(body.phone ?? ""), String(body.code ?? "")),
-      );
-      return NextResponse.json({ success: true });
-    }
-
     if (action === "link-signin") {
-      // Someone who signed in with a phone code stays as they are, whoever's link this
-      // is. A newer link replaces an older link session.
+      // Someone who signed in with Kakao stays as they are, whoever's link this is. A newer link replaces an older link session.
       const signedIn = await customerForSession(current);
       if (signedIn?.verified) return NextResponse.json({ success: true, signedIn: true });
       const session = await signInFromLink(String(body.token ?? ""));
@@ -165,7 +137,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
     if (["sentence-save", "sentence-delete", "sentence-cup", "quiz-answer", "expression-book", "invite-info"].includes(action)) {
       const viewer = await customerForSession(current);
       const token = String(body.token ?? "");
-      if (action === "sentence-save") await saveSentence(token, viewer, { body: body.body, displayName: body.displayName });
+      if (action === "sentence-save") await saveSentence(token, viewer, { body: body.body });
       else if (action === "sentence-delete") await deleteSentence(token, viewer);
       else if (action === "sentence-cup") return NextResponse.json({ success: true, cupped: await toggleCup(body.sentenceId, viewer) });
       else if (action === "quiz-answer") return NextResponse.json({ success: true, ...(await answerQuiz(token, viewer, body.choice)) });
