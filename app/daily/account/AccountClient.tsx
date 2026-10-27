@@ -97,7 +97,6 @@ function latestPerTrack(subscriptions: Subscription[]) {
 }
 
 function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
-  const [name, setName] = useState(info.name ?? "");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -128,31 +127,6 @@ function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Prom
         <div className="flex items-center justify-between gap-3">
           <dt className="text-[0.9rem] font-bold text-[#64748b]">{copy.profile.phone}</dt>
           <dd className="m-0 text-[1rem] font-black">{info.phone}</dd>
-        </div>
-        <div>
-          <dt>
-            <label htmlFor="daily-name" className="text-[0.9rem] font-bold text-[#64748b]">
-              {copy.profile.name}
-            </label>
-          </dt>
-          <dd className="m-0 mt-1.5 flex gap-2">
-            <input
-              id="daily-name"
-              value={name}
-              disabled={!info.verified}
-              onChange={(event) => setName(event.target.value.slice(0, 20))}
-              placeholder={copy.profile.namePlaceholder}
-              className="h-12 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
-            />
-            <button
-              type="button"
-              disabled={!info.verified || busy || name.trim() === "" || name === (info.name ?? "")}
-              onClick={() => save({ name })}
-              className={cn(smallButton, "bg-[#050505] text-white")}
-            >
-              {copy.profile.save}
-            </button>
-          </dd>
         </div>
       </dl>
       <label className="mt-4 flex cursor-pointer items-center gap-3 text-[0.95rem] font-bold">
@@ -757,7 +731,7 @@ export default function AccountClient() {
             </Link>
             <InviteCard />
             <Payments info={info} onChanged={load} />
-            <Profile key={`${info.name}-${info.marketing}`} info={info} onChanged={load} />
+            <Profile key={String(info.marketing)} info={info} onChanged={load} />
             <DeleteAccount info={info} />
           </>
         )}

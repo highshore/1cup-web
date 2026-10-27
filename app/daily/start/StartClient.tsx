@@ -52,13 +52,12 @@ const ERRORS: Record<string, string> = {
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
   "login-required": "로그인이 끝났어요. 카카오로 다시 시작해 주세요.",
   "verify-required": "신청 전에 카카오로 한 번 확인해 주세요.",
-  "name-required": "카톡에서 부를 이름을 적어 주세요.",
 };
 
 // What happens, shown before the Kakao button so leaving for Kakao isn't a surprise.
 const HOW = [
   { title: "카카오로 시작", detail: "번호를 입력할 필요 없어요. 레슨은 카카오계정의 휴대폰 번호로 와요." },
-  { title: "레벨·받는 시간·이름 고르기", detail: "돌아오면 바로 이 페이지에서 골라요." },
+  { title: "레벨·받는 시간 고르기", detail: "돌아오면 바로 이 페이지에서 골라요." },
   { title: "첫 레슨이 카톡으로 도착", detail: "카드 등록 없이, 신청하자마자 보내드려요." },
 ];
 
@@ -71,7 +70,6 @@ export default function StartClient() {
 
   const [track, setTrack] = useState<DailyTrack>(params.get("track") === "advanced" ? "advanced" : "basic");
   const [time, setTime] = useState(TIMES.includes(params.get("time") ?? "") ? (params.get("time") as string) : "08:00");
-  const [name, setName] = useState("");
   // undefined: checking; null: not signed in.
   const [info, setInfo] = useState<StartInfo | null | undefined>(undefined);
   const [infoError, setInfoError] = useState("");
@@ -87,8 +85,6 @@ export default function StartClient() {
     try {
       const data = await dailyApi<StartInfo>("start-info");
       setInfo(data);
-      // The Kakao nickname, until they change it.
-      setName((current) => current || data.name || "");
     } catch (e) {
       if (e instanceof DailyApiError && e.status === 401) setInfo(null);
       else setInfoError("신청 정보를 불러오지 못했어요. 새로고침해 주세요.");
@@ -102,20 +98,15 @@ export default function StartClient() {
   const signOut = async () => {
     await dailyApi("logout").catch(() => undefined);
     setInfo(null);
-    setName("");
   };
 
   const trackState = (key: string) =>
     info?.liveTracks?.includes(key) ? "받는 중" : info?.usedTrialTracks?.includes(key) ? "체험 완료" : null;
   const selectedBlocked = trackState(track) !== null;
 
-  // Checks what can be checked before the consent dialog: the name, and the invite code.
+  // Checks the invite code before the consent dialog.
   const review = async () => {
     setError("");
-    if (!name.trim()) {
-      setError(ERRORS["name-required"]);
-      return;
-    }
     setChecking(true);
     try {
       await invite.apply();
@@ -134,7 +125,6 @@ export default function StartClient() {
       const data = await dailyApi<StartResult>("start-trial", {
         track,
         time,
-        name: name.trim(),
         marketing: consent.marketing,
         agreements: { terms: true, privacy: true, messages: true },
         termsVersion: DAILY_TERMS_VERSION,
@@ -153,7 +143,7 @@ export default function StartClient() {
 
   if (result) return <Done result={result} track={track} time={time} />;
 
-  const canSubmit = Boolean(info?.open && !selectedBlocked && name.trim());
+  const canSubmit = Boolean(info?.open && !selectedBlocked);
 
   return (
     <div className={cn("daily-page min-h-[80vh] bg-[#fff8dc] px-4 pb-20 pt-8 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
@@ -285,25 +275,8 @@ export default function StartClient() {
               </p>
             </Step>
 
-            <Step number={3} title="카톡에서 부를 이름">
-              <label className="block">
-                <span className="sr-only">카톡에서 부를 이름</span>
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value.slice(0, 20))}
-                  placeholder="이름"
-                  required
-                  aria-invalid={error === ERRORS["name-required"] || undefined}
-                  className="h-12 w-full rounded-xl bg-white px-4 text-[1.05rem] font-black outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
-                />
-              </label>
-              <p className="mt-2.5 text-[0.88rem] font-semibold text-[#64748b]">
-                {name.trim() ? `레슨 메시지에서 '${name.trim()} 님'이라고 불러요.` : "레슨 메시지에서 부를 이름이에요."}
-                {info.name && name.trim() === info.name && " 카카오 닉네임을 넣어뒀어요."}
-              </p>
-            </Step>
 
-            <Step number={4} title={dailyCopy.invite.field.title} hint={dailyCopy.invite.field.optional}>
+            <Step number={3} title={dailyCopy.invite.field.title} hint={dailyCopy.invite.field.optional}>
               <InviteCodeField value={invite.code} onChange={invite.setCode} inputClassName="bg-white" />
             </Step>
 
@@ -317,7 +290,7 @@ export default function StartClient() {
               <p className="mt-8 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
                 {trackState(track) === "받는 중"
                   ? "이미 이 레벨을 받고 있어요."
-                  : "이 레벨의 무료 체험은 이미 받았어요. 다른 레벨을 고르거나 구독해 주세요."}
+                  : "이 레벨의 무료 체험은 이미 받았어요. 계속 받으려면 구독해 주세요."}
               </p>
             )}
 
@@ -325,6 +298,14 @@ export default function StartClient() {
               <div className="mt-8">
                 <KakaoSignIn confirm />
               </div>
+            ) : trackState(track) === "체험 완료" ? (
+              // The free lesson for this level is used up: the way on is subscribing to it.
+              <Link
+                href={`/daily/subscribe?track=${track}`}
+                className="mt-8 flex h-[54px] w-full items-center justify-center rounded-2xl bg-[#050505] text-[1.08rem] font-black text-white"
+              >
+                이 레벨 구독하기
+              </Link>
             ) : (
               <button
                 type="button"
