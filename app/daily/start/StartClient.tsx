@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, ClockIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
+import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { InviteCodeField, useInviteCode } from "../../lib/features/daily/components/InviteCode";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
@@ -174,7 +175,7 @@ export default function StartClient() {
           </p>
         )}
 
-        {info === undefined && !infoError && <div className="mt-8 h-[280px] animate-pulse rounded-[28px] bg-white/70" />}
+        {info === undefined && !infoError && <DailyLoading label="신청 정보를 불러오고 있어요" className="mt-8" />}
 
         {info === null && (
           <section className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-8">

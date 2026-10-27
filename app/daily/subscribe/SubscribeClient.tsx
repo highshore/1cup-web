@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi, signInWithLink } from "../../lib/features/daily/api";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
+import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
 import { InviteCodeField, useInviteCode } from "../../lib/features/daily/components/InviteCode";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
@@ -194,6 +195,8 @@ export default function SubscribeClient() {
             평일엔 원하는 시간에 새 표현이, 토요일엔 한 주 복습이 카카오톡으로 와요.
           </p>
         </div>
+
+        {info === undefined && !error && <DailyLoading label="구독 정보를 불러오고 있어요" className="mt-6" />}
 
         {info === null && (
           <div className="mt-8 rounded-[28px] bg-white p-6">

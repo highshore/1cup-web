@@ -1,7 +1,9 @@
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { LessonPage } from "../../../lib/features/daily/components/LessonView";
-import { getDeliveryByToken } from "../../../lib/features/daily/server/lessons";
+import DeadLessonLink from "../../../lib/features/daily/components/DeadLessonLink";
+import { deadLinkVisitor, getDeliveryByToken } from "../../../lib/features/daily/server/lessons";
+import { DAILY_SESSION_COOKIE } from "../../../lib/features/daily/server/session";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,7 @@ export default async function DailyLessonPage({ params }: { params: Promise<{ to
   const { token } = await params;
   const delivery = await getDeliveryByToken(token);
   const lesson = delivery?.kind === "lesson" ? delivery.lessons[0] : undefined;
-  if (!delivery || !lesson) notFound();
+  if (!delivery || !lesson) return <DeadLessonLink visitor={await deadLinkVisitor((await cookies()).get(DAILY_SESSION_COOKIE)?.value)} />;
   return (
     <LessonPage
       lesson={lesson}

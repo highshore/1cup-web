@@ -10,6 +10,7 @@ import {
   dailyApi,
 } from "../../../lib/features/daily/api";
 import { cn, displayClass, Emoji } from "../../../lib/features/daily/components/DailyUI";
+import DailyLoading from "../../../lib/features/daily/components/DailyLoading";
 import { DAILY_TRACK_LABEL, type DailyTrack } from "../../../lib/features/daily/constants";
 import { dailyDisplay } from "../../../lib/features/daily/fonts";
 import "../../../lib/features/daily/daily.css";
@@ -102,8 +103,8 @@ export default function ResultClient() {
       <div className="mx-auto w-full max-w-[720px] text-center min-[900px]:text-left">
         {state.kind === "working" && (
           <>
-            <Emoji className="text-[3rem]">⏳</Emoji>
-            <h1 className={cn(displayClass, "mt-4 text-[2.2rem]")}>결제를 확인하고 있어요</h1>
+            <DailyLoading label="잠시만요" className="items-center py-0 min-[900px]:items-start" />
+            <h1 className={cn(displayClass, "mt-2 text-[2.2rem]")}>결제를 확인하고 있어요</h1>
             <p className="mt-2 font-semibold text-[rgba(5,5,5,0.75)]">이 창을 닫지 말고 잠시만 기다려 주세요.</p>
           </>
         )}
