@@ -54,6 +54,7 @@ import {
   deleteAccount,
   requestRefund,
   resumeRenewal,
+  switchLevel,
   updateSettings,
 } from "./account.ts";
 import {
@@ -117,6 +118,7 @@ const NEEDS_KAKAO_LOGIN = new Set([
   "cancel-renewal",
   "account-update",
   "resume-renewal",
+  "switch-level",
   "refund-request",
   "account-delete",
 ]);
@@ -337,6 +339,7 @@ Deno.serve(async (req) => {
       case "account-info":
       case "account-update":
       case "resume-renewal":
+      case "switch-level":
       case "refund-request":
       case "account-delete": {
         const customer = await loadCustomer(req);
@@ -354,6 +357,7 @@ Deno.serve(async (req) => {
             "account-info": () => accountInfo(db, customer),
             "account-update": () => updateSettings(db, customer, body),
             "resume-renewal": () => resumeRenewal(db, customer, body),
+            "switch-level": () => switchLevel(db, customer, body),
             "refund-request": () => requestRefund(db, customer, body),
             "account-delete": () => deleteAccount(db, customer, body),
           };

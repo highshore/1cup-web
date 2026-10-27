@@ -34,6 +34,7 @@ interface Subscription {
   deliveryTime: string;
   nextSendAt: string | null;
   canResume: boolean;
+  canSwitch: boolean;
 }
 
 interface Payment {
@@ -93,9 +94,13 @@ const smallButton =
   "inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-[0.88rem] font-black transition-opacity disabled:opacity-35";
 
 // Only the latest subscription per track: an old cancelled one next to a live one is noise.
+// The live subscription for each level, else the latest. A level switch can leave an
+// older live row behind a newer ended one on the same level.
 function latestPerTrack(subscriptions: Subscription[]) {
+  const isLive = (s: Subscription) => s.status === "trial" || s.status === "active";
+  const ordered = [...subscriptions.filter(isLive), ...subscriptions.filter((s) => !isLive(s))];
   const seen = new Set<string>();
-  return subscriptions.filter((s) => (seen.has(s.track) ? false : (seen.add(s.track), true)));
+  return ordered.filter((s) => (seen.has(s.track) ? false : (seen.add(s.track), true)));
 }
 
 // 내 정보: the phone number and name come from Kakao Login and are shown as they are; 소속
@@ -203,19 +208,38 @@ function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Prom
   );
 }
 
-function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; verified: boolean; onChanged: () => Promise<void> }) {
+function SubscriptionCard({
+  sub,
+  verified,
+  notice,
+  onNotice,
+  onChanged,
+}: {
+  sub: Subscription;
+  verified: boolean;
+  // A save re-keys the card, so its confirmation is kept by the page.
+  notice: string;
+  onNotice: (track: DailyTrack, text: string) => void;
+  onChanged: () => Promise<void>;
+}) {
   const s = copy.subscriptions;
   const [time, setTime] = useState(sub.deliveryTime);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(notice);
   const [busy, setBusy] = useState(false);
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
   const live = sub.status === "trial" || sub.status === "active";
+  const otherTrack: DailyTrack = sub.track === "basic" ? "advanced" : "basic";
+  const otherLabel = TRACK_TITLE[otherTrack];
 
-  const run = async (action: string, body: Record<string, unknown>, done?: string) => {
+  const run = async (action: string, body: Record<string, unknown>, done?: string, doneTrack: DailyTrack = sub.track) => {
     setBusy(true);
     setMessage("");
     try {
       await dailyApi(action, body);
-      if (done) setMessage(done);
+      if (done) {
+        setMessage(done);
+        onNotice(doneTrack, done);
+      }
       await onChanged();
     } catch (e) {
       setMessage(errorMessage(e));
@@ -268,6 +292,47 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
             {copy.profile.save}
           </button>
         </label>
+      )}
+
+      {sub.canSwitch && (
+        <div className="mt-3 flex items-center gap-2">
+          <span className="w-[4.5rem] shrink-0 text-[0.9rem] font-bold text-[#64748b]">{s.level}</span>
+          <span className="min-w-0 flex-1 text-[0.98rem] font-black">{TRACK_TITLE[sub.track]}</span>
+          <button
+            type="button"
+            disabled={!verified || busy || confirmSwitch}
+            onClick={() => setConfirmSwitch(true)}
+            className={cn(smallButton, "bg-[#f5f5f4] text-[#050505]")}
+          >
+            {s.switchTo.replace("{level}", otherLabel)}
+          </button>
+        </div>
+      )}
+      {confirmSwitch && (
+        <div className="mt-3 rounded-2xl bg-[#fff8dc] p-4">
+          <p className="text-[0.9rem] font-semibold text-[#475569]">{s.switchConfirm.replace("{level}", otherLabel)}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void run("switch-level", { track: sub.track, to: otherTrack }, s.switchSaved.replace("{level}", otherLabel), otherTrack)
+                  .then(() => setConfirmSwitch(false))
+              }
+              className={cn(smallButton, "bg-[#050505] text-white")}
+            >
+              {s.switchConfirmButton}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirmSwitch(false)}
+              className={cn(smallButton, "bg-white text-[#050505]")}
+            >
+              {s.switchCancel}
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -831,6 +896,7 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
 export default function AccountClient() {
   // undefined: loading; null: not signed in.
   const [info, setInfo] = useState<AccountInfo | null | undefined>(undefined);
+  const [cardNotice, setCardNotice] = useState<{ track: DailyTrack; text: string } | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -896,7 +962,14 @@ export default function AccountClient() {
                 <ul className="m-0 flex list-none flex-col gap-3 p-0">
                   {subscriptions.map((sub) => (
                     // Keyed on what the server says, so a save resets local edits.
-                    <SubscriptionCard key={`${sub.track}-${sub.deliveryTime}-${sub.status}`} sub={sub} verified={info.verified} onChanged={load} />
+                    <SubscriptionCard
+                      key={`${sub.track}-${sub.deliveryTime}-${sub.status}`}
+                      sub={sub}
+                      verified={info.verified}
+                      notice={cardNotice?.track === sub.track ? cardNotice.text : ""}
+                      onNotice={(track, text) => setCardNotice({ track, text })}
+                      onChanged={load}
+                    />
                   ))}
                 </ul>
               )}
