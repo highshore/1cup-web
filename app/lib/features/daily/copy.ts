@@ -1,6 +1,6 @@
 // Copy for /daily (영어 한잔 Daily). Korean only by decision: the product is sold in Korea
-// and is not localized. Founder credentials are the founder-approved wording; never add
-// names, schools or employers.
+// and is not localized. Founder credentials are the founder-approved wording, word for
+// word; the founder's own LinkedIn profile is linked under them (their choice, 2026-10-27).
 export const dailyCopy = {
   nav: {
     brand: "DAILY",
@@ -225,12 +225,16 @@ export const dailyCopy = {
     title: "2,000번 이상의 회의를 통역하며\n실제로 오간 표현만 고릅니다",
     accent: "실제로 오간 표현만 고릅니다",
     credentials: [
-      { icon: "office", title: "대기업 임원 통역사" },
+      { icon: "office", title: "국내 대기업 임원 통역사" },
       { icon: "globe", title: "실리콘밸리 기업 통역사" },
+      { icon: "briefcase", title: "Fortune 500 외국계 경력" },
       { icon: "shield", title: "용산 미군기지 통역병" },
+      { icon: "trophy", title: "토플 118/120점, 오픽 AL" },
       { icon: "school", title: "SKY 학부 출신" },
-      { icon: "chip", title: "Fortune 500 기업 경력" },
     ],
+    profile: "시원하게 프로필 공개합니다",
+    linkedIn: "LinkedIn 프로필 보기",
+    linkedInUrl: "https://www.linkedin.com/in/sk-kyle-kim/",
   },
   // Right below the founder's background. The interpreter's own word list (Google Sheet,
   // word_list tab) is the source lessons are picked from, not something that gets
@@ -271,7 +275,7 @@ export const dailyCopy = {
       name: "30일 정기구독",
       espresso: "스타벅스 에스프레소 한 잔 값으로 30일",
       period: "30일마다 자동 결제",
-      benefits: ["평일 원하는 시간에 카카오톡으로", "토요일엔 한 주 복습", "오늘의 표현 · 예문 3개 · 발음 · 1분 퀴즈", "약정 없이 언제든 해지"],
+      benefits: ["평일 원하는 시간에 카카오톡으로", "토요일엔 한 주 복습", "오늘의 표현 · 예문\u00a03개 · 발음 · 1분\u00a0퀴즈", "약정 없이 언제든 해지"],
     },
     passes: {
       title: "자동 결제 없이 한 번만 결제",
