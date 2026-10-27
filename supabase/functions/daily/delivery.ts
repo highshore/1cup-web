@@ -69,7 +69,7 @@ const ORPHAN_AFTER_MS = 10 * 60 * 1000;
 const DUE_BATCH = 500;
 
 export const TRACK_LABEL: Record<Track, string> = {
-  basic: "초중급",
+  basic: "초·중급",
   advanced: "고급",
 };
 

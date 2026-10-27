@@ -15,7 +15,7 @@ export const dailyCopy = {
     cta: "하루 무료로 받아보기",
     trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
     // A KakaoTalk notification: the channel's name, then the message's first line.
-    notification: { app: "영어 한잔", time: "지금", body: "[초중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
+    notification: { app: "영어 한잔", time: "지금", body: "[초·중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
   // The hero phone's KakaoTalk chat. Mirrors the message customers get today: the
@@ -25,7 +25,7 @@ export const dailyCopy = {
     channel: "영어 한잔",
     date: "2026년 10월 27일 화요일",
     alimtalk: "알림톡 도착",
-    title: "[초중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다",
+    title: "[초·중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다",
     greeting: "Good Morning, 지수 님! 오늘의 영어 한잔을 전달드립니다 ☕️",
     prompt: "아래 버튼을 클릭해주세요! 🥰",
     open: "아티클 확인하기",
@@ -137,7 +137,7 @@ export const dailyCopy = {
       label: "예시 화면",
       heading: "오늘의 표현",
       expression: "circle back",
-      together: "오늘 아침 초중급에서 같은 표현을 받은 사람 128명",
+      together: "오늘 아침 초·중급에서 같은 표현을 받은 사람 128명",
       prompt: "오늘 표현으로 한 문장 써보기…",
       send: "올리기",
       pick: "통역사 PICK",
@@ -184,12 +184,13 @@ export const dailyCopy = {
     anonymous: "익명",
     lessons: "레슨 {count}개 받음",
   },
-  // The two levels (daily_subscriptions.track). Example expressions: 초중급 from this
+  // The two levels (daily_subscriptions.track), split by the reader's level (TOEIC 900),
+  // not by situation. Example expressions: 초·중급 from this
   // week's lessons, 고급 from the interpreter's word list (word_list tab), word for word.
   tracks: {
     title: "내 실력에 맞춰\n두 레벨 중 골라요",
     accent: "두 레벨 중 골라요",
-    sub: "레벨마다 컨설팅·금융·테크 업계의 비즈니스 표현을 골라 보내드려요.",
+    sub: "토익 900점을 기준으로 나눠요. 두 레벨 모두 컨설팅·금융·테크 업계의 비즈니스 표현을 골라 보내드려요.",
     examplesLabel: "이런 표현을 받아요",
     free: "첫 하루 무료",
     price: "이후 월 ₩{price}",
@@ -198,8 +199,8 @@ export const dailyCopy = {
         key: "basic",
         emoji: "🌱",
         emojiLabel: "새싹",
-        title: "초중급",
-        tagline: "회의·일상에서 매일 쓰는 기본 표현",
+        title: "초·중급",
+        tagline: "토익 900점 미만이라면 추천해요",
         examples: [
           { en: "loop in", ko: "(논의에) 함께하게 하다" },
           { en: "on the same page", ko: "같은 내용으로 이해하고 있는" },
@@ -211,7 +212,7 @@ export const dailyCopy = {
         emoji: "🚀",
         emojiLabel: "로켓",
         title: "고급",
-        tagline: "보고·협상·경영진 회의에서 쓰는 한 단계 위 표현",
+        tagline: "토익 900점 이상이라면 추천해요",
         examples: [
           { en: "zero in on", ko: "주의를 집중하다, 조준하다" },
           { en: "yield a big win", ko: "큰 성과를 거두다" },
@@ -229,8 +230,7 @@ export const dailyCopy = {
       { icon: "globe", title: "실리콘밸리 기업 통역사" },
       { icon: "briefcase", title: "Fortune 500 외국계 경력" },
       { icon: "shield", title: "용산 미군기지 통역병" },
-      { icon: "trophy", title: "토플 118/120점, 오픽 AL" },
-      { icon: "school", title: "SKY 학부 출신" },
+      { icon: "school", title: "SKY 학부 출신, 토플 118/120점" },
     ],
     profile: "스펙이 안 믿기시나요?\n프로필 시원하게 공개합니다",
     linkedIn: "LinkedIn 프로필 보기",
@@ -275,6 +275,7 @@ export const dailyCopy = {
       name: "30일 정기구독",
       espresso: "스타벅스 에스프레소 한 잔 값으로\u00a030일",
       period: "30일마다 자동 결제",
+      perDay: "하루 약 {price}원",
       benefits: ["평일 원하는 시간에 카카오톡으로", "토요일엔 한 주 복습", "오늘의 표현 · 예문\u00a03개 · 발음 · 1분\u00a0퀴즈", "약정 없이 언제든 해지"],
     },
     passes: {
@@ -348,14 +349,14 @@ export const dailyCopy = {
       sub: "카드 등록 없이 레슨 1회를 먼저 받아봐요. 1분이면 끝나요.",
       steps: [
         { title: "카카오로 시작하기", detail: "카카오계정으로 바로 들어와요. 레슨은 카카오계정의 휴대폰 번호로 알림톡이 가요. 번호를 입력하거나 회원가입할 필요는 없어요." },
-        { title: "레벨 고르기", detail: "회의·일상에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
+        { title: "레벨 고르기", detail: "토익 900점 미만이면 초·중급, 900점 이상이면 고급을 추천해요. 둘 중 하나를 골라요." },
         { title: "받는 시간 정하기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요." },
         { title: "초대 코드 (선택)", detail: "친구에게 받은 링크로 들어왔다면 초대 코드가 미리 들어가 있어요. 처음 결제할 때 두 사람 모두 15일을 더 받아요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
         { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
       ],
       rules: [
-        "무료 체험은 카카오계정마다 레벨별로 한 번씩이에요. 초중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
+        "무료 체험은 카카오계정마다 레벨별로 한 번씩이에요. 초·중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
         "체험 다음 발송 시간(최소 12시간 뒤)에 체험이 끝났다는 안내가 와요. 그 뒤로는 구독해야 계속 받아요.",
       ],
       cta: "하루 무료로 받아보기",
@@ -535,7 +536,7 @@ export const dailyCopy = {
       noName: "카카오 닉네임이 없어요",
       fixed: "휴대폰 번호와 성함은 카카오 로그인으로 받아요. 카카오에서 바꾸면 다음 로그인 때 바뀌어요.",
       workplace: "소속",
-      workplacePlaceholder: "예: ○○전자 마케팅팀",
+      workplacePlaceholder: "회사명 또는 대학교",
       jobCategory: "직종",
       jobPick: "직종을 골라 주세요",
       marketing: "이벤트·혜택 소식도 받을게요 (선택)",
