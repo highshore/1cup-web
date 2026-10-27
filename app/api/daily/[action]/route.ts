@@ -33,8 +33,9 @@ const INVITE_DAYS = 30;
 //                               never replaces a Kakao Login session
 //   logout                       revoke the session and clear the cookie
 //   session-info                 whether this browser is signed in (the navbar's account link)
-//   review-status / review-submit  the signed-in customer's review (verified, pending
-//                                until approved)
+//   review-status / review-submit  the signed-in customer's review on /daily/review
+//                                (pending until approved; needs 소속·직종 and promo
+//                                consent; earns 15 days once)
 //   lesson-community { token }   a lesson page's sentences, quiz numbers, PICK, progress
 //   sentence-save / sentence-delete { token, ... }   the reader's own sentence
 //   sentence-cup { sentenceId }  ☕ on someone's sentence, or take it back
@@ -110,12 +111,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       const customer = await customerForSession(current);
       if (!customer) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
       if (action === "review-status") return NextResponse.json({ success: true, ...(await reviewStatus(customer)) });
-      await submitReview(customer, {
+      const reward = await submitReview(customer, {
         rating: Number(body.rating),
         body: String(body.body ?? ""),
         displayName: String(body.displayName ?? ""),
+        workplace: String(body.workplace ?? ""),
+        jobCategory: String(body.jobCategory ?? ""),
+        promoConsent: body.promoConsent === true,
       });
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, reward });
     }
 
     // The invite code on the signup and subscribe pages: what this browser holds, and

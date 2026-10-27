@@ -128,7 +128,7 @@ export const dailyCopy = {
   // Relatedness (RAMP): other learners are visible where the lesson happens.
   // Product promises: the shared sentence wall with ☕ reactions, a daily 통역사 PICK,
   // real "together" numbers that appear only once 10+ people are behind them (never
-  // invented), and the invite reward (both get 7 days; terms 제5조의2).
+  // invented), and the invite reward (both get 15 days; terms 제5조의2).
   relatedness: {
     title: "같은 표현으로\n함께 쓰는 사람들",
     accent: "함께 쓰는 사람들",
@@ -169,8 +169,8 @@ export const dailyCopy = {
       {
         emoji: "💌",
         label: "편지",
-        title: "친구 초대하면 둘 다 7일 더",
-        detail: "초대한 친구가 구독하면 두 사람 모두 7일을 더 받아요. 오늘의 표현 카드도 카톡으로 바로 보낼 수 있어요.",
+        title: "친구 초대하면 둘 다 15일 더",
+        detail: "초대한 친구가 구독하면 두 사람 모두 15일을 더 받아요. 오늘의 표현 카드도 카톡으로 바로 보낼 수 있어요.",
       },
     ],
   },
@@ -179,6 +179,8 @@ export const dailyCopy = {
     title: "먼저 받아본\n사람들의 후기",
     accent: "사람들의 후기",
     verified: "인증된 구독자",
+    // 추천·보증 심사지침: a review written for the 15-day reward says so.
+    rewarded: "이용 기간 15일을 받고 쓴 후기예요",
     anonymous: "익명",
     lessons: "레슨 {count}개 받음",
   },
@@ -304,7 +306,7 @@ export const dailyCopy = {
       },
       {
         q: "친구를 초대하면 혜택이 있나요?",
-        a: "네. 내 초대 링크로 들어온 친구가 처음 구독하거나 이용권을 결제하면, 두 사람 모두 7일을 더 받아요. 정기구독은 다음 결제일이 7일 늦춰지고, 이용권은 끝나는 날이 7일 늘어나요.",
+        a: "네. 내 초대 링크로 들어온 친구가 처음 구독하거나 이용권을 결제하면, 두 사람 모두 15일을 더 받아요. 정기구독은 다음 결제일이 15일 늦춰지고, 이용권은 끝나는 날이 15일 늘어나요.",
       },
       {
         q: "선물할 수 있나요?",
@@ -345,7 +347,7 @@ export const dailyCopy = {
         { title: "카카오로 시작하기", detail: "카카오계정으로 바로 들어와요. 레슨은 카카오계정의 휴대폰 번호로 알림톡이 가요. 번호를 입력하거나 회원가입할 필요는 없어요." },
         { title: "레벨 고르기", detail: "회의·일상에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
         { title: "받는 시간 정하기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요." },
-        { title: "초대 코드 (선택)", detail: "친구에게 받은 링크로 들어왔다면 초대 코드가 미리 들어가 있어요. 처음 결제할 때 두 사람 모두 7일을 더 받아요." },
+        { title: "초대 코드 (선택)", detail: "친구에게 받은 링크로 들어왔다면 초대 코드가 미리 들어가 있어요. 처음 결제할 때 두 사람 모두 15일을 더 받아요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
         { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
       ],
@@ -418,7 +420,7 @@ export const dailyCopy = {
         { title: "내 계정", detail: "로그인하면 맨 위 오른쪽 버튼이 '내 계정'으로 바뀌어요. 구독, 결제 내역, 내 정보를 한곳에서 봐요." },
         { title: "자동 결제 해지", detail: "내 계정의 결제 내역에서 '서비스 중단하기'를 누르고 '자동 결제 해지'를 고르면 돼요. 이미 결제한 기간이 끝날 때까지는 계속 받고, 그 안에는 다시 켤 수도 있어요." },
         { title: "받는 시간 바꾸기", detail: "내 계정에서 레벨별 받는 시간을 바꿔요. 바꾼 시간은 다음 레슨부터 적용돼요." },
-        { title: "친구 초대", detail: "내 계정의 초대 링크로 들어온 친구가 처음 결제하면 두 사람 모두 7일을 더 받아요. 내가 그때 구독 중이 아니면 다음 결제 때 더해져요." },
+        { title: "친구 초대", detail: "내 계정의 초대 링크로 들어온 친구가 처음 결제하면 두 사람 모두 15일을 더 받아요. 내가 그때 구독 중이 아니면 다음 결제 때 더해져요." },
         { title: "레벨 바꾸기", detail: "다른 레벨은 따로 신청해요. 지금 레벨을 그만 받으려면 자동 결제를 해지하면 돼요." },
         { title: "계정 삭제", detail: "내 계정 맨 아래 '계정 삭제'에서 '계정 삭제'를 입력하면 바로 지워져요. 자동 결제 중이면 먼저 해지해 주세요. 남은 기간은 환불되지 않으니 환불을 원하면 먼저 요청해 주세요." },
       ],
@@ -438,7 +440,7 @@ export const dailyCopy = {
     review: {
       id: "review",
       title: "후기 남기기",
-      detail: "레슨을 한 번이라도 받았다면 레슨 페이지 아래 '레슨이 어땠나요?'에서 별점과 한 줄 후기를 남길 수 있어요. 확인을 거쳐 소개 페이지에 올라가고, 이름 대신 익명으로 남겨도 돼요.",
+      detail: "레슨을 한 번이라도 받았다면 레슨 페이지 아래 '후기 남기기'에서 별점과 후기를 남길 수 있어요. 소속과 직종을 적고 홍보 활용에 동의하면, 처음 남길 때 이용 기간 15일을 무료로 더 드려요. 확인을 거쳐 소개 페이지에 올라가고, 이름 대신 익명으로 남겨도 돼요.",
     },
     soon: {
       id: "soon",
@@ -477,6 +479,44 @@ export const dailyCopy = {
       detail: "카카오 닉네임과 신청한 레벨을 함께 보내주시면 가장 빨리 확인할 수 있어요.",
     },
   },
+  // /daily/review: the review form, out of the lesson page. Writing one earns 15 days once
+  // (terms 제9조의3), whatever it says.
+  reviewPage: {
+    metaTitle: "후기 남기기",
+    title: "후기 남기고\n15일 더 받기",
+    accent: "15일 더 받기",
+    lead: "받아본 레슨이 어땠는지 남겨 주시면 이용 기간 15일을 무료로 더 드려요. 별점이나 내용과 관계없이 드려요.",
+    cta: { title: "레슨이 어땠나요?", detail: "후기를 남기면 이용 기간 15일을 무료로 더 드려요.", button: "후기 남기기" },
+    signIn: "레슨을 받은 카카오계정으로 들어오면 후기를 남길 수 있어요.",
+    notEligible: "이 카카오계정으로 받은 레슨이 없어요. 레슨을 받은 카카오계정으로 들어와 주세요.",
+    approved: "남겨주신 후기가 소개 페이지에 올라가 있어요. 고마워요!",
+    pending: "보낸 후기는 확인하고 있어요. 고쳐서 다시 보내도 돼요.",
+    rewardApplied: "15일 혜택은 이미 받았어요.",
+    rewardPending: "15일 혜택은 다음 결제 때 더해져요.",
+    rating: "별점",
+    body: "후기",
+    bodyPlaceholder: "어떤 점이 좋았는지, 아쉬웠는지 자유롭게 남겨 주세요. (10자 이상)",
+    displayName: "소개 페이지에 보일 이름 (선택)",
+    displayNameHint: "비워두면 익명으로 보여요.",
+    displayNamePlaceholder: "예: 마케터 J",
+    about: "소속과 직종",
+    aboutHint: "후기를 남기려면 꼭 적어 주세요. 공개하지 않아요.",
+    consent: "[필수] 후기를 영어 한잔 Daily 소개 페이지와 홍보에 쓰는 데 동의해요",
+    consentDetail: "별점, 내용, 표시 이름, 레벨, 받은 레슨 수가 보이고, 이용 기간 혜택을 받고 쓴 후기라고 함께 표시돼요. 소속과 직종은 공개하지 않아요.",
+    terms: "약관 보기",
+    submit: "후기 보내고 15일 받기",
+    resubmit: "고친 후기 보내기",
+    sending: "보내는 중…",
+    doneTitle: "고마워요!",
+    done: {
+      applied: "이용 기간 15일을 더했어요. 내 계정에서 바뀐 날짜를 볼 수 있어요.",
+      pending: "15일은 다음에 결제할 때 이용 기간에 더해져요.",
+      already: "고친 후기를 받았어요. 15일 혜택은 이미 받았어요.",
+    },
+    doneNote: "후기는 확인을 거쳐 소개 페이지에 올라가요.",
+    toAccount: "내 계정으로",
+    toLesson: "Daily 소개로",
+  },
   // /daily/account.
   account: {
     title: "내 계정",
@@ -486,7 +526,14 @@ export const dailyCopy = {
     verifyDetail: "지금은 볼 수만 있어요. 설정 변경과 환불 요청은 카카오로 확인한 뒤에 할 수 있어요.",
     profile: {
       title: "내 정보",
-      phone: "받는 번호",
+      phone: "휴대폰 번호",
+      name: "성함",
+      noName: "카카오 닉네임이 없어요",
+      fixed: "휴대폰 번호와 성함은 카카오 로그인으로 받아요. 카카오에서 바꾸면 다음 로그인 때 바뀌어요.",
+      workplace: "소속",
+      workplacePlaceholder: "예: ○○전자 마케팅팀",
+      jobCategory: "직종",
+      jobPick: "직종을 골라 주세요",
       marketing: "이벤트·혜택 소식도 받을게요 (선택)",
       save: "저장",
       saved: "저장했어요",
@@ -510,6 +557,7 @@ export const dailyCopy = {
       title: "결제 내역",
       empty: "결제 내역이 없어요.",
       renewal: "자동 결제",
+      billingName: "카드 명세서에는 '수기결제 다날'로 표시될 수 있어요.",
       status: {
         requested: "환불 처리 중",
         refunding: "환불 처리 중 · 확인하고 있어요",
@@ -630,12 +678,12 @@ export const dailyCopy = {
   },
   // The invite card on /daily/account (terms 제5조의2).
   invite: {
-    title: "친구 초대하면 둘 다 7일 더",
-    body: "내 링크로 들어온 친구가 처음 구독하거나 이용권을 결제하면, 두 사람 모두 7일을 더 받아요. 정기구독은 다음 결제일이 7일 늦춰지고, 이용권은 끝나는 날이 7일 늘어나요.",
+    title: "친구 초대하면 둘 다 15일 더",
+    body: "내 링크로 들어온 친구가 처음 구독하거나 이용권을 결제하면, 두 사람 모두 15일을 더 받아요. 정기구독은 다음 결제일이 15일 늦춰지고, 이용권은 끝나는 날이 15일 늘어나요.",
     copy: "링크 복사",
     copied: "복사했어요",
     share: "공유하기",
-    shareText: "통역사가 매일 아침 카톡으로 보내주는 영어 한 표현, 영어 한잔 Daily. 내 링크로 시작하면 우리 둘 다 7일을 더 받아요.",
+    shareText: "통역사가 매일 아침 카톡으로 보내주는 영어 한 표현, 영어 한잔 Daily. 내 링크로 시작하면 우리 둘 다 15일을 더 받아요.",
     joined: "초대로 결제한 친구 {count}명",
     rewarded: "받은 기간 +{days}일",
     pending: "다음 결제 때 +{days}일",
@@ -649,7 +697,7 @@ export const dailyCopy = {
       optional: "선택",
       label: "친구에게 받은 초대 코드",
       placeholder: "친구에게 받은 코드 8자리",
-      detail: "처음 구독하거나 이용권을 결제할 때 두 사람 모두 7일을 더 받아요.",
+      detail: "처음 구독하거나 이용권을 결제할 때 두 사람 모두 15일을 더 받아요.",
       failed: "초대 코드를 확인하지 못했어요. 다시 시도해 주세요.",
     },
   },
