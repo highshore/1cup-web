@@ -11,12 +11,13 @@ import {
   BuildingOffice2Icon,
   ChatBubbleLeftRightIcon,
   CheckIcon,
-  CpuChipIcon,
+  BriefcaseIcon,
   GlobeAltIcon,
   PlusIcon,
   PresentationChartBarIcon,
   ShieldCheckIcon,
   SunIcon,
+  TrophyIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { ShieldCheckIcon as ShieldCheckSolid } from "@heroicons/react/24/solid";
@@ -61,7 +62,8 @@ const credentialIcons = {
   globe: GlobeAltIcon,
   shield: ShieldCheckIcon,
   school: AcademicCapIcon,
-  chip: CpuChipIcon,
+  briefcase: BriefcaseIcon,
+  trophy: TrophyIcon,
 } as const;
 
 // Display sizes: mobile from Figma 43:2, desktop ×1.35 (Figma 48:428).
@@ -358,7 +360,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </ul>
       </Panel>
 
-      {/* P10: founder credentials — no name or photo by design */}
+      {/* P10: founder credentials, then the founder's own LinkedIn profile */}
       <Panel id="founder" className="bg-[#fff8dc]">
         <Emoji className="text-[2.6rem]">🗣️</Emoji>
         <div className="mt-4">
@@ -380,6 +382,20 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             );
           })}
         </ul>
+        <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
+          <p className="text-[1.05rem] font-black">{copy.founder.profile}</p>
+          <a
+            href={copy.founder.linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[#050505] px-6 text-[1rem] font-black text-white min-[900px]:w-auto"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-5">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+            </svg>
+            {copy.founder.linkedIn}
+          </a>
+        </div>
       </Panel>
 
       {/* The interpreter's word list, right below the founder's background */}
@@ -456,16 +472,14 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               <p className="text-[1.15rem] font-black">{copy.pricing.subscription.name}</p>
               <Pill className="bg-[#050505] text-white">{copy.pricing.subscription.badge}</Pill>
             </div>
-            <div className="mt-5 flex items-center gap-4 rounded-[20px] bg-[#fff8dc] px-5 py-4">
-              <Emoji className="text-[2.4rem]">☕</Emoji>
-              <div>
-                <p className="text-[1.02rem] font-black leading-snug">{copy.pricing.subscription.espresso}</p>
-                <p className="mt-0.5 flex items-baseline gap-1.5">
-                  <span className={cn(displayClass, "text-[2.3rem] leading-none")}>₩{price}</span>
-                  <span className="text-[0.9rem] font-bold text-[#475569]">/ {copy.pricing.subscription.period}</span>
-                </p>
-              </div>
-            </div>
+            <p className="mt-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+              <span className={cn(displayClass, "text-[3rem] leading-none")}>₩{price}</span>
+              <span className="text-[0.95rem] font-bold text-[#64748b]">{copy.pricing.subscription.period}</span>
+            </p>
+            <p className="mt-4 flex items-center gap-2.5 rounded-2xl bg-[#fff8dc] px-4 py-3 text-[0.95rem] font-bold leading-snug">
+              <Emoji className="shrink-0 text-[1.5rem]">☕</Emoji>
+              {copy.pricing.subscription.espresso}
+            </p>
             <ul className="m-0 mt-6 flex list-none flex-col gap-3 p-0">
               {copy.pricing.subscription.benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-2.5 text-[1rem] font-bold">
