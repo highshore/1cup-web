@@ -51,7 +51,7 @@ export const dailyCopy = {
     goals: ["회의에서 한 문장으로 말하기 💬", "일상 대화에서 바로 받아치기 ☕", "동료 표현 바로 알아듣기 👂"],
   },
   benefits: {
-    title: "글로벌 비즈니스 현장의 영어를,\n매일 카톡으로",
+    title: "글로벌 비즈니스 현장의\u00a0영어를,\n매일 카톡으로",
     accent: "매일 카톡으로",
     items: [
       { emoji: "💬", label: "말풍선", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
