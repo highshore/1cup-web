@@ -17,7 +17,7 @@ export interface DailyConsent {
 
 type View = "summary" | "terms" | "privacy" | "refused";
 
-type ItemKey = "terms" | "privacy" | "messages" | "refund" | "marketing";
+type ItemKey = "terms" | "privacy" | "messages" | "marketing";
 
 export default function DailyConsentDialog({
   mode = "trial",
@@ -38,12 +38,8 @@ export default function DailyConsentDialog({
     terms: false,
     privacy: false,
     messages: false,
-    refund: false,
     marketing: false,
   });
-  // The refund item can only be ticked after the terms (which hold the refund rules)
-  // have actually been opened.
-  const [termsOpened, setTermsOpened] = useState(false);
 
   // Read inside the observer below, which is set up once.
   const busyRef = useRef(busy);
@@ -81,13 +77,12 @@ export default function DailyConsentDialog({
     };
   }, []);
 
+  // The terms hold the refund rules, so before paying the one terms item covers both.
+  const termsLabel = mode === "payment" ? "이용약관 및 환불 규정" : "영어 한잔 Daily 이용약관";
   const items: Array<{ key: ItemKey; label: string; required: boolean; doc?: "terms" | "privacy" }> = [
-    { key: "terms", label: "영어 한잔 Daily 이용약관", required: true, doc: "terms" },
+    { key: "terms", label: termsLabel, required: true, doc: "terms" },
     { key: "privacy", label: "개인정보 수집·이용", required: true, doc: "privacy" },
     { key: "messages", label: "레슨 메시지(알림톡·문자) 받기", required: true },
-    ...(mode === "payment"
-      ? [{ key: "refund" as const, label: "선택한 상품의 환불 규정 확인", required: true }]
-      : []),
     { key: "marketing", label: "혜택·이벤트 소식 받기", required: false },
   ];
 
@@ -98,17 +93,15 @@ export default function DailyConsentDialog({
     const next = !allDone;
     setChecked((current) => {
       const updated = { ...current };
-      for (const item of items) {
-        if (item.key === "refund" && !termsOpened) continue;
-        updated[item.key] = next;
-      }
+      for (const item of items) updated[item.key] = next;
       return updated;
     });
   };
 
-  const openDoc = (doc: "terms" | "privacy") => {
-    if (doc === "terms") setTermsOpened(true);
-    setView(doc);
+  // 확인했어요 at the bottom of a document counts as agreeing to it.
+  const confirmDoc = (doc: "terms" | "privacy") => {
+    setChecked((current) => ({ ...current, [doc]: true }));
+    setView("summary");
   };
 
   const dismiss = () => {
@@ -139,7 +132,7 @@ export default function DailyConsentDialog({
                 <ArrowLeftIcon className="size-5" />
               </button>
               <h2 id="daily-consent-title" className="text-[1.05rem] font-black">
-                {view === "terms" ? "이용약관" : "개인정보 수집·이용 안내"}
+                {view === "terms" ? termsLabel : "개인정보 수집·이용 안내"}
               </h2>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5" tabIndex={0}>
@@ -148,7 +141,7 @@ export default function DailyConsentDialog({
             <div className="border-t border-[#f1f5f9] p-4">
               <button
                 type="button"
-                onClick={() => setView("summary")}
+                onClick={() => confirmDoc(view)}
                 className="h-[54px] w-full rounded-2xl bg-[#050505] text-[1rem] font-black text-white"
               >
                 확인했어요
@@ -164,8 +157,7 @@ export default function DailyConsentDialog({
               동의가 필요해요
             </h2>
             <p className="mt-2 text-[0.95rem] leading-[1.65] text-[#475569]">
-              레슨을 카카오톡으로 보내려면 필수 항목에 동의해야 해요. 선택 항목은 동의하지 않아도
-              괜찮아요.
+              레슨을 카카오톡으로 보내려면 필수 항목에 동의해야 해요. 선택 항목은 동의하지 않아도 괜찮아요.
             </p>
             <button
               type="button"
@@ -203,51 +195,45 @@ export default function DailyConsentDialog({
             </button>
 
             <ul className="m-0 mt-2 list-none p-0">
-              {items.map((item) => {
-                const locked = item.key === "refund" && !termsOpened;
-                return (
-                  <li key={item.key} className="flex items-center gap-1">
-                    <label
-                      className={cn(
-                        "flex min-h-[48px] flex-1 cursor-pointer items-center gap-3 px-4 text-[0.95rem] font-semibold",
-                        locked && "cursor-not-allowed opacity-50",
-                      )}
+              {items.map((item) => (
+                <li key={item.key} className="flex items-center gap-1">
+                  <label className="flex min-h-[48px] flex-1 cursor-pointer items-center gap-3 px-4 text-[0.95rem] font-semibold">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      checked={checked[item.key]}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setChecked((current) => ({ ...current, [item.key]: event.target.checked }))
+                      }
+                    />
+                    <Box on={checked[item.key]} small />
+                    <span>
+                      <span className={item.required ? "text-[#d95f2d]" : "text-[#64748b]"}>
+                        [{item.required ? "필수" : "선택"}]
+                      </span>{" "}
+                      {item.label}
+                    </span>
+                  </label>
+                  {item.doc && (
+                    <button
+                      type="button"
+                      onClick={() => setView(item.doc!)}
+                      className="flex shrink-0 items-center gap-0.5 rounded-full px-2.5 py-2 text-[0.82rem] font-bold text-[#64748b] hover:bg-[#f5f5f5]"
                     >
-                      <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={checked[item.key]}
-                        disabled={busy || locked}
-                        onChange={(event) =>
-                          setChecked((current) => ({ ...current, [item.key]: event.target.checked }))
-                        }
-                      />
-                      <Box on={checked[item.key]} small />
-                      <span>
-                        <span className={item.required ? "text-[#d95f2d]" : "text-[#64748b]"}>
-                          [{item.required ? "필수" : "선택"}]
-                        </span>{" "}
-                        {item.label}
-                        {locked && <span className="block text-[0.78rem] text-[#64748b]">이용약관을 열어 확인한 뒤 체크할 수 있어요</span>}
-                      </span>
-                    </label>
-                    {(item.doc || item.key === "refund") && (
-                      <button
-                        type="button"
-                        onClick={() => openDoc(item.doc ?? "terms")}
-                        className="flex shrink-0 items-center gap-0.5 rounded-full px-2.5 py-2 text-[0.82rem] font-bold text-[#64748b] hover:bg-[#f5f5f5]"
-                      >
-                        보기
-                        <ChevronRightIcon className="size-3.5" />
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
+                      보기
+                      <ChevronRightIcon className="size-3.5" />
+                    </button>
+                  )}
+                </li>
+              ))}
             </ul>
 
             {error && (
-              <p role="alert" className="mt-3 rounded-xl bg-[#fef2f2] px-4 py-3 text-[0.88rem] font-semibold text-[#b91c1c]">
+              <p
+                role="alert"
+                className="mt-3 rounded-xl bg-[#fef2f2] px-4 py-3 text-[0.88rem] font-semibold text-[#b91c1c]"
+              >
                 {error}
               </p>
             )}
