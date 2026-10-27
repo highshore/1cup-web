@@ -5,8 +5,8 @@ import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { DAILY_PAYMENT_ORDER_KEY, DAILY_PAYMENT_SESSION_KEY, DailyApiError, dailyApi, signInWithLink } from "../../lib/features/daily/api";
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
-import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
-import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
+import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
+import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LABEL, DAILY_TRACKS, isDailyTrack, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
@@ -169,7 +169,7 @@ export default function SubscribeClient() {
     } catch (e) {
       setError(
         e instanceof DailyApiError && e.code === "verify-required"
-          ? "해지 전에 아래에서 본인 확인을 해 주세요."
+          ? "해지 전에 아래에서 카카오로 한 번 확인해 주세요."
           : "해지하지 못했어요. 다시 시도해 주세요.",
       );
     }
@@ -194,8 +194,8 @@ export default function SubscribeClient() {
 
         {info === null && (
           <div className="mt-8 rounded-[28px] bg-white p-6">
-            <p className="mb-3 text-[1rem] font-black">받는 휴대폰 번호를 인증해 주세요</p>
-            <PhoneVerification bare onVerified={load} />
+            <p className="mb-3 text-[1rem] font-black">카카오로 시작해 주세요</p>
+            <KakaoSignIn bare />
           </div>
         )}
 
@@ -243,7 +243,7 @@ export default function SubscribeClient() {
                       <span>
                         <span className="flex items-center gap-2 text-[1rem] font-black">
                           {p.recurring ? "30일 정기구독" : p.name.replace("영어 한잔 Daily ", "")}
-                          {p.recurring && <Pill className="bg-[#050505] px-2 py-1 text-[0.7rem] text-white">{pricing.subscription.badge}</Pill>}
+                          {p.recurring && <span className="text-[0.78rem] font-black text-[#d95f2d]">{pricing.subscription.badge}</span>}
                         </span>
                         <span className="text-[0.82rem] font-semibold text-[#64748b]">
                           {p.recurring ? "30일마다 자동 결제 · 언제든 해지" : `${p.days}일 · 한 번만 결제`}
@@ -308,7 +308,7 @@ export default function SubscribeClient() {
 
               {!info.verified ? (
                 <div className="mt-5">
-                  <PhoneVerification bare maskedPhone={info.phone} onVerified={load} />
+                  <KakaoSignIn bare confirm />
                 </div>
               ) : (
               <button

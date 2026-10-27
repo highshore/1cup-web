@@ -3,7 +3,7 @@
 //   함께 쓰는 문장  one sentence per person per lesson, ☕ reactions, 통역사 PICK
 //   1분 퀴즈        answers, and the "같이 푼 퀴즈" numbers once 10 people answered
 //   연속 기록       consecutive delivered lessons whose quiz the reader solved
-//   내 표현장       every lesson the reader received, newest first
+//   내 학습 기록       every lesson the reader received, newest first
 //   친구 초대       the reader's invite link and what it has earned
 //
 // A lesson page is identified by its message's token, which leads to one subscription.
@@ -72,11 +72,24 @@ function requireOwner(ref: LessonRef, viewer: DailySessionCustomer | null) {
 // Lesson page
 // ---------------------------------------------------------------------------
 
+/**
+ * How a writer's name shows next to their sentence: their Kakao nickname with the middle
+ * hidden (김민수 → 김*수, 민수 → 민*), or null for 익명 when there is no name. Nobody
+ * types a display name.
+ */
+export function maskName(name: string | null | undefined): string | null {
+  const chars = Array.from((name ?? "").trim());
+  if (chars.length === 0) return null;
+  if (chars.length <= 2) return `${chars[0]}*`;
+  // At most 12 characters, the column's limit elsewhere.
+  return `${chars[0]}${"*".repeat(Math.min(chars.length - 2, 10))}${chars[chars.length - 1]}`;
+}
+
 interface SentenceRow {
   id: string;
   customer_id: string;
   body: string;
-  display_name: string | null;
+  customer: { name: string | null } | null;
   hidden_at: string | null;
   picked_at: string | null;
   created_at: string;
@@ -115,7 +128,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
   const db = admin();
   const [{ data: sentences }, { count: together }, { data: myAnswer }, { data: pick }] = await Promise.all([
     db.from("daily_sentences")
-      .select("id, customer_id, body, display_name, hidden_at, picked_at, created_at")
+      .select("id, customer_id, body, hidden_at, picked_at, created_at, customer:daily_customers(name)")
       .eq("lesson_id", ref.lessonId)
       .order("created_at", { ascending: false })
       .limit(SENTENCE_LIMIT + 1),
@@ -129,7 +142,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
       : Promise.resolve({ data: null }),
     // 어제의 통역사 PICK: the latest pick from an earlier lesson on this track.
     db.from("daily_sentences")
-      .select("body, display_name, lesson:daily_lessons!inner(expression, track, publish_on)")
+      .select("body, customer:daily_customers(name), lesson:daily_lessons!inner(expression, track, publish_on)")
       .not("picked_at", "is", null)
       .is("hidden_at", null)
       .eq("lesson.track", ref.track)
@@ -139,7 +152,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
       .maybeSingle(),
   ]);
 
-  const visible = ((sentences ?? []) as SentenceRow[]).filter((s) => !s.hidden_at || s.customer_id === viewer?.id);
+  const visible = ((sentences ?? []) as unknown as SentenceRow[]).filter((s) => !s.hidden_at || s.customer_id === viewer?.id);
   const ids = visible.map((s) => s.id);
   const { data: cups } = ids.length
     ? await db.from("daily_sentence_cups").select("sentence_id, customer_id").in("sentence_id", ids)
@@ -154,7 +167,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
     .map((s) => ({
       id: s.id,
       body: s.body,
-      displayName: s.display_name,
+      displayName: maskName(s.customer?.name),
       cups: cupCount.get(s.id) ?? 0,
       cupped: cuppedByViewer.has(s.id),
       mine: s.customer_id === viewer?.id,
@@ -165,24 +178,25 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
     .sort((a, b) => Number(b.picked) - Number(a.picked) || b.cups - a.cups);
 
   const answered = (myAnswer as { choice: number } | null)?.choice ?? null;
-  const pickRow = pick as unknown as { body: string; display_name: string | null; lesson: { expression: string } } | null;
+  const pickRow = pick as unknown as { body: string; customer: { name: string | null } | null; lesson: { expression: string } } | null;
   return {
     canWrite: viewer?.id === ref.ownerId,
     signedIn: Boolean(viewer),
+    // How the reader's own sentence will be signed.
+    writerName: viewer ? maskName(viewer.name) : null,
     sentences: list.slice(0, SENTENCE_LIMIT),
     mine: list.find((s) => s.mine) ?? null,
     together: (together ?? 0) >= DAILY_CROWD_MIN ? together : null,
     quiz: answered === null ? { answered: null, stats: null } : { answered, stats: await quizStats(ref.lessonId, ref.quiz) },
-    yesterdayPick: pickRow ? { body: pickRow.body, displayName: pickRow.display_name, expression: pickRow.lesson.expression } : null,
+    yesterdayPick: pickRow ? { body: pickRow.body, displayName: maskName(pickRow.customer?.name), expression: pickRow.lesson.expression } : null,
     progress: viewer ? await progress(viewer.id) : null,
   };
 }
 
-export async function saveSentence(token: string, viewer: DailySessionCustomer | null, input: { body: unknown; displayName: unknown }) {
+export async function saveSentence(token: string, viewer: DailySessionCustomer | null, input: { body: unknown }) {
   const ref = await lessonRef(token);
   const customer = requireOwner(ref, viewer);
   const body = String(input.body ?? "").replace(/\s+/g, " ").trim();
-  const displayName = String(input.displayName ?? "").trim().slice(0, 12) || null;
   if (body.length < 2 || body.length > 200) throw new CommunityError("문장은 2자 이상 200자 이하로 써 주세요.");
   const db = admin();
   const { data: existing } = await db
@@ -198,7 +212,9 @@ export async function saveSentence(token: string, viewer: DailySessionCustomer |
       subscription_id: ref.subscriptionId,
       customer_id: customer.id,
       body,
-      display_name: displayName,
+      // The name shown is the Kakao nickname, masked when read (maskName); this column
+      // from the typed-name days is cleared on every save.
+      display_name: null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "lesson_id,customer_id" },
@@ -253,7 +269,7 @@ export async function answerQuiz(token: string, viewer: DailySessionCustomer | n
 }
 
 // ---------------------------------------------------------------------------
-// 연속 기록 and 내 표현장
+// 연속 기록 and 내 학습 기록
 // ---------------------------------------------------------------------------
 
 const KST_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { DailyApiError, dailyApi } from "../api";
-import PhoneVerification from "./PhoneVerification";
+import KakaoSignIn from "./KakaoSignIn";
 import { cn, Emoji } from "./DailyUI";
 
 interface ReviewStatus {
@@ -75,14 +75,11 @@ export default function ReviewCard() {
 
       {status === null ? (
         <div className="mt-3">
-          <p className="mb-3 text-[0.92rem] font-semibold text-[#475569]">
-            레슨을 받은 번호로 인증하면 한 줄 후기를 남길 수 있어요.
-          </p>
-          <PhoneVerification bare onVerified={load} />
+          <KakaoSignIn bare detail="레슨을 받은 카카오계정으로 들어오면 한 줄 후기를 남길 수 있어요." />
         </div>
       ) : !status.eligible ? (
         <p className="mt-3 text-[0.92rem] font-semibold text-[#64748b]">
-          이 번호로 받은 레슨이 없어요. 레슨을 받은 번호로 인증해 주세요.
+          이 카카오계정으로 받은 레슨이 없어요. 레슨을 받은 카카오계정으로 들어와 주세요.
         </p>
       ) : done || status.existing?.status === "approved" ? null : (
         <div className="mt-4">

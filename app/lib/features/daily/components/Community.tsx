@@ -39,6 +39,7 @@ interface Progress {
 export interface Community {
   canWrite: boolean;
   signedIn: boolean;
+  writerName: string | null;
   sentences: Sentence[];
   mine: Sentence | null;
   together: number | null;
@@ -113,22 +114,53 @@ export function YesterdayPick({ pick }: { pick: Community["yesterdayPick"] }) {
   );
 }
 
-function Composer({ token, expression, mine, onSaved }: { token: string; expression: string; mine: Sentence | null; onSaved: () => Promise<void> }) {
+// Today's expression inside a sentence, allowing the usual endings and one word inside a
+// phrasal verb: "circle back" also finds "circling back", "loop in" finds "loop him in".
+function expressionPattern(expression: string): RegExp | null {
+  const words = expression.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+  const stems = words.map((w) => w.replace(/e$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[a-z']*");
+  return new RegExp(`\\b${stems.join("\\s+(?:[a-z']+\\s+)?")}`, "i");
+}
+
+function Highlighted({ body, pattern }: { body: string; pattern: RegExp | null }) {
+  const match = pattern ? body.match(pattern) : null;
+  if (!match || match.index === undefined) return <>{body}</>;
+  const end = match.index + match[0].length;
+  return (
+    <>
+      {body.slice(0, match.index)}
+      <span className="text-[#d95f2d]">{body.slice(match.index, end)}</span>
+      {body.slice(end)}
+    </>
+  );
+}
+
+function Composer({
+  token,
+  expression,
+  mine,
+  writerName,
+  onSaved,
+  onCancel,
+}: {
+  token: string;
+  expression: string;
+  mine: Sentence | null;
+  writerName: string | null;
+  onSaved: () => Promise<void>;
+  onCancel?: () => void;
+}) {
   const [body, setBody] = useState(mine?.body ?? "");
-  const [name, setName] = useState(mine?.displayName ?? "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const uses = expressionPattern(expression)?.test(body) ?? false;
 
-  const run = async (action: "sentence-save" | "sentence-delete") => {
-    if (action === "sentence-delete" && !window.confirm(copy.removeConfirm)) return;
+  const save = async () => {
     setBusy(true);
     setMessage("");
     try {
-      await dailyApi(action, { token, body, displayName: name });
-      if (action === "sentence-delete") {
-        setBody("");
-        setName("");
-      } else setMessage(copy.posted);
+      await dailyApi("sentence-save", { token, body });
       await onSaved();
     } catch (e) {
       setMessage(e instanceof DailyApiError && e.message ? e.message : "잠시 후 다시 시도해 주세요.");
@@ -138,41 +170,40 @@ function Composer({ token, expression, mine, onSaved }: { token: string; express
   };
 
   return (
-    <div className="rounded-2xl bg-white p-4">
+    <div>
       <textarea
         value={body}
         onChange={(event) => setBody(event.target.value.slice(0, 200))}
         placeholder={fill(copy.placeholder, { expression })}
-        rows={2}
+        rows={3}
         lang="en"
-        className="w-full resize-none rounded-xl bg-[#f5f5f4] p-3 text-[1rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+        aria-label={copy.wallTitle}
+        className="block w-full resize-none rounded-2xl bg-white px-4 py-3.5 text-[1.05rem] font-bold leading-snug outline-none placeholder:text-[#a8a29e] focus-visible:ring-2 focus-visible:ring-[#050505]"
       />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <label className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="shrink-0 text-[0.8rem] font-bold text-[#64748b]">{copy.nameLabel}</span>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value.slice(0, 12))}
-            placeholder={copy.namePlaceholder}
-            className="h-10 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.9rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
-          />
-        </label>
-        {mine && (
-          <button type="button" disabled={busy} onClick={() => run("sentence-delete")} className="h-10 rounded-xl px-3 text-[0.88rem] font-bold text-[#64748b]">
-            {copy.remove}
+      <div className="mt-2.5 flex items-center gap-3">
+        <p className="min-w-0 flex-1 text-[0.82rem] font-semibold text-[#64748b]">
+          {uses ? (
+            <span className="font-black text-[#d95f2d]">✓ {fill(copy.usesExpression, { expression })}</span>
+          ) : (
+            fill(copy.postAs, { name: writerName ?? copy.anonymous })
+          )}
+        </p>
+        {onCancel && (
+          <button type="button" disabled={busy} onClick={onCancel} className="h-12 shrink-0 px-2 text-[0.9rem] font-bold text-[#64748b]">
+            {copy.cancel}
           </button>
         )}
         <button
           type="button"
-          disabled={busy || body.trim().length < 2 || (mine?.body === body.trim() && (mine?.displayName ?? "") === name.trim())}
-          onClick={() => run("sentence-save")}
-          className="h-10 rounded-xl bg-[#050505] px-4 text-[0.9rem] font-black text-white disabled:opacity-35"
+          disabled={busy || body.trim().length < 2 || mine?.body === body.trim()}
+          onClick={save}
+          className="h-12 shrink-0 rounded-2xl bg-[#050505] px-5 text-[0.95rem] font-black text-white disabled:opacity-35"
         >
           {mine ? copy.update : copy.post}
         </button>
       </div>
       {message && (
-        <p role="status" className="mt-2 text-[0.85rem] font-semibold text-[#475569]">
+        <p role="alert" className="mt-2 text-[0.85rem] font-semibold text-[#b91c1c]">
           {message}
         </p>
       )}
@@ -182,6 +213,8 @@ function Composer({ token, expression, mine, onSaved }: { token: string; express
 
 export function SentenceWall({ token, expression, data, reload }: { token: string; expression: string; data: Community; reload: () => Promise<void> }) {
   const [pending, setPending] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const pattern = expressionPattern(expression);
 
   const cup = async (id: string) => {
     setPending(id);
@@ -195,6 +228,25 @@ export function SentenceWall({ token, expression, data, reload }: { token: strin
     }
   };
 
+  const remove = async () => {
+    if (!window.confirm(copy.removeConfirm)) return;
+    try {
+      await dailyApi("sentence-delete", { token });
+      setEditing(false);
+      await reload();
+    } catch {
+      // Left as it was.
+    }
+  };
+
+  const saved = async () => {
+    setEditing(false);
+    await reload();
+  };
+
+  // One sentence per person per lesson: once it is up, the field gives way to the row.
+  const showComposer = data.canWrite && (!data.mine || editing);
+
   return (
     <section className="rounded-[28px] bg-[#f5f5f4] p-6 min-[900px]:p-8">
       <h2 className="flex items-center gap-2 text-[1.15rem] font-black">
@@ -206,47 +258,70 @@ export function SentenceWall({ token, expression, data, reload }: { token: strin
         <p className="mt-1 text-[0.85rem] font-bold text-[#d95f2d]">{fill(copy.together, { count: data.together.toLocaleString("ko-KR") })}</p>
       )}
 
-      <div className="mt-4">
-        {data.canWrite ? (
-          <Composer key={data.mine?.id ?? "new"} token={token} expression={expression} mine={data.mine} onSaved={reload} />
-        ) : (
-          <p className="rounded-2xl bg-white px-4 py-3 text-[0.9rem] font-semibold text-[#64748b]">{data.signedIn ? copy.notOwner : copy.signIn}</p>
-        )}
+      <div className="mt-5">
+        {showComposer ? (
+          <Composer
+            key={data.mine?.id ?? "new"}
+            token={token}
+            expression={expression}
+            mine={data.mine}
+            writerName={data.writerName}
+            onSaved={saved}
+            onCancel={data.mine ? () => setEditing(false) : undefined}
+          />
+        ) : !data.canWrite ? (
+          <p className="text-[0.9rem] font-semibold text-[#64748b]">{data.signedIn ? copy.notOwner : copy.signIn}</p>
+        ) : null}
       </div>
 
       {data.sentences.length === 0 ? (
-        <p className="mt-4 text-center text-[0.9rem] font-semibold text-[#94a3b8]">{copy.empty}</p>
+        <p className="mt-6 text-center text-[0.9rem] font-semibold text-[#94a3b8]">{copy.empty}</p>
       ) : (
-        <ul className="m-0 mt-4 flex list-none flex-col gap-2.5 p-0">
+        <ul className="m-0 mt-5 list-none divide-y divide-[#e7e5e4] border-t border-[#e7e5e4] p-0">
           {data.sentences.map((s) => (
-            <li key={s.id} className={cn("rounded-2xl bg-white p-4", s.picked && "ring-2 ring-[#f47a4a]")}>
-              {s.picked && (
-                <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-[#f47a4a] px-2.5 py-0.5 text-[0.72rem] font-black">🏆 {copy.pick}</span>
-              )}
-              <p lang="en" className="text-[1rem] font-bold leading-snug">
-                {s.body}
-              </p>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-[0.8rem] font-semibold text-[#64748b]">
-                  {s.displayName ?? copy.anonymous}
-                  {s.mine && ` · ${copy.mine}`}
-                  {s.hidden && ` · ${copy.hidden}`}
+            <li key={s.id} className="flex items-start gap-3 py-4">
+              <div className="min-w-0 flex-1">
+                {s.picked && <p className="mb-1 text-[0.78rem] font-black text-[#d95f2d]">🏆 {copy.pick}</p>}
+                <p lang="en" className="text-[1.02rem] font-bold leading-snug">
+                  <Highlighted body={s.body} pattern={pattern} />
+                </p>
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[0.8rem] font-semibold text-[#78716c]">
+                  <span>{s.displayName ?? copy.anonymous}</span>
+                  {s.mine && <span>· {copy.mine}</span>}
+                  {s.hidden && <span>· {copy.hidden}</span>}
+                  {s.mine && !editing && (
+                    <>
+                      {!s.picked && (
+                        <button type="button" onClick={() => setEditing(true)} className="ml-1 font-bold text-[#050505] underline underline-offset-2">
+                          {copy.edit}
+                        </button>
+                      )}
+                      <button type="button" onClick={remove} className="ml-1 font-bold text-[#050505] underline underline-offset-2">
+                        {copy.remove}
+                      </button>
+                    </>
+                  )}
+                </p>
+              </div>
+              {s.mine || !data.signedIn ? (
+                <span className="flex h-10 shrink-0 items-center gap-1 px-1 text-[0.88rem] font-black text-[#78716c]" aria-label={fill(copy.cupCount, { count: s.cups })}>
+                  ☕ {s.cups}
                 </span>
+              ) : (
                 <button
                   type="button"
                   aria-label={copy.cupLabel}
                   aria-pressed={s.cupped}
-                  disabled={s.mine || !data.signedIn || pending === s.id}
+                  disabled={pending === s.id}
                   onClick={() => cup(s.id)}
                   className={cn(
-                    "flex h-8 items-center gap-1 rounded-full px-3 text-[0.85rem] font-black transition-colors",
-                    s.cupped ? "bg-[#fff8dc] text-[#050505] ring-1 ring-[#f47a4a]" : "bg-[#f5f5f4] text-[#475569]",
-                    "disabled:cursor-default",
+                    "flex h-10 shrink-0 items-center gap-1 rounded-full px-3.5 text-[0.88rem] font-black transition-colors",
+                    s.cupped ? "bg-[#f47a4a] text-[#050505]" : "bg-white text-[#475569]",
                   )}
                 >
                   ☕ {s.cups}
                 </button>
-              </div>
+              )}
             </li>
           ))}
         </ul>

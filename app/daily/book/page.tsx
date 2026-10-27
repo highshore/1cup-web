@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import BookClient from "./BookClient";
 
 export const metadata: Metadata = {
-  title: "내 표현장 | One Cup Daily",
+  title: "내 학습 기록 | One Cup Daily",
   robots: { index: false, follow: false },
 };
 

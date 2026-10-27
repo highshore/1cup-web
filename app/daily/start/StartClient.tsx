@@ -7,7 +7,7 @@ import { ArrowLeftIcon, CheckIcon, ClockIcon, DevicePhoneMobileIcon } from "@her
 import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/components/DailyConsentDialog";
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
-import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
+import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_VERSION, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
@@ -43,13 +43,13 @@ function timeLabel(value: string) {
 
 const ERRORS: Record<string, string> = {
   "not-open": "무료 체험은 아직 열리지 않았어요. 곧 열릴 예정이에요.",
-  "trial-used": "이 휴대폰 번호로 이 레벨의 무료 체험을 이미 받았어요.",
+  "trial-used": "이 카카오계정으로 이 레벨의 무료 체험을 이미 받았어요.",
   "already-subscribed": "이미 이 레벨을 받고 있어요.",
   "no-lesson": "보낼 레슨을 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
   "consent-required": "필수 항목에 모두 동의해 주세요.",
   "terms-outdated": "이용약관이 바뀌었어요. 페이지를 새로고침한 뒤 다시 동의해 주세요.",
-  "login-required": "인증이 만료됐어요. 휴대폰 번호를 다시 인증해 주세요.",
-  "verify-required": "신청 전에 본인 확인을 한 번 해 주세요.",
+  "login-required": "로그인이 끝났어요. 카카오로 다시 시작해 주세요.",
+  "verify-required": "신청 전에 카카오로 한 번 확인해 주세요.",
 };
 
 const TRACKS = dailyCopy.tracks.items;
@@ -202,16 +202,16 @@ export default function StartClient() {
           </p>
         </Step>
 
-        <Step number={3} title="받을 휴대폰 번호를 인증해 주세요">
+        <Step number={3} title="카카오로 시작해 주세요">
           {info === undefined && !infoError ? (
             <div className="h-[88px] animate-pulse rounded-[22px] bg-white/70" />
           ) : info === null ? (
-            <PhoneVerification onVerified={loadInfo} />
+            <KakaoSignIn />
           ) : info && !info.verified && info.phone ? (
             <>
-              <PhoneVerification maskedPhone={info.phone} onVerified={loadInfo} />
+              <KakaoSignIn confirm />
               <button type="button" onClick={signOut} className="mt-2.5 text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
-                다른 번호로
+                다른 카카오계정으로
               </button>
             </>
           ) : (
@@ -221,7 +221,7 @@ export default function StartClient() {
                 <span className="flex-1 text-[1rem] font-black">{info?.phone ?? infoError}</span>
                 {info && (
                   <button type="button" onClick={signOut} className="text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
-                    다른 번호로
+                    다른 카카오계정으로
                   </button>
                 )}
               </div>

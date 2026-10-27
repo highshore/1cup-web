@@ -2,6 +2,7 @@
 // (terms 제9조의2). The admin is a signed-in 1cup member with account_status 'admin',
 // checked the same way as the other admin API routes.
 import { admin, createServerClientRSC } from "../../../supabase/server";
+import { maskName } from "./community";
 
 export class AdminSentenceError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -23,7 +24,7 @@ export async function listSentences() {
   const db = admin();
   const { data, error } = await db
     .from("daily_sentences")
-    .select("id, body, display_name, hidden_at, picked_at, created_at, lesson_id, lesson:daily_lessons(expression, track, publish_on)")
+    .select("id, body, hidden_at, picked_at, created_at, lesson_id, customer:daily_customers(name), lesson:daily_lessons(expression, track, publish_on)")
     .order("created_at", { ascending: false })
     .limit(300);
   if (error) throw new AdminSentenceError("불러오지 못했어요.", 500);
@@ -33,7 +34,12 @@ export async function listSentences() {
     : { data: [] as Array<{ sentence_id: string }> };
   const counts = new Map<string, number>();
   for (const c of cups ?? []) counts.set(c.sentence_id, (counts.get(c.sentence_id) ?? 0) + 1);
-  return (data ?? []).map((s) => ({ ...s, cups: counts.get(s.id) ?? 0 }));
+  // display_name is what readers see (the masked Kakao nickname), never the full name.
+  return (data ?? []).map(({ customer, ...s }) => ({
+    ...s,
+    display_name: maskName((customer as unknown as { name: string | null } | null)?.name),
+    cups: counts.get(s.id) ?? 0,
+  }));
 }
 
 export async function moderateSentence(adminUid: string, id: unknown, action: unknown) {

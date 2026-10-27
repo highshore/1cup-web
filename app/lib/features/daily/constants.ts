@@ -35,6 +35,6 @@ export const DAILY_PRIVACY_PATH = "/daily/privacy";
 
 // Bump when the Daily terms or the consent wording change; stored with each signup. The
 // date is when the version took effect; a later revision the same day adds ".n".
-export const DAILY_TERMS_VERSION = "2026-10-26.3";
+export const DAILY_TERMS_VERSION = "2026-10-27";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");

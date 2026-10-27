@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
-import PhoneVerification from "../../lib/features/daily/components/PhoneVerification";
+import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import {
   DAILY_GUIDE_PATH,
   DAILY_MONTHLY_PRICE_KRW,
@@ -317,7 +317,8 @@ function RefundForm({
   };
 
   return (
-    <div className="mt-3 rounded-[20px] bg-[#fff8dc] p-4">
+    // Flat inside the payments card: a box here would put the inputs three boxes deep.
+    <div className="mt-3 border-t border-[#e7e5e4] pt-4">
       <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
       <p className="text-[1.5rem] font-black">₩{formatKrw(quote.amount)}</p>
       <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
@@ -333,7 +334,7 @@ function RefundForm({
         <select
           value={choice}
           onChange={(event) => setChoice(event.target.value)}
-          className="mt-1 h-12 w-full cursor-pointer rounded-xl bg-white px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+          className="mt-1 h-12 w-full cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
         >
           <option value="" disabled>
             {r.reasonPick}
@@ -354,7 +355,7 @@ function RefundForm({
           aria-label={r.other}
           rows={2}
           autoFocus
-          className="mt-2 w-full resize-none rounded-xl bg-white p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+          className="mt-2 w-full resize-none rounded-xl bg-[#f5f5f4] p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
         />
       )}
       {message && (
@@ -371,7 +372,7 @@ function RefundForm({
         >
           {busy ? "보내는 중…" : r.submit.replace("{amount}", formatKrw(quote.amount))}
         </button>
-        <button type="button" onClick={onClose} className="h-12 rounded-xl bg-white px-4 text-[0.95rem] font-black">
+        <button type="button" onClick={onClose} className="h-12 rounded-xl bg-[#f5f5f4] px-4 text-[0.95rem] font-black">
           {r.cancel}
         </button>
       </div>
@@ -674,7 +675,7 @@ export default function AccountClient() {
           <section className={card}>
             <h2 className={sectionTitle}>{copy.signInTitle}</h2>
             <p className="mb-4 mt-1 text-center text-[0.92rem] font-semibold text-[#475569] min-[900px]:text-left">{copy.signInDetail}</p>
-            <PhoneVerification bare onVerified={load} />
+            <KakaoSignIn bare detail={null} />
           </section>
         )}
 
@@ -682,9 +683,7 @@ export default function AccountClient() {
           <section className={cn(cardFrame, "bg-[#050505] text-white")}>
             <h2 className={sectionTitle}>{copy.verifyTitle}</h2>
             <p className="mb-4 mt-1 text-center text-[0.9rem] font-semibold text-white/70 min-[900px]:text-left">{copy.verifyDetail}</p>
-            <div className="text-[#050505]">
-              <PhoneVerification maskedPhone={info.phone} onVerified={load} />
-            </div>
+            <KakaoSignIn bare confirm detail={null} />
           </section>
         )}
 
