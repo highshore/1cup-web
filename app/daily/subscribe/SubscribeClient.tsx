@@ -173,7 +173,7 @@ export default function SubscribeClient() {
     } catch (e) {
       setError(
         e instanceof DailyApiError && e.code === "verify-required"
-          ? "해지 전에 아래에서 카카오로 한 번 확인해 주세요."
+          ? "해지하려면 아래에서 다시 한번 로그인해 주세요."
           : "해지하지 못했어요. 다시 시도해 주세요.",
       );
     }

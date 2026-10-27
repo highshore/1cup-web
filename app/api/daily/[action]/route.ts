@@ -114,7 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       // A review records promotional consent, sets 소속·직종 and earns days: like other
       // consent and account changes, not from a forwardable message link.
       if (!customer.verified) {
-        return NextResponse.json({ success: false, errorCode: "verify-required", message: "카카오로 한 번 확인한 뒤에 보낼 수 있어요." }, { status: 403 });
+        return NextResponse.json({ success: false, errorCode: "verify-required", message: "후기를 보내려면 다시 한번 로그인해 주세요." }, { status: 403 });
       }
       const reward = await submitReview(customer, {
         rating: Number(body.rating),
