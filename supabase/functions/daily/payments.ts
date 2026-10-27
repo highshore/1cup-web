@@ -422,6 +422,19 @@ export async function cancelRenewal(db: SupabaseClient, customer: PaymentCustome
     .eq("track", track)
     .eq("status", "active");
   if (error) throw new PaymentError("해지하지 못했어요. 다시 시도해 주세요.", "cancel-failed", 500);
+
+  // The survey answers from the 서비스 중단하기 sheet. Losing them must not undo the
+  // cancellation, so a failed insert is only logged.
+  const reasons = Array.isArray(body.reasons)
+    ? body.reasons.filter((r): r is string => typeof r === "string").map((r) => r.slice(0, 120)).slice(0, 12)
+    : [];
+  const other = typeof body.other === "string" ? body.other.trim().slice(0, 500) : "";
+  if (reasons.length > 0 || other) {
+    const { error: feedbackError } = await db
+      .from("daily_cancel_feedback")
+      .insert({ customer_id: customer.id, track, reasons, other: other || null });
+    if (feedbackError) console.error("daily cancel feedback:", feedbackError.message);
+  }
   return { success: true };
 }
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeftIcon, PauseCircleIcon, ReceiptRefundIcon } from "@heroicons/react/24/outline";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
 import DailyLoading from "../../lib/features/daily/components/DailyLoading";
@@ -219,16 +220,6 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {sub.status === "active" && sub.autoRenew && (
-          <button
-            type="button"
-            disabled={!verified || busy}
-            onClick={() => window.confirm(s.cancelConfirm) && run("cancel-renewal", { track: sub.track })}
-            className={cn(smallButton, "bg-[#f5f5f4] text-[#050505]")}
-          >
-            {s.cancel}
-          </button>
-        )}
         {sub.canResume && (
           <button
             type="button"
@@ -254,102 +245,231 @@ function SubscriptionCard({ sub, verified, onChanged }: { sub: Subscription; ver
   );
 }
 
-// The select's value for "기타"; never stored as is.
-const OTHER = "__other__";
+type StopChoice = { kind: "cancel"; sub: Subscription } | { kind: "refund"; payment: Payment };
 
-function RefundForm({
-  payment,
-  onDone,
+// 서비스 중단하기, as on 1cup's membership page: pick turning off auto-renew (recommended)
+// or a refund, then say why. The reasons go with the request: a refund keeps them on the
+// refund itself, a cancellation in daily_cancel_feedback.
+function StopServiceSheet({
+  cancellable,
+  refundable,
   onClose,
+  onDone,
 }: {
-  payment: Payment;
-  onDone: (result: { amount: number; status: "refunded" | "failed" | "unknown" }) => Promise<void>;
+  cancellable: Subscription[];
+  refundable: Payment[];
   onClose: () => void;
+  onDone: (notice: string) => Promise<void>;
 }) {
+  const t = copy.stop;
   const r = copy.refund;
-  const quote = payment.quote!;
-  const [choice, setChoice] = useState("");
+  const [choice, setChoice] = useState<StopChoice | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const isOther = choice === OTHER;
-  const reason = isOther ? `${r.otherLabel}: ${other.trim()}` : choice;
-  const ready = choice !== "" && (!isOther || other.trim().length >= 2);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !busy && onClose();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [busy, onClose]);
+
+  const pick = (next: StopChoice | null) => {
+    setChoice(next);
+    setSelected([]);
+    setOther("");
+    setMessage("");
+  };
+
+  const reasons = choice?.kind === "refund" ? [...t.refundLeadReasons, ...t.reasons] : t.reasons;
+  const ready = selected.length > 0 || other.trim() !== "";
 
   const submit = async () => {
+    if (!choice) return;
     setBusy(true);
     setMessage("");
     try {
-      const { refund } = await dailyApi<{ refund: { amount: number; status: "refunded" | "failed" | "unknown" } }>("refund-request", {
-        orderNumber: payment.orderNumber,
-        reason,
-      });
-      await onDone(refund);
+      if (choice.kind === "cancel") {
+        await dailyApi("cancel-renewal", { track: choice.sub.track, reasons: selected, other: other.trim() });
+        await onDone(
+          t.cancelled
+            .replace("{track}", TRACK_TITLE[choice.sub.track])
+            .replace("{date}", dateLabel(choice.sub.paidUntil ?? new Date().toISOString())),
+        );
+      } else {
+        // Stored as one line on the refund: the picked reasons, then what they wrote.
+        const reason = [...selected, other.trim() && `${t.otherLabel}: ${other.trim()}`].filter(Boolean).join(" / ").slice(0, 500);
+        const { refund } = await dailyApi<{ refund: { amount: number; status: "refunded" | "failed" | "unknown" } }>("refund-request", {
+          orderNumber: choice.payment.orderNumber,
+          reason,
+        });
+        await onDone(refund.status === "refunded" ? r.done.replace("{amount}", formatKrw(refund.amount)) : r.pending);
+      }
     } catch (e) {
       setMessage(errorMessage(e));
       setBusy(false);
     }
   };
 
+  const option = "flex w-full items-start gap-3 rounded-2xl bg-[#f5f5f4] p-4 text-left transition-colors hover:bg-[#eeeceb]";
+
   return (
-    // Flat inside the payments card: a box here would put the inputs three boxes deep.
-    <div className="mt-3 border-t border-[#e7e5e4] pt-4">
-      <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
-      <p className="text-[1.5rem] font-black">₩{formatKrw(quote.amount)}</p>
-      <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
-        {quote.fullRefund ? r.full : r.partial.replace("{days}", String(quote.daysRefunded))}
-      </p>
-      <ul className="m-0 mt-3 flex list-disc flex-col gap-1 pl-5 text-[0.85rem] font-semibold leading-relaxed text-[#57534e]">
-        {(payment.recurring ? [...r.effects, r.recurringEffect] : r.effects).map((effect) => (
-          <li key={effect}>{effect}</li>
-        ))}
-      </ul>
-      <label className="mt-4 block">
-        <span className="text-[0.85rem] font-bold text-[#64748b]">{r.reason}</span>
-        <select
-          value={choice}
-          onChange={(event) => setChoice(event.target.value)}
-          className="mt-1 h-12 w-full cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.95rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
-        >
-          <option value="" disabled>
-            {r.reasonPick}
-          </option>
-          {r.reasons.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-          <option value={OTHER}>{r.other}</option>
-        </select>
-      </label>
-      {isOther && (
-        <textarea
-          value={other}
-          onChange={(event) => setOther(event.target.value.slice(0, 480))}
-          placeholder={r.otherPlaceholder}
-          aria-label={r.other}
-          rows={2}
-          autoFocus
-          className="mt-2 w-full resize-none rounded-xl bg-[#f5f5f4] p-3 text-[0.95rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
-        />
-      )}
-      {message && (
-        <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
-          {message}
-        </p>
-      )}
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={busy || !ready}
-          onClick={submit}
-          className="h-12 flex-1 rounded-xl bg-[#050505] text-[0.95rem] font-black text-white disabled:opacity-35"
-        >
-          {busy ? "보내는 중…" : r.submit.replace("{amount}", formatKrw(quote.amount))}
-        </button>
-        <button type="button" onClick={onClose} className="h-12 rounded-xl bg-[#f5f5f4] px-4 text-[0.95rem] font-black">
-          {r.cancel}
-        </button>
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 min-[600px]:items-center min-[600px]:p-4"
+      onClick={() => !busy && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="daily-stop-title"
+        onClick={(event) => event.stopPropagation()}
+        className="max-h-[90dvh] w-full max-w-[460px] overflow-y-auto rounded-t-[28px] bg-white p-6 text-[#050505] [word-break:keep-all] min-[600px]:rounded-[28px]"
+      >
+        {!choice ? (
+          <>
+            <h2 id="daily-stop-title" className="text-[1.3rem] font-black">
+              {t.title}
+            </h2>
+            <p className="mt-1 text-[0.92rem] font-semibold text-[#64748b]">{t.detail}</p>
+            <div className="mt-5 flex flex-col gap-2">
+              {cancellable.map((sub) => (
+                <button key={sub.track} type="button" onClick={() => pick({ kind: "cancel", sub })} className={option}>
+                  <PauseCircleIcon className="mt-0.5 size-5 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 text-[1rem] font-black">
+                      {t.cancelTitle.replace("{track}", TRACK_TITLE[sub.track])}
+                      <span className="rounded-full bg-[#f47a4a] px-2 py-0.5 text-[0.72rem] font-black">{t.recommended}</span>
+                    </span>
+                    <span className="mt-1 block text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">
+                      {t.cancelDetail.replace("{date}", dateLabel(sub.paidUntil ?? new Date().toISOString()))}
+                    </span>
+                  </span>
+                </button>
+              ))}
+              {refundable.map((payment) => (
+                <button key={payment.orderNumber} type="button" onClick={() => pick({ kind: "refund", payment })} className={option}>
+                  <ReceiptRefundIcon className="mt-0.5 size-5 shrink-0 text-[#b91c1c]" />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 text-[1rem] font-black text-[#b91c1c]">
+                      {t.refundTitle}
+                      <span className="text-[0.92rem] text-[#050505]">₩{formatKrw(payment.quote!.amount)}</span>
+                    </span>
+                    <span className="mt-1 block text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">
+                      {t.refundDetail
+                        .replace("{product}", payment.productName.replace("영어 한잔 Daily ", ""))
+                        .replace("{track}", TRACK_TITLE[payment.track])}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={onClose} className="mt-4 h-12 w-full rounded-xl text-[0.95rem] font-bold text-[#64748b]">
+              {t.close}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => pick(null)}
+                aria-label={t.back}
+                className="-ml-2 flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-[#f5f5f5]"
+              >
+                <ArrowLeftIcon className="size-5" />
+              </button>
+              <h2 id="daily-stop-title" className="text-[1.2rem] font-black">
+                {choice.kind === "cancel" ? t.cancelTitle.replace("{track}", TRACK_TITLE[choice.sub.track]) : t.refundTitle}
+              </h2>
+            </div>
+
+            {choice.kind === "refund" && (
+              <div className="mt-3">
+                <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
+                <p className="text-[1.5rem] font-black">₩{formatKrw(choice.payment.quote!.amount)}</p>
+                <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
+                  {choice.payment.quote!.fullRefund ? r.full : r.partial.replace("{days}", String(choice.payment.quote!.daysRefunded))}
+                </p>
+                <ul className="m-0 mt-2 flex list-disc flex-col gap-1 pl-5 text-[0.84rem] font-semibold leading-relaxed text-[#57534e]">
+                  {(choice.payment.recurring ? [...r.effects, r.recurringEffect] : r.effects).map((effect) => (
+                    <li key={effect}>{effect}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <p className="mt-4 text-[0.9rem] font-bold text-[#334155]">{t.surveyPrompt}</p>
+            <div className="mt-3 flex flex-col gap-2">
+              {reasons.map((reason) => {
+                const active = selected.includes(reason);
+                return (
+                  <label
+                    key={reason}
+                    className={cn(
+                      "flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2.5 text-[0.92rem] font-bold transition-colors",
+                      active ? "bg-[#fff0e8] ring-2 ring-[#f47a4a]" : "bg-[#f5f5f4]",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setSelected((current) => (event.target.checked ? [...current, reason] : current.filter((item) => item !== reason)))
+                      }
+                      className="size-[18px] shrink-0 accent-[#f47a4a]"
+                    />
+                    {reason}
+                  </label>
+                );
+              })}
+            </div>
+            <textarea
+              value={other}
+              disabled={busy}
+              onChange={(event) => setOther(event.target.value.slice(0, 480))}
+              placeholder={t.anythingElse}
+              aria-label={t.anythingElse}
+              rows={3}
+              className="mt-3 w-full resize-none rounded-xl bg-[#f5f5f4] p-3.5 text-[0.92rem] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]"
+            />
+            {message && (
+              <p role="alert" className="mt-2 text-[0.86rem] font-semibold text-[#b91c1c]">
+                {message}
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={busy || !ready}
+              onClick={submit}
+              className={cn(
+                "mt-4 h-[54px] w-full rounded-2xl text-[1rem] font-black text-white transition-opacity disabled:opacity-35",
+                choice.kind === "refund" ? "bg-[#b91c1c]" : "bg-[#050505]",
+              )}
+            >
+              {busy
+                ? t.working
+                : choice.kind === "cancel"
+                  ? t.confirmCancel
+                  : t.confirmRefund.replace("{amount}", formatKrw(choice.payment.quote!.amount))}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => pick(null)}
+              className="mt-2 h-12 w-full rounded-xl text-[0.95rem] font-bold text-[#64748b]"
+            >
+              {t.back}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -357,8 +477,11 @@ function RefundForm({
 
 function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
   const p = copy.payments;
-  const [open, setOpen] = useState<string | null>(null);
+  const [stopOpen, setStopOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const cancellable = latestPerTrack(info.subscriptions).filter((s) => s.status === "active" && s.autoRenew);
+  const refundable = info.payments.filter((payment) => payment.quote && (!payment.refund || payment.refund.status === "rejected"));
+  const closeStop = useCallback(() => setStopOpen(false), []);
 
   return (
     <section className={card}>
@@ -374,7 +497,6 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
         <ul className="m-0 mt-3 flex list-none flex-col p-0">
           {info.payments.map((payment) => {
             const refund = payment.refund;
-            const canRequest = payment.quote && (!refund || refund.status === "rejected");
             return (
               <li key={payment.orderNumber} className="border-t border-[#f1f5f9] py-4 first:border-t-0">
                 <div className="flex items-start justify-between gap-3">
@@ -395,38 +517,35 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
                     {refund.status === "rejected" && refund.note ? ` · ${refund.note}` : ""}
                   </p>
                 )}
-                {canRequest && open !== payment.orderNumber && (
-                  <button
-                    type="button"
-                    disabled={!info.verified}
-                    onClick={() => {
-                      setNotice("");
-                      setOpen(payment.orderNumber);
-                    }}
-                    className="mt-2 text-[0.86rem] font-bold text-[#050505] underline underline-offset-2 disabled:text-[#94a3b8] disabled:no-underline"
-                  >
-                    {p.refundButton}
-                  </button>
-                )}
-                {open === payment.orderNumber && payment.quote && (
-                  <RefundForm
-                    payment={payment}
-                    onClose={() => setOpen(null)}
-                    onDone={async (result) => {
-                      setOpen(null);
-                      setNotice(
-                        result.status === "refunded"
-                          ? copy.refund.done.replace("{amount}", formatKrw(result.amount))
-                          : copy.refund.pending,
-                      );
-                      await onChanged();
-                    }}
-                  />
-                )}
               </li>
             );
           })}
         </ul>
+      )}
+      {(cancellable.length > 0 || refundable.length > 0) && (
+        <button
+          type="button"
+          disabled={!info.verified}
+          onClick={() => {
+            setNotice("");
+            setStopOpen(true);
+          }}
+          className="mt-2 h-12 w-full rounded-xl bg-[#f5f5f4] text-[0.95rem] font-black transition-opacity disabled:opacity-35"
+        >
+          {copy.stop.button}
+        </button>
+      )}
+      {stopOpen && (
+        <StopServiceSheet
+          cancellable={cancellable}
+          refundable={refundable}
+          onClose={closeStop}
+          onDone={async (message) => {
+            setStopOpen(false);
+            setNotice(message);
+            await onChanged();
+          }}
+        />
       )}
     </section>
   );
