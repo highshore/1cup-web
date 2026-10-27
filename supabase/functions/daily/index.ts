@@ -190,9 +190,9 @@ async function handleStartTrial(
   const time = typeof body.time === "string" ? body.time : "";
   const match = /^([01][0-9]|2[0-2]):(00|30)$/.exec(time);
   if (!match || time < "06:00" || time > "22:00") throw new StartError("invalid-time");
-  // What the lesson messages call them; the signup page fills it from the Kakao nickname.
-  const name = typeof body.name === "string" ? body.name.trim().slice(0, 20) : "";
-  if (!name) throw new StartError("name-required");
+  // What the lesson messages call them: the Kakao nickname saved at sign-in. A name in
+  // the body (older clients) still overrides it; with neither, messages say "고객 님".
+  const name = typeof body.name === "string" ? body.name.trim().slice(0, 20) || null : null;
 
   // The three required agreements, checked here as well as in the dialog: the record
   // this writes is the proof of consent, so it must not depend on the client alone.
