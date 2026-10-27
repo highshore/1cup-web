@@ -2,6 +2,7 @@
 // credential (36 random hex characters per delivery), so these pages need no login.
 import { admin } from "../../../supabase/server";
 import type { DailyField, DailyTrack } from "../constants";
+import { customerForSession } from "./session";
 
 export interface DailyLessonContent {
   id: string;
@@ -114,4 +115,23 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
     deliveryTime: sub.delivery_time,
     lessons,
   };
+}
+
+export type DeadLinkVisitor = "subscriber" | "not-subscriber" | "unknown";
+
+/**
+ * Who opened a lesson or review link that matches no message, so the page can say where
+ * to go: a paying subscriber finds their lessons under 내 계정, anyone else subscribes.
+ * Without a Daily session in this browser it cannot tell ("unknown").
+ */
+export async function deadLinkVisitor(sessionToken: string | undefined): Promise<DeadLinkVisitor> {
+  const customer = await customerForSession(sessionToken);
+  if (!customer) return "unknown";
+  const { data } = await admin()
+    .from("daily_subscriptions")
+    .select("id")
+    .eq("customer_id", customer.id)
+    .eq("status", "active")
+    .limit(1);
+  return (data ?? []).length > 0 ? "subscriber" : "not-subscriber";
 }

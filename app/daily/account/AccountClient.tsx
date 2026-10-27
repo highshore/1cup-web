@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
+import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import {
   DAILY_GUIDE_PATH,
@@ -704,7 +705,7 @@ export default function AccountClient() {
           </p>
         )}
 
-        {info === undefined && !error && <div className="h-40 animate-pulse rounded-[24px] bg-white/70" />}
+        {info === undefined && !error && <DailyLoading label="계정 정보를 불러오고 있어요" />}
 
         {info === null && (
           <section className={card}>

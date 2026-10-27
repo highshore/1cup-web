@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
 import { cn, displayClass, Emoji, Pill } from "../../lib/features/daily/components/DailyUI";
+import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_ACCOUNT_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
@@ -52,7 +53,7 @@ export default function BookClient() {
           <p className="mt-2 text-[1rem] font-semibold text-[#57534e]">{copy.sub}</p>
         </div>
 
-        {book === undefined && <div className="h-40 animate-pulse rounded-[24px] bg-white/70" />}
+        {book === undefined && <DailyLoading label="학습 기록을 불러오고 있어요" />}
 
         {book === null && (
           <section className="rounded-[24px] bg-white p-5 min-[900px]:p-6">
