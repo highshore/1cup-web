@@ -131,8 +131,9 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
     phone: `${customer.phone.slice(0, 3)}-****-${customer.phone.slice(-4)}`,
     verified: customer.verified,
     name: me?.name ?? null,
-    workplace: me?.workplace ?? null,
-    jobCategory: me?.job_category ?? null,
+    // Not shown to a message-link session, which may be someone the link was forwarded to.
+    workplace: customer.verified ? (me?.workplace ?? null) : null,
+    jobCategory: customer.verified ? (me?.job_category ?? null) : null,
     marketing: (subs ?? []).some((s) => s.marketing_consent_at),
     subscriptions: (subs ?? []).map((s) => ({
       track: s.track,

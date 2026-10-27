@@ -107,10 +107,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
     }
 
     if (action === "review-status" || action === "review-submit") {
-      // Link sessions may write reviews: every review waits for the founder's approval.
+      // Link sessions may read the review status; sending one needs Kakao Login.
       const customer = await customerForSession(current);
       if (!customer) return NextResponse.json({ success: false, errorCode: "login-required" }, { status: 401 });
       if (action === "review-status") return NextResponse.json({ success: true, ...(await reviewStatus(customer)) });
+      // A review records promotional consent, sets 소속·직종 and earns days: like other
+      // consent and account changes, not from a forwardable message link.
+      if (!customer.verified) {
+        return NextResponse.json({ success: false, errorCode: "verify-required", message: "카카오로 한 번 확인한 뒤에 보낼 수 있어요." }, { status: 403 });
+      }
       const reward = await submitReview(customer, {
         rating: Number(body.rating),
         body: String(body.body ?? ""),
