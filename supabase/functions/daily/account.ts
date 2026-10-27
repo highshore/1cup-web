@@ -125,12 +125,14 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
       .map((o) => o.subscription_id),
   );
   const now = Date.now();
-  const { data: me } = await db.from("daily_customers").select("name").eq("id", customer.id).maybeSingle();
+  const { data: me } = await db.from("daily_customers").select("name, workplace, job_category").eq("id", customer.id).maybeSingle();
 
   return {
     phone: `${customer.phone.slice(0, 3)}-****-${customer.phone.slice(-4)}`,
     verified: customer.verified,
     name: me?.name ?? null,
+    workplace: me?.workplace ?? null,
+    jobCategory: me?.job_category ?? null,
     marketing: (subs ?? []).some((s) => s.marketing_consent_at),
     subscriptions: (subs ?? []).map((s) => ({
       track: s.track,
@@ -157,6 +159,17 @@ export async function updateSettings(db: SupabaseClient, customer: PaymentCustom
   // The lesson messages need something to call them by.
   if (name !== null && name.trim() === "") throw new PaymentError("카톡에서 부를 이름을 적어 주세요.", "name-required");
   const marketing = typeof body.marketing === "boolean" ? body.marketing : null;
+
+  // 소속 and 직종 (내 정보). An empty string clears one.
+  const profile: Record<string, string | null> = {};
+  if (typeof body.workplace === "string") profile.workplace = body.workplace.trim().slice(0, 60) || null;
+  if (typeof body.jobCategory === "string") profile.job_category = body.jobCategory.trim().slice(0, 40) || null;
+  if (Object.keys(profile).length > 0) {
+    const { error } = await db.from("daily_customers").update(profile).eq("id", customer.id);
+    if (error) throw new PaymentError("저장하지 못했어요. 다시 시도해 주세요.", "settings-failed", 500);
+    if (time === null && name === null && marketing === null) return { success: true };
+  }
+
   const { error } = await db.rpc("daily_update_settings", {
     p_customer_id: customer.id,
     p_track: typeof body.track === "string" ? body.track : null,

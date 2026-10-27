@@ -13,7 +13,7 @@
 // are never padded.
 import crypto from "crypto";
 import { admin } from "../../../supabase/server";
-import type { DailyTrack } from "../constants";
+import { DAILY_INVITE_REWARD_DAYS, type DailyTrack } from "../constants";
 import type { DailySessionCustomer } from "./session";
 
 /** "같이 푼 퀴즈" and "같은 표현을 받은 사람" appear only from this many people. */
@@ -377,8 +377,8 @@ export async function inviteInfo(viewer: DailySessionCustomer, create = false) {
   return {
     code,
     joined: invites?.length ?? 0,
-    rewardedDays: (invites ?? []).filter((i) => i.inviter_rewarded_at).length * 7,
-    pendingDays: (invites ?? []).filter((i) => !i.inviter_rewarded_at).length * 7,
+    rewardedDays: (invites ?? []).filter((i) => i.inviter_rewarded_at).length * DAILY_INVITE_REWARD_DAYS,
+    pendingDays: (invites ?? []).filter((i) => !i.inviter_rewarded_at).length * DAILY_INVITE_REWARD_DAYS,
   };
 }
 

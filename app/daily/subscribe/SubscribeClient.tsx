@@ -347,6 +347,7 @@ export default function SubscribeClient() {
               </button>
               )}
               <p className="mt-2 text-center text-[0.8rem] font-semibold text-[#64748b]">{pricing.note.split(" 무료 체험")[0]}</p>
+              <p className="mt-1 text-center text-[0.8rem] font-semibold text-[#64748b]">{dailyCopy.account.payments.billingName}</p>
             </div>
           </>
         )}

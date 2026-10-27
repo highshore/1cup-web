@@ -10,6 +10,7 @@ import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import {
   DAILY_GUIDE_PATH,
+  DAILY_JOB_CATEGORIES,
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_TERMS_PATH,
   DAILY_TRACK_LABEL,
@@ -51,6 +52,8 @@ interface AccountInfo {
   phone: string;
   verified: boolean;
   name: string | null;
+  workplace: string | null;
+  jobCategory: string | null;
   marketing: boolean;
   subscriptions: Subscription[];
   payments: Payment[];
@@ -97,7 +100,12 @@ function latestPerTrack(subscriptions: Subscription[]) {
   return subscriptions.filter((s) => (seen.has(s.track) ? false : (seen.add(s.track), true)));
 }
 
+// 내 정보: the phone number and name come from Kakao Login and are shown as they are; 소속
+// and 직종 are the reader's to fill in (the review page asks for them too).
 function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
+  const pr = copy.profile;
+  const [workplace, setWorkplace] = useState(info.workplace ?? "");
+  const [jobCategory, setJobCategory] = useState(info.jobCategory ?? "");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -124,12 +132,57 @@ function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Prom
   return (
     <section className={card}>
       <h2 className={sectionTitle}>{copy.profile.title}</h2>
-      <dl className="m-0 mt-4 flex flex-col gap-4">
+      <dl className="m-0 mt-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-[0.9rem] font-bold text-[#64748b]">{copy.profile.phone}</dt>
+          <dt className="text-[0.9rem] font-bold text-[#64748b]">{pr.phone}</dt>
           <dd className="m-0 text-[1rem] font-black">{info.phone}</dd>
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-[0.9rem] font-bold text-[#64748b]">{pr.name}</dt>
+          <dd className={cn("m-0 text-[1rem] font-black", !info.name && "text-[#94a3b8]")}>{info.name ?? pr.noName}</dd>
+        </div>
       </dl>
+      <p className="mt-2 text-[0.8rem] font-semibold leading-relaxed text-[#94a3b8]">{pr.fixed}</p>
+
+      <div className="mt-4 flex flex-col gap-2">
+        <label className="flex items-center gap-2">
+          <span className="w-[3.5rem] shrink-0 text-[0.9rem] font-bold text-[#64748b]">{pr.workplace}</span>
+          <input
+            value={workplace}
+            disabled={!info.verified || busy}
+            onChange={(event) => setWorkplace(event.target.value.slice(0, 60))}
+            placeholder={pr.workplacePlaceholder}
+            className="h-12 min-w-0 flex-1 rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60"
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="w-[3.5rem] shrink-0 text-[0.9rem] font-bold text-[#64748b]">{pr.jobCategory}</span>
+          <select
+            value={jobCategory}
+            disabled={!info.verified || busy}
+            onChange={(event) => setJobCategory(event.target.value)}
+            className={cn(
+              "h-12 min-w-0 flex-1 cursor-pointer rounded-xl bg-[#f5f5f4] px-3 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505] disabled:opacity-60",
+              jobCategory === "" && "text-[#94a3b8]",
+            )}
+          >
+            <option value="">{pr.jobPick}</option>
+            {DAILY_JOB_CATEGORIES.map((item) => (
+              <option key={item} value={item} className="text-[#050505]">
+                {item}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={!info.verified || busy || (workplace.trim() === (info.workplace ?? "") && jobCategory === (info.jobCategory ?? ""))}
+          onClick={() => save({ workplace, jobCategory })}
+          className={cn(smallButton, "h-12 w-full bg-[#050505] text-white")}
+        >
+          {pr.save}
+        </button>
+      </div>
       <label className="mt-4 flex cursor-pointer items-center gap-3 text-[0.95rem] font-bold">
         <input
           type="checkbox"
@@ -317,8 +370,6 @@ function StopServiceSheet({
     }
   };
 
-  const option = "flex w-full items-start gap-3 rounded-2xl bg-[#f5f5f4] p-4 text-left transition-colors hover:bg-[#eeeceb]";
-
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 min-[600px]:items-center min-[600px]:p-4"
@@ -339,7 +390,12 @@ function StopServiceSheet({
             <p className="mt-1 text-[0.92rem] font-semibold text-[#64748b]">{t.detail}</p>
             <div className="mt-5 flex flex-col gap-2">
               {cancellable.map((sub) => (
-                <button key={sub.track} type="button" onClick={() => pick({ kind: "cancel", sub })} className={option}>
+                <button
+                  key={sub.track}
+                  type="button"
+                  onClick={() => pick({ kind: "cancel", sub })}
+                  className="flex w-full items-start gap-3 rounded-2xl bg-[#fff0e8] p-4 text-left ring-2 ring-[#f47a4a] transition-colors hover:bg-[#ffe6d9]"
+                >
                   <PauseCircleIcon className="mt-0.5 size-5 shrink-0" />
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-2 text-[1rem] font-black">
@@ -353,14 +409,18 @@ function StopServiceSheet({
                 </button>
               ))}
               {refundable.map((payment) => (
-                <button key={payment.orderNumber} type="button" onClick={() => pick({ kind: "refund", payment })} className={option}>
-                  <ReceiptRefundIcon className="mt-0.5 size-5 shrink-0 text-[#b91c1c]" />
+                <button
+                  key={payment.orderNumber}
+                  type="button"
+                  onClick={() => pick({ kind: "refund", payment })}
+                  className="flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left text-[#475569] transition-colors hover:bg-[#f5f5f4]"
+                >
+                  <ReceiptRefundIcon className="mt-0.5 size-5 shrink-0 text-[#94a3b8]" />
                   <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-2 text-[1rem] font-black text-[#b91c1c]">
-                      {t.refundTitle}
-                      <span className="text-[0.92rem] text-[#050505]">₩{formatKrw(payment.quote!.amount)}</span>
+                    <span className="block text-[0.92rem] font-bold">
+                      {t.refundTitle} · ₩{formatKrw(payment.quote!.amount)}
                     </span>
-                    <span className="mt-1 block text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">
+                    <span className="mt-0.5 block text-[0.82rem] font-semibold leading-relaxed text-[#94a3b8]">
                       {t.refundDetail
                         .replace("{product}", payment.productName.replace("영어 한잔 Daily ", ""))
                         .replace("{track}", TRACK_TITLE[payment.track])}
@@ -450,8 +510,9 @@ function StopServiceSheet({
               disabled={busy || !ready}
               onClick={submit}
               className={cn(
-                "mt-4 h-[54px] w-full rounded-2xl text-[1rem] font-black text-white transition-opacity disabled:opacity-35",
-                choice.kind === "refund" ? "bg-[#b91c1c]" : "bg-[#050505]",
+                "mt-4 h-[54px] w-full rounded-2xl text-[1rem] font-black transition-opacity disabled:opacity-35",
+                // A refund is offered, not pushed: its button stays plain.
+                choice.kind === "refund" ? "bg-[#e7e5e4] text-[#050505]" : "bg-[#050505] text-white",
               )}
             >
               {busy
@@ -486,6 +547,9 @@ function Payments({ info, onChanged }: { info: AccountInfo; onChanged: () => Pro
   return (
     <section className={card}>
       <h2 className={sectionTitle}>{p.title}</h2>
+      {info.payments.length > 0 && (
+        <p className="mt-1 text-center text-[0.82rem] font-semibold text-[#64748b] min-[900px]:text-left">{p.billingName}</p>
+      )}
       {notice && (
         <p role="status" className="mt-3 rounded-2xl bg-[#fff8dc] px-4 py-3 text-[0.9rem] font-bold">
           {notice}
@@ -850,7 +914,7 @@ export default function AccountClient() {
             </Link>
             <InviteCard />
             <Payments info={info} onChanged={load} />
-            <Profile key={String(info.marketing)} info={info} onChanged={load} />
+            <Profile key={`${info.marketing}-${info.workplace}-${info.jobCategory}`} info={info} onChanged={load} />
             <DeleteAccount info={info} />
           </>
         )}

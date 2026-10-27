@@ -582,6 +582,7 @@ function ReviewsSection({ reviews }: { reviews: PublicDailyReview[] }) {
               ))}
             </p>
             <p className="mt-2 text-[0.98rem] font-semibold leading-relaxed">{review.body}</p>
+            {review.rewarded && <p className="mt-2 text-[0.75rem] font-semibold text-[#64748b]">{copy.rewarded}</p>}
           </li>
         ))}
       </ul>

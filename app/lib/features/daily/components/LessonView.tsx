@@ -6,11 +6,11 @@ import { signInWithLink } from "../api";
 import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick } from "./Community";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
-import { DAILY_FIELD_LABEL, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
+import { DAILY_FIELD_LABEL, DAILY_REVIEW_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
+import { dailyCopy } from "../copy";
 import { useSpeech } from "../hooks";
 import { dailyDisplay } from "../fonts";
 import { cn, displayClass, Emoji, Pill, Waveform } from "./DailyUI";
-import ReviewCard from "./ReviewCard";
 import "../daily.css";
 
 const TRACK_LABEL = DAILY_TRACK_LABEL;
@@ -317,7 +317,19 @@ export function LessonPage({
       <LessonPageBody lesson={lesson} token={linkToken} />
       <div className="mx-auto mt-4 flex w-full max-w-[720px] flex-col gap-4">
 
-        <ReviewCard />
+        {/* The review form lives on its own page (/daily/review); this only points there. */}
+        <Link href={DAILY_REVIEW_PATH} className="flex items-center gap-4 rounded-[28px] bg-[#f5f5f4] p-6 text-left">
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2 text-[1.15rem] font-black">
+              <Emoji className="text-[1.5rem]">💬</Emoji>
+              {dailyCopy.reviewPage.cta.title}
+            </span>
+            <span className="mt-1 block text-[0.95rem] font-semibold text-[#475569]">{dailyCopy.reviewPage.cta.detail}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-[#050505] px-4 py-2.5 text-[0.9rem] font-black text-white">
+            {dailyCopy.reviewPage.cta.button}
+          </span>
+        </Link>
 
         {isTrial && (
           <section className="rounded-[28px] bg-[#050505] p-6 text-white">
