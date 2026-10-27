@@ -43,12 +43,12 @@ export const dailyCopy = {
     accent: "머리가 하얘지나요?",
     items: [
       "할 말은 있는데 \"I think...\"에서 멈춰요",
-      "통화에서 맞장구 한마디가 안 나와요",
+      "일상 대화에서 맞장구 한마디가 안 나와요",
       "외국계 공고, 영어 면접 때문에 망설여요",
     ],
     goalTitle: "이런 순간을 위해\n만들었어요",
     goalAccent: "만들었어요",
-    goals: ["회의에서 한 문장으로 말하기 💬", "통화에서 바로 받아치기 📞", "동료 표현 바로 알아듣기 👂"],
+    goals: ["회의에서 한 문장으로 말하기 💬", "일상 대화에서 바로 받아치기 ☕", "동료 표현 바로 알아듣기 👂"],
   },
   benefits: {
     title: "카톡으로 매일 받는\n현장 비즈니스 영어",
@@ -65,25 +65,10 @@ export const dailyCopy = {
     accent: "도착했어요!",
     sub: "알림을 누르면 이런 레슨 페이지가 열려요",
     callouts: { audio: "발음 듣기", nuance: "뜻·뉘앙스", examples: "예문 3개", quiz: "1분 퀴즈" },
-    // The lesson page as it opens inside KakaoTalk's in-app browser, top section first.
+    // KakaoTalk's in-app browser bar over the lesson page (the page is LessonBody itself).
     screen: {
       pageTitle: "오늘의 레슨 | One Cup Daily",
       url: "1cupenglish.com",
-      track: "초중급",
-      date: "10월 27일 화요일",
-      label: "오늘의 표현",
-      expression: "circle back",
-      meaning: "(논의를) 나중에 다시 이어가다",
-      listen: "발음 듣기",
-      pronunciation: "/ˈsɜːrkəl bæk/ · 강세: circle BACK",
-      nuanceTitle: "이럴 때 써요",
-      nuance:
-        "결론을 지금 내지 않고 다음에 다시 다루자고 할 때. 'talk later'보다 업무적이고 정중해요.",
-      examplesTitle: "실제 사용 예시",
-      examples: [
-        { en: "Let's circle back on pricing after the launch.", ko: "가격 얘기는 출시 후에 다시 하죠." },
-        { en: "Can we circle back to this on Friday?", ko: "이건 금요일에 다시 얘기할 수 있을까요?" },
-      ],
     },
   },
   expressions: {
@@ -111,7 +96,7 @@ export const dailyCopy = {
     accent: "바로 써요",
     items: [
       { icon: "meeting", title: "회의", detail: "의견을 한 문장으로" },
-      { icon: "call", title: "통화", detail: "바로 받아치는 한마디" },
+      { icon: "daily", title: "일상", detail: "바로 받아치는 한마디" },
       { icon: "chat", title: "1:1 미팅", detail: "부드럽게 피드백" },
       { icon: "standup", title: "스탠드업", detail: "진행 상황을 짧게" },
     ],
@@ -212,7 +197,7 @@ export const dailyCopy = {
         emoji: "🌱",
         emojiLabel: "새싹",
         title: "초중급",
-        tagline: "회의·통화에서 매일 쓰는 기본 표현",
+        tagline: "회의·일상에서 매일 쓰는 기본 표현",
         examples: [
           { en: "loop in", ko: "(논의에) 함께하게 하다" },
           { en: "on the same page", ko: "같은 내용으로 이해하고 있는" },
@@ -246,17 +231,18 @@ export const dailyCopy = {
     ],
   },
   // Right below the founder's background. The interpreter's own word list (Google Sheet,
-  // word_list tab, ~7,000 entries): nobody gets the whole sheet; subscribers get its
-  // entries one at a time, as lessons. The rows shown are real rows, word for word.
+  // word_list tab) is the source lessons are picked from, not something that gets
+  // published: never promise the whole list or its size. The rows shown are real rows,
+  // word for word.
   wordbook: {
-    lead: "수년간 대기업, 실리콘밸리 기업, 연합사, 외국계에 근무하며 모아놓은",
-    title: "통역사의 단어장\n완전 공개",
-    accent: "완전 공개",
-    sub: "통역 현장에서 한 줄씩 적어 온 7,000개가 넘는 표현이에요. 구독하면 이 단어장을 매일 한 표현씩, 레슨으로 풀어 공개해요.",
+    lead: "수년간 주요 기업 통번역사로 근무하며 모아놓은",
+    title: "통역사의 단어장\n하루에 하나씩 카톡으로 전달",
+    accent: "하루에 하나씩",
+    sub: "통역 현장에서 한 줄씩 적어 온 단어장에서, 그날 바로 쓸 만한 표현을 하나 골라 레슨으로 풀어 보내드려요.",
     points: [
-      { emoji: "📒", label: "공책", title: "7,000개+ 표현", detail: "회의·보고·협상에서 실제로 들은 표현" },
+      { emoji: "📒", label: "공책", title: "현장에서 모은 표현", detail: "회의·보고·협상에서 실제로 들은 표현" },
       { emoji: "🔎", label: "돋보기", title: "뜻·비슷한 표현·예문", detail: "한 줄에 한국어 뜻과 쓰임까지" },
-      { emoji: "🔓", label: "열린 자물쇠", title: "하루 한 표현씩 공개", detail: "구독자에게만 레슨으로 열려요" },
+      { emoji: "💬", label: "말풍선", title: "하루에 하나씩", detail: "고른 표현 하나를 레슨으로 카톡에" },
     ],
     sheet: {
       file: "영단어 암기 리스트",
@@ -271,8 +257,7 @@ export const dailyCopy = {
         { n: 7007, en: "yield a big win", ko: "큰 성과를 거두다", syn: "triumph, secure a major victory, achieve a significant success", ex: "The underdog's determination and hard work yielded a big win for the team." },
         { n: 7020, en: "YTD", ko: "연간누계 (year to date)", syn: "year-to-date, current year, cumulative year", ex: "YTD stands for \"Year to Date\" and is often used in financial reports to refer to the period starting from the beginning of the year until the present time." },
       ],
-      locked: "나머지 7,000개는 구독자에게 매일 하나씩 공개돼요",
-      count: "7,024행",
+      locked: "매일 이 단어장에서 하나를 골라 레슨으로 보내드려요",
     },
   },
   pricing: {
@@ -357,7 +342,7 @@ export const dailyCopy = {
       title: "무료 체험 신청하기",
       sub: "카드 등록 없이 레슨 1회를 먼저 받아봐요. 1분이면 끝나요.",
       steps: [
-        { title: "레벨 고르기", detail: "회의·통화에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
+        { title: "레벨 고르기", detail: "회의·일상에서 매일 쓰는 기본 표현의 초중급, 보고·협상에서 쓰는 한 단계 위 표현의 고급 중 하나를 골라요." },
         { title: "받는 시간 고르기", detail: "오전 6시부터 밤 10시까지 30분 단위로 골라요. 출근길에 읽을 수 있는 시간이 좋아요." },
         { title: "카카오로 시작하기", detail: "카카오계정으로 바로 들어와요. 레슨은 카카오계정의 휴대폰 번호로 알림톡이 가요. 번호를 입력하거나 회원가입할 필요는 없어요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
@@ -385,7 +370,7 @@ export const dailyCopy = {
       parts: [
         { emoji: "🔊", label: "스피커", title: "오늘의 표현과 발음", detail: "'발음 듣기'를 누르면 또박또박 조금 천천히 읽어줘요. 발음과 강세 위치도 함께 적혀 있어요." },
         { emoji: "💡", label: "전구", title: "이럴 때 써요", detail: "어떤 상황에서, 어떤 뉘앙스로 쓰는지 통역사가 짚어줘요. 비슷한 표현도 함께 있어요." },
-        { emoji: "🗣️", label: "말하는 얼굴", title: "실제 사용 예시", detail: "회의·통화·슬랙에서 실제로 쓰는 문장이에요. 문장마다 듣기 버튼이 있어요." },
+        { emoji: "🗣️", label: "말하는 얼굴", title: "실제 사용 예시", detail: "회의·일상·슬랙에서 실제로 쓰는 문장이에요. 문장마다 듣기 버튼이 있어요." },
         { emoji: "💬", label: "말풍선", title: "대화로 보기", detail: "짧은 대화 속에서 표현이 어떻게 오가는지 보고, 전체를 이어서 들을 수 있어요." },
         { emoji: "⚡", label: "번개", title: "1분 퀴즈", detail: "방금 배운 표현으로 문제를 풀면 정답과 이유를 바로 알려줘요. 같이 푼 사람이 10명을 넘으면 정답률과 가장 헷갈린 보기도 보여줘요." },
         { emoji: "✍️", label: "글 쓰는 손", title: "함께 쓰는 문장", detail: "오늘 표현으로 한 문장을 써서 올리고, 같은 레슨을 받은 사람들의 문장에 ☕를 보내요. 이름은 카카오 닉네임 일부를 가려서 보여줘요(예: 김*수)." },

@@ -115,6 +115,26 @@
   animation: daily-marker 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* The landing page's lesson phone reads down the page and back, like a thumb scrolling.
+   --daily-read is how far the page overflows the screen, measured in Phone.tsx. */
+@keyframes daily-read {
+  0%,
+  12% {
+    transform: translateY(0);
+  }
+  78%,
+  90% {
+    transform: translateY(calc(-1 * var(--daily-read)));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.daily-read {
+  animation: daily-read 18s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
 .daily-tap {
   animation: daily-tap 800ms ease-out both;
 }
@@ -165,6 +185,7 @@
   .daily-arrive,
   .daily-steam,
   .daily-marker[data-seen="true"],
+  .daily-read,
   .daily-wave span {
     animation: none;
   }

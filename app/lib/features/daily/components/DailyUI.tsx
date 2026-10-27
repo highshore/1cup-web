@@ -175,3 +175,19 @@ export function TrialButton({
     </button>
   );
 }
+
+const WAVE = [5, 9, 6, 12, 8, 14, 7, 11, 5, 9, 13, 6, 10, 7, 12, 5, 8];
+
+export function Waveform({ className }: { className?: string }) {
+  return (
+    <span aria-hidden className={cn("daily-wave flex items-center gap-[2px]", className)}>
+      {WAVE.map((height, index) => (
+        <span
+          key={index}
+          className="w-[2px] rounded-full bg-[#f47a4a]"
+          style={{ height: `${height}px`, animationDelay: `${(index % 6) * 120}ms` }}
+        />
+      ))}
+    </span>
+  );
+}
