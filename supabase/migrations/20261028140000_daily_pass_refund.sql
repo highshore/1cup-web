@@ -207,7 +207,9 @@ begin
    where extract(isodow from g.day) <> 7
      and ((g.day::date + v_order.delivery_time) at time zone 'Asia/Seoul') >= v_start
      and ((g.day::date + v_order.delivery_time) at time zone 'Asia/Seoul') < v_end;
-  v_used := least(v_used, v_total);
+  -- A delivery-time change can move a send outside the counted slots; never let the
+  -- sent messages exceed the scheduled ones (or divide by zero).
+  v_total := greatest(v_total, v_used);
 
   v_unused := round(v_order.amount::numeric * (v_total - v_used) / v_total)::integer;
   v_penalty := case when v_window then 0 else round(v_unused * 0.1)::integer end;
