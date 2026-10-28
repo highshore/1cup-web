@@ -1,10 +1,10 @@
 # OpenAI Ads readiness: One Cup Daily
 
-Status: implementation draft only. Do not publish the campaign or deploy this change until all preflight checks pass.
+Status: implementation draft. Advertiser billing, logo, identity checks, and account review are complete. No conversion source or API key exists yet. Do not merge or deploy the coordinated Next.js / Supabase changes until all preflight checks pass.
 
 ## Live advertiser account blockers observed on 2026-10-29 (Asia/Seoul)
-- Advertiser: Native PT, KRW; account rejected with reason "missing_favicon".
-- Account logo not submitted. Card billing setup required. Identity check not required.
+- Advertiser: Native PT, KRW; account review approved as of latest 2026-10-29 connector read.
+- Account logo uploaded and billing setup complete. Identity verification completed.
 - No conversion sources, standard event settings, or campaigns existed at inspection.
 - Promotion qualifying: pay KRW 300,000 in eligible ad charges by 2026-11-12 02:01 KST to earn up to KRW 300,000 credit, subject to exact promotion terms. Credit is not currently spendable.
 - A campaign budget can spend real card funds; do not activate without approval of a fixed KRW budget and campaign dates.
@@ -17,16 +17,14 @@ Status: implementation draft only. Do not publish the campaign or deploy this ch
 - Daily privacy copy explains the optional disclosure. Consent terms were advanced to version 2026-10-29.2 in three locations (Daily frontend constants, Edge index, Edge payments).
 
 ## Required account setup
-1. Select and approve the correct public square brand logo for Native PT, upload it, apply as account logo, and obtain account review approval. A public logo candidate is https://1cupenglish.com/images/logos/1cup_logo.jpg, not yet approved.
-2. Complete billing card setup in Ads Manager; do not share card details here.
-3. In Ads Manager -> Conversions, create a website Pixel with a standard order_created event goal and a Conversions API key.
-4. Add Vercel production env NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID with the **Pixel ID** (not the API key).
-5. Add Supabase daily Edge secrets OPENAI_ADS_PIXEL_ID and OPENAI_ADS_CAPI_KEY (not a generic OPENAI_API_KEY). Keep the CAPI key server-only. Do not paste keys into GitHub, PRs, logs, or chat.
-6. Review privacy-law requirements (including domestic and cross-border advertisement measurement notices/consent) before activation; ensure tracking consent is effective.
-7. Inspect CSP and permit https://bzrcdn.openai.com (script/connect) and https://bzr.openai.com (connect/img) if CSP blocks them.
+1. In Ads Manager -> Conversions, create a website data source / Pixel named **One Cup Daily**, for the 1cupenglish.com origin. Landing page and instrumentation scope is **/daily and its subroutes only**; /daily is a URL path, not a separate registrable domain. Set standard order_created as the primary goal and generate a Conversions API key. This action is currently unsupported by the ChatGPT Ads Manager connector, so it must be completed within Ads Manager or through an authorized advertiser Ads API.
+2. Add Vercel production env NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID with the **Pixel ID** (not the API key).
+3. Add Supabase daily Edge secrets OPENAI_ADS_PIXEL_ID and OPENAI_ADS_CAPI_KEY (not a generic OPENAI_API_KEY). Keep the CAPI key server-only. Do not paste keys into GitHub, PRs, logs, or chat.
+4. Review privacy-law requirements (including domestic and cross-border advertisement measurement notices/consent) before activation; ensure tracking consent is effective.
+5. Inspect CSP and permit https://bzrcdn.openai.com (script/connect) and https://bzr.openai.com (connect/img) if CSP blocks them.
 
 ## Release and validation order
-1. Review PR and run npm run build. Do not merge if it fails.
+1. Review PR and verify GitHub Actions Next.js build and Daily Edge type-check. Do not merge if either fails. Vercel intentionally ignores non-production branch builds for this project.
 2. Ensure Ads Manager pixel source and key exist, and env vars are set.
 3. Deploy the updated Supabase daily Edge Function and Next.js production build in one coordinated release because the Daily terms version must match.
 4. Verify GET /daily returns 200, index/follow metadata, public sitemap contains /daily; confirm there is no added x-robots noindex header.
@@ -37,7 +35,7 @@ Status: implementation draft only. Do not publish the campaign or deploy this ch
 9. Create one KRW campaign with purchase objective, two focused ad groups (business English at work; daily habit), three approved chat-card variants, explicit total campaign budget and end date. Activate only with specific approval for billable spend.
 
 ## Limitations
-- Without NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID the client component is inert.
+- Without NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID the client component is inert. The Pixel component is mounted only on /daily routes, and disables measurement on unmount when leaving Daily; it is never imported by the main 1 Cup homepage, meetup, or blog routes.
 - Without Supabase OPENAI_ADS_PIXEL_ID or OPENAI_ADS_CAPI_KEY the backend does not send events.
 - Backend events are sent inline with a 5-second timeout; failures are only logged, not queued for retry. Add a durable event outbox before material scaling if needed.
 - The server sends only first purchases whose final checkout verification carries the visitor's explicit ad-measurement consent. Renewals remain available to count internally for LTV, not primary ad acquisition.
