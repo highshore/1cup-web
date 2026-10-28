@@ -34,7 +34,7 @@ export default async function DailyAdminLessonsPage({ searchParams }: { searchPa
       </Link>
       <h1 className="m-0 mt-4 text-[28px] font-black">콘텐츠</h1>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
-        레벨별 레슨 전체예요. 초안도 보여요. 발송 준비가 된 레슨만 그날 카톡으로 나가요.
+        레벨별 레슨 전체예요. 승인한 레슨만 그날 카톡으로 나가고, 초안은 레슨을 열어 승인해요.
       </p>
 
       <div className="mt-5 flex gap-1.5">
@@ -47,6 +47,8 @@ export default async function DailyAdminLessonsPage({ searchParams }: { searchPa
             }`}
           >
             {DAILY_TRACK_LABEL[t]} {lessons.filter((l) => l.track === t).length}
+            {lessons.some((l) => l.track === t && l.status === "draft") &&
+              ` · 초안 ${lessons.filter((l) => l.track === t && l.status === "draft").length}`}
           </Link>
         ))}
       </div>
@@ -70,7 +72,7 @@ export default async function DailyAdminLessonsPage({ searchParams }: { searchPa
                         l.status === "ready" ? "bg-[#f47a4a] text-[#050505]" : "bg-[#f5f5f4] text-[#64748b]"
                       }`}
                     >
-                      {l.status === "ready" ? "발송 준비" : "초안"}
+                      {l.status === "ready" ? "승인됨" : "초안"}
                     </span>
                     {l.field && <span>{DAILY_FIELD_LABEL[l.field]}</span>}
                   </span>
