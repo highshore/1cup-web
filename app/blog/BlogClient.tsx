@@ -309,6 +309,8 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
     } catch (err) {
       console.error("Failed to save blog post:", err);
       setError("블로그 포스트 저장에 실패했습니다.");
+      // Let the editor show the failure without closing or losing user input.
+      throw err;
     } finally {
       setLoading(false);
     }
