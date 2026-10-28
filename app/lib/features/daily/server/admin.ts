@@ -1,7 +1,8 @@
 // Read-only data for the Daily admin (/daily/admin). Server-only: the service-role
 // client reads every customer, so callers must have passed requireAdmin() first.
 import { admin } from "../../../supabase/server";
-import type { DailyTrack } from "../constants";
+import type { DailyField, DailyTrack } from "../constants";
+import { LESSON_COLUMNS, toContent, type DailyLessonContent, type LessonRow } from "./lessons";
 
 export interface DailyAdminSubscription {
   track: DailyTrack;
@@ -134,4 +135,47 @@ export async function loadDailyOverview(): Promise<DailyAdminOverview> {
     openRefunds: openRefunds.count ?? 0,
     revenue30d: sum(orders.data) - sum(refunds.data),
   };
+}
+
+// ------------------------------------------------------------------ lessons (콘텐츠)
+
+export interface DailyAdminLessonRow {
+  id: string;
+  track: DailyTrack;
+  publishOn: string;
+  field: DailyField | null;
+  expression: string;
+  meaning: string;
+  status: "draft" | "ready";
+}
+
+/** Every lesson of both levels, newest date first. Drafts included: only staff see this. */
+export async function loadDailyLessons(): Promise<DailyAdminLessonRow[]> {
+  const { data } = await admin()
+    .from("daily_lessons")
+    .select("id, track, publish_on, field, expression, meaning, status")
+    .order("publish_on", { ascending: false });
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    track: row.track as DailyTrack,
+    publishOn: row.publish_on as string,
+    field: (row.field as DailyField | null) ?? null,
+    expression: row.expression as string,
+    meaning: row.meaning as string,
+    status: row.status as DailyAdminLessonRow["status"],
+  }));
+}
+
+/**
+ * One lesson as a subscriber would read it, found by its id rather than by a message's
+ * access token, so staff can open any lesson (drafts too) without someone's link.
+ */
+export async function loadDailyLesson(
+  id: string,
+): Promise<{ lesson: DailyLessonContent; status: DailyAdminLessonRow["status"] } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const { data } = await admin().from("daily_lessons").select(`${LESSON_COLUMNS}, status`).eq("id", id).maybeSingle();
+  if (!data) return null;
+  const row = data as unknown as LessonRow & { status: DailyAdminLessonRow["status"] };
+  return { lesson: toContent(row), status: row.status };
 }
