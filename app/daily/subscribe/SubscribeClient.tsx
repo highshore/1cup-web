@@ -12,6 +12,7 @@ import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LABEL, DAILY_TRACKS, isDailyTrack, formatKrw, type DailyTrack } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
+import { measureDailyAdEvent } from "../../lib/features/daily/ads/OpenAIAdsPixel";
 import "../../lib/features/daily/daily.css";
 
 const PAYPLE_HOST = (process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr").replace(/\/+$/, "");
@@ -154,6 +155,15 @@ export default function SubscribeClient() {
         termsVersion: DAILY_TERMS_VERSION,
       });
       sessionStorage.setItem(DAILY_PAYMENT_ORDER_KEY, data.orderNumber);
+      const selectedProduct = info?.products.find((item) => item.id === product);
+      if (selectedProduct) {
+        measureDailyAdEvent("checkout_started", {
+          type: "contents",
+          amount: selectedProduct.amount,
+          currency: "KRW",
+          contents: [{ id: product, name: selectedProduct.name, content_type: "product", quantity: 1 }],
+        });
+      }
       setConsentOpen(false);
       w.PaypleCpayAuthCheck(data.paymentParams);
     } catch (e) {
