@@ -69,6 +69,6 @@ export const DAILY_JOB_CATEGORIES = [
 
 // Bump when the Daily terms or the consent wording change; stored with each signup. The
 // date is when the version took effect; a later revision the same day adds ".n".
-export const DAILY_TERMS_VERSION = "2026-10-29.2";
+export const DAILY_TERMS_VERSION = "2026-10-29.1";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");
