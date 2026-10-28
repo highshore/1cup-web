@@ -138,6 +138,14 @@ function latestPerTrack(subscriptions: Subscription[]) {
   return ordered.filter((s) => (seen.has(s.track) ? false : (seen.add(s.track), true)));
 }
 
+// 내 구독 shows one card: the level can be switched on the card itself, so an ended row
+// for the other level is noise. The live subscription(s), else the latest one.
+function shownSubscriptions(subscriptions: Subscription[]) {
+  const latest = latestPerTrack(subscriptions);
+  const live = latest.filter((s) => s.status === "trial" || s.status === "active");
+  return live.length > 0 ? live : latest.slice(0, 1);
+}
+
 // 내 정보: the phone number and name come from Kakao Login and are shown as they are; 소속
 // and 직종 are the reader's to fill in (the review page asks for them too).
 function Profile({ info, onChanged }: { info: AccountInfo; onChanged: () => Promise<void> }) {
@@ -381,7 +389,9 @@ function SubscriptionCard({
             {s.resume}
           </button>
         )}
-        {(sub.status === "trial" || sub.status === "trial_ended" || sub.status === "cancelled" || !sub.autoRenew) && (
+        {/* Only when nothing is paid for: a pass or a subscription with auto-renew off is
+            still paid until its end date. */}
+        {sub.status !== "active" && (
           <Link href="/daily/subscribe" className={cn(smallButton, "bg-[#f47a4a] text-[#050505]")}>
             {s.subscribe}
           </Link>
@@ -948,7 +958,7 @@ export default function AccountClient() {
     void load();
   }, [load]);
 
-  const subscriptions = info ? latestPerTrack(info.subscriptions) : [];
+  const subscriptions = info ? shownSubscriptions(info.subscriptions) : [];
 
   return (
     <div className={cn("daily-page min-h-[80vh] bg-[#fff8dc] px-4 pb-20 pt-10 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
