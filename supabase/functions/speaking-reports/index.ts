@@ -429,7 +429,7 @@ Deno.serve(async (req) => {
     model = "gpt-4o-mini",
   } = body;
 
-  const apiKey = Deno.env.get("NEXT_OPENAI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("NEXT_OPENAI_API_KEY");
   if (!apiKey) {
     return json(req, { error: "OpenAI API key not configured" }, 500);
   }
