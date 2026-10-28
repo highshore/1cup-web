@@ -25,3 +25,5 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build Next.js
         run: npm run build
+      - name: Check Daily Supabase Edge Function types
+        run: npx --yes deno@2 check --node-modules-dir=auto supabase/functions/daily/index.ts
