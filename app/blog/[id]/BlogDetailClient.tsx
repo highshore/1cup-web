@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BlogPost } from "../../lib/features/blog/types/blog_types";
+import { getBlogRouteSlug } from "../../lib/seo/route_slugs";
 import {
   fetchBlogPost,
   fetchPublishedBlogPost,
@@ -169,20 +170,28 @@ export default function BlogDetailClient({
     if (!post) return;
 
     try {
-      await updateBlogPost(post.id, postData);
+      const savedPost = await updateBlogPost(post.id, postData);
+      setPost(savedPost);
+      setError(null);
       setShowEditor(false);
 
-      // Reload the post to see changes
-      const updatedPost = isAdmin
-        ? await fetchBlogPost(post.id)
-        : await fetchPublishedBlogPost(post.id);
-
-      if (updatedPost) {
-        setPost(updatedPost);
+      // A title/status change can change the canonical route. Use the saved
+      // row immediately, then refresh server-rendered metadata and content.
+      const nextRoute =
+        savedPost.status === "published"
+          ? getBlogRouteSlug(savedPost)
+          : savedPost.id;
+      const currentRoute = decodeURIComponent(postId || "");
+      if (nextRoute !== currentRoute) {
+        router.replace(`/blog/${encodeURIComponent(nextRoute)}`);
+      } else {
+        router.refresh();
       }
     } catch (err) {
       console.error("Failed to save blog post:", err);
       setError("블로그 포스트 저장에 실패했습니다.");
+      // The editor handles the rejected save and keeps unsaved changes visible.
+      throw err;
     }
   };
 
