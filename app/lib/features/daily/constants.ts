@@ -18,9 +18,9 @@ export const DAILY_FIELD_LABEL: Record<DailyField, string> = { consulting: "컨�
 export const DAILY_MONTHLY_PRICE_KRW = 3700;
 
 export const DAILY_PASSES = [
-  { id: "pass_1m", label: "1개월 이용권", days: 28, priceKrw: 4500 },
-  { id: "pass_3m", label: "3개월 이용권", days: 84, priceKrw: 12300 },
-  { id: "pass_6m", label: "6개월 이용권", days: 168, priceKrw: 23400 },
+  { id: "pass_1m", label: "1개월 (4주) 이용권", days: 28, priceKrw: 4500 },
+  { id: "pass_3m", label: "3개월 (12주) 이용권", days: 84, priceKrw: 12300 },
+  { id: "pass_6m", label: "6개월 (24주) 이용권", days: 168, priceKrw: 23400 },
 ] as const;
 
 // A pass's price per 28 days (one period), and the 1개월 이용권 price it is compared with (struck through
