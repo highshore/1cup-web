@@ -226,8 +226,8 @@ export const dailyCopy = {
     title: "2,000번 이상의 회의를 통역하며\n실제로 오간 표현만 고릅니다",
     accent: "실제로 오간 표현만 고릅니다",
     credentials: [
-      { icon: "office", title: "국내 대기업 임원 통역사" },
-      { icon: "globe", title: "실리콘밸리 기업 통역사" },
+      { icon: "office", title: "국내 대기업 임원 통역사", highlight: true },
+      { icon: "globe", title: "실리콘밸리 기업 통역사", highlight: true },
       { icon: "briefcase", title: "Fortune 500 외국계 경력" },
       { icon: "shield", title: "용산 미군기지 통역병" },
       { icon: "school", title: "SKY 학부 출신, 토플 118/120점" },
