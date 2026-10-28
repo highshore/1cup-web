@@ -189,8 +189,11 @@ export default function SubscribeClient() {
 
   const products = info?.products.length ? info.products : [];
   const selected = products.find((p) => p.id === product);
-  const recurringLive = info?.subscriptions.find((s) => s.track === track && s.status === "active" && s.autoRenew);
-  const blocked = Boolean(selected?.recurring && recurringLive);
+  // One plan at a time (checkout-window refuses the rest): with paid time still running on
+  // either level, changes go through 내 구독. A renewal whose card failed is past paidUntil.
+  const hasPlan = Boolean(
+    info?.subscriptions.some((s) => s.status === "active" && s.paidUntil && new Date(s.paidUntil).getTime() > Date.now()),
+  );
   const pricing = dailyCopy.pricing;
 
   return (
@@ -238,7 +241,23 @@ export default function SubscribeClient() {
           </div>
         )}
 
-        {info && info.paymentsOpen && (
+        {info && hasPlan && (
+          <div className="mt-6 rounded-[28px] bg-white p-6 min-[900px]:p-8">
+            <p className="text-[1.1rem] font-black">이미 이용 중인 플랜이 있어요</p>
+            <p className="mt-2 text-[0.95rem] font-semibold leading-relaxed text-[#475569]">
+              받는 시간과 레벨은 내 구독에서 바꿀 수 있어요. 다른 상품으로 바꾸려면 지금 플랜이 끝난 뒤에
+              결제해 주세요.
+            </p>
+            <Link
+              href="/daily/account"
+              className="mt-5 flex h-[54px] w-full items-center justify-center rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white"
+            >
+              내 구독 관리하기
+            </Link>
+          </div>
+        )}
+
+        {info && info.paymentsOpen && !hasPlan && (
           <>
             <div className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-8">
               <p className="text-[1.05rem] font-black">1. 상품</p>
@@ -325,11 +344,6 @@ export default function SubscribeClient() {
                   {pricing.passes.refundNotice}
                 </p>
               )}
-              {blocked && (
-                <p className="mt-4 rounded-2xl bg-[#fff1ea] px-4 py-3 text-[0.9rem] font-bold text-[#b45309]">
-                  이 레벨은 이미 정기구독 중이에요. 이용권으로 기간을 늘리거나 다른 레벨을 골라 주세요.
-                </p>
-              )}
               {error && !consentOpen && (
                 <p role="alert" className="mt-4 rounded-2xl bg-[#fef2f2] px-4 py-3 text-[0.9rem] font-semibold text-[#b91c1c]">
                   {error}
@@ -343,7 +357,7 @@ export default function SubscribeClient() {
               ) : (
               <button
                 type="button"
-                disabled={!selected || blocked || busy || checking}
+                disabled={!selected || busy || checking}
                 onClick={async () => {
                   setError("");
                   setChecking(true);

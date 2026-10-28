@@ -99,8 +99,11 @@ export default function StartClient() {
   };
 
   const trackState = (key: string) =>
-    info?.liveTracks?.includes(key) ? "받는 중" : info?.usedTrialTracks?.includes(key) ? "체험 완료" : null;
+    info?.usedTrialTracks?.includes(key) ? "체험 완료" : null;
   const selectedBlocked = trackState(track) !== null;
+  // Already receiving either level (a trial or a paid plan): nothing to start or buy here,
+  // changes go through 내 구독. start-trial and checkout-window refuse it as well.
+  const receiving = TRACKS.filter((item) => info?.liveTracks?.includes(item.key)).map((item) => item.title);
 
   // Checks the invite code before the consent dialog.
   const review = async () => {
@@ -198,16 +201,34 @@ export default function StartClient() {
         )}
 
         {info && (
-          <>
-            <p className="mt-7 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.92rem] font-bold text-[#475569]">
-              <DevicePhoneMobileIcon className="size-5 text-[#f47a4a]" />
-              <span>
-                <span className="font-black text-[#050505]">{info.phone}</span> 카카오계정으로 받아요
-              </span>
-              <button type="button" onClick={signOut} className="text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
-                다른 카카오계정으로
-              </button>
+          <p className="mt-7 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.92rem] font-bold text-[#475569]">
+            <DevicePhoneMobileIcon className="size-5 text-[#f47a4a]" />
+            <span>
+              <span className="font-black text-[#050505]">{info.phone}</span> 카카오계정으로 받아요
+            </span>
+            <button type="button" onClick={signOut} className="text-[0.85rem] font-bold text-[#64748b] underline underline-offset-2">
+              다른 카카오계정으로
+            </button>
+          </p>
+        )}
+
+        {info && receiving.length > 0 && (
+          <section className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-8">
+            <p className="text-[1.1rem] font-black">이미 {receiving.join(", ")} 레벨을 받고 있어요</p>
+            <p className="mt-2 text-[0.95rem] font-semibold leading-relaxed text-[#475569]">
+              받는 시간과 레벨은 내 구독에서 바꿀 수 있어요.
             </p>
+            <Link
+              href="/daily/account"
+              className="mt-5 flex h-[54px] w-full items-center justify-center rounded-2xl bg-[#050505] text-[1.05rem] font-black text-white"
+            >
+              내 구독 관리하기
+            </Link>
+          </section>
+        )}
+
+        {info && receiving.length === 0 && (
+          <>
 
             <Step number={1} title="레벨을 골라주세요">
               <div className="grid gap-3 min-[600px]:grid-cols-2">
@@ -287,9 +308,7 @@ export default function StartClient() {
             )}
             {selectedBlocked && (
               <p className="mt-8 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
-                {trackState(track) === "받는 중"
-                  ? "이미 이 레벨을 받고 있어요."
-                  : "이 레벨의 무료 체험은 이미 받았어요. 계속 받으려면 구독해 주세요."}
+                이 레벨의 무료 체험은 이미 받았어요. 계속 받으려면 구독해 주세요.
               </p>
             )}
 

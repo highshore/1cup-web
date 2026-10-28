@@ -339,14 +339,15 @@ export function LessonPage({
             </p>
             <p className="mt-2 text-[0.95rem] font-semibold text-white/70">
               {paidOtherTrack
-                ? `지금 ${TRACK_LABEL[paidOtherTrack]} 레벨을 받고 있어요. ${TRACK_LABEL[lesson.track]} 레벨도 평일마다 받아보세요. 월 ₩3,700 · 언제든 해지.`
+                ? `지금 ${TRACK_LABEL[paidOtherTrack]} 레벨을 받고 있어요. ${TRACK_LABEL[lesson.track]} 레벨로 바꾸고 싶다면 내 구독에서 바꿀 수 있어요.`
                 : "평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩3,700 · 언제든 해지."}
             </p>
+            {/* One plan at a time: someone paying for the other level switches, not buys. */}
             <Link
-              href={subscribeHref}
+              href={paidOtherTrack ? "/daily/account" : subscribeHref}
               className="mt-5 flex h-[54px] items-center justify-center rounded-2xl bg-[#f47a4a] text-[1rem] font-black text-[#050505]"
             >
-              {paidOtherTrack ? `${TRACK_LABEL[lesson.track]}도 받기` : "구독 안내 보기"}
+              {paidOtherTrack ? "내 구독에서 레벨 바꾸기" : "구독 안내 보기"}
             </Link>
           </section>
         )}
