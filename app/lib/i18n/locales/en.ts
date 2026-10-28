@@ -669,22 +669,23 @@ const en = {
       cta: "Apply for Membership",
     },
     pricingNew: {
-      sectionTitle: "A better English room,\nat an accessible price.",
+      sectionTitle: "Thoughtful English discussions,\nat a fair price.",
       leftTitle: "Access to all meetups held\nduring membership period",
       referralDiscount: "Additional discount available for referrals",
       caveats: {
-        line1: "* Meetups are held once a week (up to 4 times a month).",
+        line1: "* Hourly figures assume four meetups within 30 days (Anam: 2 hours each; Yeouido: 1.5 hours each).",
         line2: "* If a meetup is cancelled due to operator reasons, the subscription period will be extended by 2 weeks.",
         line3: "* Refunds or extensions are not available if a member misses a meetup due to their own reasons.",
         line4: "* Forced refunds may proceed in case of violation of operation policies such as bad manners.",
       },
       chart: {
-        title: "A better English room,\nat an accessible price.",
-        highlight: "accessible price",
+        title: "Thoughtful English discussions,\nat a fair price.",
+        highlight: "fair price",
         header: "Cost per 1 hour comparison",
         unit: "(Unit: KRW)",
         labels: {
-          oneCup: "One Cup English",
+          oneCupAnam: "One Cup English · Anam",
+          oneCupYeouido: "One Cup English · Yeouido",
           exchange: "Language Exchange",
           phone: "Phone English",
           academy: "English Academy",
