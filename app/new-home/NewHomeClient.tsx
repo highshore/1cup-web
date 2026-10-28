@@ -391,7 +391,8 @@ const buildWebsiteMarkdown = ({
 }) => {
   const pricingLabels = t.home.pricingNew.chart.labels;
   const pricingComparisons = [
-    { label: pricingLabels.oneCup, value: 1212 },
+    { label: pricingLabels.oneCupAnam, value: 2463 },
+    { label: pricingLabels.oneCupYeouido, value: 3283 },
     { label: pricingLabels.exchange, value: 5000 },
     { label: pricingLabels.phone, value: 20000, suffix: "~" },
     { label: pricingLabels.academy, value: 35000, suffix: "~" },
