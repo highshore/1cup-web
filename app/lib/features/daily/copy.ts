@@ -180,8 +180,13 @@ export const dailyCopy = {
       },
     ],
   },
-  // Shown only once 3+ reviews from verified customers are approved; never seeded.
+  // The carousel under the hero: approved 5-star reviews only, shown once 3+ exist; never
+  // seeded. Each card shows the review's 좋았던 점.
   reviews: {
+    carouselLabel: "먼저 받아본 사람들의 후기",
+    carouselTitle: "먼저 받아본 사람들의 후기",
+    prev: "이전 후기",
+    next: "다음 후기",
     title: "먼저 받아본\n사람들의 후기",
     accent: "사람들의 후기",
     verified: "인증된 구독자",

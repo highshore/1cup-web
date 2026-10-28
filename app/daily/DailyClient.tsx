@@ -3,10 +3,6 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import {
-  CheckBadgeIcon,
-  StarIcon,
-} from "@heroicons/react/24/solid";
-import {
   AcademicCapIcon,
   BuildingOffice2Icon,
   ChatBubbleLeftRightIcon,
@@ -33,6 +29,7 @@ import {
 } from "../lib/features/daily/components/DailyUI";
 import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
 import WordbookSheet from "../lib/features/daily/components/WordbookSheet";
+import ReviewCarousel from "../lib/features/daily/components/ReviewCarousel";
 import DailyWeek from "../lib/features/daily/components/DailyWeek";
 import {
   DAILY_MONTHLY_PRICE_KRW,
@@ -68,7 +65,7 @@ const credentialIcons = {
 // Display sizes: mobile from Figma 43:2, desktop ×1.35 (Figma 48:428).
 const h2Class = cn(displayClass, "text-[2.25rem] leading-[1.18] min-[900px]:text-[3.05rem]");
 
-// Reviews appear only when at least this many real, approved ones exist.
+// The review carousel appears only when at least this many approved 5-star reviews exist.
 const MIN_REVIEWS = 3;
 
 export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] }) {
@@ -126,6 +123,9 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           </div>
         </div>
       </section>
+
+      {/* Approved 5-star reviews, once enough exist */}
+      {reviews.length >= MIN_REVIEWS && <ReviewCarousel reviews={reviews} />}
 
       {/* P10: founder credentials, then the founder's own LinkedIn profile */}
       <Panel id="founder" className="bg-[#fff8dc]">
@@ -476,8 +476,6 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
       </Panel>
 
-      {reviews.length >= MIN_REVIEWS && <ReviewsSection reviews={reviews} />}
-
       {/* P11: pricing */}
       <Panel id="pricing" className="bg-[#f47a4a]">
         <div ref={pricingRef}>
@@ -586,47 +584,6 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
 
       <StickyBar visible={pastHero && !reachedPricing} />
     </div>
-  );
-}
-
-// Approved reviews from verified customers, styled as social posts.
-function ReviewsSection({ reviews }: { reviews: PublicDailyReview[] }) {
-  const copy = dailyCopy.reviews;
-  const trackTitle = (track: string) => dailyCopy.tracks.items.find((item) => item.key === track)?.title ?? "";
-  return (
-    <Panel inner="min-[900px]:max-w-[720px]">
-      <h2 className={h2Class}>
-        <Headline text={copy.title} accent={copy.accent} accentClassName="text-[#f47a4a]" />
-      </h2>
-      <ul className="m-0 mt-9 grid list-none gap-3 p-0 text-left min-[900px]:grid-cols-2">
-        {reviews.map((review) => (
-          <li key={review.id} className="rounded-[24px] bg-[#f5f5f4] p-5">
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-10 items-center justify-center rounded-full bg-[#050505] text-[0.9rem] font-black text-white">
-                {(review.displayName ?? copy.anonymous).slice(0, 1)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.95rem] font-black leading-snug">{review.displayName ?? copy.anonymous}</p>
-                <p className="text-[0.75rem] font-semibold text-[#64748b]">
-                  {trackTitle(review.track)} · {copy.lessons.replace("{count}", String(review.lessonsReceived))}
-                </p>
-              </div>
-              <span className="flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[0.7rem] font-bold text-[#475569]">
-                <CheckBadgeIcon className="size-4 text-[#f47a4a]" aria-hidden />
-                {copy.verified}
-              </span>
-            </div>
-            <p className="mt-3 flex gap-0.5" aria-label={`별점 ${review.rating}점`}>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <StarIcon key={value} className={cn("size-4", value <= review.rating ? "text-[#f47a4a]" : "text-[#d6d3d1]")} aria-hidden />
-              ))}
-            </p>
-            <p className="mt-2 text-[0.98rem] font-semibold leading-relaxed">{review.body}</p>
-            {review.rewarded && <p className="mt-2 text-[0.75rem] font-semibold text-[#64748b]">{copy.rewarded}</p>}
-          </li>
-        ))}
-      </ul>
-    </Panel>
   );
 }
 

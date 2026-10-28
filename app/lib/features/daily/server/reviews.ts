@@ -149,12 +149,13 @@ export async function submitReview(customer: DailySessionCustomer, input: DailyR
   return (reward === "applied" ? "applied" : "pending") as DailyReviewReward;
 }
 
-/** Approved reviews for the landing page, newest first. */
-export async function approvedReviews(limit = 9): Promise<PublicDailyReview[]> {
+/** Approved 5-star reviews for the carousel under the landing hero, newest first. */
+export async function approvedReviews(limit = 12): Promise<PublicDailyReview[]> {
   const { data } = await admin()
     .from("daily_reviews")
     .select("id, track, rating, body, display_name, lessons_received, approved_at, reward_earned_at")
     .eq("status", "approved")
+    .eq("rating", 5)
     .order("approved_at", { ascending: false })
     .limit(limit);
   return (data ?? []).map((row) => ({
