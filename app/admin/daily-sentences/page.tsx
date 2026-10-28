@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import AdminDailySentencesClient from "./AdminDailySentencesClient";
-
-export const metadata: Metadata = {
-  title: "Daily Sentences - Admin - OneCup English",
-  description: "Administrator-only moderation of One Cup Daily sentences and 통역사 PICK.",
-};
-
-export default function AdminDailySentencesPage() {
-  return <AdminDailySentencesClient />;
+// Moved to One Cup Daily's own admin; kept so older links still land.
+export default function MovedDailySentences() {
+  redirect("/daily/admin/sentences");
 }
