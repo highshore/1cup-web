@@ -44,3 +44,6 @@ Status: implementation draft. Advertiser billing, logo, identity checks, and acc
 ## Reference
 - https://developers.openai.com/ads/measurement-pixel
 - https://developers.openai.com/ads/conversions-api
+
+## Hashed conversion matching update
+A new v2 optional measurement opt-in is required before reporting a SHA-256 hash of the Daily customer UUID as CAPI external_id_sha256. The external ID is added only to verified first purchases. Daily does not store email addresses; email coverage will remain zero. Release the new Next.js consent gate before the Edge function update. Anonymous page views will remain anonymous.
