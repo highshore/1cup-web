@@ -226,6 +226,14 @@ async function reportOpenAIFirstPurchase(db: SupabaseClient, orderNumber: string
     const occurred = order.completed_at ? new Date(order.completed_at).getTime() : Date.now();
     if (!Number.isFinite(occurred) || occurred < Date.now() - 7 * 86400000) return;
 
+    // Daily is phone-only; it does not collect email. Use the opaque internal UUID
+    // as an external match key only after explicit optional ad-measurement consent.
+    // OpenAI CAPI accepts SHA-256 external_id_sha256 (not raw customer IDs).
+    const customerId = typeof order.customer_id === "string" ? order.customer_id.trim() : "";
+    if (!customerId) return;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(customerId));
+    const externalIdSha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+
     const oppref = typeof body.oppref === "string" ? body.oppref.trim().slice(0, 512) : "";
     const obref = typeof body.obref === "string" ? body.obref.trim().slice(0, 512) : "";
     const event = {
@@ -235,7 +243,7 @@ async function reportOpenAIFirstPurchase(db: SupabaseClient, orderNumber: string
       action_source: "web",
       source_url: `${SITE_URL}/daily/subscribe/result`,
       ...(oppref ? { oppref } : {}),
-      ...(obref ? { user: { obref } } : {}),
+      user: { ...(obref ? { obref } : {}), external_id_sha256: externalIdSha256 },
       data: {
         type: "contents",
         amount: order.amount,
