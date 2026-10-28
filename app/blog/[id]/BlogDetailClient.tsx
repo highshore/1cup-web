@@ -81,6 +81,8 @@ export default function BlogDetailClient({
   initialPost,
 }: BlogDetailClientProps) {
   const { id: postId } = useParams<{ id: string }>();
+  // The route may be a canonical title slug, but Supabase lookups use row IDs.
+  const postLookupId = initialPost?.id ?? postId;
   const router = useRouter();
   const { accountStatus } = useAuth();
   const [post, setPost] = useState<BlogPost | null>(initialPost || null);
@@ -98,7 +100,7 @@ export default function BlogDetailClient({
 
     let cancelled = false;
     const loadPost = async () => {
-      if (!postId) {
+      if (!postLookupId) {
         setError("포스트 ID가 없습니다.");
         setLoading(false);
         return;
@@ -109,8 +111,8 @@ export default function BlogDetailClient({
 
         // Admin users can see all posts, regular users can only see published posts
         const postData = isAdmin
-          ? await fetchBlogPost(postId)
-          : await fetchPublishedBlogPost(postId);
+          ? await fetchBlogPost(postLookupId)
+          : await fetchPublishedBlogPost(postLookupId);
         if (cancelled) return;
 
         if (!postData) {
@@ -133,7 +135,7 @@ export default function BlogDetailClient({
       // server-rendered post without loading (an admin signing out), so clear it here.
       setLoading(false);
     };
-  }, [postId, isAdmin, initialPost]);
+  }, [postLookupId, isAdmin, initialPost]);
 
   const handleBack = () => {
     router.push("/blog");
@@ -148,14 +150,14 @@ export default function BlogDetailClient({
   };
 
   const handleDeletePost = async () => {
-    if (!postId) return;
+    if (!post) return;
 
     if (!window.confirm("정말로 이 포스트를 삭제하시겠습니까?")) {
       return;
     }
 
     try {
-      await deleteBlogPost(postId);
+      await deleteBlogPost(post.id);
       router.push("/blog");
     } catch (err) {
       console.error("Failed to delete blog post:", err);
@@ -164,16 +166,16 @@ export default function BlogDetailClient({
   };
 
   const handleSavePost = async (postData: Partial<BlogPost>) => {
-    if (!postId) return;
+    if (!post) return;
 
     try {
-      await updateBlogPost(postId, postData);
+      await updateBlogPost(post.id, postData);
       setShowEditor(false);
 
       // Reload the post to see changes
       const updatedPost = isAdmin
-        ? await fetchBlogPost(postId)
-        : await fetchPublishedBlogPost(postId);
+        ? await fetchBlogPost(post.id)
+        : await fetchPublishedBlogPost(post.id);
 
       if (updatedPost) {
         setPost(updatedPost);
