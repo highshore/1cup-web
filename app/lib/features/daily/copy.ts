@@ -234,9 +234,8 @@ export const dailyCopy = {
     credentials: [
       { icon: "office", title: "국내 대기업 임원 통역사", highlight: true },
       { icon: "globe", title: "실리콘밸리 기업 통역사", highlight: true },
-      { icon: "briefcase", title: "Fortune 500 외국계 경력" },
-      { icon: "shield", title: "용산 미군기지 통역병" },
-      { icon: "school", title: "SKY 학부 출신, 토플 118/120점" },
+      { icon: "briefcase", title: "외국계 대기업 경력" },
+      { icon: "school", title: "TOEFL iBT (2026) 6.0점 만점" },
     ],
     profile: "스펙이 안 믿기시나요?\n프로필 시원하게 공개합니다",
     linkedIn: "LinkedIn 프로필 보기",

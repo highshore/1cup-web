@@ -139,29 +139,26 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         <ul className="m-0 mt-8 grid list-none gap-2.5 p-0 text-left min-[900px]:grid-cols-2">
           {copy.founder.credentials.map((credential) => {
             const Icon = credentialIcons[credential.icon as keyof typeof credentialIcons];
-            // The two interpreting roles lead: dark, larger, first row on desktop.
+            // The two interpreting roles lead: same card, with a warm glow and a light
+            // sweeping across it now and then (daily-shine in daily.css).
             const highlight = "highlight" in credential && credential.highlight;
             return (
               <li
                 key={credential.title}
                 className={cn(
-                  "flex items-center rounded-[20px] min-[900px]:odd:last:col-span-2",
-                  highlight
-                    ? "gap-4 bg-[#050505] px-5 py-5 text-white shadow-[0_14px_30px_-18px_rgba(5,5,5,0.7)]"
-                    : "gap-3.5 bg-white px-4 py-3.5",
+                  "flex items-center gap-3.5 rounded-[20px] bg-white px-4 py-3.5 min-[900px]:odd:last:col-span-2",
+                  highlight && "daily-shine",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex shrink-0 items-center justify-center bg-[#f47a4a] text-[#050505]",
-                    highlight ? "size-12 rounded-2xl" : "size-10 rounded-xl",
-                  )}
-                >
-                  <Icon className={highlight ? "size-6" : "size-5"} aria-hidden />
+                <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f47a4a] text-[#050505]">
+                  <Icon className="size-5" aria-hidden />
                 </span>
-                <span className={highlight ? "text-[1.2rem] font-black leading-snug min-[900px]:text-[1.3rem]" : "text-[1rem] font-extrabold"}>
-                  {credential.title}
-                </span>
+                <span className={cn("relative text-[1rem]", highlight ? "font-black" : "font-extrabold")}>{credential.title}</span>
+                {highlight && (
+                  <Emoji className="relative ml-auto text-[1.15rem]" motion="none">
+                    ✨
+                  </Emoji>
+                )}
               </li>
             );
           })}

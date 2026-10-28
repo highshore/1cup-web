@@ -221,6 +221,49 @@
   animation-delay: 0.3s;
 }
 
+/* The founder's two interpreting credentials: a warm glow, and a band of light that
+   sweeps across now and then. The card's children sit above the band (relative). */
+.daily-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 2px rgba(244, 122, 74, 0.55),
+    0 12px 28px -14px rgba(244, 122, 74, 0.75);
+}
+
+.daily-shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 214, 170, 0.75) 44%,
+    rgba(255, 244, 228, 0.95) 50%,
+    rgba(255, 214, 170, 0.75) 56%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  animation: daily-shine 4.2s ease-in-out infinite;
+}
+
+.daily-shine:nth-child(2)::before {
+  animation-delay: 0.5s;
+}
+
+@keyframes daily-shine {
+  0% {
+    transform: translateX(-120%);
+  }
+  35%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .daily-phone-in,
   .daily-drop,
@@ -228,8 +271,13 @@
   .daily-steam,
   .daily-marker[data-seen="true"],
   .daily-read,
-  .daily-wave span {
+  .daily-wave span,
+  .daily-shine::before {
     animation: none;
+  }
+
+  .daily-shine::before {
+    display: none;
   }
 
   .daily-dot {
