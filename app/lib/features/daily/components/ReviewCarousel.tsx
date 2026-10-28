@@ -11,7 +11,7 @@ const AUTO_MS = 4500;
 
 // Under the landing hero: approved 5-star reviews, one card per swipe. Each card shows the
 // review's 좋았던 점 (its body), who wrote it (소속 직종 김00 님), level and lessons received,
-// and the 15-day reward disclosure (추천·보증 심사지침). Advances on its own every few seconds
+// and the 14-day reward disclosure (추천·보증 심사지침). Advances on its own every few seconds
 // until the reader touches it; never with reduced motion.
 export default function ReviewCarousel({ reviews }: { reviews: PublicDailyReview[] }) {
   const copy = dailyCopy.reviews;

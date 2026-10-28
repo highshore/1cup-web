@@ -64,7 +64,7 @@ function StarQuestion({ title, note, value, onChange }: { title: string; note?: 
 
 // Reviews used to sit at the bottom of the lesson page; here they get the room the extra
 // fields need. Everything required (사용 경험·추천 별점, 좋았던 점 10자 이상, 소속, 직종, 홍보 동의) is checked again
-// on the server, which also hands out the 15 days.
+// on the server, which also hands out the 14 days.
 export default function ReviewClient() {
   // undefined: checking; null: not signed in.
   const [status, setStatus] = useState<ReviewStatus | null | undefined>(undefined);
