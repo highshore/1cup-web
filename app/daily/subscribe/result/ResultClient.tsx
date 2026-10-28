@@ -117,7 +117,7 @@ export default function ResultClient() {
                 const pass = DAILY_PASSES.find((p) => p.id === state.settled.subscription?.plan);
                 return pass ? (
                   <>
-                    {pass.label}({pass.days}일)이 <span className="text-white">결제됐어요!</span>
+                    {pass.label}이 <span className="text-white">결제됐어요!</span>
                   </>
                 ) : (
                   <>
