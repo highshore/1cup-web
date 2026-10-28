@@ -131,7 +131,18 @@ async function quoteReferral(uid: string, code: string, product: ProductRow) {
   let discountAmount: number;
   let message: string;
   if (generatedOwner) {
-    discountAmount = Math.min(Number(product.referral_discount_amount || 0), listAmount);
+    // Member-generated referral codes store a percentage (currently 33%) in
+    // referral_codes. Calculate against the *current* regional list price,
+    // rather than using the old, fixed product referral_discount_amount.
+    // Round to the nearest won so quotes and Payple amounts are integers.
+    const configuredRate = Number(referral.discount);
+    if (referral.type === "percent" && Number.isFinite(configuredRate)
+        && configuredRate >= 0 && configuredRate <= 100) {
+      discountAmount = Math.min(Math.round(listAmount * configuredRate / 100), listAmount);
+    } else {
+      // Keep legacy member-owned non-percent codes compatible.
+      discountAmount = Math.min(Number(product.referral_discount_amount || 0), listAmount);
+    }
     message = "첫 구매 추천 할인이 적용되었습니다.";
   } else {
     const configuredDiscount = Math.max(0, Number(referral.discount || 0));
