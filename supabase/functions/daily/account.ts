@@ -9,7 +9,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendKakaoMessages } from "../_shared/kakao.ts";
-import { isTrack, templateCodes, TRACK_LABEL } from "./delivery.ts";
+import { isTrack, TRACK_LABEL } from "./delivery.ts";
 import { PaymentError, refundCharge, type PaymentCustomer } from "./payments.ts";
 
 const SITE_HOST = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/^https?:\/\//, "").replace(/\/+$/, "");
@@ -23,23 +23,18 @@ function assertTrack(track: unknown): asserts track is "basic" | "advanced" {
   if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
 }
 
-// Notices go out through the approved general-purpose template (template_style
-// "send-article"): a title line, a name and a link. With the dedicated Daily templates
-// there is no template for these notices, so they are skipped and logged.
-async function notify(db: SupabaseClient, phones: string[], title: string, name: string, path: string) {
+// Notices go out through the approved general-purpose 1cup template (`send-article`): a
+// title line, a name and a link. The dedicated notice templates (DAILY_REFUND_DONE,
+// DAILY_REFUND_REJECT, DAILY_ADMIN_REFUND) replace it once Kakao approves them.
+async function notify(_db: SupabaseClient, phones: string[], title: string, name: string, path: string) {
   if (phones.length === 0) return;
   try {
-    const codes = await templateCodes(db);
-    if (!codes || codes.style !== "send-article") {
-      console.warn("daily notice skipped: no general-purpose template configured");
-      return;
-    }
     await sendKakaoMessages(
       phones.map((phone) => ({
         recipientNo: phone,
         templateParameter: { "korean-title": title, "customer-name": name, "article-link": `${SITE_HOST}${path}` },
       })),
-      codes.lesson,
+      "send-article",
     );
   } catch (e) {
     // A notice is never the reason a request or refund fails.

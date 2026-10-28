@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendKakaoMessages } from "../_shared/kakao.ts";
+import { type HookTarget, writeHooks } from "./hooks.ts";
 
 // The level a subscription and a lesson belong to (the column is still called track).
 export type Track = "basic" | "advanced";
@@ -51,14 +52,25 @@ interface PlannedDelivery {
 interface ClaimedDelivery extends PlannedDelivery {
   id: string;
   accessToken: string;
+  // The message's first line (hooks.ts), once written; kept on the row for retries.
+  hook?: string | null;
 }
 
 export interface TemplateCodes {
-  // Which variables the codes expect; see the daily_template_config migration.
-  style: "daily" | "send-article";
   lesson: string;
   review: string;
   trialEnded: string;
+}
+
+// Each kind's code decides which variables it is sent with: `send-article` is the
+// general 1cup template (title, name, link), anything else is a Daily template.
+//   lesson       DAILY_LESSON_HOOK   #{name}님, #{hook} / #{content} / https://#{link}
+//   review       DAILY_REVIEW_HOOK   #{name}님, #{hook} / #{content} / https://#{link}
+//   trial_ended  DAILY_TRIAL_ENDED   #{name}
+type TemplateStyle = "daily" | "send-article";
+
+export function templateStyle(code: string): TemplateStyle {
+  return code === "send-article" ? "send-article" : "daily";
 }
 
 // A slot more than this late is skipped rather than sent: after an outage, a morning
@@ -101,14 +113,14 @@ export function addDays(date: string, days: number): string {
 export async function templateCodes(db: SupabaseClient): Promise<TemplateCodes | null> {
   const { data } = await db
     .from("daily_config")
-    .select("template_style, lesson_template, review_template, trial_ended_template")
+    .select("lesson_template, review_template, trial_ended_template")
     .eq("id", "settings")
     .maybeSingle();
   const lesson = data?.lesson_template || Deno.env.get("DAILY_TEMPLATE_LESSON");
   const review = data?.review_template || Deno.env.get("DAILY_TEMPLATE_REVIEW");
   const trialEnded = data?.trial_ended_template || Deno.env.get("DAILY_TEMPLATE_TRIAL_ENDED");
   if (!lesson || !review || !trialEnded) return null;
-  return { style: data?.template_style === "send-article" ? "send-article" : "daily", lesson, review, trialEnded };
+  return { lesson, review, trialEnded };
 }
 
 function siteUrl(): string {
@@ -247,10 +259,10 @@ async function claim(db: SupabaseClient, plans: PlannedDelivery[]): Promise<Clai
   const { data: inserted, error } = await db
     .from("daily_deliveries")
     .upsert(rows, { onConflict: "subscription_id,kind,for_date", ignoreDuplicates: true })
-    .select("id, subscription_id, kind, for_date, access_token");
+    .select("id, subscription_id, kind, for_date, access_token, hook");
   if (error) throw new Error(`claim failed: ${error.message}`);
 
-  const claimed = new Map<string, { id: string; access_token: string }>();
+  const claimed = new Map<string, { id: string; access_token: string; hook: string | null }>();
   for (const row of inserted ?? []) {
     claimed.set(`${row.subscription_id}|${row.kind}|${row.for_date}`, row);
   }
@@ -263,7 +275,7 @@ async function claim(db: SupabaseClient, plans: PlannedDelivery[]): Promise<Clai
     const orphanCutoff = new Date(Date.now() - ORPHAN_AFTER_MS).toISOString();
     const { data: orphans, error: orphanError } = await db
       .from("daily_deliveries")
-      .select("id, subscription_id, kind, for_date, access_token")
+      .select("id, subscription_id, kind, for_date, access_token, hook")
       .in("subscription_id", unclaimed.map((p) => p.sub.id))
       .or(`status.eq.failed,and(status.eq.pending,created_at.lt.${orphanCutoff})`);
     if (orphanError) throw new Error(`orphan lookup failed: ${orphanError.message}`);
@@ -274,7 +286,7 @@ async function claim(db: SupabaseClient, plans: PlannedDelivery[]): Promise<Clai
 
   return plans.flatMap((p) => {
     const row = claimed.get(`${p.sub.id}|${p.kind}|${p.forDate}`);
-    return row ? [{ ...p, id: row.id, accessToken: row.access_token }] : [];
+    return row ? [{ ...p, id: row.id, accessToken: row.access_token, hook: row.hook }] : [];
   });
 }
 
@@ -309,43 +321,35 @@ function sendArticleParameter(d: ClaimedDelivery): Record<string, string> {
   };
 }
 
-// Variable names must match the approved templates exactly (see ALIMTALK_TEMPLATES.md).
-function templateParameter(d: ClaimedDelivery, style: TemplateCodes["style"] = "daily"): Record<string, string> {
-  if (style === "send-article") return sendArticleParameter(d);
-  const name = customerName(d.sub);
-  const track = TRACK_LABEL[d.sub.track];
+// The lesson or review body that goes in #{content}, line breaks included.
+function contentOf(d: ClaimedDelivery): string {
   if (d.kind === "lesson" && d.lesson) {
-    return {
-      name,
-      track,
-      expression: d.lesson.expression,
-      meaning: d.lesson.meaning,
-      example: d.lesson.examples?.[0]?.en ?? "",
-      token: d.accessToken,
-    };
+    const example = d.lesson.examples?.[0]?.en?.trim();
+    const lines = [`[${TRACK_LABEL[d.sub.track]}] 오늘의 표현`, "", d.lesson.expression, d.lesson.meaning];
+    if (example) lines.push("", "예문", example);
+    return lines.join("\n");
   }
   if (d.kind === "review" && d.reviewLessons) {
-    return {
-      name,
-      count: String(d.reviewLessons.length),
-      expressions: d.reviewLessons.map((l) => `· ${l.expression}`).join("\n"),
-      token: d.accessToken,
-    };
+    return [`이번 주에 받은 표현 ${d.reviewLessons.length}개`, "", ...d.reviewLessons.map((l) => `· ${l.expression}`)].join("\n");
   }
-  return { name, track, token: d.accessToken };
+  return "";
+}
+
+// Variable names must match the approved templates exactly (see ALIMTALK_TEMPLATES.md).
+function templateParameter(d: ClaimedDelivery, style: TemplateStyle): Record<string, string> {
+  if (style === "send-article") return sendArticleParameter(d);
+  const name = customerName(d.sub);
+  if (d.kind === "trial_ended") return { name };
+  return { name, hook: d.hook ?? "", content: contentOf(d), link: `${siteHost()}${linkPath(d)}` };
 }
 
 // Plain-text version for the LMS fallback, sent only when Alimtalk cannot be delivered
 // (no KakaoTalk on that number, template problem, Kakao outage).
 function fallbackText(d: ClaimedDelivery): string {
-  const p = templateParameter(d);
-  if (d.kind === "lesson") {
-    return `[영어 한잔 Daily] 오늘의 표현\n\n${p.expression}\n${p.meaning}\n\n레슨 보기: ${siteUrl()}/daily/l/${p.token}`;
-  }
-  if (d.kind === "review") {
-    return `[영어 한잔 Daily] 이번 주 복습\n\n${p.expressions}\n\n복습하기: ${siteUrl()}/daily/r/${p.token}`;
-  }
-  return `[영어 한잔 Daily] 무료 체험 종료 안내\n\n${p.track} 무료 체험이 끝났어요. 계속 받으려면 구독해주세요.\n\n구독 안내: ${siteUrl()}/daily/subscribe?t=${p.token}`;
+  const link = `${siteUrl()}${linkPath(d)}`;
+  if (d.kind === "lesson") return `[영어 한잔 Daily] 오늘의 표현\n\n${contentOf(d)}\n\n레슨 보기: ${link}`;
+  if (d.kind === "review") return `[영어 한잔 Daily] 이번 주 복습\n\n${contentOf(d)}\n\n복습하기: ${link}`;
+  return `[영어 한잔 Daily] 무료 체험 종료 안내\n\n${TRACK_LABEL[d.sub.track]} 무료 체험이 끝났어요.`;
 }
 
 interface SendResult {
@@ -354,13 +358,10 @@ interface SendResult {
   requestId: string | null;
 }
 
-async function sendBatch(
-  deliveries: ClaimedDelivery[],
-  templateCode: string,
-  style: TemplateCodes["style"],
-): Promise<SendResult> {
+async function sendBatch(deliveries: ClaimedDelivery[], templateCode: string): Promise<SendResult> {
   const result: SendResult = { sentIds: [], failed: [], requestId: null };
   if (deliveries.length === 0) return result;
+  const style = templateStyle(templateCode);
 
   // Off unless asked for: NHN rejects the whole message (-2502) when the Kakao channel
   // has no text-resend (대체 발송) setting, which ours does not have yet.
@@ -405,6 +406,28 @@ async function sendBatch(
   return result;
 }
 
+/** Writes the first line of each lesson and review that has none yet, and keeps it on the row. */
+async function attachHooks(db: SupabaseClient, deliveries: ClaimedDelivery[]): Promise<void> {
+  const targets: HookTarget[] = deliveries.filter((d) => !d.hook).map((d) => ({
+    id: d.id,
+    kind: d.kind === "review" ? "review" : "lesson",
+    forDate: d.forDate,
+    subscriptionId: d.sub.id,
+    customerId: d.sub.customer_id,
+    levelLabel: TRACK_LABEL[d.sub.track],
+    lesson: d.lesson ? { expression: d.lesson.expression, meaning: d.lesson.meaning } : undefined,
+    reviewExpressions: d.reviewLessons?.map((l) => l.expression),
+  }));
+  const hooks = await writeHooks(db, targets);
+  await Promise.all(deliveries.map(async (d) => {
+    const written = hooks.get(d.id);
+    if (!written) return;
+    d.hook = written.hook;
+    const { error } = await db.from("daily_deliveries").update({ hook: written.hook, hook_source: written.source }).eq("id", d.id);
+    if (error) console.error("saving hook failed:", error.message);
+  }));
+}
+
 /** Sends claimed deliveries and records the outcome on each row and subscription. */
 export async function sendClaimed(
   db: SupabaseClient,
@@ -414,10 +437,15 @@ export async function sendClaimed(
   const byKind: Record<DeliveryKind, ClaimedDelivery[]> = { lesson: [], review: [], trial_ended: [] };
   for (const d of claimed) byKind[d.kind].push(d);
 
+  await attachHooks(db, [
+    ...(templateStyle(codes.lesson) === "daily" ? byKind.lesson : []),
+    ...(templateStyle(codes.review) === "daily" ? byKind.review : []),
+  ]);
+
   const results = await Promise.all([
-    sendBatch(byKind.lesson, codes.lesson, codes.style),
-    sendBatch(byKind.review, codes.review, codes.style),
-    sendBatch(byKind.trial_ended, codes.trialEnded, codes.style),
+    sendBatch(byKind.lesson, codes.lesson),
+    sendBatch(byKind.review, codes.review),
+    sendBatch(byKind.trial_ended, codes.trialEnded),
   ]);
 
   const now = new Date().toISOString();
