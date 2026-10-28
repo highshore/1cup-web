@@ -70,6 +70,11 @@ export default function OpenAIAdsPixel() {
     setConsentCookie(true);
     initializePixel();
     setInitialized(true);
+    // The SDK script is global to the current tab. Explicitly disable measurement
+    // when navigating away from /daily so unrelated 1 Cup pages cannot be tracked.
+    return () => {
+      window.oaiq?.("consent", false);
+    };
   }, [choice]);
 
   useEffect(() => {
