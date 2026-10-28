@@ -188,6 +188,63 @@ async function applyInvite(db: SupabaseClient, orderNumber: string) {
   if (error) console.error("daily invite reward failed:", orderNumber, error.message);
 }
 
+// Report only a confirmed FIRST customer purchase. The card registration callback
+// is not a purchase: actual charges are verified and settled by daily_complete_order.
+// Errors in ad reporting are isolated from the money-moving path. Repeated verify calls
+// reuse the same event ID, allowing OpenAI to deduplicate them.
+async function reportOpenAIFirstPurchase(db: SupabaseClient, orderNumber: string, body: Record<string, unknown>): Promise<void> {
+  if (body.adMeasurementConsent !== true) return;
+  const pixelId = Deno.env.get("OPENAI_ADS_PIXEL_ID");
+  const apiKey = Deno.env.get("OPENAI_ADS_CAPI_KEY");
+  if (!pixelId || !apiKey) return;
+
+  try {
+    const { data: order, error } = await db.from("daily_orders")
+      .select("customer_id, kind, status, product, amount, completed_at")
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (error || !order || order.kind !== "checkout" || order.status !== "completed") return;
+    const { count, error: countError } = await db.from("daily_orders")
+      .select("order_number", { head: true, count: "exact" })
+      .eq("customer_id", order.customer_id)
+      .eq("kind", "checkout")
+      .eq("status", "completed")
+      .neq("order_number", orderNumber);
+    if (countError || count !== 0) return;
+
+    const occurred = order.completed_at ? new Date(order.completed_at).getTime() : Date.now();
+    if (!Number.isFinite(occurred) || occurred < Date.now() - 7 * 86400000) return;
+
+    const oppref = typeof body.oppref === "string" ? body.oppref.trim().slice(0, 512) : "";
+    const obref = typeof body.obref === "string" ? body.obref.trim().slice(0, 512) : "";
+    const event = {
+      id: `daily_first_purchase_${orderNumber}`,
+      type: "order_created",
+      timestamp_ms: occurred,
+      action_source: "web",
+      source_url: `${SITE_URL}/daily/subscribe/result`,
+      ...(oppref ? { oppref } : {}),
+      ...(obref ? { user: { obref } } : {}),
+      data: {
+        type: "contents",
+        amount: order.amount,
+        currency: "KRW",
+        contents: [{ id: order.product, content_type: "product", quantity: 1 }],
+      },
+    };
+    const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(pixelId)}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ validate_only: false, events: [event] }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) console.error("Daily OpenAI Ads conversion rejected (HTTP status):", response.status);
+  } catch (error) {
+    // Never let an attribution outage change payment or subscription results.
+    console.error("Daily OpenAI Ads conversion request failed:", error instanceof Error ? error.name : "unknown");
+  }
+}
+
 // The KakaoTalk notice for a paid order, a checkout or a renewal: what was paid and until
 // when it runs. Sent once per order; paid_notice_at is claimed first, so a settle retried
 // from another tab never sends it twice. A failure here never fails the payment.
@@ -358,6 +415,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
   if (!order || order.kind !== "checkout") throw new PaymentError("주문을 찾을 수 없어요.", "order-missing", 404);
 
   if (order.status === "completed") {
+    await reportOpenAIFirstPurchase(db, orderNumber, body);
     return { success: true, subscription: await subscriptionSummary(db, order.subscription_id) };
   }
 
@@ -381,6 +439,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
 
   if (!claim || claim.state === "missing") throw new PaymentError("주문을 찾을 수 없어요.", "order-missing", 404);
   if (claim.state === "completed") {
+    await reportOpenAIFirstPurchase(db, orderNumber, body);
     return { success: true, subscription: await subscriptionSummary(db, order.subscription_id) };
   }
   if (claim.state === "charging") {
@@ -392,6 +451,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
         p_billing_key: order.billing_key,
       });
       if (error) throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 문의해 주세요.", "settle-failed", 500);
+      await reportOpenAIFirstPurchase(db, orderNumber, body);
       await applyInvite(db, orderNumber);
       await notifyPaid(db, orderNumber);
       return { success: true, subscription: await subscriptionSummary(db, subId as string) };
@@ -441,6 +501,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
   if (settleError) {
     throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 새로고침해 주세요.", "settle-failed", 500);
   }
+  await reportOpenAIFirstPurchase(db, orderNumber, body);
   await applyInvite(db, orderNumber);
   await notifyPaid(db, orderNumber);
   return { success: true, subscription: await subscriptionSummary(db, subId as string) };

@@ -8,6 +8,7 @@ import DailyConsentDialog, { type DailyConsent } from "../../lib/features/daily/
 import { cn, displayClass, Emoji } from "../../lib/features/daily/components/DailyUI";
 import DailyLoading from "../../lib/features/daily/components/DailyLoading";
 import { DailyApiError, dailyApi } from "../../lib/features/daily/api";
+import { measureDailyAdEvent } from "../../lib/features/daily/ads/OpenAIAdsPixel";
 import { InviteCodeField, useInviteCode } from "../../lib/features/daily/components/InviteCode";
 import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_GUIDE_PATH, DAILY_TERMS_VERSION, type DailyTrack } from "../../lib/features/daily/constants";
@@ -127,6 +128,7 @@ export default function StartClient() {
         termsVersion: DAILY_TERMS_VERSION,
       });
       setResult(data);
+      measureDailyAdEvent("trial_started", { type: "plan_enrollment", plan_id: `daily_trial_${track}` });
       setConsentOpen(false);
     } catch (e) {
       const code = e instanceof DailyApiError ? e.code : "";

@@ -208,6 +208,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
           ...body,
           action,
           ...(action === "checkout-window" && jar.get(INVITE_COOKIE)?.value ? { inviteCode: jar.get(INVITE_COOKIE)?.value } : {}),
+          // Only forward attribution cookies after the visitor explicitly permitted ad measurement.
+          // Browser-controlled fields are overwritten here, never trusted from the request body.
+          ...(action === "checkout-verify" ? {
+            adMeasurementConsent: jar.get("daily_ads_measure_consent")?.value === "yes",
+            oppref: (jar.get("__oppref")?.value ?? "").slice(0, 512),
+            obref: (jar.get("__obref")?.value ?? "").slice(0, 512),
+          } : {}),
         }),
         cache: "no-store",
       });
