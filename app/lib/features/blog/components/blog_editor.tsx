@@ -106,6 +106,9 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
 
   const featuredImageInputRef = useRef<HTMLInputElement>(null);
   const contentImageInputRef = useRef<HTMLInputElement>(null);
+  // A text-selection drag can end on the backdrop and synthesize a click there.
+  // Only dismiss when the pointer both starts and finishes on the backdrop.
+  const backdropPointerDownRef = useRef(false);
 
   // Initialize form data
   useEffect(() => {
@@ -195,10 +198,20 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
     }
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onCancel();
-    }
+  const handleOverlayPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    backdropPointerDownRef.current = e.target === e.currentTarget;
+  };
+
+  const handleOverlayPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    backdropPointerDownRef.current =
+      backdropPointerDownRef.current && e.target === e.currentTarget;
+  };
+
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const shouldClose =
+      backdropPointerDownRef.current && e.target === e.currentTarget;
+    backdropPointerDownRef.current = false;
+    if (shouldClose) onCancel();
   };
 
   const handleFeaturedImageUpload = async (
@@ -417,6 +430,9 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
 
   return (
     <div
+      onPointerDown={handleOverlayPointerDown}
+      onPointerUp={handleOverlayPointerUp}
+      onPointerCancel={() => { backdropPointerDownRef.current = false; }}
       onClick={handleOverlayClick}
       className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-[1000] p-4 overflow-y-auto"
     >
