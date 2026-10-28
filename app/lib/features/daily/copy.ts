@@ -585,6 +585,7 @@ export const dailyCopy = {
     refund: {
       title: "환불 요청",
       full: "결제 후 7일이 지나지 않아 전액 환불돼요.",
+      legacyWindow: "이전 약관으로 결제한 이용권이라, 결제 후 7일 이내에는 전액 환불돼요.",
       notStarted: "아직 이 이용권으로 받은 레슨이 없어 전액 환불돼요.",
       partial: "남은 {days}일만큼 환불돼요. 지난 날짜는 24시간 단위로 올려서 계산해요.",
       passCoolingOff: "받은 메시지 {used}개를 뺀 남은 {left}개만큼 환불돼요. 결제 후 7일 이내라 위약금은 없어요.",

@@ -11,7 +11,7 @@ import {
 } from "../../../lib/features/daily/api";
 import { cn, displayClass, Emoji } from "../../../lib/features/daily/components/DailyUI";
 import DailyLoading from "../../../lib/features/daily/components/DailyLoading";
-import { DAILY_TRACK_LABEL, type DailyTrack } from "../../../lib/features/daily/constants";
+import { DAILY_PASSES, DAILY_TRACK_LABEL, type DailyTrack } from "../../../lib/features/daily/constants";
 import { dailyDisplay } from "../../../lib/features/daily/fonts";
 import "../../../lib/features/daily/daily.css";
 
@@ -112,7 +112,19 @@ export default function ResultClient() {
           <>
             <Emoji className="text-[3rem]">🎉</Emoji>
             <h1 className={cn(displayClass, "mt-4 text-[2.4rem] leading-tight")}>
-              구독이 <span className="text-white">시작됐어요!</span>
+              {(() => {
+                // The plan is the one just paid for; a pass is not a subscription.
+                const pass = DAILY_PASSES.find((p) => p.id === state.settled.subscription?.plan);
+                return pass ? (
+                  <>
+                    {pass.label}({pass.days}일)이 <span className="text-white">결제됐어요!</span>
+                  </>
+                ) : (
+                  <>
+                    정기구독이 <span className="text-white">시작됐어요!</span>
+                  </>
+                );
+              })()}
             </h1>
             {state.settled.subscription && (
               <div className="mt-6 rounded-[24px] bg-white p-6 text-left">
