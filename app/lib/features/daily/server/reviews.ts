@@ -1,18 +1,29 @@
 // Server-only: Daily reviews, written on /daily/review by customers who received at least
 // one lesson, shown publicly only after the founder approves them. Writing one needs 소속
 // and 직종 (saved to the customer) and consent to promotional use, and earns 15 days once
-// (daily_grant_review_reward; terms 제9조의3).
+// (daily_grant_review_reward; terms 제9조의3). It is signed with 소속, 직종 and the family-name
+// initial (reviewerLabel), and carries the 1cup feedback questions, which are never shown.
 import { admin } from "../../../supabase/server";
 import { DAILY_JOB_CATEGORIES, type DailyTrack } from "../constants";
+import { reviewerLabel } from "../review_label";
 import type { DailySessionCustomer } from "./session";
 
 export interface DailyReviewInput {
   rating: number;
   body: string;
-  displayName: string;
   workplace: string;
   jobCategory: string;
   promoConsent: boolean;
+  survey: DailyReviewSurvey;
+}
+
+/** The 1cup feedback questions: three 1–5 ratings (required) and two optional answers. */
+export interface DailyReviewSurvey {
+  continue: number;
+  recommend: number;
+  miss: number;
+  hardest: string;
+  suggestion: string;
 }
 
 /** What submitting did with the 15-day reward. */
@@ -58,7 +69,7 @@ export async function reviewStatus(customer: DailySessionCustomer) {
   const db = admin();
   const [{ count }, { data: existing }, { data: me }] = await Promise.all([
     deliveredLessons(customer.id),
-    db.from("daily_reviews").select("rating, body, display_name, status, reward_earned_at, reward_applied_at").eq("customer_id", customer.id).maybeSingle(),
+    db.from("daily_reviews").select("rating, body, status, reward_earned_at, reward_applied_at, q_continue, q_recommend, q_miss, q_hardest, q_suggestion").eq("customer_id", customer.id).maybeSingle(),
     db.from("daily_customers").select("workplace, job_category").eq("id", customer.id).maybeSingle(),
   ]);
   // A message-link session may be someone the link was forwarded to: no 소속·직종 for it.
@@ -67,11 +78,19 @@ export async function reviewStatus(customer: DailySessionCustomer) {
     verified: customer.verified,
     workplace: customer.verified ? ((me?.workplace as string | null) ?? "") : "",
     jobCategory: customer.verified ? ((me?.job_category as string | null) ?? "") : "",
+    // Only the first letter, for the page's preview of how the review is signed.
+    nameInitial: customer.verified ? (Array.from((customer.name ?? "").trim())[0] ?? "") : "",
     existing: existing
       ? {
           rating: existing.rating,
           body: existing.body,
-          displayName: existing.display_name,
+          survey: {
+            continue: existing.q_continue ?? 0,
+            recommend: existing.q_recommend ?? 0,
+            miss: existing.q_miss ?? 0,
+            hardest: existing.q_hardest ?? "",
+            suggestion: existing.q_suggestion ?? "",
+          },
           status: existing.status,
           reward: existing.reward_applied_at ? "applied" : existing.reward_earned_at ? "pending" : null,
         }
@@ -82,13 +101,24 @@ export async function reviewStatus(customer: DailySessionCustomer) {
 export async function submitReview(customer: DailySessionCustomer, input: DailyReviewInput) {
   const rating = Math.round(Number(input.rating));
   const body = String(input.body ?? "").trim();
-  const displayName = String(input.displayName ?? "").trim().slice(0, 12);
   if (!(rating >= 1 && rating <= 5)) throw new ReviewError("별점을 골라 주세요.");
   if (body.length < 10 || body.length > 300) throw new ReviewError("후기는 10자 이상 300자 이하로 써 주세요.");
   const workplace = String(input.workplace ?? "").trim().slice(0, 60);
   const jobCategory = String(input.jobCategory ?? "").trim();
   if (!workplace) throw new ReviewError("소속을 적어 주세요.");
   if (!(DAILY_JOB_CATEGORIES as readonly string[]).includes(jobCategory)) throw new ReviewError("직종을 골라 주세요.");
+  const scale = (v: unknown) => {
+    const n = Math.round(Number(v));
+    return n >= 1 && n <= 5 ? n : 0;
+  };
+  const survey = {
+    q_continue: scale(input.survey?.continue),
+    q_recommend: scale(input.survey?.recommend),
+    q_miss: scale(input.survey?.miss),
+    q_hardest: String(input.survey?.hardest ?? "").trim().slice(0, 300) || null,
+    q_suggestion: String(input.survey?.suggestion ?? "").trim().slice(0, 300) || null,
+  };
+  if (!survey.q_continue || !survey.q_recommend || !survey.q_miss) throw new ReviewError("설문의 별점 세 개를 모두 골라 주세요.");
   if (input.promoConsent !== true) throw new ReviewError("홍보 활용에 동의해야 후기를 보낼 수 있어요.");
 
   const { count, track } = await deliveredLessons(customer.id);
@@ -107,7 +137,8 @@ export async function submitReview(customer: DailySessionCustomer, input: DailyR
       track,
       rating,
       body,
-      display_name: displayName || null,
+      display_name: reviewerLabel(workplace, jobCategory, customer.name),
+      ...survey,
       lessons_received: count,
       status: "pending",
       promo_consent_at: new Date().toISOString(),

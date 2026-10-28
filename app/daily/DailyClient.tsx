@@ -606,7 +606,7 @@ function ReviewsSection({ reviews }: { reviews: PublicDailyReview[] }) {
                 {(review.displayName ?? copy.anonymous).slice(0, 1)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[0.95rem] font-black">{review.displayName ?? copy.anonymous}</p>
+                <p className="text-[0.95rem] font-black leading-snug">{review.displayName ?? copy.anonymous}</p>
                 <p className="text-[0.75rem] font-semibold text-[#64748b]">
                   {trackTitle(review.track)} · {copy.lessons.replace("{count}", String(review.lessonsReceived))}
                 </p>

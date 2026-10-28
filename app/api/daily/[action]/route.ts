@@ -117,13 +117,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
       if (!customer.verified) {
         return NextResponse.json({ success: false, errorCode: "verify-required", message: "후기를 보내려면 다시 한번 로그인해 주세요." }, { status: 403 });
       }
+      const survey = (body.survey ?? {}) as Record<string, unknown>;
       const reward = await submitReview(customer, {
         rating: Number(body.rating),
         body: String(body.body ?? ""),
-        displayName: String(body.displayName ?? ""),
         workplace: String(body.workplace ?? ""),
         jobCategory: String(body.jobCategory ?? ""),
         promoConsent: body.promoConsent === true,
+        survey: {
+          continue: Number(survey.continue),
+          recommend: Number(survey.recommend),
+          miss: Number(survey.miss),
+          hardest: String(survey.hardest ?? ""),
+          suggestion: String(survey.suggestion ?? ""),
+        },
       });
       return NextResponse.json({ success: true, reward });
     }
