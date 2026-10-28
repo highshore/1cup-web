@@ -213,6 +213,15 @@ async function handleStartTrial(
   if (body.termsVersion !== TERMS_VERSION) throw new StartError("terms-outdated", 409);
 
   const db = admin();
+  // Someone already receiving Daily (a trial or a paid plan, either level) has nothing to try.
+  const { data: live } = await db
+    .from("daily_subscriptions")
+    .select("id")
+    .eq("customer_id", customer.id)
+    .in("status", ["trial", "active"])
+    .limit(1);
+  if (live?.length) throw new StartError("already-subscribed", 409);
+
   const lesson = await trialLessonFor(db, track);
   if (!lesson) throw new StartError("no-lesson", 503);
 

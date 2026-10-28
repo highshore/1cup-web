@@ -248,7 +248,7 @@ export function DailyPrivacyDocument() {
         </p>
         <p>
           광고 성과 측정 동의는 선택사항입니다. 동의하지 않아도 무료 체험, 결제, 레슨 수신에
-          제한이 없습니다. Daily 페이지의 &lsquo;광고 측정 설정&rsquo;에서 언제든 동의를
+          제한이 없습니다. Daily 페이지 하단의 &lsquo;쿠키 설정&rsquo;에서 언제든 동의를
           거부하거나 철회할 수 있으며, 철회 이후에는 새로운 측정 이벤트를 전송하지 않습니다.
         </p>
       </Article>

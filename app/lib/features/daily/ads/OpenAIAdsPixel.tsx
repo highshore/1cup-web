@@ -17,6 +17,14 @@ declare global {
   }
 }
 
+// The footer's 쿠키 설정 link reopens the banner below, which is where consent is withdrawn.
+const OPEN_SETTINGS_EVENT = "daily:cookie-settings";
+export const DAILY_COOKIE_SETTINGS_ENABLED = Boolean(PIXEL_ID);
+
+export function openDailyCookieSettings() {
+  window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT));
+}
+
 function setConsentCookie(enabled: boolean) {
   document.cookie = `${CONSENT_COOKIE}=${enabled ? "yes" : "no"}; Max-Age=${90 * 24 * 3600}; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
@@ -63,6 +71,9 @@ export default function OpenAIAdsPixel() {
     const next: Choice = saved === "accepted" || saved === "declined" ? saved : "unknown";
     setChoice(next);
     setChecked(true);
+    const open = () => setShowSettings(true);
+    window.addEventListener(OPEN_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, open);
   }, []);
 
   useEffect(() => {
@@ -101,31 +112,21 @@ export default function OpenAIAdsPixel() {
     }
   };
 
+  if (choice !== "unknown" && !showSettings) return null;
+
+  // Worded for measurement tools in general, not one vendor: the privacy notice names them.
   return (
-    <>
-      {(choice === "unknown" || showSettings) && (
-        <div className="fixed inset-x-3 bottom-3 z-[9999] mx-auto max-w-[560px] rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-900 shadow-xl" role="region" aria-label="광고 성과 측정 동의">
-          <p className="font-bold">선택적 광고 성과 측정</p>
-          <p className="mt-1 leading-relaxed">
-            광고 유입과 유료 결제 성과를 확인하기 위해 OpenAI 측정 도구를 사용해도 될까요?
-            거부해도 서비스 이용과 결제에는 영향이 없습니다.{" "}
-            <Link href="/daily/privacy" className="underline">개인정보 안내</Link>
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-black px-4 py-2 font-semibold text-white">허용</button>
-            <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-stone-300 px-4 py-2 font-semibold">거부</button>
-          </div>
-        </div>
-      )}
-      {choice !== "unknown" && !showSettings && (
-        <button
-          type="button"
-          onClick={() => setShowSettings(true)}
-          className="fixed bottom-2 left-2 z-[9998] rounded-md bg-white/90 px-2 py-1 text-[10px] text-stone-500 shadow-sm"
-        >
-          광고 측정 설정
-        </button>
-      )}
-    </>
+    <div className="fixed inset-x-3 bottom-3 z-[9999] mx-auto max-w-[560px] rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-900 shadow-xl" role="region" aria-label="쿠키 설정">
+      <p className="font-bold">쿠키 사용 안내</p>
+      <p className="mt-1 leading-relaxed">
+        방문 통계와 광고 성과를 확인하기 위해 분석·광고 쿠키를 사용해도 될까요? 허용하지 않아도
+        무료 체험, 결제, 레슨 수신은 그대로 이용할 수 있어요.{" "}
+        <Link href="/daily/privacy" className="underline">개인정보 안내</Link>
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-black px-4 py-2 font-semibold text-white">허용</button>
+        <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-stone-300 px-4 py-2 font-semibold">거부</button>
+      </div>
+    </div>
   );
 }

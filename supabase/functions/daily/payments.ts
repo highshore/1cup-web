@@ -329,17 +329,18 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
     throw new PaymentError("이용약관이 바뀌었어요. 새로고침 후 다시 동의해 주세요.", "terms-outdated", 409);
   }
 
-  // A second auto-renewing subscription on the same track would bill twice a month.
-  if (product.recurring) {
-    const { data: live } = await db
-      .from("daily_subscriptions")
-      .select("id")
-      .eq("customer_id", customer.id)
-      .eq("track", track)
-      .eq("status", "active")
-      .eq("auto_renew", true)
-      .maybeSingle();
-    if (live) throw new PaymentError("이미 이 레벨을 정기구독하고 있어요.", "already-subscribed", 409);
+  // One plan at a time: a customer with paid time still running (either level, a
+  // subscription or a pass, renewing or not) changes it from 내 구독 rather than paying again.
+  // A renewal whose card failed is past paid_until and may pay again with another card.
+  const { data: live } = await db
+    .from("daily_subscriptions")
+    .select("id")
+    .eq("customer_id", customer.id)
+    .eq("status", "active")
+    .gt("paid_until", new Date().toISOString())
+    .limit(1);
+  if (live?.length) {
+    throw new PaymentError("이미 이용 중인 플랜이 있어요. 지금 플랜이 끝난 뒤에 결제할 수 있어요.", "already-subscribed", 409);
   }
 
   const orderNumber = `DLY${yyyymmdd()}${randomDigits(8)}`;

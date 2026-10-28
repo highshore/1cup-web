@@ -1,4 +1,9 @@
-export default function Footer() {
+"use client";
+
+import { DAILY_COOKIE_SETTINGS_ENABLED, openDailyCookieSettings } from "../features/daily/ads/OpenAIAdsPixel";
+
+// cookieSettings: Daily pages, the only ones with optional measurement cookies.
+export default function Footer({ cookieSettings = false }: { cookieSettings?: boolean }) {
   const linkClass =
     "text-[#4A2F23] no-underline hover:text-[#2C1810] hover:underline";
   const divider = <span className="mx-2 text-[#8B6B4F]">|</span>;
@@ -22,6 +27,14 @@ export default function Footer() {
           <a href="/policy/refund" className={linkClass}>
             환불 및 멤버십 해지
           </a>
+          {cookieSettings && DAILY_COOKIE_SETTINGS_ENABLED && (
+            <>
+              {divider}
+              <button type="button" onClick={openDailyCookieSettings} className={linkClass}>
+                쿠키 설정
+              </button>
+            </>
+          )}
         </div>
         <div>
           네이티브피티 | 549-04-02156 | 대표자 김수겸 | 이메일
