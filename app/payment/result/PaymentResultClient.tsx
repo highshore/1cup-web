@@ -591,13 +591,9 @@ export default function PaymentResultClient() {
                   <div className={detailRowClass}>
                     <span className={detailLabelClass}>구독 금액</span>
                     <span className={detailValueClass}>
-                      ₩
                       {paymentResult.data.PCD_PAY_TOTAL
-                        ? Number(
-                            paymentResult.data.PCD_PAY_TOTAL
-                          ).toLocaleString()
-                        : "4,700"}
-                      /월
+                        ? `₩${Number(paymentResult.data.PCD_PAY_TOTAL).toLocaleString()} / 30일`
+                        : "결제 금액 확인 필요"}
                     </span>
                   </div>
                   <div className={detailRowClass}>

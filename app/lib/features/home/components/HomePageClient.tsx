@@ -843,12 +843,12 @@ export default function HomePageClient({
                 <div className="relative z-[1] flex items-baseline justify-center gap-[0.6rem]">
                   <span className="text-[clamp(1.5rem,4vw,1.8rem)] font-bold text-[#111827]">₩</span>
                   <span className="text-[clamp(2.5rem,6vw,3.5rem)] font-extrabold tracking-[-0.02em] text-[#111827]">
-                    9,700
+                    19,700
                   </span>
-                  <span className="text-[1rem] font-medium text-[#6b7280]">/월</span>
+                  <span className="text-[1rem] font-medium text-[#6b7280]">/30일</span>
                 </div>
                 <p className="m-0 text-[1rem] font-medium leading-[1.6] text-[#374151]">
-                  통역사가 직접 리딩하는 2시간 토론 세션, 고급 비즈니스 콘텐츠, 압도적인 가성비를 모두 경험하세요.
+                  통역사가 직접 리딩하는 2시간 토론 세션, 고급 비즈니스 콘텐츠, 밀도 있는 토론 경험을 만나보세요.
                 </p>
               </div>
 

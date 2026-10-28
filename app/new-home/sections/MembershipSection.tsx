@@ -39,11 +39,19 @@ export default function MembershipSection() {
     const labels = t.home.pricingNew.chart.labels;
     return [
       {
-        key: "oneCup",
-        label: labels.oneCup,
-        cost: 1212,
-        displayValue: formatCostValue(1212),
+        key: "oneCupAnam",
+        label: labels.oneCupAnam,
+        cost: 2463,
+        displayValue: formatCostValue(2463),
         color: "linear-gradient(90deg, #050505, #2a2a2a)",
+        highlight: true,
+      },
+      {
+        key: "oneCupYeouido",
+        label: labels.oneCupYeouido,
+        cost: 3283,
+        displayValue: formatCostValue(3283),
+        color: "linear-gradient(90deg, #334155, #64748b)",
         highlight: true,
       },
       {
