@@ -134,11 +134,13 @@ async function quoteReferral(uid: string, code: string, product: ProductRow) {
     // Member-generated referral codes store a percentage (currently 33%) in
     // referral_codes. Calculate against the *current* regional list price,
     // rather than using the old, fixed product referral_discount_amount.
-    // Round to the nearest won so quotes and Payple amounts are integers.
+    // Drop the hundreds-place and below from the discount (floor to KRW 1,000).
+    // Keep the checkout quote and actual Payple charge on the same amount.
     const configuredRate = Number(referral.discount);
     if (referral.type === "percent" && Number.isFinite(configuredRate)
         && configuredRate >= 0 && configuredRate <= 100) {
-      discountAmount = Math.min(Math.round(listAmount * configuredRate / 100), listAmount);
+      const rawDiscount = listAmount * configuredRate / 100;
+      discountAmount = Math.min(Math.floor(rawDiscount / 1000) * 1000, listAmount);
     } else {
       // Keep legacy member-owned non-percent codes compatible.
       discountAmount = Math.min(Number(product.referral_discount_amount || 0), listAmount);
