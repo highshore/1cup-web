@@ -16,15 +16,13 @@ import "../../lib/features/daily/daily.css";
 
 type Reward = "applied" | "pending" | "already";
 
+// The private part of the review: 추천 의향 (required) and 개선 요청 (optional).
 interface Survey {
-  continue: number;
   recommend: number;
-  miss: number;
-  hardest: string;
   suggestion: string;
 }
 
-const emptySurvey: Survey = { continue: 0, recommend: 0, miss: 0, hardest: "", suggestion: "" };
+const emptySurvey: Survey = { recommend: 0, suggestion: "" };
 
 interface ReviewStatus {
   eligible: boolean;
@@ -46,32 +44,26 @@ interface ReviewStatus {
 const copy = dailyCopy.reviewPage;
 const field = "w-full rounded-xl bg-[#f5f5f4] px-3.5 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]";
 const label = "text-[0.92rem] font-black";
-const sc = copy.survey;
 
-// One of the three 1cup feedback ratings, laid out like the review's own stars.
-function ScaleQuestion({ title, value, onChange }: { title: string; value: number; onChange: (value: number) => void }) {
+// A 1–5 star question: the public 사용 경험 rating and the private 추천 의향.
+function StarQuestion({ title, note, value, onChange }: { title: string; note?: string; value: number; onChange: (value: number) => void }) {
   return (
     <div>
-      <p className={label}>
-        {title} <span className="text-[#f47a4a]">*</span>
-      </p>
+      <p className={label}>{title}</p>
+      {note && <p className="mt-0.5 text-[0.82rem] font-semibold text-[#64748b]">{note}</p>}
       <div className="mt-2 flex gap-1" role="radiogroup" aria-label={title}>
         {[1, 2, 3, 4, 5].map((v) => (
           <button key={v} type="button" role="radio" aria-checked={value === v} aria-label={`${v}점`} onClick={() => onChange(v)} className="p-0.5">
-            <StarIcon className={cn("size-8 transition-colors", v <= value ? "text-[#f47a4a]" : "text-[#d6d3d1]")} />
+            <StarIcon className={cn("size-9 transition-colors", v <= value ? "text-[#f47a4a]" : "text-[#d6d3d1]")} />
           </button>
         ))}
-      </div>
-      <div className="mt-1 flex w-[212px] justify-between text-[0.75rem] font-semibold text-[#94a3b8]">
-        <span>{sc.scaleLow}</span>
-        <span>{sc.scaleHigh}</span>
       </div>
     </div>
   );
 }
 
 // Reviews used to sit at the bottom of the lesson page; here they get the room the extra
-// fields need. Everything required (별점, 10자 이상, 설문 별점 셋, 소속, 직종, 홍보 동의) is checked again
+// fields need. Everything required (사용 경험·추천 별점, 좋았던 점 10자 이상, 소속, 직종, 홍보 동의) is checked again
 // on the server, which also hands out the 15 days.
 export default function ReviewClient() {
   // undefined: checking; null: not signed in.
@@ -110,8 +102,7 @@ export default function ReviewClient() {
     void load();
   }, [load]);
 
-  const surveyDone = survey.continue > 0 && survey.recommend > 0 && survey.miss > 0;
-  const ready = rating > 0 && body.trim().length >= 10 && surveyDone && workplace.trim() !== "" && jobCategory !== "" && consent;
+  const ready = rating > 0 && survey.recommend > 0 && body.trim().length >= 10 && workplace.trim() !== "" && jobCategory !== "" && consent;
   const setAnswer = <K extends keyof Survey>(key: K, value: Survey[K]) => setSurvey((prev) => ({ ...prev, [key]: value }));
 
   const submit = async () => {
@@ -196,27 +187,12 @@ export default function ReviewClient() {
               </p>
             )}
 
-            <div>
-              <p className={label}>{copy.rating}</p>
-              <div className="mt-2 flex gap-1" role="radiogroup" aria-label={copy.rating}>
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={rating === value}
-                    aria-label={`${value}점`}
-                    onClick={() => setRating(value)}
-                    className="p-0.5"
-                  >
-                    <StarIcon className={cn("size-9 transition-colors", value <= rating ? "text-[#f47a4a]" : "text-[#d6d3d1]")} />
-                  </button>
-                ))}
-              </div>
-            </div>
+            <StarQuestion title={copy.rating} value={rating} onChange={setRating} />
+            <StarQuestion title={copy.recommend} note={copy.privateNote} value={survey.recommend} onChange={(v) => setAnswer("recommend", v)} />
 
             <label className="block">
               <span className={label}>{copy.body}</span>
+              <span className="mt-0.5 block text-[0.82rem] font-semibold text-[#64748b]">{copy.bodyNote}</span>
               <textarea
                 value={body}
                 onChange={(event) => setBody(event.target.value.slice(0, 300))}
@@ -227,61 +203,41 @@ export default function ReviewClient() {
               <span className="mt-1 block text-right text-[0.78rem] font-semibold text-[#94a3b8]">{body.length}/300</span>
             </label>
 
-            <div className="flex flex-col gap-5 border-t border-[#e7e5e4] pt-6">
-              <div>
-                <p className="text-[1.02rem] font-black">{sc.title}</p>
-                <p className="mt-0.5 text-[0.82rem] font-semibold text-[#64748b]">{sc.hint}</p>
-              </div>
-              <ScaleQuestion title={sc.continue} value={survey.continue} onChange={(v) => setAnswer("continue", v)} />
-              <ScaleQuestion title={sc.recommend} value={survey.recommend} onChange={(v) => setAnswer("recommend", v)} />
-              <ScaleQuestion title={sc.miss} value={survey.miss} onChange={(v) => setAnswer("miss", v)} />
-              <label className="block">
-                <span className={label}>
-                  {sc.hardest} <span className="text-[0.8rem] font-semibold text-[#94a3b8]">({sc.optional})</span>
-                </span>
-                <textarea
-                  value={survey.hardest}
-                  onChange={(event) => setAnswer("hardest", event.target.value.slice(0, 300))}
-                  placeholder={sc.hardestPlaceholder}
-                  rows={3}
-                  className={cn(field, "mt-2 resize-none py-3 font-semibold")}
-                />
-              </label>
-              <label className="block">
-                <span className={label}>
-                  {sc.suggestion} <span className="text-[0.8rem] font-semibold text-[#94a3b8]">({sc.optional})</span>
-                </span>
-                <textarea
-                  value={survey.suggestion}
-                  onChange={(event) => setAnswer("suggestion", event.target.value.slice(0, 300))}
-                  placeholder={sc.suggestionPlaceholder}
-                  rows={3}
-                  className={cn(field, "mt-2 resize-none py-3 font-semibold")}
-                />
-              </label>
-            </div>
+            <label className="block">
+              <span className={label}>
+                {copy.suggestion} <span className="text-[0.8rem] font-semibold text-[#94a3b8]">({copy.optional})</span>
+              </span>
+              <span className="mt-0.5 block text-[0.82rem] font-semibold text-[#64748b]">{copy.privateNote}</span>
+              <textarea
+                value={survey.suggestion}
+                onChange={(event) => setAnswer("suggestion", event.target.value.slice(0, 300))}
+                placeholder={copy.suggestionPlaceholder}
+                rows={3}
+                className={cn(field, "mt-2 resize-none py-3 font-semibold")}
+              />
+            </label>
 
             <div className="border-t border-[#e7e5e4] pt-6">
               <p className={label}>{copy.about}</p>
               <p className="mt-0.5 text-[0.82rem] font-semibold text-[#64748b]">{copy.aboutHint}</p>
-              <label className="mt-2 block">
-                <span className="sr-only">{dailyCopy.account.profile.workplace}</span>
+              <label className="mt-3 block">
+                <span className="text-[0.85rem] font-bold text-[#475569]">{copy.workplace}</span>
                 <input
                   value={workplace}
                   onChange={(event) => setWorkplace(event.target.value.slice(0, 60))}
-                  placeholder={`${dailyCopy.account.profile.workplace} · ${dailyCopy.account.profile.workplacePlaceholder}`}
-                  className={cn(field, "h-12")}
+                  placeholder={copy.workplacePlaceholder}
+                  className={cn(field, "mt-1.5 h-12")}
                 />
               </label>
-              <label className="mt-2 block">
-                <span className="sr-only">{dailyCopy.account.profile.jobCategory}</span>
+              <label className="mt-3 block">
+                <span className="text-[0.85rem] font-bold text-[#475569]">{copy.jobCategory}</span>
                 <select
                   value={jobCategory}
                   onChange={(event) => setJobCategory(event.target.value)}
-                  className={cn(field, "h-12 cursor-pointer", jobCategory === "" && "text-[#94a3b8]")}
+                  className={cn(field, "mt-1.5 h-12 cursor-pointer", jobCategory === "" && "text-[#94a3b8]")}
                 >
                   <option value="" disabled>
-                    {dailyCopy.account.profile.jobCategory} · {dailyCopy.account.profile.jobPick}
+                    {copy.jobPick}
                   </option>
                   {DAILY_JOB_CATEGORIES.map((item) => (
                     <option key={item} value={item} className="text-[#050505]">
@@ -290,7 +246,7 @@ export default function ReviewClient() {
                   ))}
                 </select>
               </label>
-              <p className="mt-2 rounded-xl bg-[#fff8dc] px-3.5 py-2.5 text-[0.85rem] font-bold text-[#57534e]">
+              <p className="mt-3 rounded-xl bg-[#fff8dc] px-3.5 py-2.5 text-[0.85rem] font-bold text-[#57534e]">
                 {workplace.trim() && jobCategory
                   ? copy.aboutPreview.replace("{label}", reviewerLabel(workplace, jobCategory, status?.nameInitial))
                   : copy.aboutExample}
