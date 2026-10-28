@@ -24,7 +24,7 @@ export async function listSentences() {
   const db = admin();
   const { data, error } = await db
     .from("daily_sentences")
-    .select("id, body, hidden_at, picked_at, created_at, lesson_id, customer:daily_customers(name), lesson:daily_lessons(expression, track, publish_on)")
+    .select("id, body, hidden_at, picked_at, created_at, lesson_id, customer:daily_customers!daily_sentences_customer_id_fkey(name), lesson:daily_lessons(expression, track, publish_on)")
     .order("created_at", { ascending: false })
     .limit(300);
   if (error) throw new AdminSentenceError("불러오지 못했어요.", 500);
