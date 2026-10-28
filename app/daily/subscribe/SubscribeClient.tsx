@@ -310,6 +310,11 @@ export default function SubscribeClient() {
                 ))}
               </ul>
 
+              {selected && !selected.recurring && (
+                <p className="mt-4 rounded-2xl bg-[#f5f5f4] px-4 py-3 text-[0.88rem] font-bold leading-relaxed text-[#57534e]">
+                  {pricing.passes.refundNotice}
+                </p>
+              )}
               {blocked && (
                 <p className="mt-4 rounded-2xl bg-[#fff1ea] px-4 py-3 text-[0.9rem] font-bold text-[#b45309]">
                   이 레벨은 이미 정기구독 중이에요. 이용권으로 기간을 늘리거나 다른 레벨을 골라 주세요.

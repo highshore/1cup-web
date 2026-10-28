@@ -46,7 +46,8 @@ interface Payment {
   track: DailyTrack;
   paidAt: string;
   refund: { status: RefundStatus; amount: number; refundedAt: string | null; note: string | null } | null;
-  quote: { amount: number; daysRefunded: number; fullRefund: boolean } | null;
+  // basis: why the refund is priced as it is (daily_refund_quote, terms 제7조).
+  quote: { amount: number; daysRefunded: number; fullRefund: boolean; basis: "window" | "not_started" | "prorated" } | null;
 }
 
 interface AccountInfo {
@@ -518,7 +519,11 @@ function StopServiceSheet({
                 <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
                 <p className="text-[1.5rem] font-black">₩{formatKrw(choice.payment.quote!.amount)}</p>
                 <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
-                  {choice.payment.quote!.fullRefund ? r.full : r.partial.replace("{days}", String(choice.payment.quote!.daysRefunded))}
+                  {choice.payment.quote!.basis === "not_started"
+                    ? r.notStarted
+                    : choice.payment.quote!.fullRefund
+                      ? r.full
+                      : (choice.payment.recurring ? r.partial : r.passPartial).replace("{days}", String(choice.payment.quote!.daysRefunded))}
                 </p>
                 <ul className="m-0 mt-2 flex list-disc flex-col gap-1 pl-5 text-[0.84rem] font-semibold leading-relaxed text-[#57534e]">
                   {(choice.payment.recurring ? [...r.effects, r.recurringEffect] : r.effects).map((effect) => (

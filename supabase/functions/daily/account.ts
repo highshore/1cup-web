@@ -100,8 +100,8 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
     let quote = null;
     if (!refund || refund.status === "rejected") {
       const { data } = await db.rpc("daily_refund_quote", { p_order_number: o.order_number });
-      const row = (Array.isArray(data) ? data[0] : data) as { amount: number; days_refunded: number; full_refund: boolean } | undefined;
-      if (row && row.amount > 0) quote = { amount: row.amount, daysRefunded: row.days_refunded, fullRefund: row.full_refund };
+      const row = (Array.isArray(data) ? data[0] : data) as { amount: number; days_refunded: number; full_refund: boolean; basis: string } | undefined;
+      if (row && row.amount > 0) quote = { amount: row.amount, daysRefunded: row.days_refunded, fullRefund: row.full_refund, basis: row.basis };
     }
     return {
       orderNumber: o.order_number,
