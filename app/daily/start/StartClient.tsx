@@ -268,7 +268,7 @@ export default function StartClient() {
                 </select>
               </label>
               <p className="mt-2.5 text-[0.88rem] font-semibold text-[#64748b]">
-                평일엔 이 시간에 레슨이, 토요일엔 한 주 복습이 와요. 일요일은 쉬어요.
+                평일엔 이 시간에 레슨이, 토요일엔 한 주 복습이 와요. 일요일은 자습하는 날이에요.
               </p>
             </Step>
 

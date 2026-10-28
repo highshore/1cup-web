@@ -246,11 +246,11 @@ export default function SubscribeClient() {
                     >
                       <span>
                         <span className="flex items-center gap-2 text-[1rem] font-black">
-                          {p.recurring ? "30일 정기구독" : p.name.replace("영어 한잔 Daily ", "")}
+                          {p.recurring ? "28일 정기구독" : p.name.replace("영어 한잔 Daily ", "")}
                           {p.recurring && <span className="text-[0.78rem] font-black text-[#d95f2d]">{pricing.subscription.badge}</span>}
                         </span>
                         <span className="text-[0.82rem] font-semibold text-[#64748b]">
-                          {p.recurring ? "30일마다 자동 결제 · 언제든 해지" : `${p.days}일 · 한 번만 결제`}
+                          {p.recurring ? "28일마다 자동 결제 · 언제든 해지" : `${p.days}일 · 한 번만 결제`}
                         </span>
                       </span>
                       <span className="shrink-0 text-right text-[1.15rem] font-black">
