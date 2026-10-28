@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function DailyPrivacyPage() {
   return (
-    <DailyLegalPage title="개인정보 수집·이용 안내">
+    <DailyLegalPage type="privacy" title="개인정보 수집·이용 안내">
       <DailyPrivacyDocument />
     </DailyLegalPage>
   );

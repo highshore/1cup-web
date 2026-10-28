@@ -1,6 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import LegalServiceSwitch from "../../lib/components/LegalServiceSwitch";
+import {
+  DailyPrivacyDocument,
+  DailyTermsDocument,
+} from "../../lib/features/daily/components/DailyLegal";
 
 // Colors map to the theme tokens in app/globals.css, which mirror
 // app/lib/constants/colors.ts (text-ink, text-ink-medium, border-line, …).
@@ -544,11 +549,17 @@ function RefundPolicy() {
   );
 }
 
-export function PolicyClient() {
+export function PolicyClient({ service }: { service?: string }) {
   const { type } = useParams() as { type: string };
+  // Terms and privacy cover both services; ?service=daily switches to 영어 한잔 Daily.
+  const switchType = type === "terms" || type === "privacy" ? type : null;
+  const isDaily = switchType !== null && service === "daily";
 
-  const policy =
-    type === "terms"
+  const policy = isDaily
+    ? type === "terms"
+      ? { title: "이용약관", content: <DailyTermsDocument /> }
+      : { title: "개인정보 수집·이용 안내", content: <DailyPrivacyDocument /> }
+    : type === "terms"
       ? { title: "이용약관", content: <TermsOfService /> }
       : type === "refund"
         ? { title: "환불 및 이용권 해지 정책", content: <RefundPolicy /> }
@@ -559,9 +570,21 @@ export function PolicyClient() {
       <h1 className="mb-3 text-center text-[2rem] text-ink max-[768px]:text-[1.8rem]">
         {policy.title}
       </h1>
-      <p className="mt-0 mb-10 text-center text-[0.92rem] text-ink-medium">
-        시행일 {EFFECTIVE_DATE}
-      </p>
+      {switchType && (
+        <div className="mb-6 flex justify-center">
+          <LegalServiceSwitch
+            type={switchType}
+            current={isDaily ? "daily" : "membership"}
+            from="policy"
+          />
+        </div>
+      )}
+      {/* The Daily documents print their own effective date. */}
+      {!isDaily && (
+        <p className="mt-0 mb-10 text-center text-[0.92rem] text-ink-medium">
+          시행일 {EFFECTIVE_DATE}
+        </p>
+      )}
       {policy.content}
     </div>
   );
