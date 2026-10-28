@@ -47,7 +47,40 @@ interface Payment {
   paidAt: string;
   refund: { status: RefundStatus; amount: number; refundedAt: string | null; note: string | null } | null;
   // basis: why the refund is priced as it is (daily_refund_quote, terms 제7조).
-  quote: { amount: number; daysRefunded: number; fullRefund: boolean; basis: "window" | "not_started" | "prorated" } | null;
+  quote: {
+    amount: number;
+    daysRefunded: number;
+    fullRefund: boolean;
+    basis: "window" | "not_started" | "cooling_off" | "penalty" | "prorated";
+    // The 위약금 kept, and messages sent/scheduled for a pass (days for a subscription).
+    penalty: number;
+    used: number;
+    total: number;
+  } | null;
+}
+
+// Explains how daily_refund_quote priced the refund (terms 제7조).
+function refundBasisText(payment: Payment) {
+  const r = dailyCopy.account.refund;
+  const q = payment.quote!;
+  const fill = (text: string) =>
+    text
+      .replace("{days}", String(q.daysRefunded))
+      .replace("{used}", String(q.used))
+      .replace("{left}", String(Math.max(q.total - q.used, 0)))
+      .replace("{penalty}", formatKrw(q.penalty));
+  switch (q.basis) {
+    case "window":
+      return r.full;
+    case "not_started":
+      return r.notStarted;
+    case "cooling_off":
+      return fill(r.passCoolingOff);
+    case "penalty":
+      return fill(payment.recurring ? r.subscriptionPenalty : r.passPenalty);
+    default:
+      return fill(r.partial);
+  }
 }
 
 interface AccountInfo {
@@ -519,11 +552,7 @@ function StopServiceSheet({
                 <p className="text-[0.82rem] font-extrabold text-[#78716c]">{r.amountLabel}</p>
                 <p className="text-[1.5rem] font-black">₩{formatKrw(choice.payment.quote!.amount)}</p>
                 <p className="mt-1 text-[0.9rem] font-semibold text-[#57534e]">
-                  {choice.payment.quote!.basis === "not_started"
-                    ? r.notStarted
-                    : choice.payment.quote!.fullRefund
-                      ? r.full
-                      : (choice.payment.recurring ? r.partial : r.passPartial).replace("{days}", String(choice.payment.quote!.daysRefunded))}
+                  {refundBasisText(choice.payment)}
                 </p>
                 <ul className="m-0 mt-2 flex list-disc flex-col gap-1 pl-5 text-[0.84rem] font-semibold leading-relaxed text-[#57534e]">
                   {(choice.payment.recurring ? [...r.effects, r.recurringEffect] : r.effects).map((effect) => (

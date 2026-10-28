@@ -66,7 +66,8 @@ select cron.schedule('recurring-payments', '0 11 * * *', $cron$
     body    := jsonb_build_object('action','process-recurring')
   );
 $cron$);
-update cron.job set active = false where jobname = 'recurring-payments';
+-- cron.alter_job, not a direct UPDATE: preview branches may not write cron.job.
+select cron.alter_job(jobid, active := false) from cron.job where jobname = 'recurring-payments';
 
 -- send-links — PAUSED (enable at production cutover)
 select cron.schedule('send-links', '0 23 * * *', $cron$
@@ -77,4 +78,5 @@ select cron.schedule('send-links', '0 23 * * *', $cron$
     body    := jsonb_build_object('action','send-links')
   );
 $cron$);
-update cron.job set active = false where jobname = 'send-links';
+-- cron.alter_job, not a direct UPDATE: preview branches may not write cron.job.
+select cron.alter_job(jobid, active := false) from cron.job where jobname = 'send-links';

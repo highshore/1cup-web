@@ -1,22 +1,34 @@
--- Pass refunds without the 7-day full-refund window (terms 제7조, version 2026-10-28.1).
+-- Refund rules for terms 제7조, version 2026-10-28.1.
 --
--- 정기구독 payments keep the old rule: the full amount within 7 days (168 hours) of the
--- payment, then the unused days. 이용권 (one-time passes) bought under 2026-10-28.1 or
--- later have no such window:
---   * Before the pass's own days have begun, or before any lesson has been sent since
---     they began, nothing has been provided yet, so the whole amount comes back. This is
---     the part of 청약철회 the law keeps for a divisible service that has not started
---     (전자상거래법 제17조 제2항 제5호 단서) and it cannot be taken away.
---   * Once lessons have started, the unused days come back, counted from the start of the
---     pass's own days, elapsed time rounded up to whole 24-hour days.
--- Passes bought under earlier terms keep the 7-day window they were sold with.
+-- 정기구독 (each payment, recurring or renewal):
+--   * within 7 days (168 hours) of the payment: the full amount;
+--   * after that: the unused days (elapsed time rounded up to whole 24-hour days),
+--     less 10% of that unused amount as the 위약금.
+-- 이용권 (one-time passes), measured by the lesson messages actually sent:
+--   * before any message of the pass has been sent: the full amount. This is the part
+--     of 청약철회 the law keeps for a divisible service that has not started
+--     (전자상거래법 제17조 제2항 제5호 단서) and no term can take it away;
+--   * after that: amount × unsent messages ÷ messages scheduled in the pass's period.
+--     A message slot is each Mon–Sat date whose send time falls inside the period
+--     (Sunday sends nothing); a sent lesson or Saturday review uses one;
+--   * within 7 days of the payment that is a 청약철회, which cannot carry a 위약금
+--     (제18조 제9항); after 7 days, 10% of the refund is kept as the 위약금.
+-- The 10% is of the unused amount, the lower of the 소비자분쟁해결기준 readings, and
+-- stays under the cap 방문판매법 제32조 puts on 계속거래 (all plans are ≥ 1 month).
 --
--- A pass bought while time is already paid for starts after that time, so a checkout now
--- records where its days begin (daily_orders.period_start, until now only for renewals).
--- Older checkouts have none and fall back to completed_at.
+-- Payments made under earlier terms keep the rules they were sold with: the 7-day
+-- full refund, then the unused days with no 위약금. A renewal carries the terms its
+-- subscriber last agreed to, so existing subscribers move to these rules only when
+-- they agree to the new terms.
 --
--- daily_refund_quote also says why it priced a refund (basis), so the account page can
--- explain it: 'window' (within 7 days), 'not_started', or 'prorated'.
+-- A pass bought while time is already paid for starts after that time, so a checkout
+-- now records where its days begin (daily_orders.period_start, until now only for
+-- renewals). Older checkouts have none and fall back to completed_at.
+--
+-- daily_refund_quote also returns how it priced the refund for the account page:
+--   basis   'window' | 'not_started' | 'cooling_off' | 'penalty' | 'prorated'
+--   penalty the 위약금 kept, in won
+--   used, total  messages sent / scheduled for a pass; days elapsed / days otherwise
 
 create or replace function public.daily_complete_order(
   p_order_number   text,
@@ -117,58 +129,95 @@ $$;
 drop function public.daily_refund_quote(text);
 
 create function public.daily_refund_quote(p_order_number text)
-returns table (amount integer, days_refunded integer, full_refund boolean, basis text)
+returns table (
+  amount        integer,
+  days_refunded integer,
+  full_refund   boolean,
+  basis         text,
+  penalty       integer,
+  used          integer,
+  total         integer
+)
 language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
 declare
-  v_order   public.daily_orders;
-  v_product public.daily_products;
-  v_start   timestamptz;
-  v_elapsed interval;
-  v_days    integer;
+  v_order     public.daily_orders;
+  v_product   public.daily_products;
+  v_new_terms boolean;
+  v_window    boolean;
+  v_start     timestamptz;
+  v_end       timestamptz;
+  v_days      integer;
+  v_used      integer;
+  v_total     integer;
+  v_unused    integer;
+  v_penalty   integer;
 begin
   select * into v_order from public.daily_orders where order_number = p_order_number;
   if not found or v_order.status <> 'completed' or v_order.completed_at is null then
-    return query select 0, 0, false, 'none'::text;
+    return query select 0, 0, false, 'none'::text, 0, 0, 0;
     return;
   end if;
   select * into v_product from public.daily_products where id = v_order.product;
+  v_new_terms := coalesce(v_order.terms_version, '') >= '2026-10-28.1';
+  v_window := now() - v_order.completed_at <= interval '168 hours';
 
-  if v_product.recurring or coalesce(v_order.terms_version, '') < '2026-10-28.1' then
-    -- 정기구독, and passes sold under the earlier terms: the 7-day window, then the
-    -- unused days counted from the payment.
-    v_elapsed := greatest(now() - v_order.completed_at, interval '0');
-    if v_elapsed <= interval '168 hours' then
-      return query select v_order.amount, v_product.days, true, 'window'::text;
+  -- 정기구독, and passes sold under earlier terms: by days elapsed since the payment.
+  if v_product.recurring or not v_new_terms then
+    if v_window then
+      return query select v_order.amount, v_product.days, true, 'window'::text, 0, 0, v_product.days;
       return;
     end if;
-  else
-    -- 이용권: full only while nothing has been provided.
-    v_start := greatest(coalesce(v_order.period_start, v_order.completed_at), v_order.completed_at);
-    if now() < v_start
-       or v_order.subscription_id is null
-       or not exists (
-         select 1 from public.daily_deliveries d
-          where d.subscription_id = v_order.subscription_id
-            and d.kind = 'lesson'
-            and d.status = 'sent'
-            and d.sent_at >= v_start
-       ) then
-      return query select v_order.amount, v_product.days, true, 'not_started'::text;
-      return;
-    end if;
-    v_elapsed := greatest(now() - v_start, interval '0');
+    v_days := least(ceil(extract(epoch from now() - v_order.completed_at) / 86400)::integer, v_product.days);
+    v_unused := round(v_order.amount::numeric * (v_product.days - v_days) / v_product.days)::integer;
+    v_penalty := case when v_new_terms then round(v_unused * 0.1)::integer else 0 end;
+    return query select
+      v_unused - v_penalty, v_product.days - v_days, false,
+      (case when v_new_terms then 'penalty' else 'prorated' end)::text,
+      v_penalty, v_days, v_product.days;
+    return;
   end if;
 
-  v_days := ceil(extract(epoch from v_elapsed) / 86400)::integer;
+  -- 이용권: by messages sent in the pass's own period.
+  v_start := greatest(coalesce(v_order.period_start, v_order.completed_at), v_order.completed_at);
+  v_end := v_start + make_interval(days => v_product.days);
+
+  select count(*)::integer into v_used
+    from public.daily_deliveries d
+   where v_order.subscription_id is not null
+     and d.subscription_id = v_order.subscription_id
+     and d.kind in ('lesson', 'review')
+     and d.status = 'sent'
+     and d.sent_at >= v_start and d.sent_at < v_end;
+
+  if v_used = 0 then
+    return query select v_order.amount, v_product.days, true, 'not_started'::text, 0, 0, 0;
+    return;
+  end if;
+
+  select count(*)::integer into v_total
+    from generate_series(
+           (v_start at time zone 'Asia/Seoul')::date,
+           (v_end at time zone 'Asia/Seoul')::date,
+           interval '1 day'
+         ) as g(day)
+   where extract(isodow from g.day) <> 7
+     and ((g.day::date + v_order.delivery_time) at time zone 'Asia/Seoul') >= v_start
+     and ((g.day::date + v_order.delivery_time) at time zone 'Asia/Seoul') < v_end;
+  v_used := least(v_used, v_total);
+
+  v_unused := round(v_order.amount::numeric * (v_total - v_used) / v_total)::integer;
+  v_penalty := case when v_window then 0 else round(v_unused * 0.1)::integer end;
+  -- Days of access the refund takes back: whatever of the period has not yet passed.
+  v_days := greatest(v_product.days - ceil(extract(epoch from greatest(now() - v_start, interval '0')) / 86400)::integer, 0);
+
   return query select
-    round(v_order.amount::numeric * greatest(v_product.days - v_days, 0) / v_product.days)::integer,
-    greatest(v_product.days - v_days, 0),
-    false,
-    'prorated'::text;
+    v_unused - v_penalty, v_days, false,
+    (case when v_window then 'cooling_off' else 'penalty' end)::text,
+    v_penalty, v_used, v_total;
 end;
 $$;
 
