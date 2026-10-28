@@ -204,13 +204,24 @@ async function reportOpenAIFirstPurchase(db: SupabaseClient, orderNumber: string
       .eq("order_number", orderNumber)
       .maybeSingle();
     if (error || !order || order.kind !== "checkout" || order.status !== "completed") return;
-    const { count, error: countError } = await db.from("daily_orders")
-      .select("order_number", { head: true, count: "exact" })
+    // First purchase: no other checkout that was paid and kept. A refunded order stays
+    // "completed" in daily_orders (the refund lives in daily_refunds), so it is left out here.
+    const { data: earlier, error: earlierError } = await db.from("daily_orders")
+      .select("order_number")
       .eq("customer_id", order.customer_id)
       .eq("kind", "checkout")
       .eq("status", "completed")
       .neq("order_number", orderNumber);
-    if (countError || count !== 0) return;
+    if (earlierError) return;
+    if (earlier?.length) {
+      const { data: refunded, error: refundError } = await db.from("daily_refunds")
+        .select("order_number")
+        .eq("status", "refunded")
+        .in("order_number", earlier.map((o) => o.order_number));
+      if (refundError) return;
+      const refundedOrders = new Set((refunded ?? []).map((r) => r.order_number));
+      if (earlier.some((o) => !refundedOrders.has(o.order_number))) return;
+    }
 
     const occurred = order.completed_at ? new Date(order.completed_at).getTime() : Date.now();
     if (!Number.isFinite(occurred) || occurred < Date.now() - 7 * 86400000) return;
