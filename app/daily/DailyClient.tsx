@@ -127,6 +127,73 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
       </section>
 
+      {/* P10: founder credentials, then the founder's own LinkedIn profile */}
+      <Panel id="founder" className="bg-[#fff8dc]">
+        <Emoji className="text-[2.6rem]">🗣️</Emoji>
+        <div className="mt-4">
+          <Pill className="bg-[#050505] text-white">{copy.founder.label}</Pill>
+        </div>
+        <h2 className={cn(displayClass, "mt-4 text-[1.65rem] leading-[1.3] min-[900px]:text-[2.6rem]")}>
+          <Headline text={copy.founder.title} accent={copy.founder.accent} accentClassName="text-[#d95f2d]" />
+        </h2>
+        <ul className="m-0 mt-8 grid list-none gap-2.5 p-0 text-left min-[900px]:grid-cols-2">
+          {copy.founder.credentials.map((credential) => {
+            const Icon = credentialIcons[credential.icon as keyof typeof credentialIcons];
+            return (
+              <li key={credential.title} className="flex items-center gap-3.5 rounded-[20px] bg-white px-4 py-3.5 min-[900px]:odd:last:col-span-2">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f47a4a] text-[#050505]">
+                  <Icon className="size-5" aria-hidden />
+                </span>
+                <span className="text-[1rem] font-extrabold">{credential.title}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
+          <p className="whitespace-pre-line text-center text-[1.05rem] font-black leading-snug min-[900px]:text-left">{copy.founder.profile}</p>
+          <a
+            href={copy.founder.linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[#050505] px-6 text-[1rem] font-black text-white min-[900px]:w-auto"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-5">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+            </svg>
+            {copy.founder.linkedIn}
+          </a>
+        </div>
+      </Panel>
+
+      {/* The interpreter's word list, right below the founder's background */}
+      <Panel id="wordbook">
+        <h2>
+          <span className="mx-auto block max-w-[26rem] text-[1.05rem] font-extrabold leading-snug text-[#475569] min-[900px]:mx-0 min-[900px]:max-w-none min-[900px]:text-[1.2rem]">
+            {copy.wordbook.lead}
+          </span>
+          <span className={cn(h2Class, "mt-3 block")}>
+            <Headline text={copy.wordbook.title} accent={copy.wordbook.accent} accentClassName="text-[#f47a4a]" />
+          </span>
+        </h2>
+        <p className="mx-auto mt-4 max-w-[36rem] text-[1rem] font-semibold leading-relaxed text-[#475569] min-[900px]:mx-0">{copy.wordbook.sub}</p>
+        <div className="mt-9">
+          <WordbookSheet />
+        </div>
+        <ul className="m-0 mt-5 grid list-none gap-3 p-0 text-left min-[900px]:grid-cols-3">
+          {copy.wordbook.points.map((point) => (
+            <li key={point.title} className="flex items-center gap-3.5 rounded-[20px] bg-[#f5f5f4] px-4 py-3.5">
+              <Emoji label={point.label} className="text-[1.8rem]" motion="none">
+                {point.emoji}
+              </Emoji>
+              <span className="min-w-0">
+                <span className="block text-[1rem] font-black">{point.title}</span>
+                <span className="block text-[0.84rem] font-semibold text-[#64748b]">{point.detail}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
       {/* P2: commute photo */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
         <Image
@@ -356,73 +423,6 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               </li>
             );
           })}
-        </ul>
-      </Panel>
-
-      {/* P10: founder credentials, then the founder's own LinkedIn profile */}
-      <Panel id="founder" className="bg-[#fff8dc]">
-        <Emoji className="text-[2.6rem]">🗣️</Emoji>
-        <div className="mt-4">
-          <Pill className="bg-[#050505] text-white">{copy.founder.label}</Pill>
-        </div>
-        <h2 className={cn(displayClass, "mt-4 text-[1.65rem] leading-[1.3] min-[900px]:text-[2.6rem]")}>
-          <Headline text={copy.founder.title} accent={copy.founder.accent} accentClassName="text-[#d95f2d]" />
-        </h2>
-        <ul className="m-0 mt-8 grid list-none gap-2.5 p-0 text-left min-[900px]:grid-cols-2">
-          {copy.founder.credentials.map((credential) => {
-            const Icon = credentialIcons[credential.icon as keyof typeof credentialIcons];
-            return (
-              <li key={credential.title} className="flex items-center gap-3.5 rounded-[20px] bg-white px-4 py-3.5 min-[900px]:odd:last:col-span-2">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f47a4a] text-[#050505]">
-                  <Icon className="size-5" aria-hidden />
-                </span>
-                <span className="text-[1rem] font-extrabold">{credential.title}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
-          <p className="whitespace-pre-line text-center text-[1.05rem] font-black leading-snug min-[900px]:text-left">{copy.founder.profile}</p>
-          <a
-            href={copy.founder.linkedInUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[#050505] px-6 text-[1rem] font-black text-white min-[900px]:w-auto"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-5">
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-            </svg>
-            {copy.founder.linkedIn}
-          </a>
-        </div>
-      </Panel>
-
-      {/* The interpreter's word list, right below the founder's background */}
-      <Panel id="wordbook">
-        <h2>
-          <span className="mx-auto block max-w-[26rem] text-[1.05rem] font-extrabold leading-snug text-[#475569] min-[900px]:mx-0 min-[900px]:max-w-none min-[900px]:text-[1.2rem]">
-            {copy.wordbook.lead}
-          </span>
-          <span className={cn(h2Class, "mt-3 block")}>
-            <Headline text={copy.wordbook.title} accent={copy.wordbook.accent} accentClassName="text-[#f47a4a]" />
-          </span>
-        </h2>
-        <p className="mx-auto mt-4 max-w-[36rem] text-[1rem] font-semibold leading-relaxed text-[#475569] min-[900px]:mx-0">{copy.wordbook.sub}</p>
-        <div className="mt-9">
-          <WordbookSheet />
-        </div>
-        <ul className="m-0 mt-5 grid list-none gap-3 p-0 text-left min-[900px]:grid-cols-3">
-          {copy.wordbook.points.map((point) => (
-            <li key={point.title} className="flex items-center gap-3.5 rounded-[20px] bg-[#f5f5f4] px-4 py-3.5">
-              <Emoji label={point.label} className="text-[1.8rem]" motion="none">
-                {point.emoji}
-              </Emoji>
-              <span className="min-w-0">
-                <span className="block text-[1rem] font-black">{point.title}</span>
-                <span className="block text-[0.84rem] font-semibold text-[#64748b]">{point.detail}</span>
-              </span>
-            </li>
-          ))}
         </ul>
       </Panel>
 
