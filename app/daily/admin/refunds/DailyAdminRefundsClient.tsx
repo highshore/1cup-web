@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 
-import { useAuth } from "../../lib/contexts/auth_context";
-import { invokeFunction } from "../../lib/supabase/client";
+import { useAuth } from "../../../lib/contexts/auth_context";
+import { invokeFunction } from "../../../lib/supabase/client";
 
 // One Cup Daily refund approvals. Korean only, like the rest of Daily (a product
 // decision: Daily is not localized). Approving cancels the amount through Payple at
@@ -110,9 +110,9 @@ export default function AdminDailyRefundsClient() {
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pb-20 pt-8 [word-break:keep-all]">
-      <Link href="/admin" className="inline-flex items-center gap-1 text-[14px] font-bold text-[rgba(5,5,5,0.6)]">
+      <Link href="/daily/admin" className="inline-flex items-center gap-1 text-[14px] font-bold text-[rgba(5,5,5,0.6)]">
         <ArrowLeftIcon className="size-4" />
-        관리자 홈
+        Daily 관리자
       </Link>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-[28px] font-black">Daily 환불</h1>

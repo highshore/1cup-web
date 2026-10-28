@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import AdminDailyRefundsClient from "./AdminDailyRefundsClient";
-
-export const metadata: Metadata = {
-  title: "Daily Refunds - Admin - OneCup English",
-  description: "Administrator-only approval of One Cup Daily refund requests.",
-};
-
-export default function AdminDailyRefundsPage() {
-  return <AdminDailyRefundsClient />;
+// Moved to One Cup Daily's own admin; kept so older links and refund notices still land.
+export default function MovedDailyRefunds() {
+  redirect("/daily/admin/refunds");
 }

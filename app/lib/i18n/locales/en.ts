@@ -1071,14 +1071,6 @@ const en = {
           label: "Test Center",
           description: "Build speaking tests and review results.",
         },
-        dailySentences: {
-          label: "Daily Sentences",
-          description: "Pick 통역사 PICK and hide One Cup Daily sentences.",
-        },
-        dailyRefunds: {
-          label: "Daily Refunds",
-          description: "Approve or reject One Cup Daily refund requests.",
-        },
       },
       stats: {
         totalMembers: { label: "Total members", description: "All registered users" },

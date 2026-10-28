@@ -1,4 +1,4 @@
-// The Daily account page (/daily/account) and refund approvals (/admin/daily-refunds).
+// The Daily account page (/daily/account) and refund approvals (/daily/admin/refunds).
 //
 // Customers change their own settings and refund their payments. A refund is priced from
 // the terms and cancelled through Payple the moment it is asked for, as in the 1cup
@@ -261,7 +261,7 @@ async function adminPhones(db: SupabaseClient): Promise<string[]> {
  * Cancels a refund's amount through Payple right away, like the 1cup membership refund.
  * The request is claimed first (once), so a double click or a retry never refunds twice.
  *   refunded  Payple confirmed the cancel; the paid period shrinks (daily_finish_refund).
- *   failed    Payple refused it; it can be retried from /admin/daily-refunds.
+ *   failed    Payple refused it; it can be retried from /daily/admin/refunds.
  *   unknown   no answer from Payple; left "refunding" so it is never sent again until
  *             someone checks the Payple admin.
  */
@@ -302,7 +302,7 @@ async function processRefund(db: SupabaseClient, refundId: string, decidedBy: st
 
   // The founder hears about every refund; the ones that did not go through need a look.
   const adminTitle = outcome === "refunded" ? `[Daily 환불 완료] ${label}` : `[Daily 환불 확인 필요] ${label}`;
-  await notify(db, await adminPhones(db), adminTitle, "관리자", "/admin/daily-refunds");
+  await notify(db, await adminPhones(db), adminTitle, "관리자", "/daily/admin/refunds");
   if (outcome === "refunded") {
     const customer = await customerOfRefund(db, refund.id);
     if (customer?.phone) {
