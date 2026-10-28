@@ -14,6 +14,7 @@ import {
 import { dailyCopy } from "../copy";
 import { dailyDisplay } from "../fonts";
 import { DAILY_BUSINESS } from "./DailyLegal";
+import DailyWeek from "./DailyWeek";
 import { cn, displayClass, Emoji, PassPerMonth } from "./DailyUI";
 import "../daily.css";
 
@@ -83,38 +84,6 @@ function Pairs({ items }: { items: ReadonlyArray<{ title: string; detail: string
   );
 }
 
-function Week() {
-  const { week } = copy;
-  return (
-    <div className="rounded-[28px] bg-[#050505] p-5 text-white min-[900px]:p-7">
-      <p className="text-center text-[1.1rem] font-black min-[900px]:text-left">{week.title}</p>
-      <p className="mt-1 text-center text-[0.9rem] font-semibold text-white/65 min-[900px]:text-left">{week.sub}</p>
-      <ol className="m-0 mt-5 grid list-none grid-cols-7 gap-1.5 p-0">
-        {week.days.map(({ day, kind }) => (
-          <li
-            key={day}
-            className={cn(
-              "flex flex-col items-center gap-2 rounded-2xl px-1 py-3",
-              kind === "lesson" && "bg-[#f47a4a] text-[#050505]",
-              kind === "review" && "bg-[#fff8dc] text-[#050505]",
-              kind === "rest" && "bg-white/10 text-white/60",
-            )}
-          >
-            <span className="text-[1rem] font-black">{day}</span>
-            <Emoji className="text-[1.5rem]" motion="none">
-              {kind === "lesson" ? "☕" : kind === "review" ? "🧠" : "😴"}
-            </Emoji>
-            <span className="text-center text-[0.68rem] font-extrabold leading-tight min-[420px]:text-[0.75rem]">
-              {week.kinds[kind as keyof typeof week.kinds]}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-4 text-center text-[0.85rem] font-semibold leading-relaxed text-white/65 min-[900px]:text-left">{week.note}</p>
-    </div>
-  );
-}
-
 const primaryButton =
   "inline-flex h-[54px] w-full items-center justify-center rounded-2xl px-6 text-[1rem] font-black min-[600px]:w-auto";
 
@@ -148,7 +117,7 @@ export default function DailyGuide() {
       </header>
 
       <div className="mx-auto flex w-full max-w-[752px] flex-col gap-12 px-4 pb-24 pt-10">
-        <Week />
+        <DailyWeek />
 
         <Section id={start.id} title={start.title} sub={start.sub}>
           <Steps items={start.steps} />
