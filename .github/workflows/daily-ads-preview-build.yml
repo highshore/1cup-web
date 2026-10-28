@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - fix/daily-ads-readiness-20261029
+      - fix/daily-ads-hashed-customer-match-20261029
+  pull_request:
+    paths:
+      - 'app/daily/**'
+      - 'app/api/daily/**'
+      - 'app/lib/features/daily/**'
+      - 'supabase/functions/daily/**'
+      - '.github/workflows/daily-ads-preview-build.yml'
   workflow_dispatch:
 
 permissions:

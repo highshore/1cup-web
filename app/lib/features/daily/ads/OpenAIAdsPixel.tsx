@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 
 // Public client-side ID only. Never expose OPENAI_ADS_CAPI_KEY in Next.js.
 const PIXEL_ID = process.env.NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID?.trim();
-const CONSENT_KEY = "daily_openai_ads_consent";
+// New matching disclosure requires an explicit fresh opt-in; prior choices do not carry over.
+const CONSENT_KEY = "daily_openai_ads_consent_v2";
 const CONSENT_COOKIE = "daily_ads_measure_consent";
 type Choice = "accepted" | "declined" | "unknown";
 type Oaiq = (...args: unknown[]) => void;
@@ -26,7 +27,7 @@ export function openDailyCookieSettings() {
 }
 
 function setConsentCookie(enabled: boolean) {
-  document.cookie = `${CONSENT_COOKIE}=${enabled ? "yes" : "no"}; Max-Age=${90 * 24 * 3600}; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  document.cookie = `${CONSENT_COOKIE}=${enabled ? "yes_v2" : "no"}; Max-Age=${90 * 24 * 3600}; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
 
 // Only called after the server has confirmed the relevant trial or checkout action.
@@ -119,7 +120,7 @@ export default function OpenAIAdsPixel() {
     <div className="fixed inset-x-3 bottom-3 z-[9999] mx-auto max-w-[560px] rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-900 shadow-xl" role="region" aria-label="쿠키 설정">
       <p className="font-bold">쿠키 사용 안내</p>
       <p className="mt-1 leading-relaxed">
-        방문 통계와 광고 성과를 확인하기 위해 분석·광고 쿠키를 사용해도 될까요? 허용하지 않아도
+        Daily 방문·체험·결제 성과 측정과 최초 구매자의 내부 고객 식별값을 해시하여 OpenAI에 전송하는 데 동의하시나요? 허용하지 않아도
         무료 체험, 결제, 레슨 수신은 그대로 이용할 수 있어요.{" "}
         <Link href="/daily/privacy" className="underline">개인정보 안내</Link>
       </p>
