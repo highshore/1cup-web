@@ -247,7 +247,7 @@ export const createBlogPost = async (
 export const updateBlogPost = async (
   id: string,
   postData: Partial<BlogPost>
-): Promise<void> => {
+): Promise<BlogPost> => {
   try {
     console.log("Updating blog post ID:", id, "with data:", postData);
 
@@ -261,7 +261,8 @@ export const updateBlogPost = async (
     // Only include fields that have values to avoid undefined errors
     if (postData.title !== undefined) {
       updateData.title = postData.title;
-      updateData.slug = createSlug(postData.title);
+      // Keep the stored slug stable. Canonical blog URLs derive from the title,
+      // and the legacy ASCII-only slugger maps different Korean titles to "-".
     }
 
     if (postData.content !== undefined) {
@@ -306,12 +307,18 @@ export const updateBlogPost = async (
     }
 
     console.log("Final update data:", updateData);
-    const { error } = await supabase
+    // Supabase UPDATE without .select() can succeed with zero matched rows.
+    // Returning the updated row confirms that the write actually persisted.
+    const { data, error } = await supabase
       .from(TABLE_NAME)
       .update(updateData)
-      .eq("id", id);
+      .eq("id", id)
+      .select("*")
+      .single();
     if (error) throw error;
+    if (!data) throw new Error("No blog post was updated.");
     console.log("Blog post updated successfully");
+    return rowToBlogPost(data);
   } catch (error) {
     console.error("Error updating blog post:", error);
     console.error(
