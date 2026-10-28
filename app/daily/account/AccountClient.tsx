@@ -71,7 +71,8 @@ function refundBasisText(payment: Payment) {
       .replace("{penalty}", formatKrw(q.penalty));
   switch (q.basis) {
     case "window":
-      return r.full;
+      // Passes reach this only when sold under terms before 2026-10-28.1.
+      return payment.recurring ? r.full : r.legacyWindow;
     case "not_started":
       return r.notStarted;
     case "cooling_off":
