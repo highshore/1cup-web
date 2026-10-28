@@ -244,7 +244,7 @@ async function askModel(t: HookTarget, p: Progress, apiKey: string): Promise<str
 export async function writeHooks(db: SupabaseClient, targets: HookTarget[]): Promise<Map<string, HookResult>> {
   const results = new Map<string, HookResult>();
   if (targets.length === 0) return results;
-  const apiKey = Deno.env.get("NEXT_OPENAI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("NEXT_OPENAI_API_KEY");
   const deadline = Date.now() + BUDGET_MS;
   let next = 0;
 

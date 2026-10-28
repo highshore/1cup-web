@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return error("Invalid practice request.", 400);
   }
 
-  const apiKey = process.env.NEXT_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_OPENAI_API_KEY;
   if (!apiKey) return error("AI practice is temporarily unavailable.", 503);
 
   try {

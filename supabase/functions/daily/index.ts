@@ -39,7 +39,7 @@
 // trial_ended_template); until all three resolve, nothing is sent. Each code decides
 // its own variables (delivery.ts templateStyle): `send-article` is the general 1cup
 // template, anything else a Daily one. Lessons and reviews open with a line written per
-// reader (hooks.ts, model DAILY_HOOK_MODEL, default gpt-6-luna, key NEXT_OPENAI_API_KEY).
+// reader (hooks.ts, model DAILY_HOOK_MODEL, default gpt-6-luna, key OPENAI_API_KEY).
 //
 // Secrets (supabase secrets set …)
 //   DAILY_TEMPLATE_LESSON, DAILY_TEMPLATE_REVIEW, DAILY_TEMPLATE_TRIAL_ENDED

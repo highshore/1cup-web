@@ -15,7 +15,7 @@
 //   * `cefr_runs` (PK id): stored as jsonb columns matching supabase_schema.sql.
 //   * inputPath / gs:// storage reads are dropped (no Firebase Storage); callers
 //     pass `text` or `words[]` directly.
-//   * OpenAI key: NEXT_OPENAI_API_KEY. Model override: CEFR_MODEL_ID.
+//   * OpenAI key: OPENAI_API_KEY (NEXT_OPENAI_API_KEY still read as a fallback). Model override: CEFR_MODEL_ID.
 
 import { preflight, json } from "../_shared/cors.ts";
 import {
@@ -159,9 +159,9 @@ async function handleStart(req: Request, body: any): Promise<Response> {
     }
   }
 
-  const apiKey = Deno.env.get("NEXT_OPENAI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("NEXT_OPENAI_API_KEY");
   if (!apiKey) {
-    return json(req, { error: "Missing OpenAI key. Set NEXT_OPENAI_API_KEY." }, 500);
+    return json(req, { error: "Missing OpenAI key. Set OPENAI_API_KEY." }, 500);
   }
 
   const db = admin();
@@ -380,9 +380,9 @@ async function handleStart(req: Request, body: any): Promise<Response> {
 // action: poll
 // -----------------------------------------------------------------------------
 async function handlePoll(req: Request): Promise<Response> {
-  const apiKey = Deno.env.get("NEXT_OPENAI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("NEXT_OPENAI_API_KEY");
   if (!apiKey) {
-    return json(req, { error: "Missing OpenAI key. Set NEXT_OPENAI_API_KEY." }, 500);
+    return json(req, { error: "Missing OpenAI key. Set OPENAI_API_KEY." }, 500);
   }
   const openai = new OpenAI({ apiKey });
   const db = admin();
