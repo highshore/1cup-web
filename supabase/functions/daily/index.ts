@@ -25,6 +25,8 @@
 //                the order and redirects the browser to /daily/subscribe/result.
 //   resend-trial Server only (Vault scheduler secret). Sends a trial its free lesson
 //                again when the first attempt failed; never sends a second lesson.
+//   hook-preview Scheduler secret or admin. The first lines the model writes for a few
+//                sample readers; sends nothing.
 //   test-send    1cup staff admins only: an operations tool, not a customer path.
 //                Sends one message of a given kind to a phone number using the latest
 //                ready lesson, without touching subscriptions or deliveries.
@@ -33,8 +35,11 @@
 // Opening trials to everyone, and the numbers allowed to try the flow first, live in the
 // daily_config row (trial_open, tester_phones), not in secrets.
 //
-// Template codes live in daily_config too (template_style, lesson_template,
-// review_template, trial_ended_template); until all three resolve, nothing is sent.
+// Template codes live in daily_config too (lesson_template, review_template,
+// trial_ended_template); until all three resolve, nothing is sent. Each code decides
+// its own variables (delivery.ts templateStyle): `send-article` is the general 1cup
+// template, anything else a Daily one. Lessons and reviews open with a line written per
+// reader (hooks.ts, model DAILY_HOOK_MODEL, default gpt-6-luna, key NEXT_OPENAI_API_KEY).
 //
 // Secrets (supabase secrets set …)
 //   DAILY_TEMPLATE_LESSON, DAILY_TEMPLATE_REVIEW, DAILY_TEMPLATE_TRIAL_ENDED
@@ -67,9 +72,11 @@ import {
   verifyCheckout,
 } from "./payments.ts";
 import {
+  kstDate,
   runTick,
   sendTrialLesson,
   templateCodes,
+  templateStyle,
   trialLessonFor,
   type DeliveryKind,
   type Subscription,
@@ -77,6 +84,7 @@ import {
   TRACK_LABEL,
   type Track,
 } from "./delivery.ts";
+import { writeHooks } from "./hooks.ts";
 
 async function schedulerAuthorized(req: Request): Promise<boolean> {
   const presented = req.headers.get("x-daily-scheduler-secret");
@@ -250,6 +258,30 @@ async function handleResendTrial(body: { subscriptionId?: unknown }) {
   return { sent: await sendTrialLesson(db, sub as Subscription, lesson, codes) };
 }
 
+// What the first-line writer says for a few typical readers, without sending anything.
+async function handleHookPreview() {
+  const db = admin();
+  const { data: lessons } = await db
+    .from("daily_lessons")
+    .select("track, expression, meaning")
+    .eq("status", "ready")
+    .order("publish_on", { ascending: false })
+    .limit(6);
+  const basic = lessons?.find((l) => l.track === "basic") ?? { track: "basic", expression: "circle back", meaning: "(논의를) 나중에 다시 이어가다" };
+  const advanced = lessons?.find((l) => l.track === "advanced") ?? basic;
+  const zero = "00000000-0000-0000-0000-000000000000";
+  const today = kstDate(new Date());
+  const scenarios: Array<{ label: string; target: Parameters<typeof writeHooks>[1][number] }> = [
+    { label: "첫 레슨, 직종 컨설팅", target: { id: "1", kind: "lesson", forDate: today, subscriptionId: zero, customerId: zero, levelLabel: TRACK_LABEL.basic, lesson: basic, progress: { jobCategory: "컨설팅" } } },
+    { label: "10번째 레슨, 퀴즈 8/9", target: { id: "2", kind: "lesson", forDate: today, subscriptionId: zero, customerId: zero, levelLabel: TRACK_LABEL.basic, lesson: basic, progress: { lessonsReceived: 9, daysSinceLastOpen: 0, quizAnswered: 9, quizCorrect: 8, lastExpression: "touch base" } } },
+    { label: "4일째 안 열어봄", target: { id: "3", kind: "lesson", forDate: today, subscriptionId: zero, customerId: zero, levelLabel: TRACK_LABEL.advanced, lesson: advanced, progress: { lessonsReceived: 14, daysSinceLastOpen: 4, quizAnswered: 6, quizCorrect: 5, jobCategory: "금융" } } },
+    { label: "쓴 문장이 뽑힘", target: { id: "4", kind: "lesson", forDate: today, subscriptionId: zero, customerId: zero, levelLabel: TRACK_LABEL.advanced, lesson: advanced, progress: { lessonsReceived: 22, daysSinceLastOpen: 1, sentencesWritten: 5, sentencesPicked: 1 } } },
+    { label: "토요일 복습, 이번 주 퀴즈 4개", target: { id: "5", kind: "review", forDate: today, subscriptionId: zero, customerId: zero, levelLabel: TRACK_LABEL.basic, reviewExpressions: ["circle back", "touch base", "ballpark figure", "take it offline", "move the needle"], progress: { lessonsReceived: 5, quizThisWeek: 4 } } },
+  ];
+  const written = await writeHooks(db, scenarios.map((s) => s.target));
+  return scenarios.map((s) => ({ scenario: s.label, ...written.get(s.target.id) }));
+}
+
 async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: unknown }) {
   const phone = krPhone(typeof body.phone === "string" ? body.phone : "");
   if (!/^01[0-9]{8,9}$/.test(phone)) throw new Error("phone must be a Korean mobile number");
@@ -274,19 +306,37 @@ async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: u
   const example = lesson?.examples?.[0]?.en ?? "Let's circle back on pricing after the launch.";
   const trackLabel = TRACK_LABEL[track];
 
+  const code = kind === "lesson" ? codes.lesson : kind === "review" ? codes.review : codes.trialEnded;
+  const content = kind === "lesson"
+    ? [`[${trackLabel}] 오늘의 표현`, "", expression, meaning, "", "예문", example].join("\n")
+    : ["이번 주에 받은 표현 1개", "", `· ${expression}`].join("\n");
+  let hook = "";
+  if (kind !== "trial_ended" && templateStyle(code) === "daily") {
+    const written = await writeHooks(admin(), [{
+      id: "00000000-0000-0000-0000-000000000000",
+      kind,
+      forDate: kstDate(new Date()),
+      subscriptionId: "00000000-0000-0000-0000-000000000000",
+      customerId: "00000000-0000-0000-0000-000000000000",
+      levelLabel: trackLabel,
+      lesson: { expression, meaning },
+      reviewExpressions: [expression],
+    }]);
+    hook = written.values().next().value?.hook ?? "";
+  }
+
   const params: Record<DeliveryKind, Record<string, string>> =
-    codes.style === "send-article"
+    templateStyle(code) === "send-article"
       ? {
         lesson: { "korean-title": `[${trackLabel}] 오늘의 표현 ${expression}: ${meaning}`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
         review: { "korean-title": `[영어 한잔 Daily] 이번 주 복습: ${expression}`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
         trial_ended: { "korean-title": `[영어 한잔 Daily] ${trackLabel} 무료 체험이 끝났어요`, "customer-name": "테스트", "article-link": "1cupenglish.com/daily" },
       }
       : {
-        lesson: { name: "테스트", track: trackLabel, expression, meaning, example, token: "test" },
-        review: { name: "테스트", count: "1", expressions: `· ${expression}`, token: "test" },
-        trial_ended: { name: "테스트", track: trackLabel, token: "test" },
+        lesson: { name: "테스트", hook, content, link: "1cupenglish.com/daily" },
+        review: { name: "테스트", hook, content, link: "1cupenglish.com/daily" },
+        trial_ended: { name: "테스트" },
       };
-  const code = kind === "lesson" ? codes.lesson : kind === "review" ? codes.review : codes.trialEnded;
   return await sendKakaoMessages([{ recipientNo: phone, templateParameter: params[kind] }], code);
 }
 
@@ -402,6 +452,12 @@ Deno.serve(async (req) => {
           }
           throw e;
         }
+      }
+      case "hook-preview": {
+        if (!(await schedulerAuthorized(req)) && !(await callerIsAdmin(req))) {
+          return json(req, { success: false, error: "permission-denied" }, 403);
+        }
+        return json(req, { success: true, previews: await handleHookPreview() });
       }
       case "test-send": {
         if (!(await callerIsAdmin(req))) {

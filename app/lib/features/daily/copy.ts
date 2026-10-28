@@ -19,7 +19,7 @@ export const dailyCopy = {
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
   // The hero phone's KakaoTalk chat. Mirrors the message customers get today: the
-  // approved general-purpose 1cup template (template_style "send-article"), word for word.
+  // approved general-purpose 1cup template (`send-article`), word for word.
   // Change it together with the template when the dedicated Daily templates go live.
   kakao: {
     channel: "영어 한잔",
