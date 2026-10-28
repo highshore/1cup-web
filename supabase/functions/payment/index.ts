@@ -1800,12 +1800,25 @@ async function checkReferralCode(body: Record<string, unknown>) {
     if (!data) return { valid: false, message: "유효하지 않은 코드입니다." };
     if (!data.active) return { valid: false, message: "만료된 코드입니다." };
 
+    const region = catalogRegion(body);
+    const { data: product, error: priceError } = await a
+      .from("payment_products")
+      .select("list_amount")
+      .eq("product_id", "membership_30d")
+      .eq("region", region)
+      .eq("active", true)
+      .maybeSingle();
+    if (priceError) throw new ApiError(priceError.message, 500, "product-query-failed");
+    if (!product || Number(product.list_amount) <= 0) {
+      throw new ApiError("판매 중인 상품을 찾을 수 없습니다.", 503, "product-not-found");
+    }
+
     return {
       valid: true,
       discount: data.discount,
       discountType: data.type || "fixed_price",
       message: "할인 코드가 적용되었습니다.",
-      originalPrice: 9700,
+      originalPrice: Number(product.list_amount),
     };
   } catch (error) {
     logError("Error checking referral code:", error);
@@ -1889,19 +1902,56 @@ function logCredentials() {
   };
 }
 
-function paymentProducts() {
-  const membership = PAYMENT_PRODUCTS.membership_30d;
-  const pack = PAYMENT_PRODUCTS.participation_pack_5;
+// Legacy catalog callers can optionally select a region. For older clients that
+// omit it, default to Anam (the original legacy region). Newer clients use the
+// region-aware checkout endpoint. Never fall back to a historical static price.
+function catalogRegion(body: Record<string, unknown>): MembershipLocation {
+  const region = body.region;
+  if (region == null || region === "") return "anam";
+  if (region === "anam" || region === "yeouido") return region;
+  throw new ApiError("Choose either Yeouido or Anam", 400, "invalid-argument");
+}
+
+async function paymentProducts(body: Record<string, unknown>) {
+  const region = catalogRegion(body);
+  const { data, error } = await admin()
+    .from("payment_products")
+    .select("product_id, list_amount, recurring, credit_quantity, validity_days")
+    .eq("region", region)
+    .eq("active", true)
+    .in("product_id", ["membership_30d", "participation_pack_5"]);
+  if (error) throw new ApiError(error.message, 500, "product-query-failed");
+
+  const membership = data?.find((row) => row.product_id === "membership_30d");
+  const pack = data?.find((row) => row.product_id === "participation_pack_5");
+  if (!membership || !pack) {
+    throw new ApiError("판매 중인 상품을 찾을 수 없습니다.", 503, "product-not-found");
+  }
+  const membershipPrice = Number(membership.list_amount);
+  const packPrice = Number(pack.list_amount);
+  if (!Number.isFinite(membershipPrice) || membershipPrice <= 0 ||
+      !Number.isFinite(packPrice) || packPrice <= 0) {
+    throw new ApiError("상품 가격 정보를 확인할 수 없습니다.", 503, "invalid-product-price");
+  }
+
+  // Keep the legacy response shape (two products), adding region for clarity.
   return {
     success: true,
+    region,
     products: [
-      { id: membership.id, price: membership.price, recurring: membership.recurring },
       {
-        id: pack.id,
-        price: pack.price,
-        credits: pack.credits,
-        validityDays: pack.validityDays,
-        recurring: pack.recurring,
+        id: "membership_30d",
+        region,
+        price: membershipPrice,
+        recurring: Boolean(membership.recurring),
+      },
+      {
+        id: "participation_pack_5",
+        region,
+        price: packPrice,
+        credits: Number(pack.credit_quantity),
+        validityDays: Number(pack.validity_days),
+        recurring: Boolean(pack.recurring),
       },
     ],
   };
@@ -2024,7 +2074,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     switch (action) {
       case "products":
-        return json(req, paymentProducts());
+        return json(req, await paymentProducts(body));
 
       case "check-referral":
         return json(req, await checkReferralCode(body));
