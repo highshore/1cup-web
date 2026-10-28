@@ -125,10 +125,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ action:
         jobCategory: String(body.jobCategory ?? ""),
         promoConsent: body.promoConsent === true,
         survey: {
-          continue: Number(survey.continue),
           recommend: Number(survey.recommend),
-          miss: Number(survey.miss),
-          hardest: String(survey.hardest ?? ""),
           suggestion: String(survey.suggestion ?? ""),
         },
       });
