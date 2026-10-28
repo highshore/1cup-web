@@ -507,7 +507,7 @@ export const dailyCopy = {
     signIn: "레슨을 받은 카카오계정으로 들어오면 후기를 남길 수 있어요.",
     notEligible: "이 카카오계정으로 받은 레슨이 없어요. 레슨을 받은 카카오계정으로 들어와 주세요.",
     verify: "후기에는 홍보 활용 동의와 소속·직종이 들어가서, 다시 한번 로그인한 뒤에 쓸 수 있어요.",
-    approved: "남겨주신 후기가 소개 페이지에 올라가 있어요. 고마워요!",
+    approved: "남겨주신 후기가 소개 페이지에 올라가 있어요. 감사합니다!",
     pending: "보낸 후기는 확인하고 있어요. 고쳐서 다시 보내도 돼요.",
     rewardApplied: "15일 혜택은 이미 받았어요.",
     rewardPending: "15일 혜택은 다음 결제 때 더해져요.",
@@ -537,7 +537,7 @@ export const dailyCopy = {
     submit: "후기 보내고 15일 받기",
     resubmit: "고친 후기 보내기",
     sending: "보내는 중…",
-    doneTitle: "고마워요!",
+    doneTitle: "감사합니다!",
     done: {
       applied: "이용 기간 15일을 더했어요. 내 계정에서 바뀐 날짜를 볼 수 있어요.",
       pending: "15일은 다음에 결제할 때 이용 기간에 더해져요.",
