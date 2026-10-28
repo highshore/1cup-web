@@ -86,11 +86,16 @@ export function useVisible<T extends Element>(ref: RefObject<T | null>) {
 }
 
 // "(sb)", "(sth)", "(sb's)" and the like mark where a word goes in an expression such as
-// "run (sth) by (sb)". Read aloud they come out as "sth" and "sb", so the voice skips them.
-const PLACEHOLDER = /\((?:sb|sth|someone|something|one)(?:'s)?\)/gi;
+// "run (sth) by (sb)". The voice reads them as the words they stand for ("run something
+// by someone") instead of spelling out "sth" and "sb".
+const PLACEHOLDER = /\((sb|sth|someone|something|one)('s)?\)/gi;
+const PLACEHOLDER_WORD: Record<string, string> = { sb: "someone", sth: "something", someone: "someone", something: "something", one: "one" };
 
 export function spokenText(text: string) {
-  return text.replace(PLACEHOLDER, " ").replace(/\s+/g, " ").trim();
+  return text
+    .replace(PLACEHOLDER, (_, word: string, possessive: string | undefined) => `${PLACEHOLDER_WORD[word.toLowerCase()]}${possessive ?? ""}`)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // The browser's own English voice reads expressions and examples aloud until lessons
