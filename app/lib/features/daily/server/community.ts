@@ -126,9 +126,11 @@ async function quizStats(lessonId: string, quiz: LessonRef["quiz"]) {
 export async function lessonCommunity(token: string, viewer: DailySessionCustomer | null) {
   const ref = await lessonRef(token);
   const db = admin();
-  const [{ data: sentences }, { count: together }, { data: myAnswer }, { data: pick }] = await Promise.all([
+  // Sentences reach daily_customers twice (their writer, and the ☕ table), so the
+  // embed names its foreign key; an unnamed one fails with PGRST201.
+  const [{ data: sentences, error: sentencesError }, { count: together }, { data: myAnswer }, { data: pick }] = await Promise.all([
     db.from("daily_sentences")
-      .select("id, customer_id, body, hidden_at, picked_at, created_at, customer:daily_customers(name)")
+      .select("id, customer_id, body, hidden_at, picked_at, created_at, customer:daily_customers!daily_sentences_customer_id_fkey(name)")
       .eq("lesson_id", ref.lessonId)
       .order("created_at", { ascending: false })
       .limit(SENTENCE_LIMIT + 1),
@@ -142,7 +144,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
       : Promise.resolve({ data: null }),
     // 어제의 통역사 PICK: the latest pick from an earlier lesson on this track.
     db.from("daily_sentences")
-      .select("body, customer:daily_customers(name), lesson:daily_lessons!inner(expression, track, publish_on)")
+      .select("body, customer:daily_customers!daily_sentences_customer_id_fkey(name), lesson:daily_lessons!inner(expression, track, publish_on)")
       .not("picked_at", "is", null)
       .is("hidden_at", null)
       .eq("lesson.track", ref.track)
@@ -152,6 +154,8 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
       .maybeSingle(),
   ]);
 
+  // A failed read must not look like an empty wall.
+  if (sentencesError) throw new Error(`sentence list failed: ${sentencesError.message}`);
   const visible = ((sentences ?? []) as unknown as SentenceRow[]).filter((s) => !s.hidden_at || s.customer_id === viewer?.id);
   const ids = visible.map((s) => s.id);
   const { data: cups } = ids.length
