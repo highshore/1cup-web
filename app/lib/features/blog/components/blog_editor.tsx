@@ -79,7 +79,7 @@ function FormatButton({
 
 interface BlogEditorProps {
   post: BlogPost | null;
-  onSave: (postData: Partial<BlogPost>) => void;
+  onSave: (postData: Partial<BlogPost>) => Promise<unknown>;
   onCancel: () => void;
 }
 
@@ -100,6 +100,7 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
   });
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -158,6 +159,7 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
     }
 
     setSaving(true);
+    setSaveError(null);
 
     try {
       const postData: Partial<BlogPost> = {
@@ -192,7 +194,9 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
       await onSave(postData);
     } catch (error) {
       console.error("Failed to save post:", error);
-      alert("저장에 실패했습니다. 다시 시도해주세요.");
+      setSaveError(
+        error instanceof Error ? error.message : "저장에 실패했습니다. 다시 시도해주세요."
+      );
     } finally {
       setSaving(false);
     }
@@ -660,6 +664,11 @@ export const BlogEditor: React.FC<BlogEditorProps> = ({
             </HelpText>
           </div>
 
+          {saveError && (
+            <div role="alert" className="text-[#dc2626] text-[0.85rem] mt-2">
+              저장하지 못했습니다. 변경 사항은 편집창에 남아 있습니다. {saveError}
+            </div>
+          )}
           {uploadError && (
             <div className="text-[#dc2626] text-[0.85rem] mt-2">
               {uploadError}
