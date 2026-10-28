@@ -35,7 +35,7 @@ const INVITE_DAYS = 30;
 //   session-info                 whether this browser is signed in (the navbar's account link)
 //   review-status / review-submit  the signed-in customer's review on /daily/review
 //                                (pending until approved; needs 소속·직종 and promo
-//                                consent; earns 15 days once)
+//                                consent; earns 14 days once)
 //   lesson-community { token }   a lesson page's sentences, quiz numbers, PICK, progress
 //   sentence-save / sentence-delete { token, ... }   the reader's own sentence
 //   sentence-cup { sentenceId }  ☕ on someone's sentence, or take it back

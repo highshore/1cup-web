@@ -1,6 +1,6 @@
 // Server-only: Daily reviews, written on /daily/review by customers who received at least
 // one lesson, shown publicly only after the founder approves them. Writing one needs 소속
-// and 직종 (saved to the customer) and consent to promotional use, and earns 15 days once
+// and 직종 (saved to the customer) and consent to promotional use, and earns 14 days once
 // (daily_grant_review_reward; terms 제9조의3). It is signed with 소속, 직종 and the family-name
 // initial (reviewerLabel). 추천 의향 and 개선 요청 ride along and are never shown.
 import { admin } from "../../../supabase/server";
@@ -23,7 +23,7 @@ export interface DailyReviewSurvey {
   suggestion: string;
 }
 
-/** What submitting did with the 15-day reward. */
+/** What submitting did with the 14-day reward. */
 export type DailyReviewReward = "applied" | "pending" | "already";
 
 export interface PublicDailyReview {
@@ -34,7 +34,7 @@ export interface PublicDailyReview {
   displayName: string | null;
   lessonsReceived: number;
   approvedAt: string;
-  // Written for the 15-day reward; shown on the card (추천·보증 심사지침).
+  // Written for the 14-day reward; shown on the card (추천·보증 심사지침).
   rewarded: boolean;
 }
 
