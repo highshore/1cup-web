@@ -85,6 +85,14 @@ export function useVisible<T extends Element>(ref: RefObject<T | null>) {
   return visible;
 }
 
+// "(sb)", "(sth)", "(sb's)" and the like mark where a word goes in an expression such as
+// "run (sth) by (sb)". Read aloud they come out as "sth" and "sb", so the voice skips them.
+const PLACEHOLDER = /\((?:sb|sth|someone|something|one)(?:'s)?\)/gi;
+
+export function spokenText(text: string) {
+  return text.replace(PLACEHOLDER, " ").replace(/\s+/g, " ").trim();
+}
+
 // The browser's own English voice reads expressions and examples aloud until lessons
 // carry recorded audio (daily_lessons.audio_path).
 export function useSpeech() {
@@ -107,7 +115,7 @@ export function useSpeech() {
       setSpeaking(null);
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(spokenText(text));
     utterance.lang = "en-US";
     utterance.rate = rate;
     utterance.onend = () => setSpeaking(null);

@@ -4,24 +4,23 @@ import { AdminSentenceError, requireDailyAdmin } from "../../../lib/features/dai
 
 export const runtime = "nodejs";
 
-// POST { id, status: "ready" | "draft" }: approve a lesson draft (only ready lessons are
-// sent on their date) or take an approved one back to draft.
+// POST { id | ids, status: "ready" | "draft" }: approve lesson drafts (only ready lessons
+// are sent on their date) or take approved ones back to draft. ids approves several at
+// once from the 콘텐츠 list.
 export async function POST(req: Request) {
   try {
     await requireDailyAdmin();
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    const id = typeof body.id === "string" && /^[0-9a-f-]{36}$/i.test(body.id) ? body.id : null;
+    const raw = Array.isArray(body.ids) ? body.ids : [body.id];
+    const ids = raw.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id));
     const status = body.status === "ready" || body.status === "draft" ? body.status : null;
-    if (!id || !status) return NextResponse.json({ error: "잘못된 요청이에요." }, { status: 400 });
-    const { data, error } = await admin()
-      .from("daily_lessons")
-      .update({ status })
-      .eq("id", id)
-      .select("id")
-      .maybeSingle();
+    if (ids.length === 0 || ids.length !== raw.length || ids.length > 100 || !status) {
+      return NextResponse.json({ error: "잘못된 요청이에요." }, { status: 400 });
+    }
+    const { data, error } = await admin().from("daily_lessons").update({ status }).in("id", ids).select("id");
     if (error) throw error;
-    if (!data) return NextResponse.json({ error: "레슨을 찾지 못했어요." }, { status: 404 });
-    return NextResponse.json({ success: true });
+    if (!data || data.length === 0) return NextResponse.json({ error: "레슨을 찾지 못했어요." }, { status: 404 });
+    return NextResponse.json({ success: true, updated: data.length });
   } catch (error) {
     if (error instanceof AdminSentenceError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("api/admin/daily-lessons:", error);
