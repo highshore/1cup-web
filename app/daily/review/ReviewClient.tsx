@@ -11,9 +11,20 @@ import KakaoSignIn from "../../lib/features/daily/components/KakaoSignIn";
 import { DAILY_ACCOUNT_PATH, DAILY_JOB_CATEGORIES, DAILY_TERMS_PATH } from "../../lib/features/daily/constants";
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
+import { reviewerLabel } from "../../lib/features/daily/review_label";
 import "../../lib/features/daily/daily.css";
 
 type Reward = "applied" | "pending" | "already";
+
+interface Survey {
+  continue: number;
+  recommend: number;
+  miss: number;
+  hardest: string;
+  suggestion: string;
+}
+
+const emptySurvey: Survey = { continue: 0, recommend: 0, miss: 0, hardest: "", suggestion: "" };
 
 interface ReviewStatus {
   eligible: boolean;
@@ -21,10 +32,12 @@ interface ReviewStatus {
   verified: boolean;
   workplace: string;
   jobCategory: string;
+  // First letter of the Kakao name: the review is signed "소속 직종 김00 님".
+  nameInitial: string;
   existing: {
     rating: number;
     body: string;
-    displayName: string | null;
+    survey: Survey;
     status: "pending" | "approved" | "hidden";
     reward: "applied" | "pending" | null;
   } | null;
@@ -33,16 +46,39 @@ interface ReviewStatus {
 const copy = dailyCopy.reviewPage;
 const field = "w-full rounded-xl bg-[#f5f5f4] px-3.5 text-[0.98rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-[#050505]";
 const label = "text-[0.92rem] font-black";
+const sc = copy.survey;
+
+// One of the three 1cup feedback ratings, laid out like the review's own stars.
+function ScaleQuestion({ title, value, onChange }: { title: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <div>
+      <p className={label}>
+        {title} <span className="text-[#f47a4a]">*</span>
+      </p>
+      <div className="mt-2 flex gap-1" role="radiogroup" aria-label={title}>
+        {[1, 2, 3, 4, 5].map((v) => (
+          <button key={v} type="button" role="radio" aria-checked={value === v} aria-label={`${v}점`} onClick={() => onChange(v)} className="p-0.5">
+            <StarIcon className={cn("size-8 transition-colors", v <= value ? "text-[#f47a4a]" : "text-[#d6d3d1]")} />
+          </button>
+        ))}
+      </div>
+      <div className="mt-1 flex w-[212px] justify-between text-[0.75rem] font-semibold text-[#94a3b8]">
+        <span>{sc.scaleLow}</span>
+        <span>{sc.scaleHigh}</span>
+      </div>
+    </div>
+  );
+}
 
 // Reviews used to sit at the bottom of the lesson page; here they get the room the extra
-// fields need. Everything required (별점, 10자 이상, 소속, 직종, 홍보 동의) is checked again
+// fields need. Everything required (별점, 10자 이상, 설문 별점 셋, 소속, 직종, 홍보 동의) is checked again
 // on the server, which also hands out the 15 days.
 export default function ReviewClient() {
   // undefined: checking; null: not signed in.
   const [status, setStatus] = useState<ReviewStatus | null | undefined>(undefined);
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [survey, setSurvey] = useState<Survey>(emptySurvey);
   const [workplace, setWorkplace] = useState("");
   const [jobCategory, setJobCategory] = useState("");
   const [consent, setConsent] = useState(false);
@@ -59,13 +95,13 @@ export default function ReviewClient() {
       if (data.existing) {
         setRating(data.existing.rating);
         setBody(data.existing.body);
-        setDisplayName(data.existing.displayName ?? "");
+        setSurvey(data.existing.survey);
       }
     } catch (e) {
       setStatus(
         e instanceof DailyApiError && e.status === 401
           ? null
-          : { eligible: false, verified: false, workplace: "", jobCategory: "", existing: null },
+          : { eligible: false, verified: false, workplace: "", jobCategory: "", nameInitial: "", existing: null },
       );
     }
   }, []);
@@ -74,7 +110,9 @@ export default function ReviewClient() {
     void load();
   }, [load]);
 
-  const ready = rating > 0 && body.trim().length >= 10 && workplace.trim() !== "" && jobCategory !== "" && consent;
+  const surveyDone = survey.continue > 0 && survey.recommend > 0 && survey.miss > 0;
+  const ready = rating > 0 && body.trim().length >= 10 && surveyDone && workplace.trim() !== "" && jobCategory !== "" && consent;
+  const setAnswer = <K extends keyof Survey>(key: K, value: Survey[K]) => setSurvey((prev) => ({ ...prev, [key]: value }));
 
   const submit = async () => {
     setBusy(true);
@@ -83,7 +121,7 @@ export default function ReviewClient() {
       const { reward } = await dailyApi<{ reward: Reward }>("review-submit", {
         rating,
         body,
-        displayName,
+        survey,
         workplace,
         jobCategory,
         promoConsent: consent,
@@ -189,18 +227,41 @@ export default function ReviewClient() {
               <span className="mt-1 block text-right text-[0.78rem] font-semibold text-[#94a3b8]">{body.length}/300</span>
             </label>
 
-            <label className="block">
-              <span className={label}>{copy.displayName}</span>
-              <input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value.slice(0, 12))}
-                placeholder={copy.displayNamePlaceholder}
-                className={cn(field, "mt-2 h-12")}
-              />
-              <span className="mt-1 block text-[0.8rem] font-semibold text-[#64748b]">{copy.displayNameHint}</span>
-            </label>
+            <div className="flex flex-col gap-5 border-t border-[#e7e5e4] pt-6">
+              <div>
+                <p className="text-[1.02rem] font-black">{sc.title}</p>
+                <p className="mt-0.5 text-[0.82rem] font-semibold text-[#64748b]">{sc.hint}</p>
+              </div>
+              <ScaleQuestion title={sc.continue} value={survey.continue} onChange={(v) => setAnswer("continue", v)} />
+              <ScaleQuestion title={sc.recommend} value={survey.recommend} onChange={(v) => setAnswer("recommend", v)} />
+              <ScaleQuestion title={sc.miss} value={survey.miss} onChange={(v) => setAnswer("miss", v)} />
+              <label className="block">
+                <span className={label}>
+                  {sc.hardest} <span className="text-[0.8rem] font-semibold text-[#94a3b8]">({sc.optional})</span>
+                </span>
+                <textarea
+                  value={survey.hardest}
+                  onChange={(event) => setAnswer("hardest", event.target.value.slice(0, 300))}
+                  placeholder={sc.hardestPlaceholder}
+                  rows={3}
+                  className={cn(field, "mt-2 resize-none py-3 font-semibold")}
+                />
+              </label>
+              <label className="block">
+                <span className={label}>
+                  {sc.suggestion} <span className="text-[0.8rem] font-semibold text-[#94a3b8]">({sc.optional})</span>
+                </span>
+                <textarea
+                  value={survey.suggestion}
+                  onChange={(event) => setAnswer("suggestion", event.target.value.slice(0, 300))}
+                  placeholder={sc.suggestionPlaceholder}
+                  rows={3}
+                  className={cn(field, "mt-2 resize-none py-3 font-semibold")}
+                />
+              </label>
+            </div>
 
-            <div>
+            <div className="border-t border-[#e7e5e4] pt-6">
               <p className={label}>{copy.about}</p>
               <p className="mt-0.5 text-[0.82rem] font-semibold text-[#64748b]">{copy.aboutHint}</p>
               <label className="mt-2 block">
@@ -229,6 +290,11 @@ export default function ReviewClient() {
                   ))}
                 </select>
               </label>
+              <p className="mt-2 rounded-xl bg-[#fff8dc] px-3.5 py-2.5 text-[0.85rem] font-bold text-[#57534e]">
+                {workplace.trim() && jobCategory
+                  ? copy.aboutPreview.replace("{label}", reviewerLabel(workplace, jobCategory, status?.nameInitial))
+                  : copy.aboutExample}
+              </p>
             </div>
 
             <label className="flex cursor-pointer items-start gap-3">
