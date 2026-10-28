@@ -6,6 +6,7 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { getDictionary } from "../lib/i18n";
 import { useAuth } from "../lib/contexts/auth_context";
 import { BlogPost } from "../lib/features/blog/types/blog_types";
+import { getBlogRouteSlug } from "../lib/seo/route_slugs";
 import GlobalLoadingScreen from "../lib/components/GlobalLoadingScreen";
 import {
   fetchBlogPosts,
@@ -340,9 +341,10 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       id: post.id,
       title: post.title,
     });
-    // Always use ID-based routing
+    // Published posts have canonical title URLs; drafts remain admin-only ID routes.
+    const routeSegment = post.status === "published" ? getBlogRouteSlug(post) : post.id;
     setIsNavigatingPost(true);
-    router.push(`/blog/${post.id}`);
+    router.push(`/blog/${encodeURIComponent(routeSegment)}`);
   };
 
   if (showEditor) {

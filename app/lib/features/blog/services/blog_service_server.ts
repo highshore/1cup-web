@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { getBlogRouteSlug, routeSlugEquals } from "../../../seo/route_slugs";
-import { admin } from "../../../supabase/server";
+import { admin, createServerClientRSC } from "../../../supabase/server";
 import { BlogPost } from "../types/blog_types";
 
 const TABLE_NAME = "blog_posts";
@@ -95,6 +95,42 @@ export const resolvePublishedBlogPostRouteServer = cache(async (
   const byId = await fetchPublishedBlogPostByIdServer(routeValue);
   if (byId) return byId;
   return fetchPublishedBlogPostByRouteSlugServer(routeValue);
+});
+
+// Drafts and archived posts are viewable by admins only. Preserve public slug
+// routing for published content, but authorize unpublished ID lookups using the
+// verified session and the same account_status source as the admin pages.
+export const resolveVisibleBlogPostRouteServer = cache(async (
+  routeValue: string,
+): Promise<BlogPost | null> => {
+  const publishedPost = await resolvePublishedBlogPostRouteServer(routeValue);
+  if (publishedPost) return publishedPost;
+
+  try {
+    const supabase = await createServerClientRSC();
+    const { data: claims, error: authError } = await supabase.auth.getClaims();
+    if (authError || !claims?.claims?.sub) return null;
+
+    const { data: rows, error: profileError } = await supabase.rpc("current_user_row");
+    if (profileError) throw profileError;
+    const profile = Array.isArray(rows) ? rows[0] : rows;
+    if (profile?.account_status !== "admin") return null;
+
+    // Unpublished routes stay ID-based and are excluded from search indexing.
+    // RLS still enforces admin-only access to the underlying row.
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("id", routeValue)
+      .neq("status", "published")
+      .maybeSingle();
+    if (error) throw error;
+
+    return data ? rowToBlogPost(data) : null;
+  } catch (error) {
+    console.error("Error resolving admin blog post route:", error);
+    return null;
+  }
 });
 
 // Get all published blog post IDs (for getStaticPaths)

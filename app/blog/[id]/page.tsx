@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import BlogDetailClient from "./BlogDetailClient";
-import { resolvePublishedBlogPostRouteServer } from "../../lib/features/blog/services/blog_service_server";
+import { resolveVisibleBlogPostRouteServer } from "../../lib/features/blog/services/blog_service_server";
 import { getBlogRouteSlug, routeSlugEquals } from "../../lib/seo/route_slugs";
 
 interface BlogDetailPageProps {
@@ -25,18 +25,18 @@ function cleanDescription(value: string) {
 }
 
 async function resolvePost(routeValue: string) {
-  return resolvePublishedBlogPostRouteServer(decodeURIComponent(routeValue || "").trim());
+  return resolveVisibleBlogPostRouteServer(decodeURIComponent(routeValue || "").trim());
 }
 
 export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   const { id } = await params;
   const routeValue = decodeURIComponent(id || "").trim();
-  const post = await resolvePublishedBlogPostRouteServer(routeValue);
+  const post = await resolveVisibleBlogPostRouteServer(routeValue);
 
   if (!post) notFound();
 
   const canonicalSlug = getBlogRouteSlug(post);
-  if (!routeSlugEquals(routeValue, canonicalSlug)) {
+  if (post.status === "published" && !routeSlugEquals(routeValue, canonicalSlug)) {
     permanentRedirect(`/blog/${encodeURIComponent(canonicalSlug)}`);
   }
 
@@ -68,12 +68,12 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
 
   return (
     <>
-      <script
+      {post.status === "published" && <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c"),
         }}
-      />
+      />}
       <BlogDetailClient initialPost={post} />
     </>
   );
@@ -91,7 +91,8 @@ export async function generateMetadata({
 
     if (post) {
       const canonicalSlug = getBlogRouteSlug(post);
-      const canonicalPath = `/blog/${encodeURIComponent(canonicalSlug)}`;
+      const isPublished = post.status === "published";
+      const canonicalPath = `/blog/${encodeURIComponent(isPublished ? canonicalSlug : post.id)}`;
       const description = cleanDescription(post.excerpt || post.content);
 
       return {
@@ -101,7 +102,8 @@ export async function generateMetadata({
           ? post.tags
           : ["영어 한잔", "1 Cup English", "Seoul English community"],
         alternates: { canonical: canonicalPath },
-        openGraph: {
+        robots: isPublished ? undefined : { index: false, follow: false },
+        openGraph: isPublished ? {
           title: post.title,
           description,
           type: "article",
@@ -110,7 +112,7 @@ export async function generateMetadata({
           modifiedTime: post.updatedAt?.toISOString(),
           authors: ["1 Cup English"],
           images: post.featuredImage ? [post.featuredImage] : undefined,
-        },
+        } : undefined,
       };
     }
 
