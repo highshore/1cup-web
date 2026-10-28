@@ -9,7 +9,8 @@
 // and a renewal is created once per subscription period.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isTrack } from "./delivery.ts";
+import { isTrack, kstDate } from "./delivery.ts";
+import { notify, won } from "./notices.ts";
 
 const PAYPLE_HOST = (Deno.env.get("PAYPLE_HOST") || "https://cpay.payple.kr").replace(/\/+$/, "");
 const PAYPLE_AUTH_URL = Deno.env.get("PAYPLE_AUTH_URL") || `${PAYPLE_HOST}/php/auth.php`;
@@ -187,6 +188,37 @@ async function applyInvite(db: SupabaseClient, orderNumber: string) {
   if (error) console.error("daily invite reward failed:", orderNumber, error.message);
 }
 
+// The KakaoTalk notice for a paid order, a checkout or a renewal: what was paid and until
+// when it runs. Sent once per order; paid_notice_at is claimed first, so a settle retried
+// from another tab never sends it twice. A failure here never fails the payment.
+async function notifyPaid(db: SupabaseClient, orderNumber: string) {
+  const { data: order } = await db
+    .from("daily_orders")
+    .update({ paid_notice_at: new Date().toISOString() })
+    .eq("order_number", orderNumber)
+    .eq("status", "completed")
+    .is("paid_notice_at", null)
+    .select("kind, amount, product, customer_id, subscription_id")
+    .maybeSingle();
+  if (!order) return;
+  const [{ data: customer }, { data: product }, { data: sub }] = await Promise.all([
+    db.from("daily_customers").select("phone, name").eq("id", order.customer_id).maybeSingle(),
+    db.from("daily_products").select("name, recurring").eq("id", order.product).maybeSingle(),
+    db.from("daily_subscriptions").select("paid_until").eq("id", order.subscription_id).maybeSingle(),
+  ]);
+  if (!customer?.phone || !product) return;
+
+  const paid = order.kind === "renewal"
+    ? `${product.name} ${won(order.amount)}이 자동 결제됐어요.`
+    : `${product.name} ${won(order.amount)} 결제를 마쳤어요.`;
+  let until = "";
+  if (sub?.paid_until) {
+    const [y, m, d] = kstDate(new Date(sub.paid_until)).split("-").map(Number);
+    until = product.recurring ? ` 다음 결제일은 ${y}년 ${m}월 ${d}일이에요.` : ` ${y}년 ${m}월 ${d}일까지 받아요.`;
+  }
+  await notify(db, [customer.phone], `[영어 한잔 Daily] ${paid}${until}`, customer.name || "고객", "/daily/account");
+}
+
 // The invite a first checkout arrived with: a live customer's code, not the payer's own.
 async function validInviteCode(db: SupabaseClient, customerId: string, code: unknown): Promise<string | null> {
   if (typeof code !== "string" || !/^[A-Z2-9]{8}$/.test(code)) return null;
@@ -361,6 +393,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
       });
       if (error) throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 문의해 주세요.", "settle-failed", 500);
       await applyInvite(db, orderNumber);
+      await notifyPaid(db, orderNumber);
       return { success: true, subscription: await subscriptionSummary(db, subId as string) };
     }
     throw new PaymentError("결제를 처리하고 있어요. 잠시 후 새로고침해 주세요.", "payment-in-progress", 409);
@@ -409,6 +442,7 @@ export async function verifyCheckout(db: SupabaseClient, customer: PaymentCustom
     throw new PaymentError("결제는 됐지만 구독을 열지 못했어요. 다시 결제하지 말고 새로고침해 주세요.", "settle-failed", 500);
   }
   await applyInvite(db, orderNumber);
+  await notifyPaid(db, orderNumber);
   return { success: true, subscription: await subscriptionSummary(db, subId as string) };
 }
 
@@ -552,6 +586,7 @@ export async function runBilling(db: SupabaseClient): Promise<BillingStats> {
     if (charge.ok) {
       stats.charged += 1;
       await applyInvite(db, orderNumber);
+      await notifyPaid(db, orderNumber);
     } else stats.failed += 1;
   }
 

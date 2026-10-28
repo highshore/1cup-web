@@ -8,38 +8,14 @@
 // functions, talks to Payple and sends the notices.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { sendKakaoMessages } from "../_shared/kakao.ts";
 import { isTrack, TRACK_LABEL } from "./delivery.ts";
+import { notify, won } from "./notices.ts";
 import { PaymentError, refundCharge, type PaymentCustomer } from "./payments.ts";
 
-const SITE_HOST = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/^https?:\/\//, "").replace(/\/+$/, "");
 const OPEN_REFUND = ["requested", "refunding"];
-
-function won(amount: number): string {
-  return `₩${amount.toLocaleString("ko-KR")}`;
-}
 
 function assertTrack(track: unknown): asserts track is "basic" | "advanced" {
   if (!isTrack(track)) throw new PaymentError("레벨을 골라 주세요.", "invalid-track");
-}
-
-// Notices go out through the approved general-purpose 1cup template (`send-article`): a
-// title line, a name and a link. The dedicated notice templates (DAILY_REFUND_DONE,
-// DAILY_REFUND_REJECT, DAILY_ADMIN_REFUND) replace it once Kakao approves them.
-async function notify(_db: SupabaseClient, phones: string[], title: string, name: string, path: string) {
-  if (phones.length === 0) return;
-  try {
-    await sendKakaoMessages(
-      phones.map((phone) => ({
-        recipientNo: phone,
-        templateParameter: { "korean-title": title, "customer-name": name, "article-link": `${SITE_HOST}${path}` },
-      })),
-      "send-article",
-    );
-  } catch (e) {
-    // A notice is never the reason a request or refund fails.
-    console.error("daily notice failed:", e instanceof Error ? e.message : String(e));
-  }
 }
 
 // ---------------------------------------------------------------------------
