@@ -33,6 +33,7 @@ import {
 } from "../lib/features/daily/components/DailyUI";
 import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
 import WordbookSheet from "../lib/features/daily/components/WordbookSheet";
+import DailyWeek from "../lib/features/daily/components/DailyWeek";
 import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
@@ -48,7 +49,6 @@ import { useReached, useScrolledPast, useSeen } from "../lib/features/daily/hook
 import "../lib/features/daily/daily.css";
 
 const price = formatKrw(DAILY_MONTHLY_PRICE_KRW);
-const pricePerDay = formatKrw(Math.round(DAILY_MONTHLY_PRICE_KRW / 30));
 
 const sceneIcons = {
   meeting: PresentationChartBarIcon,
@@ -320,6 +320,20 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
       </Panel>
 
+      {/* Which days the messages come, right after what one looks like */}
+      <Panel id="schedule">
+        <div className="text-center">
+          <Emoji className="text-[2.6rem]">📅</Emoji>
+          <h2 className={cn(h2Class, "mt-4")}>
+            <Headline text={copy.schedule.title} accent={copy.schedule.accent} accentClassName="text-[#f47a4a]" />
+          </h2>
+          <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.schedule.sub}</p>
+        </div>
+        <div className="mx-auto mt-8 max-w-[560px]">
+          <DailyWeek heading={false} />
+        </div>
+      </Panel>
+
       {/* P6: real expressions */}
       <Panel>
         <h2 className={cn(h2Class, "text-center")}>
@@ -494,10 +508,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             </p>
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff8dc] px-4 py-3.5">
               <Emoji className="shrink-0 text-[1.7rem]">☕</Emoji>
-              <p className="leading-snug">
-                <span className="block text-[1.25rem] font-black text-[#d95f2d]">{copy.pricing.subscription.perDay.replace("{price}", pricePerDay)}</span>
-                <span className="block text-[0.92rem] font-bold">{copy.pricing.subscription.espresso}</span>
-              </p>
+              <p className="text-[1.05rem] font-black leading-snug">{copy.pricing.subscription.espresso}</p>
             </div>
             <ul className="m-0 mt-6 flex list-none flex-col gap-3 p-0">
               {copy.pricing.subscription.benefits.map((benefit) => (

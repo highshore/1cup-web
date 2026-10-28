@@ -60,6 +60,12 @@ export const dailyCopy = {
       { emoji: "👋", label: "손 흔들기", title: "언제든 해지", detail: "약정 없이 한 달 단위" },
     ],
   },
+  // Which days the messages come; the week strip itself is dailyCopy.guide.week.
+  schedule: {
+    title: "평일엔 새 표현,\n토요일엔 한 주 복습",
+    accent: "토요일엔 한 주 복습",
+    sub: "월~금은 신청할 때 고른 시간에 카카오톡으로 와요. 일요일은 쉬어요.",
+  },
   lesson: {
     title: "오늘의 카톡이\n도착했어요!",
     accent: "도착했어요!",
@@ -275,7 +281,6 @@ export const dailyCopy = {
       name: "30일 정기구독",
       espresso: "스타벅스 에스프레소 한\u00a0잔\u00a0값으로\u00a030일",
       period: "30일마다 자동 결제",
-      perDay: "하루 약 {price}원",
       benefits: ["평일 원하는 시간에 카카오톡으로", "토요일엔 한 주 복습", "오늘의 표현 · 예문\u00a03개 · 발음 · 1분\u00a0퀴즈", "약정 없이 언제든 해지"],
     },
     passes: {
