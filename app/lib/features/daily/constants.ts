@@ -13,20 +13,20 @@ export function isDailyTrack(value: unknown): value is DailyTrack {
 export type DailyField = "consulting" | "finance" | "tech" | "consumer";
 export const DAILY_FIELD_LABEL: Record<DailyField, string> = { consulting: "컨설팅", finance: "금융", tech: "테크", consumer: "소비재" };
 
-// The 30-day subscription. Passes are one-time and priced per month above it on purpose:
+// The 28-day subscription. Passes are one-time and priced per month above it on purpose:
 // the subscription is the cheapest way to take Daily, and the page says so.
 export const DAILY_MONTHLY_PRICE_KRW = 3700;
 
 export const DAILY_PASSES = [
-  { id: "pass_1m", label: "1개월 이용권", days: 30, priceKrw: 4500 },
-  { id: "pass_3m", label: "3개월 이용권", days: 90, priceKrw: 12300 },
-  { id: "pass_6m", label: "6개월 이용권", days: 180, priceKrw: 23400 },
+  { id: "pass_1m", label: "1개월 이용권", days: 28, priceKrw: 4500 },
+  { id: "pass_3m", label: "3개월 이용권", days: 84, priceKrw: 12300 },
+  { id: "pass_6m", label: "6개월 이용권", days: 168, priceKrw: 23400 },
 ] as const;
 
-// A pass's price per 30 days, and the 1개월 이용권 price it is compared with (struck through
+// A pass's price per 28 days (one period), and the 1개월 이용권 price it is compared with (struck through
 // under the longer passes).
 export const DAILY_PASS_MONTHLY_BASE_KRW = DAILY_PASSES[0].priceKrw;
-export const dailyPassPerMonth = (priceKrw: number, days: number) => Math.round((priceKrw * 30) / days);
+export const dailyPassPerMonth = (priceKrw: number, days: number) => Math.round((priceKrw * 28) / days);
 
 // Free-trial signup. When false, the landing page's trial buttons show "opening soon"
 // instead of linking to the signup. The server has its own switch,
@@ -69,6 +69,6 @@ export const DAILY_JOB_CATEGORIES = [
 
 // Bump when the Daily terms or the consent wording change; stored with each signup. The
 // date is when the version took effect; a later revision the same day adds ".n".
-export const DAILY_TERMS_VERSION = "2026-10-28.1";
+export const DAILY_TERMS_VERSION = "2026-10-28.2";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");

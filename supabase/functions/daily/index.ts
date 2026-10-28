@@ -97,7 +97,7 @@ async function callerIsAdmin(req: Request): Promise<boolean> {
 }
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-const TERMS_VERSION = "2026-10-28.1";
+const TERMS_VERSION = "2026-10-28.2";
 
 // A Daily customer, signed in with Kakao Login. Daily customers are not 1cup
 // members: this never reads public.users or Supabase Auth.

@@ -29,7 +29,7 @@ export default function DailyWeek({ heading = true }: { heading?: boolean }) {
           >
             <span className="text-[1rem] font-black">{day}</span>
             <Emoji className="text-[1.5rem]" motion="none">
-              {kind === "lesson" ? "☕" : kind === "review" ? "🧠" : "😴"}
+              {kind === "lesson" ? "☕" : kind === "review" ? "🧠" : "✏️"}
             </Emoji>
             <span className="text-center text-[0.68rem] font-extrabold leading-tight min-[420px]:text-[0.75rem]">
               {week.kinds[kind as keyof typeof week.kinds]}
