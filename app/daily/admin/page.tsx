@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 // /daily/admin: One Cup Daily's admin home. Korean only, like the rest of Daily.
 const SECTIONS = [
+  { href: "/daily/admin/lessons", title: "콘텐츠", detail: "초·중급·고급 레슨 전체를 날짜별로 보고 열어봐요." },
   { href: "/daily/admin/members", title: "멤버 관리", detail: "Daily 고객, 구독·이용권, 결제와 환불 합계를 봐요." },
   { href: "/daily/admin/refunds", title: "환불", detail: "페이플이 거절했거나 응답이 없던 환불을 정리해요." },
   { href: "/daily/admin/sentences", title: "함께 쓰는 문장", detail: "문장을 숨기거나 통역사 PICK을 골라요." },
@@ -23,7 +24,7 @@ export default async function DailyAdminHome() {
     { label: "최근 30일 순매출", value: `₩${formatKrw(o.revenue30d)}` },
   ];
   return (
-    <div className="mx-auto w-full max-w-[960px] px-4 pb-20 pt-8 [word-break:keep-all]">
+    <div className="mx-auto w-full max-w-[752px] px-4 pb-20 pt-8 [word-break:keep-all]">
       <h1 className="m-0 text-[28px] font-black">Daily 관리자</h1>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
         One Cup Daily만 다뤄요. 1cup 멤버십·모임은 1cup 관리자(/admin)에서 관리해요.
@@ -38,7 +39,7 @@ export default async function DailyAdminHome() {
         ))}
       </dl>
 
-      <ul className="m-0 mt-6 grid list-none gap-3 p-0 min-[700px]:grid-cols-3">
+      <ul className="m-0 mt-6 grid list-none gap-3 p-0 min-[700px]:grid-cols-2">
         {SECTIONS.map((s) => (
           <li key={s.href}>
             <Link href={s.href} className="block h-full rounded-2xl bg-[#f47a4a] p-5 text-[#050505]">

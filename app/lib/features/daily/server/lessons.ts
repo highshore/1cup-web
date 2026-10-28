@@ -32,10 +32,10 @@ export interface DailyDeliveryView {
   lessons: DailyLessonContent[];
 }
 
-const LESSON_COLUMNS =
+export const LESSON_COLUMNS =
   "id, track, publish_on, field, expression, meaning, pronunciation, stress, nuance, similar_expressions, examples, dialogue, quiz";
 
-type LessonRow = {
+export type LessonRow = {
   id: string;
   track: DailyTrack;
   publish_on: string;
@@ -51,7 +51,7 @@ type LessonRow = {
   quiz: DailyLessonContent["quiz"];
 };
 
-function toContent(row: LessonRow): DailyLessonContent {
+export function toContent(row: LessonRow): DailyLessonContent {
   return {
     id: row.id,
     track: row.track,
