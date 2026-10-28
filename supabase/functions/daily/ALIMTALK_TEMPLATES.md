@@ -15,7 +15,7 @@ template as below.
 | lesson | `DAILY_LESSON_HOOK` | `#{name}님, #{hook}` · `#{content}` · button `https://#{link}` |
 | review | `DAILY_REVIEW_HOOK` | `#{name}님, #{hook}` · `#{content}` · button `https://#{link}` |
 | trial_ended | `send-article` until `DAILY_TRIAL_ENDED` (`#{name}`, no button) is approved | |
-| notices (account.ts) | `send-article` until the notice templates below are approved | |
+| notices (notices.ts: payments, refunds) | `send-article` until the notice templates below are approved | |
 
 `#{hook}` is written per reader by `hooks.ts` (model `DAILY_HOOK_MODEL`, default
 `gpt-6-luna`; fixed pool when the model is unavailable). `#{content}` is the lesson or the
@@ -40,6 +40,45 @@ week's list, line breaks included. `#{link}` has no scheme (`1cupenglish.com/dai
 | `DAILY_PAY_FAILED` | `#{name}` `#{track}` `#{amount}` `#{date}` | same |
 | `DAILY_SUB_ENDED` | `#{name}` `#{track}` | none |
 | `DAILY_ADMIN_REFUND` | `#{result}` `#{product}` `#{amount}` | `https://1cupenglish.com/admin/daily-refunds` |
+
+## To register (payment notices)
+
+Sent today through `send-article` as one title line, e.g. "[영어 한잔 Daily] 6개월 (24주)
+이용권 ₩23,400 결제를 마쳤어요. 2027년 4월 26일까지 받아요." Button on all three: 웹링크
+`내 계정`, `https://1cupenglish.com/daily/account`. `#{date}` is `2027년 4월 26일`.
+
+`DAILY_PAY_DONE` (이용권 결제):
+```
+#{name}님, 이용권 결제를 마쳤어요.
+
+상품: #{product}
+금액: #{amount}
+이용 기간: #{date}까지
+
+결제 내역과 환불 요청은 내 계정에서 볼 수 있어요.
+```
+
+`DAILY_SUB_STARTED` (정기구독 첫 결제):
+```
+#{name}님, 정기구독 결제를 마쳤어요.
+
+상품: #{product}
+금액: #{amount}
+다음 결제일: #{date}
+
+자동 결제는 다음 결제일 하루 전에 되고, 해지는 내 계정에서 언제든 할 수 있어요.
+```
+
+`DAILY_RENEWED` (정기구독 자동 결제):
+```
+#{name}님, 정기구독이 자동 결제됐어요.
+
+상품: #{product}
+금액: #{amount}
+다음 결제일: #{date}
+
+결제 내역과 해지는 내 계정에서 볼 수 있어요.
+```
 
 Rejected: `DAILY_TRIAL_END` (asked people to subscribe) and `DAILY_NOTICE` (title and body
 both variables). Alimtalk may only inform: no renewal or re-signup prompts.
