@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function DailyTermsPage() {
   return (
-    <DailyLegalPage title="이용약관">
+    <DailyLegalPage type="terms" title="이용약관">
       <DailyTermsDocument />
     </DailyLegalPage>
   );
