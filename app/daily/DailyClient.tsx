@@ -240,10 +240,10 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: commute photo */}
+      {/* P2: genuine commuter photograph — Liam Burnett-Blue / Unsplash */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
         <Image
-          src="/assets/daily/commute.webp"
+          src="https://images.unsplash.com/photo-1522850403397-b0c8f2f75451?auto=format&fit=crop&w=2200&q=82"
           alt={copy.photo.alt}
           fill
           sizes="100vw"
