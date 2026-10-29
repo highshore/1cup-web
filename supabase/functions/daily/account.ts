@@ -248,7 +248,7 @@ async function processRefund(db: SupabaseClient, refundId: string, decidedBy: st
     .eq("order_number", refund.order_number)
     .single();
   const productName = (order as unknown as { product_row: { name: string } | null } | null)?.product_row?.name ?? "";
-  const label = `${isTrack(order?.track) ? TRACK_LABEL[order.track] : ""} ${productName} ${won(refund.amount)}`.replace(/\s+/g, " ").trim();
+  const product = isTrack(order?.track) ? `${productName} (${TRACK_LABEL[order.track]})` : productName;
 
   let outcome: RefundOutcome;
   try {
@@ -272,12 +272,15 @@ async function processRefund(db: SupabaseClient, refundId: string, decidedBy: st
   }
 
   // The founder hears about every refund; the ones that did not go through need a look.
-  const adminTitle = outcome === "refunded" ? `[Daily 환불 완료] ${label}` : `[Daily 환불 확인 필요] ${label}`;
-  await notify(db, await adminPhones(db), adminTitle, "관리자", "/daily/admin/refunds");
+  await notify(await adminPhones(db), "DAILY_ADMIN_REFUND", {
+    result: outcome === "refunded" ? "환불 완료" : "확인 필요",
+    product,
+    amount: won(refund.amount),
+  });
   if (outcome === "refunded") {
     const customer = await customerOfRefund(db, refund.id);
     if (customer?.phone) {
-      await notify(db, [customer.phone], `[영어 한잔 Daily] ${won(refund.amount)} 환불을 마쳤어요`, customer.name || "고객", "/daily/account");
+      await notify([customer.phone], "DAILY_REFUND_DONE", { name: customer.name || "고객", amount: won(refund.amount) });
     }
   }
   return outcome;
@@ -392,7 +395,7 @@ export async function adminDecideRefund(db: SupabaseClient, adminUid: string, bo
     if (!rejected) throw new PaymentError("이미 처리된 요청이에요.", "not-open", 409);
     const customer = await customerOfRefund(db, id);
     if (customer?.phone) {
-      await notify(db, [customer.phone], "[영어 한잔 Daily] 환불 요청 결과를 확인해 주세요", customer.name || "고객", "/daily/account");
+      await notify([customer.phone], "DAILY_REFUND_REJECT", { name: customer.name || "고객" });
     }
     return { success: true, status: "rejected" };
   }

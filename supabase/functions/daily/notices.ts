@@ -1,30 +1,40 @@
-// KakaoTalk notices about a customer's account: payments, refunds, refund requests.
+// KakaoTalk notices about a customer's account: payments, renewals, refunds.
 //
-// They go out through the approved general-purpose 1cup template (`send-article`): a
-// title line, a name and a link. The dedicated notice templates in ALIMTALK_TEMPLATES.md
-// replace it once Kakao approves them.
+// Each goes out through its own approved template (ALIMTALK_TEMPLATES.md). The variable
+// names below must match the approved text exactly; NHN rejects a message missing one.
 
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendKakaoMessages } from "../_shared/kakao.ts";
-
-const SITE_HOST = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
 export function won(amount: number): string {
   return `₩${amount.toLocaleString("ko-KR")}`;
 }
 
-export async function notify(_db: SupabaseClient, phones: string[], title: string, name: string, path: string) {
+/** 2027년 4월 26일, from a YYYY-MM-DD date. */
+export function longDate(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return `${y}년 ${m}월 ${d}일`;
+}
+
+export interface NoticeVariables {
+  DAILY_PAY_DONE: { name: string; product: string; amount: string; date: string };
+  DAILY_SUB_STARTED: { name: string; product: string; amount: string; date: string };
+  DAILY_RENEWED: { name: string; product: string; amount: string; date: string };
+  DAILY_PAY_FAILED: { name: string; track: string; amount: string; date: string };
+  DAILY_SUB_ENDED: { name: string; track: string };
+  DAILY_REFUND_DONE: { name: string; amount: string };
+  DAILY_REFUND_REJECT: { name: string };
+  DAILY_ADMIN_REFUND: { result: string; product: string; amount: string };
+}
+
+export async function notify<T extends keyof NoticeVariables>(phones: string[], template: T, variables: NoticeVariables[T]) {
   if (phones.length === 0) return;
   try {
     await sendKakaoMessages(
-      phones.map((phone) => ({
-        recipientNo: phone,
-        templateParameter: { "korean-title": title, "customer-name": name, "article-link": `${SITE_HOST}${path}` },
-      })),
-      "send-article",
+      phones.map((phone) => ({ recipientNo: phone, templateParameter: variables })),
+      template,
     );
   } catch (e) {
     // A notice is never the reason a request, payment or refund fails.
-    console.error("daily notice failed:", e instanceof Error ? e.message : String(e));
+    console.error(`daily notice ${template} failed:`, e instanceof Error ? e.message : String(e));
   }
 }
