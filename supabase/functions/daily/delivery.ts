@@ -213,8 +213,11 @@ export async function planSlot(
   const dow = isoDow(forDate);
   if (dow === 7) return { skip: "sunday" };
   // A paid subscription past the end of its paid period gets nothing until a renewal
-  // extends it (the billing run ends it for good after the grace days).
-  if (sub.status === "active" && sub.paid_until && new Date(sub.paid_until).getTime() <= Date.now()) {
+  // extends it (the billing run ends it for good after the grace days). Judged by the
+  // slot, not the clock, so a tick that runs a few minutes late still sends the last
+  // paid day.
+  const slotAt = sub.next_send_at ? new Date(sub.next_send_at).getTime() : Date.now();
+  if (sub.status === "active" && sub.paid_until && new Date(sub.paid_until).getTime() <= slotAt) {
     return { skip: "unpaid" };
   }
 
