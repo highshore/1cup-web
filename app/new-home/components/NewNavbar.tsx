@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
+  CalendarDaysIcon,
   MicrophoneIcon,
   NewspaperIcon,
   TrophyIcon,
@@ -19,6 +20,7 @@ import NotificationDropdown from "../../lib/features/chat/components/Notificatio
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
+  { path: "/daily", labelKey: "daily", icon: CalendarDaysIcon },
   { path: "/exam-center", labelKey: "speakingTest", icon: MicrophoneIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
