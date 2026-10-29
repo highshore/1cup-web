@@ -448,6 +448,10 @@ function StopServiceSheet({
     setMessage("");
   };
 
+  // Just 자동 결제 해지; the level is named only when two levels renew and the rows would match.
+  const cancelTitle = (track: keyof typeof TRACK_TITLE) =>
+    cancellable.length > 1 ? `${TRACK_TITLE[track]} ${t.cancelTitle}` : t.cancelTitle;
+
   const reasons = choice?.kind === "refund" ? [...t.refundLeadReasons, ...t.reasons] : t.reasons;
   const ready = selected.length > 0 || other.trim() !== "";
 
@@ -459,9 +463,7 @@ function StopServiceSheet({
       if (choice.kind === "cancel") {
         await dailyApi("cancel-renewal", { track: choice.sub.track, reasons: selected, other: other.trim() });
         await onDone(
-          t.cancelled
-            .replace("{track}", TRACK_TITLE[choice.sub.track])
-            .replace("{date}", dateLabel(choice.sub.paidUntil ?? new Date().toISOString())),
+          t.cancelled.replace("{date}", dateLabel(choice.sub.paidUntil ?? new Date().toISOString())),
         );
       } else {
         // Stored as one line on the refund: the picked reasons, then what they wrote.
@@ -507,7 +509,7 @@ function StopServiceSheet({
                   <PauseCircleIcon className="mt-0.5 size-5 shrink-0" />
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-2 text-[1rem] font-black">
-                      {t.cancelTitle.replace("{track}", TRACK_TITLE[sub.track])}
+                      {cancelTitle(sub.track)}
                       <span className="rounded-full bg-[#f47a4a] px-2 py-0.5 text-[0.72rem] font-black">{t.recommended}</span>
                     </span>
                     <span className="mt-1 block text-[0.86rem] font-semibold leading-relaxed text-[#64748b]">
@@ -554,7 +556,7 @@ function StopServiceSheet({
                 <ArrowLeftIcon className="size-5" />
               </button>
               <h2 id="daily-stop-title" className="text-[1.2rem] font-black">
-                {choice.kind === "cancel" ? t.cancelTitle.replace("{track}", TRACK_TITLE[choice.sub.track]) : t.refundTitle}
+                {choice.kind === "cancel" ? cancelTitle(choice.sub.track) : t.refundTitle}
               </h2>
             </div>
 
