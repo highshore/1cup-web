@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { admin } from "../../../lib/supabase/server";
 import { AdminSentenceError, requireDailyAdmin } from "../../../lib/features/daily/server/admin_sentences";
-import { prepareLessonAudio } from "../../../lib/features/daily/server/audio";
+import { fillMissingLessonAudio } from "../../../lib/features/daily/server/audio";
 
 export const runtime = "nodejs";
 // Approving lessons reads their audio after the response (see below).
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     if (error) throw error;
     if (!data || data.length === 0) return NextResponse.json({ error: "레슨을 찾지 못했어요." }, { status: 404 });
     // Approved lessons get their audio read now, so the first reader does not wait for it.
-    if (status === "ready") after(() => prepareLessonAudio(data.map((row) => row.id)));
+    if (status === "ready") after(() => fillMissingLessonAudio({ lessonIds: data.map((row) => row.id) }));
     return NextResponse.json({ success: true, updated: data.length });
   } catch (error) {
     if (error instanceof AdminSentenceError) return NextResponse.json({ error: error.message }, { status: error.status });
