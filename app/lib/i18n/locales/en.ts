@@ -12,6 +12,7 @@ const en = {
     join: "Sign up",
     shadowing: "Shadowing",
     speakingTest: "Exam Prep",
+    daily: "Daily",
     vocabulary: "Vocabulary",
     meetup: "Meetup",
     leaderboard: "Leaderboard",
