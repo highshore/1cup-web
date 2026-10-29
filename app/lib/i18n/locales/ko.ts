@@ -12,6 +12,7 @@ const ko = {
     join: "참여하기",
     shadowing: "쉐도잉",
     speakingTest: "시험 대비",
+    daily: "데일리",
     vocabulary: "단어장",
     meetup: "밋업",
     leaderboard: "리더보드",
