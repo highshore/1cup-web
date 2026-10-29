@@ -628,7 +628,7 @@ export const dailyCopy = {
       title: "서비스 중단하기",
       detail: "원하는 방법을 골라 주세요.",
       recommended: "추천",
-      cancelTitle: "{track} 자동 결제 해지",
+      cancelTitle: "자동 결제 해지",
       cancelDetail: "{date}까지는 계속 받고, 그 뒤로는 결제되지 않아요. 그 전에는 다시 켤 수 있어요.",
       refundTitle: "환불받기",
       refundDetail: "{product} · {track}. 바로 카드 승인을 취소하고, 남은 기간이 없으면 레슨이 멈춰요.",
@@ -651,7 +651,7 @@ export const dailyCopy = {
       confirmCancel: "자동 결제 해지하기",
       confirmRefund: "₩{amount} 환불받기",
       working: "처리하는 중…",
-      cancelled: "{track} 자동 결제를 해지했어요. {date}까지는 계속 받아요.",
+      cancelled: "자동 결제를 해지했어요. {date}까지는 계속 받아요.",
     },
     // Same shape as 1cup's account deletion: a phrase to type, billing stopped first.
     delete: {
