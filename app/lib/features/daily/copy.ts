@@ -19,7 +19,7 @@ export const dailyCopy = {
     notification: { app: "영어 한잔", time: "지금", body: "[초·중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
-  // Right under the hero: what a subscriber ends up with, before who makes it.
+  // What a subscriber ends up with, right before the commute photo (카톡만 열면 오늘 영어 끝).
   outcomes: {
     title: "한 달이면\n이만큼 남아요",
     accent: "이만큼 남아요",

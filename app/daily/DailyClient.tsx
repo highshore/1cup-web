@@ -138,24 +138,6 @@ export default function DailyClient({
         </div>
       </section>
 
-      {/* What a subscriber gets, before who makes it */}
-      <Panel>
-        <h2 className={cn(h2Class, "text-center")}>
-          <Headline text={copy.outcomes.title} accent={copy.outcomes.accent} accentClassName="text-[#f47a4a]" />
-        </h2>
-        <ul className="m-0 mt-9 grid list-none grid-cols-2 gap-3 p-0 min-[900px]:gap-4">
-          {copy.outcomes.items.map((item) => (
-            <li key={item.title} className="rounded-[24px] bg-[#fff8dc] p-5 min-[900px]:p-7">
-              <Emoji label={item.label} className="text-[2.2rem] min-[900px]:text-[2.6rem]">
-                {item.emoji}
-              </Emoji>
-              <p className="mt-4 text-[1.12rem] font-black leading-tight min-[900px]:text-[1.3rem]">{item.title}</p>
-              <p className="mt-1.5 text-[0.88rem] font-semibold leading-snug text-[#64748b]">{item.detail}</p>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-
       {/* Approved 5-star reviews, once enough exist */}
       {reviews.length >= MIN_REVIEWS && <ReviewCarousel reviews={reviews} />}
 
@@ -235,6 +217,24 @@ export default function DailyClient({
                 <span className="block text-[1rem] font-black">{point.title}</span>
                 <span className="block text-[0.84rem] font-semibold text-[#64748b]">{point.detail}</span>
               </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      {/* What a subscriber gets, right before the commute photo */}
+      <Panel>
+        <h2 className={cn(h2Class, "text-center")}>
+          <Headline text={copy.outcomes.title} accent={copy.outcomes.accent} accentClassName="text-[#f47a4a]" />
+        </h2>
+        <ul className="m-0 mt-9 grid list-none grid-cols-2 gap-3 p-0 min-[900px]:gap-4">
+          {copy.outcomes.items.map((item) => (
+            <li key={item.title} className="rounded-[24px] bg-[#fff8dc] p-5 min-[900px]:p-7">
+              <Emoji label={item.label} className="text-[2.2rem] min-[900px]:text-[2.6rem]">
+                {item.emoji}
+              </Emoji>
+              <p className="mt-4 text-[1.12rem] font-black leading-tight min-[900px]:text-[1.3rem]">{item.title}</p>
+              <p className="mt-1.5 text-[0.88rem] font-semibold leading-snug text-[#64748b]">{item.detail}</p>
             </li>
           ))}
         </ul>
