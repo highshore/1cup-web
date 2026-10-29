@@ -9,6 +9,7 @@ import type { DailyLessonContent } from "../server/lessons";
 import { DAILY_FIELD_LABEL, DAILY_REVIEW_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
 import { dailyCopy } from "../copy";
 import { useSpeech } from "../hooks";
+import { expressionPattern, markParts } from "../highlight";
 import { dailyDisplay } from "../fonts";
 import { cn, displayClass, Emoji, Pill, Waveform } from "./DailyUI";
 import "../daily.css";
@@ -36,6 +37,24 @@ function SpeakButton({ text, speaking, onSpeak, label }: { text: string; speakin
   );
 }
 
+// Today's expression marked inside a sentence: the English by its forms, the Korean by the
+// words the lesson names (ko_highlight).
+function Marked({ text, mark, className }: { text: string; mark: RegExp | string | null | undefined; className?: string }) {
+  return (
+    <>
+      {markParts(text, mark).map((part, index) =>
+        part.marked ? (
+          <mark key={index} className={cn("rounded-[5px] bg-[#f47a4a]/30 px-0.5 text-inherit", className)}>
+            {part.text}
+          </mark>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}
+
 function Section({ emoji, title, children, className }: { emoji: string; title: string; children: React.ReactNode; className?: string }) {
   return (
     <section className={cn("rounded-[28px] p-6 min-[900px]:p-8", className)}>
@@ -46,6 +65,11 @@ function Section({ emoji, title, children, className }: { emoji: string; title: 
       <div className="mt-4">{children}</div>
     </section>
   );
+}
+
+// The quiz sentence with its blank filled by the right answer.
+function quizSentence(quiz: NonNullable<DailyLessonContent["quiz"]>) {
+  return quiz.prompt.replace(/_{2,}/, quiz.options[quiz.answer] ?? "");
 }
 
 // One lesson, as opened from the Kakao button. Shared by the lesson page and the
@@ -77,6 +101,7 @@ export function LessonBody({
     if (recordedAnswer !== null) setPicked((current) => current ?? recordedAnswer);
   }, [recordedAnswer]);
   const quiz = lesson.quiz;
+  const pattern = expressionPattern(lesson.expression);
   const answered = picked !== null;
   const correct = quiz && picked === quiz.answer;
 
@@ -143,8 +168,14 @@ export function LessonBody({
                 )}
                 <div>
                   {example.context && <p className="text-[0.75rem] font-extrabold text-[#d95f2d]">{example.context}</p>}
-                  <p className="text-[1rem] font-bold leading-snug">{example.en}</p>
-                  {example.ko && <p className="mt-0.5 text-[0.88rem] text-[#64748b]">{example.ko}</p>}
+                  <p className="text-[1.1rem] font-bold leading-snug">
+                    <Marked text={example.en} mark={pattern} />
+                  </p>
+                  {example.ko && (
+                    <p className="mt-1 text-[0.95rem] text-[#64748b]">
+                      <Marked text={example.ko} mark={example.ko_highlight} className="bg-[#f47a4a]/20 font-bold text-[#334155]" />
+                    </p>
+                  )}
                 </div>
               </li>
             ))}
@@ -169,8 +200,14 @@ export function LessonBody({
                       mine ? "rounded-br-[6px] bg-[#f47a4a] text-[#050505]" : "rounded-bl-[6px] bg-white",
                     )}
                   >
-                    <p className="text-[0.98rem] font-bold leading-snug">{line.en}</p>
-                    {line.ko && <p className={cn("mt-0.5 text-[0.82rem]", mine ? "text-[rgba(5,5,5,0.7)]" : "text-[#64748b]")}>{line.ko}</p>}
+                    <p className="text-[1.06rem] font-bold leading-snug">
+                      <Marked text={line.en} mark={pattern} className={mine ? "bg-white/60" : undefined} />
+                    </p>
+                    {line.ko && (
+                      <p className={cn("mt-1 text-[0.9rem]", mine ? "text-[rgba(5,5,5,0.7)]" : "text-[#64748b]")}>
+                        <Marked text={line.ko} mark={line.ko_highlight} className={mine ? "bg-white/50 font-bold" : "bg-[#f47a4a]/20 font-bold text-[#334155]"} />
+                      </p>
+                    )}
                   </div>
                 </li>
               );
@@ -226,6 +263,19 @@ export function LessonBody({
               <span className="font-black">{correct ? "🎉 정답이에요! " : "아쉬워요. "}</span>
               {quiz.explanation}
             </p>
+          )}
+          {answered && (
+            <div className="mt-2 rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-[0.78rem] font-extrabold text-[#f47a4a]">문장 해석</p>
+              <p className="mt-1 text-[1rem] font-bold leading-snug">
+                <Marked text={quizSentence(quiz)} mark={quiz.options[quiz.answer]} className="bg-[#f47a4a]/40" />
+              </p>
+              {quiz.ko && (
+                <p className="mt-1 text-[0.92rem] text-white/75">
+                  <Marked text={quiz.ko} mark={quiz.ko_highlight} className="bg-[#f47a4a]/30 font-bold text-white" />
+                </p>
+              )}
+            </div>
           )}
           {answered && quizExtra}
         </Section>
