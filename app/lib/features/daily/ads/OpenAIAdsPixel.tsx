@@ -122,7 +122,7 @@ export default function OpenAIAdsPixel() {
       <p className="mt-1 leading-relaxed">
         서비스 이용 현황을 분석하고 광고 성과를 측정하기 위해 쿠키와 일부 이용정보를 사용해도 될까요?
         동의하지 않아도 서비스 이용에 제한이 없어요.{" "}
-        <Link href="/daily/privacy" className="underline">개인정보 안내</Link>
+        자세한 내용은 <Link href="/daily/privacy" className="underline">개인정보 안내</Link>에서 확인할 수 있어요.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-black px-4 py-2 font-semibold text-white">허용</button>
