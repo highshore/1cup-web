@@ -2,7 +2,7 @@
 // client reads every customer, so callers must have passed requireAdmin() first.
 import { admin } from "../../../supabase/server";
 import type { DailyField, DailyTrack } from "../constants";
-import { LESSON_COLUMNS, toContent, type DailyLessonContent, type LessonRow } from "./lessons";
+import { LESSON_COLUMNS, toContent, withAudio, type DailyLessonContent, type LessonRow } from "./lessons";
 
 export interface DailyAdminSubscription {
   track: DailyTrack;
@@ -177,5 +177,6 @@ export async function loadDailyLesson(
   const { data } = await admin().from("daily_lessons").select(`${LESSON_COLUMNS}, status`).eq("id", id).maybeSingle();
   if (!data) return null;
   const row = data as unknown as LessonRow & { status: DailyAdminLessonRow["status"] };
-  return { lesson: toContent(row), status: row.status };
+  const [lesson] = await withAudio([toContent(row)]);
+  return { lesson, status: row.status };
 }

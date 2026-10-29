@@ -1,7 +1,8 @@
 // Server-only: 1cup admins moderating 함께 쓰는 문장 and choosing 통역사 PICK
-// (terms 제9조의2). The admin is a signed-in 1cup member with account_status 'admin',
-// checked the same way as the other admin API routes.
+// (terms 제9조의2). The admin is a signed-in 1cup member with account_status 'admin' whose
+// phone number is on daily_config.admin_access_phones (admin_access.ts).
 import { admin, createServerClientRSC } from "../../../supabase/server";
+import { isDailyAdmin } from "./admin_access";
 import { maskName } from "./community";
 
 export class AdminSentenceError extends Error {
@@ -17,6 +18,7 @@ export async function requireDailyAdmin(): Promise<string> {
   const { data } = await client.rpc("current_user_row");
   const row = (Array.isArray(data) ? data[0] : data) as { uid?: string; account_status?: string } | null;
   if (row?.account_status !== "admin" || !row.uid) throw new AdminSentenceError("관리자만 볼 수 있어요.", 403);
+  if (!(await isDailyAdmin(row.uid))) throw new AdminSentenceError("관리자만 볼 수 있어요.", 403);
   return row.uid;
 }
 

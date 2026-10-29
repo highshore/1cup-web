@@ -2,6 +2,8 @@
 // credential (36 random hex characters per delivery), so these pages need no login.
 import { admin } from "../../../supabase/server";
 import type { DailyField, DailyTrack } from "../constants";
+import type { DailyAudioClip } from "../spoken";
+import { storedLessonAudio } from "./audio";
 import { customerForSession } from "./session";
 
 export interface DailyLessonContent {
@@ -20,6 +22,8 @@ export interface DailyLessonContent {
   dialogue: Array<{ speaker?: string; role?: string; en: string; ko?: string; ko_highlight?: string }>;
   /** ko: the whole sentence, answer filled in, in Korean; shown once answered. */
   quiz: { prompt: string; options: string[]; answer: number; explanation?: string; ko?: string; ko_highlight?: string } | null;
+  /** Stored clip URLs (server/audio.ts), so the page can load the audio with itself. */
+  audio?: Partial<Record<DailyAudioClip, string>>;
 }
 
 export interface DailyDeliveryView {
@@ -71,6 +75,12 @@ export function toContent(row: LessonRow): DailyLessonContent {
   };
 }
 
+/** The lessons with their stored clip URLs (audio), when any are stored. */
+export async function withAudio(lessons: DailyLessonContent[]): Promise<DailyLessonContent[]> {
+  const audio = await storedLessonAudio(lessons).catch(() => new Map<string, DailyLessonContent["audio"]>());
+  return lessons.map((lesson) => ({ ...lesson, audio: audio.get(lesson.id) }));
+}
+
 export async function getDeliveryByToken(token: string): Promise<DailyDeliveryView | null> {
   if (!/^[0-9a-f]{36}$/.test(token)) return null;
   const db = admin();
@@ -89,9 +99,9 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
   let lessons: DailyLessonContent[] = [];
   if (ids.length > 0) {
     const { data: rows } = await db.from("daily_lessons").select(LESSON_COLUMNS).in("id", ids);
-    lessons = ((rows ?? []) as LessonRow[])
-      .map(toContent)
-      .sort((a, b) => a.publishOn.localeCompare(b.publishOn));
+    lessons = await withAudio(
+      ((rows ?? []) as LessonRow[]).map(toContent).sort((a, b) => a.publishOn.localeCompare(b.publishOn)),
+    );
   }
 
   let paidOtherTrack: DailyDeliveryView["paidOtherTrack"] = null;
