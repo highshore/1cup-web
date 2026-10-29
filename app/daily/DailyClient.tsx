@@ -35,17 +35,22 @@ import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
   DAILY_GUIDE_PATH,
+  DAILY_PASS_MONTHLY_BASE_KRW,
+  DAILY_PRICE_PER_DAY_KRW,
+  DAILY_PROOF_MIN,
   DAILY_TERMS_PATH,
   formatKrw,
 } from "../lib/features/daily/constants";
 import { dailyApi } from "../lib/features/daily/api";
 import { dailyCopy } from "../lib/features/daily/copy";
 import type { PublicDailyReview } from "../lib/features/daily/server/reviews";
+import type { LandingProof, LandingWeek } from "../lib/features/daily/server/landing";
 import { dailyDisplay } from "../lib/features/daily/fonts";
 import { useReached, useScrolledPast, useSeen } from "../lib/features/daily/hooks";
 import "../lib/features/daily/daily.css";
 
 const price = formatKrw(DAILY_MONTHLY_PRICE_KRW);
+const perDay = formatKrw(DAILY_PRICE_PER_DAY_KRW);
 
 const sceneIcons = {
   meeting: PresentationChartBarIcon,
@@ -68,7 +73,15 @@ const h2Class = cn(displayClass, "text-[2.25rem] leading-[1.18] min-[900px]:text
 // The review carousel appears only when at least this many approved 5-star reviews exist.
 const MIN_REVIEWS = 3;
 
-export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] }) {
+export default function DailyClient({
+  reviews,
+  week,
+  proof,
+}: {
+  reviews: PublicDailyReview[];
+  week: LandingWeek | null;
+  proof: LandingProof | null;
+}) {
   // Arrived through a friend's invite link (?invite=CODE): the server keeps the code in a
   // cookie so this browser's first payment rewards both people.
   useEffect(() => {
@@ -109,10 +122,11 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               {copy.hero.trust.map((item) => (
                 <li key={item} className="flex items-center gap-1">
                   <CheckIcon className="size-4" aria-hidden />
-                  {item}
+                  {item.replace("{perDay}", perDay)}
                 </li>
               ))}
             </ul>
+            <ProofLine proof={proof} />
           </div>
 
           <div className="relative mx-auto flex w-full max-w-[520px] justify-center pt-10">
@@ -280,24 +294,6 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               )}
             >
               {goal}
-            </li>
-          ))}
-        </ul>
-      </Panel>
-
-      {/* P4: benefits */}
-      <Panel>
-        <h2 className={h2Class}>
-          <Headline text={copy.benefits.title} accent={copy.benefits.accent} accentClassName="text-[#f47a4a]" />
-        </h2>
-        <ul className="m-0 mt-9 grid list-none grid-cols-2 gap-3 p-0 min-[900px]:gap-4">
-          {copy.benefits.items.map((item) => (
-            <li key={item.title} className="rounded-[24px] bg-[#f5f5f4] p-5 min-[900px]:p-7">
-              <Emoji label={item.label} className="text-[2.2rem] min-[900px]:text-[2.6rem]">
-                {item.emoji}
-              </Emoji>
-              <p className="mt-4 text-[1.12rem] font-black leading-tight min-[900px]:text-[1.3rem]">{item.title}</p>
-              <p className="mt-1.5 text-[0.88rem] font-semibold leading-snug text-[#64748b]">{item.detail}</p>
             </li>
           ))}
         </ul>
@@ -494,6 +490,9 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
         </div>
       </Panel>
 
+      {/* This week's real lessons: the days already gone, and the ones still to come */}
+      {week && <WeekPanel week={week} />}
+
       {/* P11: pricing */}
       <Panel id="pricing" className="bg-[#f47a4a]">
         <div ref={pricingRef}>
@@ -503,10 +502,8 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
           </h2>
           <p className="mt-3 text-[1rem] font-semibold text-[rgba(5,5,5,0.78)]">{copy.pricing.trial}</p>
           <TrialButton label={copy.pricing.cta} className="mt-6 w-full" />
-          <a
-            href="/daily/subscribe"
-            className="mt-2 flex h-[54px] w-full items-center justify-center rounded-2xl bg-white/80 text-[1rem] font-black text-[#050505]"
-          >
+          {/* One button; paying straight away is there, but as a link, not a second choice. */}
+          <a href="/daily/subscribe" className="mt-3 inline-block text-[0.92rem] font-extrabold text-[#050505] underline underline-offset-4">
             {copy.pricing.subscribeNow}
           </a>
 
@@ -515,10 +512,18 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
               <p className="text-[1.15rem] font-black">{copy.pricing.subscription.name}</p>
               <Pill className="bg-[#050505] text-white">{copy.pricing.subscription.badge}</Pill>
             </div>
-            <p className="mt-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <p className="mt-4 flex flex-wrap items-center gap-x-2 text-[0.9rem] font-bold text-[#94a3b8]">
+              {copy.pricing.subscription.compare}
+              <span className="line-through">₩{formatKrw(DAILY_PASS_MONTHLY_BASE_KRW)}</span>
+              <span className="rounded-full bg-[#f47a4a]/15 px-2 py-0.5 text-[0.8rem] font-black text-[#d95f2d]">
+                {copy.pricing.subscription.saving.replace("{saving}", formatKrw(DAILY_PASS_MONTHLY_BASE_KRW - DAILY_MONTHLY_PRICE_KRW))}
+              </span>
+            </p>
+            <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
               <span className={cn(displayClass, "text-[3rem] leading-none")}>₩{price}</span>
               <span className="text-[0.95rem] font-bold text-[#64748b]">{copy.pricing.subscription.period}</span>
             </p>
+            <p className="mt-2 text-[1.05rem] font-black text-[#d95f2d]">{copy.pricing.subscription.perDay.replace("{perDay}", perDay)}</p>
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff8dc] px-4 py-3.5">
               <Emoji className="shrink-0 text-[1.7rem]">☕</Emoji>
               <p className="text-[1.05rem] font-black leading-snug">{copy.pricing.subscription.espresso}</p>
@@ -535,14 +540,18 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             </ul>
           </div>
 
-          <div className="mt-3 rounded-[28px] bg-white/90 p-6 text-left min-[900px]:p-9">
-            <p className="text-[1rem] font-black">{copy.pricing.passes.title}</p>
-            <ul className="m-0 mt-4 grid list-none gap-2 p-0 min-[600px]:grid-cols-3">
+          {/* The passes stay on the page with their full prices, one quiet row each, so the
+              recommended plan is the one choice that stands out. */}
+          <div className="mt-3 rounded-[28px] bg-white/70 px-6 py-5 text-left min-[900px]:px-9">
+            <p className="text-[0.92rem] font-black text-[#475569]">{copy.pricing.passes.title}</p>
+            <ul className="m-0 mt-2 list-none divide-y divide-[#e7e5e4] p-0">
               {DAILY_PASSES.map((pass) => (
-                <li key={pass.id} className="rounded-[18px] border border-[#e5e7eb] bg-white px-4 py-3.5">
-                  <p className="text-[0.92rem] font-bold text-[#475569]">{pass.label}</p>
-                  <p className="mt-1 text-[1.3rem] font-black">₩{formatKrw(pass.priceKrw)}</p>
-                  <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} className="mt-0.5" />
+                <li key={pass.id} className="flex items-baseline justify-between gap-3 py-2.5">
+                  <span className="text-[0.92rem] font-bold text-[#475569]">{pass.label}</span>
+                  <span className="text-right">
+                    <span className="text-[1.02rem] font-black">₩{formatKrw(pass.priceKrw)}</span>
+                    <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -578,7 +587,25 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             </details>
           ))}
         </div>
-        <p className="mt-10 flex flex-wrap items-center justify-center gap-2 text-[0.85rem] font-semibold text-[#64748b]">
+      </Panel>
+
+      {/* The page's last word: one action, and how little it takes (the peak-end rule) */}
+      <Panel className="bg-[#050505] text-center text-white">
+        <Emoji className="text-[2.6rem]">☕</Emoji>
+        <h2 className={cn(h2Class, "mt-4")}>
+          <Headline text={copy.finale.title} accent={copy.finale.accent} accentClassName="text-[#f47a4a]" />
+        </h2>
+        <p className="mx-auto mt-3 max-w-[28rem] text-[1rem] font-semibold text-white/70">{copy.finale.sub}</p>
+        <ol className="m-0 mx-auto mt-7 flex max-w-[30rem] list-none flex-wrap justify-center gap-2 p-0">
+          {copy.finale.steps.map((step, index) => (
+            <li key={step} className="flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-[0.88rem] font-extrabold">
+              <span className="flex size-6 items-center justify-center rounded-full bg-[#f47a4a] text-[0.78rem] font-black text-[#050505]">{index + 1}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+        <TrialButton label={copy.finale.cta} tone="orange" className="mt-8 w-full min-[520px]:w-auto" />
+        <p className="mt-10 flex flex-wrap items-center justify-center gap-2 text-[0.85rem] font-semibold text-white/50">
           <CupMark className="h-4 w-3" />
           {copy.operatedBy}
           <a href={DAILY_GUIDE_PATH} className="underline underline-offset-2">
@@ -588,7 +615,7 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
             {copy.pricing.terms}
           </a>
         </p>
-        <p className="mt-2 text-center text-[0.75rem] font-semibold text-[#94a3b8]">
+        <p className="mt-2 text-center text-[0.75rem] font-semibold text-white/40">
           <a
             href="https://googlefonts.github.io/noto-emoji-animation/"
             target="_blank"
@@ -602,6 +629,80 @@ export default function DailyClient({ reviews }: { reviews: PublicDailyReview[] 
 
       <StickyBar visible={pastHero && !reachedPricing} />
     </div>
+  );
+}
+
+// Real counts, shown only once they are large enough to mean something (DAILY_PROOF_MIN).
+function ProofLine({ proof }: { proof: LandingProof | null }) {
+  if (!proof) return null;
+  const items = [
+    proof.learners >= DAILY_PROOF_MIN.learners && dailyCopy.proof.learners.replace("{count}", proof.learners.toLocaleString("ko-KR")),
+    proof.sentences >= DAILY_PROOF_MIN.sentences && dailyCopy.proof.sentences.replace("{count}", proof.sentences.toLocaleString("ko-KR")),
+  ].filter((item): item is string => Boolean(item));
+  if (items.length === 0) return null;
+  return (
+    <p className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.88rem] font-extrabold min-[900px]:justify-start">
+      {items.map((item) => (
+        <span key={item} className="flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-[#050505]" aria-hidden />
+          {item}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+// This week's 초·중급 lessons, from the database: what was already sent, what today and the
+// rest of the week still hold. On a weekend it is the coming week, all still ahead.
+function WeekPanel({ week }: { week: LandingWeek }) {
+  const copy = dailyCopy.week;
+  const weekend = week.days.every((day) => day.state === "upcoming");
+  const remaining = week.days.filter((day) => day.state !== "past").length;
+  return (
+    <Panel className="bg-[#fff8dc]">
+      <h2 className={h2Class}>
+        <Headline
+          text={weekend ? copy.weekendTitle : copy.title}
+          accent={weekend ? copy.weekendAccent : copy.accent}
+          accentClassName="text-[#f47a4a]"
+        />
+      </h2>
+      <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{weekend ? copy.weekendSub : copy.sub}</p>
+      <ol className="m-0 mt-8 grid list-none grid-cols-5 gap-2 p-0">
+        {week.days.map((day, index) => (
+          <li
+            key={day.date}
+            className={cn(
+              "flex min-h-[132px] flex-col items-center rounded-[20px] px-1.5 py-3 text-center",
+              day.state === "past" && "bg-white/60 text-[#94a3b8]",
+              day.state === "today" && "bg-[#f47a4a] text-[#050505] shadow-[0_14px_30px_-16px_rgba(244,122,74,0.9)]",
+              day.state === "upcoming" && "border-2 border-dashed border-[#e7c98a] bg-white text-[#050505]",
+            )}
+          >
+            <span className="text-[0.82rem] font-black">{copy.weekdays[index]}</span>
+            <span className="mt-2 flex flex-1 items-center text-[0.76rem] font-black leading-tight min-[600px]:text-[0.9rem]">
+              {day.state === "past" ? (
+                <span lang="en" className="line-through decoration-[#94a3b8]/60 [hyphens:auto] [word-break:normal]">
+                  {day.expression ?? "—"}
+                </span>
+              ) : (
+                <Emoji className="text-[1.6rem]">{day.state === "today" ? "☕" : "🔒"}</Emoji>
+              )}
+            </span>
+            <span className="mt-2 text-[0.68rem] font-bold leading-tight">
+              {day.state === "past" ? copy.past : day.state === "today" ? copy.today : copy.upcoming}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
+        <p className="text-[1.05rem] font-black">
+          <span className="mr-2 rounded-full bg-[#050505] px-2.5 py-1 text-[0.75rem] text-white">{copy.track}</span>
+          {copy.remaining.replace("{count}", String(remaining))}
+        </p>
+        <TrialButton label={dailyCopy.pricing.cta} className="w-full min-[520px]:w-auto" />
+      </div>
+    </Panel>
   );
 }
 
@@ -732,7 +833,7 @@ function StickyBar({ visible }: { visible: boolean }) {
       <div className="mx-auto flex max-w-[720px] items-center gap-3 rounded-[22px] bg-[#050505] py-2.5 pl-5 pr-2.5 text-white shadow-[0_18px_40px_-14px_rgba(5,5,5,0.6)]">
         <div className="min-w-0 flex-1">
           <p className="text-[1rem] font-black">{copy.title}</p>
-          <p className="truncate text-[0.78rem] font-semibold text-white/60">{copy.sub.replace("{price}", price)}</p>
+          <p className="truncate text-[0.78rem] font-semibold text-white/60">{copy.sub.replace("{perDay}", perDay)}</p>
         </div>
         <TrialButton label={copy.cta} tone="orange" className="min-h-12 shrink-0 px-4 text-[0.95rem]" />
       </div>

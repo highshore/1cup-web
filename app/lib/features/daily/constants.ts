@@ -28,6 +28,13 @@ export const DAILY_PASSES = [
 export const DAILY_PASS_MONTHLY_BASE_KRW = DAILY_PASSES[0].priceKrw;
 export const dailyPassPerMonth = (priceKrw: number, days: number) => Math.round((priceKrw * 28) / days);
 
+// The subscription's price per day, for framing (₩3,700 / 28 days ≈ ₩132).
+export const DAILY_PRICE_PER_DAY_KRW = Math.round(DAILY_MONTHLY_PRICE_KRW / 28);
+
+// The landing page shows its live numbers (server/landing.ts) only from these counts up;
+// below them a number reads as a warning, not as proof.
+export const DAILY_PROOF_MIN = { learners: 100, sentences: 50 } as const;
+
 // Free-trial signup. When false, the landing page's trial buttons show "opening soon"
 // instead of linking to the signup. The server has its own switch,
 // daily_config.trial_open, which decides whether a trial can actually start.
