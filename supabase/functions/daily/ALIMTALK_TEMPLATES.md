@@ -30,7 +30,7 @@ Account notices (`notices.ts`) use fixed codes, all approved. Every button is �
 | `DAILY_SUB_ENDED` | the 3rd failed day ends the subscription | `#{name}` `#{track}` · no button |
 | `DAILY_REFUND_DONE` | a refund went through | `#{name}` `#{amount}` |
 | `DAILY_REFUND_REJECT` | an admin rejects a refund request | `#{name}` |
-| `DAILY_ADMIN_REFUND` | every refund, to `daily_config.admin_phones` | `#{result}` (`환불 완료` / `확인 필요`) `#{product}` `#{amount}` · button `https://1cupenglish.com/admin/daily-refunds` |
+| `DAILY_ADMIN_REFUND` | every refund, to `daily_config.admin_phones` (not to the refunded customer's own phone when it went through: they get `DAILY_REFUND_DONE`) | `#{result}` (`환불 완료` / `확인 필요`) `#{product}` `#{amount}` · button `https://1cupenglish.com/admin/daily-refunds` |
 
 `#{hook}` is written per reader by `hooks.ts` (model `DAILY_HOOK_MODEL`, default
 `gpt-6-luna`; fixed pool when the model is unavailable). `#{content}` is the lesson or the
