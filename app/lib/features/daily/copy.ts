@@ -395,7 +395,7 @@ export const dailyCopy = {
         { emoji: "✍️", label: "글 쓰는 손", title: "함께 쓰는 문장", detail: "오늘 표현으로 한 문장을 써서 올리고, 같은 레슨을 받은 사람들의 문장에 ☕를 보내요. 이름은 카카오 닉네임 일부를 가려서 보여줘요(예: 김*수)." },
         { emoji: "🏆", label: "트로피", title: "통역사 PICK", detail: "통역사가 레슨마다 잘 쓴 문장 하나를 골라, 같은 레벨의 다음 레슨 맨 위에 소개해요." },
         { emoji: "🔥", label: "불꽃", title: "연속 기록과 내 학습 기록", detail: "퀴즈를 푼 날이 이어지면 연속 기록이 쌓여요. 받은 표현과 퀴즈 결과는 모두 내 학습 기록에 모여요." },
-        { emoji: "📤", label: "보내기", title: "친구에게 자랑하기", detail: "오늘의 표현과 Daily 소개 링크를 보내요. 내 레슨 링크는 들어가지 않아요." },
+        { emoji: "📤", label: "보내기", title: "친구에게 자랑하기", detail: "내 공부 기록(연속 일수)과 오늘의 표현, Daily 소개 링크를 보내요. 내 레슨 링크는 들어가지 않아요." },
       ],
       tip: "소리가 나지 않으면 휴대폰 무음 모드를 풀어주세요. 듣기는 휴대폰에 설치된 영어 음성으로 읽어줘요.",
     },
@@ -706,6 +706,13 @@ export const dailyCopy = {
     streak: "{days}일 연속",
     streakZero: "오늘 퀴즈를 풀면 연속 기록이 시작돼요",
     book: "내 학습 기록 · 표현 {count}개",
+    // 친구에게 자랑하기: the first line boasts the reader's own record. The streak counts
+    // days the quiz was solved; without one, the number of expressions received.
+    shareStreak: "🔥 영어 한잔 Daily로 {days}일 연속 영어 공부 중이에요",
+    shareCount: "☕ 영어 한잔 Daily로 영어 표현 {count}개째 공부하고 있어요",
+    shareFirst: "☕ 영어 한잔 Daily로 영어 공부를 시작했어요",
+    shareExpression: "오늘의 영어 표현: {expression}",
+    shareFooter: "통역사가 매일 카톡으로 보내주는 영어 한잔 Daily",
   },
   // /daily/book.
   book: {
