@@ -2,17 +2,16 @@
 // public `assets` bucket under a name that hashes everything that shapes the sound
 // (model, voices, direction, text), so every reader after the first gets the stored
 // file, and editing a lesson's text makes the next play generate a fresh one.
+// fillMissingLessonAudio() reads every approved lesson's missing clips in bulk ahead of
+// their readers (the daily cron, /api/cron/daily-audio).
 import { createHash } from "node:crypto";
-import { GoogleAuth } from "google-auth-library";
 import { admin } from "../../../supabase/server";
 import { isAudioClip, lessonClips, spokenText, type DailyAudioClip } from "../spoken";
 import type { DailyLessonContent } from "./lessons";
 
 const BUCKET = "assets";
 const FOLDER = "daily-audio";
-const MODEL = process.env.VERTEX_AI_DAILY_TTS_MODEL || "gemini-3.8-flash-lite-tts";
-const VERTEX_PROJECT = process.env.VERTEX_AI_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || "";
-const VERTEX_LOCATION = process.env.VERTEX_AI_LOCATION || "global";
+const MODEL = process.env.DAILY_TTS_MODEL || "gemini-3.8-flash-lite-tts";
 
 // The expression and examples share one voice; the dialogue's two people get two.
 const NARRATOR_VOICE = "Kore";
@@ -77,17 +76,6 @@ function clipFileName(clip: DailyAudioClip, request: SpeechRequest) {
   return `${clip}-${hash}.wav`;
 }
 
-function buildGoogleAuth() {
-  const clientEmail = process.env.VERTEX_AI_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.VERTEX_AI_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
-  return new GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    ...(clientEmail && privateKey
-      ? { credentials: { client_email: clientEmail, private_key: privateKey.replace(/\\n/g, "\n") } }
-      : {}),
-  });
-}
-
 function speechConfig(voices: SpeechRequest["voices"]) {
   const voiceConfig = (voice: string) => ({ prebuiltVoiceConfig: { voiceName: voice } });
   if (voices.length === 1) return { voiceConfig: voiceConfig(voices[0].voice) };
@@ -102,26 +90,30 @@ type InlineAudio = { mimeType?: string; data?: string };
 
 // Gemini answers with raw 16-bit little-endian mono PCM ("audio/L16;codec=pcm;rate=24000").
 async function synthesize(request: SpeechRequest): Promise<{ pcm: Buffer; sampleRate: number }> {
-  if (!VERTEX_PROJECT) throw new DailyAudioError("Vertex AI is not configured.", 503);
-  const token = await buildGoogleAuth().getAccessToken();
-  if (!token) throw new DailyAudioError("Vertex AI access token is unavailable.", 503);
-  const endpoint = "https://aiplatform.googleapis.com/v1/projects/" + encodeURIComponent(VERTEX_PROJECT)
-    + "/locations/" + encodeURIComponent(VERTEX_LOCATION)
-    + "/publishers/google/models/" + encodeURIComponent(MODEL) + ":generateContent";
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: request.prompt }] }],
-      generationConfig: { responseModalities: ["AUDIO"], speechConfig: speechConfig(request.voices) },
-    }),
-    signal: AbortSignal.timeout(50_000),
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new DailyAudioError("GEMINI_API_KEY is not configured.", 503);
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent";
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: request.prompt }] }],
+    generationConfig: { responseModalities: ["AUDIO"], speechConfig: speechConfig(request.voices) },
   });
+  // A bulk run meets the per-minute limit; wait and try again a couple of times.
+  let response: Response;
+  for (let attempt = 0; ; attempt += 1) {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(50_000),
+    });
+    if (attempt >= 2 || ![429, 500, 503].includes(response.status)) break;
+    await new Promise((resolve) => setTimeout(resolve, 5_000 * 2 ** attempt));
+  }
   const payload = (await response.json().catch(() => ({}))) as {
     candidates?: Array<{ content?: { parts?: Array<{ inlineData?: InlineAudio }> } }>;
   };
   if (!response.ok) {
-    console.error("[daily-audio] Vertex TTS request failed", response.status, JSON.stringify(payload).slice(0, 500));
+    console.error("[daily-audio] Gemini TTS request failed", response.status, JSON.stringify(payload).slice(0, 500));
     throw new DailyAudioError("The voice service is temporarily unavailable.", 502);
   }
   const parts = (payload.candidates?.[0]?.content?.parts ?? []).map((part) => part.inlineData).filter((part): part is InlineAudio => Boolean(part?.data));
@@ -148,70 +140,136 @@ function wav(pcm: Buffer, sampleRate: number) {
   return Buffer.concat([header, pcm]);
 }
 
-// Two readers pressing play together share one generation (per server instance).
-const inFlight = new Map<string, Promise<string>>();
-
-async function ensureClip(lessonId: string, lesson: LessonText, clip: DailyAudioClip): Promise<string> {
-  const request = speechRequest(lesson, clip);
-  if (!request) throw new DailyAudioError("This lesson has no such audio.", 404);
-  const folder = `${FOLDER}/${lessonId}`;
-  const name = clipFileName(clip, request);
-  const path = `${folder}/${name}`;
-  const storage = admin().storage.from(BUCKET);
-  const publicUrl = storage.getPublicUrl(path).data.publicUrl;
-
-  const pending = inFlight.get(path);
-  if (pending) return pending;
-  const job = (async () => {
-    const { data: existing } = await storage.list(folder, { limit: 100 });
-    if (existing?.some((file) => file.name === name)) return publicUrl;
-
-    const { pcm, sampleRate } = await synthesize(request);
-    const { error } = await storage.upload(path, wav(pcm, sampleRate), {
-      contentType: "audio/wav",
-      cacheControl: "31536000",
-      upsert: true,
-    });
-    if (error) {
-      console.error("[daily-audio] upload failed", path, error.message);
-      throw new DailyAudioError("Could not save the audio.", 500);
-    }
-    // The clip's earlier versions (from before an edit) are never asked for again.
-    const stale = (existing ?? []).filter((file) => file.name.startsWith(`${clip}-`) && file.name !== name);
-    if (stale.length > 0) await storage.remove(stale.map((file) => `${folder}/${file.name}`));
-    return publicUrl;
-  })();
-  inFlight.set(path, job);
-  try {
-    return await job;
-  } finally {
-    inFlight.delete(path);
-  }
+interface ClipTarget {
+  clip: DailyAudioClip;
+  request: SpeechRequest;
+  folder: string;
+  name: string;
 }
 
-async function loadLessonText(lessonId: string): Promise<LessonText | null> {
-  const { data } = await admin().from("daily_lessons").select("expression, examples, dialogue").eq("id", lessonId).maybeSingle();
-  if (!data) return null;
-  return { expression: data.expression, examples: data.examples ?? [], dialogue: data.dialogue ?? [] };
+function clipTarget(lessonId: string, lesson: LessonText, clip: DailyAudioClip): ClipTarget | null {
+  const request = speechRequest(lesson, clip);
+  if (!request) return null;
+  return { clip, request, folder: `${FOLDER}/${lessonId}`, name: clipFileName(clip, request) };
+}
+
+const bucket = () => admin().storage.from(BUCKET);
+
+async function storedNames(folder: string): Promise<string[]> {
+  const { data, error } = await bucket().list(folder, { limit: 100 });
+  if (error) throw new DailyAudioError("Could not list the stored audio.", 500);
+  return (data ?? []).map((file) => file.name);
+}
+
+async function generateClip(target: ClipTarget, stored: string[]) {
+  const path = `${target.folder}/${target.name}`;
+  const { pcm, sampleRate } = await synthesize(target.request);
+  const { error } = await bucket().upload(path, wav(pcm, sampleRate), {
+    contentType: "audio/wav",
+    cacheControl: "31536000",
+    upsert: true,
+  });
+  if (error) {
+    console.error("[daily-audio] upload failed", path, error.message);
+    throw new DailyAudioError("Could not save the audio.", 500);
+  }
+  // The clip's earlier versions (from before an edit) are never asked for again.
+  const stale = stored.filter((name) => name.startsWith(`${target.clip}-`) && name !== target.name);
+  if (stale.length > 0) await bucket().remove(stale.map((name) => `${target.folder}/${name}`));
+}
+
+// Two readers pressing play together share one generation (per server instance).
+const inFlight = new Map<string, Promise<void>>();
+
+async function ensureClip(target: ClipTarget, stored?: string[]): Promise<string> {
+  const path = `${target.folder}/${target.name}`;
+  const publicUrl = bucket().getPublicUrl(path).data.publicUrl;
+  let job = inFlight.get(path);
+  if (!job) {
+    job = (async () => {
+      const names = stored ?? (await storedNames(target.folder));
+      if (!names.includes(target.name)) await generateClip(target, names);
+    })();
+    inFlight.set(path, job);
+    job.finally(() => inFlight.delete(path)).catch(() => {});
+  }
+  await job;
+  return publicUrl;
+}
+
+type LessonRow = LessonText & { id: string };
+
+function toLessonText(row: { id: string; expression: string; examples: LessonText["examples"] | null; dialogue: LessonText["dialogue"] | null }): LessonRow {
+  return { id: row.id, expression: row.expression, examples: row.examples ?? [], dialogue: row.dialogue ?? [] };
 }
 
 /** The stored clip's public URL, generating it first if this text has not been read yet. */
 export async function lessonAudioUrl(lessonId: string, clip: string): Promise<string> {
   if (!/^[0-9a-f-]{36}$/i.test(lessonId) || !isAudioClip(clip)) throw new DailyAudioError("No such audio.", 404);
-  const lesson = await loadLessonText(lessonId);
-  if (!lesson) throw new DailyAudioError("No such lesson.", 404);
-  return ensureClip(lessonId, lesson, clip);
+  const { data } = await admin().from("daily_lessons").select("id, expression, examples, dialogue").eq("id", lessonId).maybeSingle();
+  const target = data ? clipTarget(lessonId, toLessonText(data), clip) : null;
+  if (!target) throw new DailyAudioError("No such audio.", 404);
+  return ensureClip(target);
 }
 
-/** Reads every clip of these lessons ahead of their first reader. Failures only log: a clip
- *  that is still missing is generated when someone first plays it. */
-export async function prepareLessonAudio(lessonIds: string[]) {
-  for (const lessonId of lessonIds) {
-    const lesson = await loadLessonText(lessonId);
-    if (!lesson) continue;
-    const results = await Promise.allSettled(lessonClips(lesson).map((clip) => ensureClip(lessonId, lesson, clip)));
-    for (const result of results) {
-      if (result.status === "rejected") console.error("[daily-audio] prepare failed", lessonId, (result.reason as Error)?.message);
+async function inPool<T>(items: T[], concurrency: number, work: (item: T) => Promise<void>, until = Infinity) {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length && Date.now() < until) await work(items[next++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
+
+export interface AudioFillResult {
+  lessons: number;
+  missing: number;
+  generated: number;
+  failed: number;
+  /** Clips left for the next run because the time budget ran out. */
+  remaining: number;
+}
+
+/**
+ * Reads every missing clip of these lessons (all approved lessons when no ids are
+ * given) and stores it, several requests at a time, stopping for the next run once the
+ * time budget is spent. Clips already stored are skipped, so it is safe to run again.
+ */
+export async function fillMissingLessonAudio(
+  { lessonIds, budgetMs = 200_000, concurrency = 4 }: { lessonIds?: string[]; budgetMs?: number; concurrency?: number } = {},
+): Promise<AudioFillResult> {
+  const until = Date.now() + budgetMs;
+  let query = admin().from("daily_lessons").select("id, expression, examples, dialogue").order("publish_on");
+  query = lessonIds ? query.in("id", lessonIds) : query.eq("status", "ready");
+  const { data, error } = await query;
+  if (error) throw new DailyAudioError("Could not load the lessons.", 500);
+  const lessons = (data ?? []).map(toLessonText);
+
+  const missing: Array<{ target: ClipTarget; stored: string[] }> = [];
+  await inPool(lessons, 10, async (lesson) => {
+    const stored = await storedNames(`${FOLDER}/${lesson.id}`);
+    for (const clip of lessonClips(lesson)) {
+      const target = clipTarget(lesson.id, lesson, clip);
+      if (target && !stored.includes(target.name)) missing.push({ target, stored });
     }
-  }
+  });
+
+  let generated = 0;
+  let failed = 0;
+  await inPool(
+    missing,
+    concurrency,
+    async ({ target, stored }) => {
+      try {
+        await ensureClip(target, stored);
+        generated += 1;
+      } catch (err) {
+        failed += 1;
+        console.error("[daily-audio] clip failed", target.folder, target.clip, (err as Error)?.message);
+      }
+    },
+    until,
+  );
+  const result = { lessons: lessons.length, missing: missing.length, generated, failed, remaining: missing.length - generated - failed };
+  console.log("[daily-audio] fill", JSON.stringify(result));
+  return result;
 }
