@@ -1,6 +1,7 @@
 "use client";
 
-import { RefObject, useEffect, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
+import { spokenText, type DailyAudioClip } from "./spoken";
 
 export function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -85,48 +86,72 @@ export function useVisible<T extends Element>(ref: RefObject<T | null>) {
   return visible;
 }
 
-// "(sb)", "(sth)", "(sb's)" and the like mark where a word goes in an expression such as
-// "run (sth) by (sb)". The voice reads them as the words they stand for ("run something
-// by someone") instead of spelling out "sth" and "sb".
-const PLACEHOLDER = /\((sb|sth|someone|something|one)('s)?\)/gi;
-const PLACEHOLDER_WORD: Record<string, string> = { sb: "someone", sth: "something", someone: "someone", something: "something", one: "one" };
-
-export function spokenText(text: string) {
-  return text
-    .replace(PLACEHOLDER, (_, word: string, possessive: string | undefined) => `${PLACEHOLDER_WORD[word.toLowerCase()]}${possessive ?? ""}`)
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// The browser's own English voice reads expressions and examples aloud until lessons
-// carry recorded audio (daily_lessons.audio_path).
-export function useSpeech() {
+// Lessons play their recorded clips (Gemini TTS, see server/audio.ts). The browser's own
+// English voice stands in when a recording cannot play, and for the landing page's sample.
+export function useSpeech(lessonId?: string) {
   const [supported, setSupported] = useState(false);
-  const [speaking, setSpeaking] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState<DailyAudioClip | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recorded = Boolean(lessonId && /^[0-9a-f-]{36}$/i.test(lessonId));
 
   useEffect(() => {
-    const ok = typeof window !== "undefined" && "speechSynthesis" in window;
-    setSupported(ok);
+    const browserVoice = typeof window !== "undefined" && "speechSynthesis" in window;
+    setSupported(browserVoice || recorded);
     return () => {
-      if (ok) window.speechSynthesis.cancel();
+      audioRef.current?.pause();
+      audioRef.current = null;
+      if (browserVoice) window.speechSynthesis.cancel();
     };
-  }, []);
+  }, [recorded]);
 
-  const speak = (text: string, rate = 0.92) => {
-    if (!supported) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
-    if (speaking === text) {
+  const stop = () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+
+  const speakWithBrowser = (clip: DailyAudioClip, text: string, rate: number) => {
+    if (!("speechSynthesis" in window)) {
       setSpeaking(null);
       return;
     }
     const utterance = new SpeechSynthesisUtterance(spokenText(text));
     utterance.lang = "en-US";
     utterance.rate = rate;
-    utterance.onend = () => setSpeaking(null);
-    utterance.onerror = () => setSpeaking(null);
-    setSpeaking(text);
-    synth.speak(utterance);
+    utterance.onend = () => setSpeaking((current) => (current === clip ? null : current));
+    utterance.onerror = () => setSpeaking((current) => (current === clip ? null : current));
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // text is what the browser voice reads if the clip's recording cannot play.
+  const speak = (clip: DailyAudioClip, text: string, rate = 0.92) => {
+    if (!supported) return;
+    stop();
+    if (speaking === clip) {
+      setSpeaking(null);
+      return;
+    }
+    setSpeaking(clip);
+    if (!recorded) {
+      speakWithBrowser(clip, text, rate);
+      return;
+    }
+    // Started inside the tap, so iOS lets it play even when the first play waits for
+    // the clip to be generated.
+    const audio = new Audio(`/api/daily/audio?lesson=${encodeURIComponent(lessonId!)}&clip=${clip}`);
+    audioRef.current = audio;
+    const fallBack = () => {
+      if (audioRef.current !== audio) return;
+      audioRef.current = null;
+      speakWithBrowser(clip, text, rate);
+    };
+    audio.onended = () => {
+      if (audioRef.current !== audio) return;
+      audioRef.current = null;
+      setSpeaking(null);
+    };
+    audio.onerror = fallBack;
+    audio.play().catch(fallBack);
   };
 
   return { supported, speaking, speak };
