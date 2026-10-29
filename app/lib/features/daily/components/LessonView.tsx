@@ -92,7 +92,7 @@ export function LessonBody({
   /** Shown under the explanation once answered (the crowd numbers). */
   quizExtra?: React.ReactNode;
 }) {
-  const speech = useSpeech(lesson.id);
+  const speech = useSpeech(lesson.id, lesson.audio);
   const { speaking, speak } = speech;
   const supported = speech.supported || preview;
   const [picked, setPicked] = useState<number | null>(recordedAnswer);

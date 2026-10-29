@@ -99,11 +99,20 @@ async function schedulerAuthorized(req: Request): Promise<boolean> {
   return presented === data;
 }
 
+// The Daily admin: a 1cup admin account whose phone number is on
+// daily_config.admin_access_phones (as app/lib/features/daily/server/admin_access.ts).
 async function callerIsAdmin(req: Request): Promise<boolean> {
   const uid = await callerUid(req);
   if (!uid) return false;
-  const { data } = await admin().from("users").select("account_status").eq("uid", uid).maybeSingle();
-  return data?.account_status === "admin";
+  const [user, config] = await Promise.all([
+    admin().from("users").select("account_status, phone").eq("uid", uid).maybeSingle(),
+    admin().from("daily_config").select("admin_access_phones").eq("id", "settings").maybeSingle(),
+  ]);
+  if (user.data?.account_status !== "admin") return false;
+  const digits = String(user.data.phone ?? "").replace(/\D/g, "");
+  const phone = digits.startsWith("82") ? `0${digits.slice(2)}` : digits;
+  const allowed = (config.data?.admin_access_phones as string[] | null) ?? [];
+  return phone.length > 0 && allowed.includes(phone);
 }
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.

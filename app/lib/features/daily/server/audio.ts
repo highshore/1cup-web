@@ -314,3 +314,29 @@ export async function fillMissingLessonAudio(
   console.log("[daily-audio] fill", JSON.stringify(result));
   return result;
 }
+
+/**
+ * The stored clips of these lessons, as public URLs by clip, for the page to carry so
+ * the browser fetches the audio while the lesson is read instead of on the first tap.
+ * A clip not stored yet is left out (the page asks /api/daily/audio for it); a failure
+ * to list leaves the lesson out, never the page.
+ */
+export async function storedLessonAudio(
+  lessons: Array<LessonText & { id: string }>,
+): Promise<Map<string, Partial<Record<DailyAudioClip, string>>>> {
+  const byLesson = new Map<string, Partial<Record<DailyAudioClip, string>>>();
+  await Promise.all(
+    lessons.map(async (lesson) => {
+      const folder = `${FOLDER}/${lesson.id}`;
+      const stored = await storedNames(folder).catch(() => null);
+      if (!stored) return;
+      const urls: Partial<Record<DailyAudioClip, string>> = {};
+      for (const clip of lessonClips(lesson)) {
+        const target = clipTarget(lesson.id, lesson, clip);
+        if (target && stored.includes(target.name)) urls[clip] = bucket().getPublicUrl(`${folder}/${target.name}`).data.publicUrl;
+      }
+      byLesson.set(lesson.id, urls);
+    }),
+  );
+  return byLesson;
+}

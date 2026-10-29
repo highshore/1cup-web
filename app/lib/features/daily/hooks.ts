@@ -88,11 +88,44 @@ export function useVisible<T extends Element>(ref: RefObject<T | null>) {
 
 // Lessons play their recorded clips (Gemini TTS, see server/audio.ts). The browser's own
 // English voice stands in when a recording cannot play, and for the landing page's sample.
-export function useSpeech(lessonId?: string) {
+// The page carries the stored clips' URLs (stored); they are downloaded while the lesson is
+// read, expression first, so a tap plays at once. A clip not stored yet goes through
+// /api/daily/audio, which makes it.
+export function useSpeech(lessonId?: string, stored?: Partial<Record<DailyAudioClip, string>>) {
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState<DailyAudioClip | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loaded = useRef<Partial<Record<DailyAudioClip, string>>>({});
   const recorded = Boolean(lessonId && /^[0-9a-f-]{36}$/i.test(lessonId));
+  const storedKey = stored ? JSON.stringify(stored) : "";
+
+  useEffect(() => {
+    if (!storedKey) return;
+    const urls = JSON.parse(storedKey) as Partial<Record<DailyAudioClip, string>>;
+    const clips = (Object.keys(urls) as DailyAudioClip[]).sort((a, b) => Number(b === "expression") - Number(a === "expression"));
+    let cancelled = false;
+    const made: string[] = [];
+    void (async () => {
+      for (const clip of clips) {
+        if (cancelled) return;
+        try {
+          const response = await fetch(urls[clip]!);
+          if (!response.ok) continue;
+          const objectUrl = URL.createObjectURL(await response.blob());
+          made.push(objectUrl);
+          if (cancelled) return;
+          loaded.current[clip] = objectUrl;
+        } catch {
+          // The tap falls back to the clip's URL, then to /api/daily/audio.
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      loaded.current = {};
+      for (const objectUrl of made) URL.revokeObjectURL(objectUrl);
+    };
+  }, [storedKey]);
 
   useEffect(() => {
     const browserVoice = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -138,7 +171,9 @@ export function useSpeech(lessonId?: string) {
     }
     // Started inside the tap, so iOS lets it play even when the first play waits for
     // the clip to be generated.
-    const audio = new Audio(`/api/daily/audio?lesson=${encodeURIComponent(lessonId!)}&clip=${clip}`);
+    const audio = new Audio(
+      loaded.current[clip] ?? stored?.[clip] ?? `/api/daily/audio?lesson=${encodeURIComponent(lessonId!)}&clip=${clip}`,
+    );
     audioRef.current = audio;
     const fallBack = () => {
       if (audioRef.current !== audio) return;
