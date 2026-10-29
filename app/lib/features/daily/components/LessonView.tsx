@@ -68,7 +68,7 @@ export function LessonBody({
   /** Shown under the explanation once answered (the crowd numbers). */
   quizExtra?: React.ReactNode;
 }) {
-  const speech = useSpeech();
+  const speech = useSpeech(lesson.id);
   const { speaking, speak } = speech;
   const supported = speech.supported || preview;
   const [picked, setPicked] = useState<number | null>(recordedAnswer);
@@ -97,11 +97,11 @@ export function LessonBody({
         {supported && (
           <button
             type="button"
-            onClick={() => speak(lesson.expression, 0.8)}
+            onClick={() => speak("expression", lesson.expression, 0.8)}
             className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-[#050505] px-3 py-2.5 text-white"
           >
             <span className="flex size-9 items-center justify-center rounded-full bg-[#f47a4a] text-[#050505]">
-              {speaking === lesson.expression ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
+              {speaking === "expression" ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
             </span>
             <Waveform className="h-5 flex-1" />
             <span className="text-[0.8rem] font-bold text-white/70">발음 듣기</span>
@@ -136,10 +136,10 @@ export function LessonBody({
       {lesson.examples.length > 0 && (
         <Section emoji="🗣️" title="실제 사용 예시" className="bg-[#f5f5f4]">
           <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-            {lesson.examples.map((example) => (
+            {lesson.examples.map((example, index) => (
               <li key={example.en} className="flex items-start gap-3 rounded-2xl bg-white p-4">
                 {supported && (
-                  <SpeakButton text={example.en} label="예문 듣기" speaking={speaking === example.en} onSpeak={() => speak(example.en)} />
+                  <SpeakButton text={example.en} label="예문 듣기" speaking={speaking === `example-${index}`} onSpeak={() => speak(`example-${index}`, example.en)} />
                 )}
                 <div>
                   {example.context && <p className="text-[0.75rem] font-extrabold text-[#d95f2d]">{example.context}</p>}
@@ -179,10 +179,10 @@ export function LessonBody({
           {supported && (
             <button
               type="button"
-              onClick={() => speak(lesson.dialogue.map((line) => line.en).join(" "))}
+              onClick={() => speak("dialogue", lesson.dialogue.map((line) => line.en).join(" "))}
               className="mt-4 flex items-center gap-2 rounded-full bg-[#050505] px-4 py-2.5 text-[0.88rem] font-black text-white"
             >
-              <PlayIcon className="size-4 text-[#f47a4a]" />
+              {speaking === "dialogue" ? <PauseIcon className="size-4 text-[#f47a4a]" /> : <PlayIcon className="size-4 text-[#f47a4a]" />}
               대화 전체 듣기
             </button>
           )}
