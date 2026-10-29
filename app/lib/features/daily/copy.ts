@@ -13,12 +13,13 @@ export const dailyCopy = {
     accent: "영어 한잔",
     lead: "통역사가 매일 실무에서 바로 쓸 수 있는 비즈니스 표현 하나를 카카오톡으로 올려드려요.",
     cta: "하루 무료로 받아보기",
-    trust: ["첫 하루 무료", "앱 설치 없음", "언제든 해지"],
+    // {perDay}: the subscription's price per day (framing: ₩132 reads smaller than ₩3,700).
+    trust: ["첫 하루 무료", "이후 하루 ₩{perDay}", "언제든 해지"],
     // A KakaoTalk notification: the channel's name, then the message's first line.
     notification: { app: "영어 한잔", time: "지금", body: "[초·중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
-  // Right under the hero: what a subscriber ends up with, before who makes it.
+  // What a subscriber ends up with, right before the commute photo (카톡만 열면 오늘 영어 끝).
   outcomes: {
     title: "한 달이면\n이만큼 남아요",
     accent: "이만큼 남아요",
@@ -61,15 +62,27 @@ export const dailyCopy = {
     goalAccent: "만들었어요",
     goals: ["회의에서 한 문장으로 말하기 💬", "일상 대화에서 바로 받아치기 ☕", "동료 표현 바로 알아듣기 👂"],
   },
-  benefits: {
-    title: "글로벌 비즈니스 현장의\u00a0영어를,\n매일 카톡으로",
-    accent: "매일 카톡으로",
-    items: [
-      { emoji: "💬", label: "말풍선", title: "앱 설치 NO", detail: "카톡으로 매일 자동 발송" },
-      { emoji: "⏰", label: "알람 시계", title: "하루 딱 5분", detail: "출근길에 읽고 듣고 끝" },
-      { emoji: "🎁", label: "선물", title: "첫 하루 무료", detail: "받아보고 결정하세요" },
-      { emoji: "👋", label: "손 흔들기", title: "언제든 해지", detail: "약정 없이 한 달 단위" },
-    ],
+  // Live numbers under the hero, shown only once they are worth showing (DAILY_PROOF_MIN).
+  proof: {
+    learners: "{count}명이 영어 한잔과 출근해요",
+    sentences: "함께 쓴 영어 문장 {count}개",
+  },
+  // This week's 초·중급 lessons from the database: sent days show their expression, today's
+  // and later ones stay closed. A lesson is sent on its own day only, so a day passed is a
+  // day missed (and today's lesson arrives right after signing up, see guide.start).
+  week: {
+    title: "이번 주 표현,\n벌써 지나가고 있어요",
+    accent: "벌써 지나가고 있어요",
+    sub: "표현은 그날 하루만 와요. 지금 신청하면 오늘의 표현부터 바로 받아요.",
+    weekendTitle: "다음 주 표현 5개가\n기다리고 있어요",
+    weekendAccent: "기다리고 있어요",
+    weekendSub: "지금 신청해 두면 월요일 첫 표현부터 놓치지 않아요.",
+    track: "초·중급",
+    past: "지나갔어요",
+    today: "신청하면 바로 와요",
+    upcoming: "도착 예정",
+    remaining: "이번 주 남은 표현 {count}개",
+    weekdays: ["월", "화", "수", "목", "금"],
   },
   // Which days the messages come; the week strip itself is dailyCopy.guide.week.
   schedule: {
@@ -292,20 +305,24 @@ export const dailyCopy = {
     accent: "무료예요",
     trial: "먼저 하루 무료로 받아보고, 마음에 들면 아래에서 골라요.",
     subscription: {
-      badge: "가장 저렴해요",
+      badge: "추천 · 가장 저렴해요",
       name: "28일 정기구독",
+      // Anchoring on a real price: the 1개월 이용권 is the same 28 days, paid once.
+      compare: "1개월 이용권",
+      saving: "₩{saving} 더 저렴",
+      perDay: "하루 ₩{perDay}꼴",
       espresso: "스타벅스 에스프레소 한\u00a0잔\u00a0값으로\u00a028일",
       period: "28일마다 자동 결제",
       benefits: ["평일 원하는 시간에 카카오톡으로", "토요일엔 한 주 복습", "오늘의 표현 · 예문\u00a03개 · 발음 · 1분\u00a0퀴즈", "약정 없이 언제든 해지"],
     },
     passes: {
-      title: "자동 결제 없이 한 번만 결제",
+      title: "자동 결제 없이 한 번만 결제하고 싶다면",
       // Shown before paying for a pass: 전자상거래법 제17조 제6항 requires the limit on
       // 청약철회 to be shown where the customer can see it before the contract.
       refundNotice: "이용권은 첫 메시지를 받기 전에만 전액 환불돼요. 그 뒤에는 결제 후 7일 이내라도 받은 메시지만큼 빼고 환불되고, 7일이 지나면 위약금 10%도 빠져요.",
     },
     cta: "하루 무료로 받아보기",
-    subscribeNow: "체험 없이 바로 구독하기",
+    subscribeNow: "체험 없이 바로 구독하기 →",
     note: "결제는 페이플(Payple)로 안전하게 처리돼요. 무료 체험에는 카드 등록이 필요 없어요.",
     terms: "이용약관 · 환불 규정",
     guide: "이용 가이드",
@@ -760,7 +777,15 @@ export const dailyCopy = {
       failed: "초대 코드를 확인하지 못했어요. 다시 시도해 주세요.",
     },
   },
-  sticky: { title: "첫 하루 무료", sub: "이후 월 ₩{price} · 언제든 해지", cta: "받아보기" },
+  sticky: { title: "첫 하루 무료", sub: "이후 하루 ₩{perDay} · 언제든 해지", cta: "받아보기" },
+  // The page's last word, after the FAQ: one action, and how little it takes.
+  finale: {
+    title: "내일 출근길엔\n한 문장이 달라져요",
+    accent: "한 문장이 달라져요",
+    sub: "카드 등록 없이, 카카오로 로그인하고 두 가지만 고르면 끝이에요.",
+    steps: ["카카오로 시작", "레벨 고르기", "받을 시간 고르기"],
+    cta: "하루 무료로 받아보기",
+  },
   soon: "곧 오픈",
   operatedBy: "영어 한잔 Daily는 영어 한잔이 운영해요.",
   emojiCredit: "애니메이션 이모지: Noto Animated Emoji by Google, CC BY 4.0",
