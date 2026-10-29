@@ -120,9 +120,9 @@ export default function OpenAIAdsPixel() {
     <div className="fixed inset-x-3 bottom-3 z-[9999] mx-auto max-w-[560px] rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-900 shadow-xl" role="region" aria-label="쿠키 설정">
       <p className="font-bold">쿠키 사용 안내</p>
       <p className="mt-1 leading-relaxed">
-        Daily 방문·체험·결제 성과 측정과 최초 구매자의 내부 고객 식별값을 해시하여 OpenAI에 전송하는 데 동의하시나요? 허용하지 않아도
-        무료 체험, 결제, 레슨 수신은 그대로 이용할 수 있어요.{" "}
-        <Link href="/daily/privacy" className="underline">개인정보 안내</Link>
+        서비스 이용 현황을 분석하고 광고 성과를 측정하기 위해 쿠키와 일부 이용정보를 사용해도 될까요?
+        동의하지 않아도 서비스 이용에 제한이 없어요.{" "}
+        자세한 내용은 <Link href="/daily/privacy" className="underline">개인정보 안내</Link>에서 확인할 수 있어요.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-black px-4 py-2 font-semibold text-white">허용</button>
