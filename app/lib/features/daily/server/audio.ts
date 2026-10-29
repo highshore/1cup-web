@@ -26,7 +26,8 @@ export class DailyAudioError extends Error {
 type LessonText = Pick<DailyLessonContent, "expression" | "examples" | "dialogue">;
 
 interface SpeechRequest {
-  /** What one voice reads, with its direction. Unused when turns are given. */
+  /** What one voice reads, and nothing else: Gemini 3.8 TTS speaks every word of the
+   *  text, so a direction ("Say this slowly: …") would be read out too. Unused with turns. */
   prompt: string;
   /** One voice, or one per dialogue speaker (named as in turns). */
   voices: Array<{ speaker: string | null; voice: string }>;
@@ -47,9 +48,7 @@ function dialogueSpeakers(dialogue: LessonText["dialogue"]): string[] {
 function speechRequest(lesson: LessonText, clip: DailyAudioClip): SpeechRequest | null {
   if (clip === "expression") {
     return {
-      prompt:
-        "Say this English expression clearly and a little slowly, the way a friendly American English teacher models it for a learner. Say only the expression.\n\n"
-        + spokenText(lesson.expression),
+      prompt: spokenText(lesson.expression),
       voices: [{ speaker: null, voice: NARRATOR_VOICE }],
     };
   }
@@ -61,9 +60,7 @@ function speechRequest(lesson: LessonText, clip: DailyAudioClip): SpeechRequest 
     if (people.length === 1) {
       // A one-line (or one-person) dialogue is read like an example.
       return {
-        prompt:
-          "Read this aloud the way a native American English speaker says it to a colleague: natural, conversational and at an everyday pace.\n\n"
-          + lines.map((line) => line.text).join(" "),
+        prompt: lines.map((line) => line.text).join(" "),
         voices: [{ speaker: null, voice: DIALOGUE_VOICES[0] }],
       };
     }
@@ -76,15 +73,17 @@ function speechRequest(lesson: LessonText, clip: DailyAudioClip): SpeechRequest 
   const example = lesson.examples[Number(clip.slice("example-".length))];
   if (!example) return null;
   return {
-    prompt:
-      "Read this sentence aloud the way a native American English speaker says it to a colleague: natural, conversational and at an everyday pace.\n\n"
-      + spokenText(example.en),
+    prompt: spokenText(example.en),
     voices: [{ speaker: null, voice: NARRATOR_VOICE }],
   };
 }
 
+// Bumped when the stored file itself changes for the same request (2: Gemini's WAV kept as
+// it comes instead of wrapped in a second header), so every clip is made again once.
+const FILE_FORMAT = 2;
+
 function clipFileName(clip: DailyAudioClip, request: SpeechRequest) {
-  const hash = createHash("sha256").update(JSON.stringify({ model: MODEL, ...request })).digest("hex").slice(0, 16);
+  const hash = createHash("sha256").update(JSON.stringify({ model: MODEL, format: FILE_FORMAT, ...request })).digest("hex").slice(0, 16);
   return `${clip}-${hash}.wav`;
 }
 
@@ -100,8 +99,12 @@ function speechConfig(voices: SpeechRequest["voices"]) {
 
 type InlineAudio = { mimeType?: string; data?: string };
 
-// Gemini answers with raw 16-bit little-endian mono PCM ("audio/L16;codec=pcm;rate=24000").
-async function synthesize(request: SpeechRequest): Promise<{ pcm: Buffer; sampleRate: number }> {
+// The WAV to store. Gemini 3.8 answers with a whole WAV file (fmt, data, then a C2PA
+// provenance chunk), kept as it is; older models sent raw 16-bit little-endian mono PCM
+// ("audio/L16;codec=pcm;rate=24000"), which gets a header. Wrapping a WAV in a second
+// header made players read its header and its C2PA chunk as sound: a click at the start
+// and a burst of noise at the end.
+async function synthesize(request: SpeechRequest): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new DailyAudioError("GEMINI_API_KEY is not configured.", 503);
   const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent";
@@ -135,8 +138,30 @@ async function synthesize(request: SpeechRequest): Promise<{ pcm: Buffer; sample
   }
   const parts = (payload.candidates?.[0]?.content?.parts ?? []).map((part) => part.inlineData).filter((part): part is InlineAudio => Boolean(part?.data));
   if (parts.length === 0) throw new DailyAudioError("The voice service returned no audio.", 502);
-  const rate = Number(/rate=(\d+)/.exec(parts[0].mimeType ?? "")?.[1] ?? 24000);
-  return { pcm: Buffer.concat(parts.map((part) => Buffer.from(part.data!, "base64"))), sampleRate: rate };
+  const audio = parts.map((part) => ({ bytes: Buffer.from(part.data!, "base64"), mimeType: part.mimeType ?? "" }));
+  if (audio.length === 1 && isWav(audio[0].bytes)) return audio[0].bytes;
+  // Several parts (or raw PCM): join their samples under one header.
+  const samples = audio.map(({ bytes, mimeType }) =>
+    isWav(bytes) ? wavSamples(bytes) : { pcm: bytes, sampleRate: Number(/rate=(\d+)/.exec(mimeType)?.[1] ?? 24000) },
+  );
+  return wav(Buffer.concat(samples.map((part) => part.pcm)), samples[0].sampleRate);
+}
+
+function isWav(bytes: Buffer) {
+  return bytes.length >= 12 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WAVE";
+}
+
+// The samples of a WAV file: its data chunk, without the header or any other chunk.
+function wavSamples(bytes: Buffer): { pcm: Buffer; sampleRate: number } {
+  let sampleRate = 24000;
+  for (let at = 12; at + 8 <= bytes.length; ) {
+    const id = bytes.toString("ascii", at, at + 4);
+    const size = bytes.readUInt32LE(at + 4);
+    if (id === "fmt ") sampleRate = bytes.readUInt32LE(at + 12);
+    if (id === "data") return { pcm: bytes.subarray(at + 8, Math.min(bytes.length, at + 8 + size)), sampleRate };
+    at += 8 + size + (size & 1);
+  }
+  throw new DailyAudioError("The voice service returned a WAV without audio.", 502);
 }
 
 function wav(pcm: Buffer, sampleRate: number) {
@@ -180,8 +205,7 @@ async function storedNames(folder: string): Promise<string[]> {
 
 async function generateClip(target: ClipTarget, stored: string[]) {
   const path = `${target.folder}/${target.name}`;
-  const { pcm, sampleRate } = await synthesize(target.request);
-  const { error } = await bucket().upload(path, wav(pcm, sampleRate), {
+  const { error } = await bucket().upload(path, await synthesize(target.request), {
     contentType: "audio/wav",
     cacheControl: "31536000",
     upsert: true,
