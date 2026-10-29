@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signInWithLink } from "../api";
-import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick } from "./Community";
+import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick, type Progress } from "./Community";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
 import { DAILY_FIELD_LABEL, DAILY_REVIEW_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
@@ -234,14 +234,27 @@ export function LessonBody({
   );
 }
 
-function ShareButton({ expression }: { expression: string }) {
+// The headline a reader can boast with; null when their record has not loaded.
+function shareHeadline(progress: Progress | null): string | null {
+  const c = dailyCopy.community;
+  if (!progress) return null;
+  if (progress.streak > 0) return c.shareStreak.replace("{days}", String(progress.streak));
+  if (progress.expressions > 1) return c.shareCount.replace("{count}", String(progress.expressions));
+  return c.shareFirst;
+}
+
+function ShareButton({ expression, progress }: { expression: string; progress: Progress | null }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
+    const c = dailyCopy.community;
     const url = `${window.location.origin}/daily`;
-    const text = `오늘의 영어 표현: ${expression}\n통역사가 매일 카톡으로 보내주는 영어 한잔 Daily`;
+    const headline = shareHeadline(progress);
+    const text = [headline, c.shareExpression.replace("{expression}", expression), c.shareFooter]
+      .filter(Boolean)
+      .join("\n");
     if (navigator.share) {
       try {
-        await navigator.share({ title: "영어 한잔 Daily", text, url });
+        await navigator.share({ title: headline ?? "영어 한잔 Daily", text, url });
         return;
       } catch {
         // Cancelled: fall through to copying.
@@ -291,7 +304,7 @@ function LessonPageBody({ lesson, token }: { lesson: DailyLessonContent; token: 
           <ProgressLink progress={data?.progress ?? null} />
         </div>
         <div className="mt-3 flex gap-2">
-          <ShareButton expression={lesson.expression} />
+          <ShareButton expression={lesson.expression} progress={data?.progress ?? null} />
         </div>
       </section>
     </div>

@@ -31,7 +31,7 @@ interface Sentence {
   hidden: boolean;
 }
 
-interface Progress {
+export interface Progress {
   streak: number;
   expressions: number;
 }
