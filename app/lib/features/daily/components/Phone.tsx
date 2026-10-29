@@ -233,19 +233,21 @@ const SAMPLE_LESSON: DailyLessonContent = {
   nuance: "결론을 지금 내지 않고 다음에 다시 다루자고 할 때 써요. 'talk later'보다 업무적이고 정중해요.",
   similar: ["follow up on", "revisit", "touch base"],
   examples: [
-    { context: "회의", en: "Let's circle back on pricing after the launch.", ko: "가격 얘기는 출시 후에 다시 하죠." },
-    { context: "일정", en: "Can we circle back to this on Friday?", ko: "이건 금요일에 다시 얘기할 수 있을까요?" },
-    { context: "메일", en: "I'll circle back once I have the numbers.", ko: "수치가 나오면 다시 연락드릴게요." },
+    { context: "회의", en: "Let's circle back on pricing after the launch.", ko: "가격 얘기는 출시 후에 다시 하죠.", ko_highlight: "다시 하죠" },
+    { context: "일정", en: "Can we circle back to this on Friday?", ko: "이건 금요일에 다시 얘기할 수 있을까요?", ko_highlight: "다시 얘기할 수" },
+    { context: "메일", en: "I'll circle back once I have the numbers.", ko: "수치가 나오면 다시 연락드릴게요.", ko_highlight: "다시 연락드릴게요" },
   ],
   dialogue: [
     { speaker: "A", role: "Manager", en: "We're running out of time. What about the budget?", ko: "시간이 없네요. 예산은요?" },
-    { speaker: "B", role: "You", en: "Let's circle back on that next week.", ko: "그건 다음 주에 다시 이야기하죠." },
+    { speaker: "B", role: "You", en: "Let's circle back on that next week.", ko: "그건 다음 주에 다시 이야기하죠.", ko_highlight: "다시 이야기하죠" },
   ],
   quiz: {
     prompt: "We're out of time. Let's ______ on the budget next week.",
     options: ["circle back", "loop in", "move the needle"],
     answer: 0,
     explanation: "논의를 나중에 다시 이어갈 때는 circle back을 써요.",
+    ko: "시간이 다 됐네요. 예산 얘기는 다음 주에 다시 하죠.",
+    ko_highlight: "다시 하죠",
   },
 };
 

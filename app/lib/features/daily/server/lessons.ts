@@ -15,9 +15,11 @@ export interface DailyLessonContent {
   stress: string | null;
   nuance: string | null;
   similar: string[];
-  examples: Array<{ context?: string; en: string; ko?: string }>;
-  dialogue: Array<{ speaker?: string; role?: string; en: string; ko?: string }>;
-  quiz: { prompt: string; options: string[]; answer: number; explanation?: string } | null;
+  /** ko_highlight: the words in ko that carry the expression, marked like it is in en. */
+  examples: Array<{ context?: string; en: string; ko?: string; ko_highlight?: string }>;
+  dialogue: Array<{ speaker?: string; role?: string; en: string; ko?: string; ko_highlight?: string }>;
+  /** ko: the whole sentence, answer filled in, in Korean; shown once answered. */
+  quiz: { prompt: string; options: string[]; answer: number; explanation?: string; ko?: string; ko_highlight?: string } | null;
 }
 
 export interface DailyDeliveryView {

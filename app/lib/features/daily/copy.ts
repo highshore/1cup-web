@@ -18,6 +18,17 @@ export const dailyCopy = {
     notification: { app: "영어 한잔", time: "지금", body: "[초·중급] 오늘의 표현 circle back: (논의를) 나중에 다시 이어가다" },
     demoLabel: "카카오톡으로 온 오늘의 표현을 누르면 오늘의 레슨 페이지가 열리는 화면",
   },
+  // Right under the hero: what a subscriber ends up with, before who makes it.
+  outcomes: {
+    title: "한 달이면\n이만큼 남아요",
+    accent: "이만큼 남아요",
+    items: [
+      { emoji: "📚", label: "책", title: "실무 표현 20개", detail: "평일마다 하나씩, 회의·메일에서 바로 꺼내 쓰는 표현이 쌓여요" },
+      { emoji: "🎧", label: "헤드폰", title: "원어민 발음으로 듣기", detail: "표현·예문·대화를 자연스러운 음성으로 듣고 따라 해요" },
+      { emoji: "💬", label: "말풍선", title: "상황별 예문 + 대화", detail: "회의·1:1·메일 장면 그대로라 내일 바로 써먹어요" },
+      { emoji: "🧠", label: "뇌", title: "퀴즈와 주말 복습", detail: "1분 퀴즈로 확인하고 토요일엔 한 주 표현을 다시 봐요" },
+    ],
+  },
   // The hero phone's KakaoTalk chat. Mirrors the message customers get today: the
   // approved general-purpose 1cup template (`send-article`), word for word.
   // Change it together with the template when the dedicated Daily templates go live.
