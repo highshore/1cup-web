@@ -13,6 +13,7 @@ const KAKAO_ERRORS: Record<string, string> = {
   "no-phone": "카카오계정의 휴대폰 번호를 받지 못했어요. 레슨이 이 번호로 가요. 다시 시작해서 전화번호 제공에 동의해 주세요.",
   "unsupported-phone": "카카오계정의 휴대폰 번호로는 알림톡을 받을 수 없어요. 국내 휴대폰 번호가 등록된 카카오계정으로 시작해 주세요.",
   failed: "카카오로 로그인하지 못했어요. 잠시 후 다시 시도해 주세요.",
+  expired: "로그인이 중간에 끊겼어요. 아래 버튼으로 다시 시작해 주세요.",
 };
 
 export default function KakaoSignIn({

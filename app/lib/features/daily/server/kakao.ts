@@ -5,11 +5,17 @@
 // supplies the account's verified phone number (where the Alimtalk lessons go) and
 // nickname, and the Daily customer and session are made from those. It is the only way
 // into Daily, including the step-up from a message-link session. /kakao_callback hands
-// a request over here when it carries the Daily state cookie set by /api/daily/kakao.
+// a request over here whenever its state carries DAILY_STATE_PREFIX, cookie or not.
 import { NextRequest, NextResponse } from "next/server";
 import { DAILY_SESSION_COOKIE, DailyAuthError, revokeDailySession, signInVerifiedPhone } from "./session";
 
 export const DAILY_KAKAO_STATE_COOKIE = "daily-kakao-oauth-state";
+// Marks a Daily login in the OAuth state itself (1cup's own state is bare hex), so a
+// Daily callback is recognised even when its cookie is gone: KakaoTalk's in-app browser
+// handing off, a second tap on the button. Without the mark such a callback fell through
+// to 1cup's login, failed there and landed on 1cup's /auth page, where a Daily customer
+// then signed up for 1cup instead.
+const DAILY_STATE_PREFIX = "daily-";
 export const DAILY_KAKAO_NEXT_COOKIE = "daily-kakao-oauth-next";
 const OAUTH_TTL_SECONDS = 10 * 60;
 
@@ -31,7 +37,7 @@ function cookieOptions(maxAge: number) {
 }
 
 export function startDailyKakaoLogin(request: NextRequest): NextResponse {
-  const state = crypto.randomUUID().replaceAll("-", "");
+  const state = DAILY_STATE_PREFIX + crypto.randomUUID().replaceAll("-", "");
   const url = new URL("https://kauth.kakao.com/oauth/authorize");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", KAKAO_CLIENT_ID);
@@ -53,13 +59,16 @@ interface KakaoMe {
 }
 
 /**
- * Finishes a Daily Kakao login, or returns null when this callback is not one (no Daily
- * state cookie, or it does not match), so 1cup's own Kakao login carries on.
+ * Finishes a Daily Kakao login, or returns null when this callback is not one (its state
+ * has no Daily mark), so 1cup's own Kakao login carries on. A Daily callback whose cookie
+ * is missing or does not match goes back to Daily to start again, never on to 1cup.
  */
 export async function finishDailyKakaoLogin(request: NextRequest): Promise<NextResponse | null> {
   const expected = request.cookies.get(DAILY_KAKAO_STATE_COOKIE)?.value;
   const returned = request.nextUrl.searchParams.get("state");
-  if (!expected || !returned || expected !== returned) return null;
+  // (A matching cookie alone still counts, for logins started before the mark existed.)
+  const daily = Boolean(returned?.startsWith(DAILY_STATE_PREFIX) || (expected && expected === returned));
+  if (!daily) return null;
 
   const origin = request.nextUrl.origin;
   const next = safeDailyNext(request.cookies.get(DAILY_KAKAO_NEXT_COOKIE)?.value);
@@ -73,6 +82,7 @@ export async function finishDailyKakaoLogin(request: NextRequest): Promise<NextR
     return response;
   };
 
+  if (!expected || expected !== returned) return back("expired");
   const code = request.nextUrl.searchParams.get("code");
   // The person closed or refused the Kakao consent screen.
   if (!code || request.nextUrl.searchParams.get("error")) return back("cancelled");

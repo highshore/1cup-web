@@ -272,16 +272,17 @@ async function processRefund(db: SupabaseClient, refundId: string, decidedBy: st
   }
 
   // The founder hears about every refund; the ones that did not go through need a look.
-  await notify(await adminPhones(db), "DAILY_ADMIN_REFUND", {
+  // A completed refund of the admin's own payment (testing with the admin phone) already
+  // brings them DAILY_REFUND_DONE, so that phone does not get the admin copy as well.
+  const customer = await customerOfRefund(db, refund.id);
+  const admins = (await adminPhones(db)).filter((phone) => !(outcome === "refunded" && phone === customer?.phone));
+  await notify(admins, "DAILY_ADMIN_REFUND", {
     result: outcome === "refunded" ? "환불 완료" : "확인 필요",
     product,
     amount: won(refund.amount),
   });
-  if (outcome === "refunded") {
-    const customer = await customerOfRefund(db, refund.id);
-    if (customer?.phone) {
-      await notify([customer.phone], "DAILY_REFUND_DONE", { name: customer.name || "고객", amount: won(refund.amount) });
-    }
+  if (outcome === "refunded" && customer?.phone) {
+    await notify([customer.phone], "DAILY_REFUND_DONE", { name: customer.name || "고객", amount: won(refund.amount) });
   }
   return outcome;
 }
