@@ -29,7 +29,8 @@
 //                sample readers; sends nothing.
 //   test-send    1cup staff admins only: an operations tool, not a customer path.
 //                Sends one message of a given kind to a phone number using the latest
-//                ready lesson, without touching subscriptions or deliveries.
+//                ready lesson, without touching subscriptions or deliveries. A kind
+//                named after a notice template (DAILY_PAY_DONE …) sends sample values.
 //                For checking approved templates on a real phone before launch.
 //
 // Opening trials to everyone, and the numbers allowed to try the flow first, live in the
@@ -85,6 +86,7 @@ import {
   type Track,
 } from "./delivery.ts";
 import { writeHooks } from "./hooks.ts";
+import type { NoticeVariables } from "./notices.ts";
 
 async function schedulerAuthorized(req: Request): Promise<boolean> {
   const presented = req.headers.get("x-daily-scheduler-secret");
@@ -291,9 +293,25 @@ async function handleHookPreview() {
   return scenarios.map((s) => ({ scenario: s.label, ...written.get(s.target.id) }));
 }
 
+const SAMPLE_NOTICES: { [T in keyof NoticeVariables]: NoticeVariables[T] } = {
+  DAILY_PAY_DONE: { name: "테스트", product: "영어 한잔 Daily 1개월 (4주) 이용권 (고급)", amount: "₩4,500", date: "2026년 11월 26일" },
+  DAILY_SUB_STARTED: { name: "테스트", product: "영어 한잔 Daily 28일 정기구독 (고급)", amount: "₩3,700", date: "2026년 11월 26일" },
+  DAILY_RENEWED: { name: "테스트", product: "영어 한잔 Daily 28일 정기구독 (고급)", amount: "₩3,700", date: "2026년 12월 24일" },
+  DAILY_PAY_FAILED: { name: "테스트", track: "고급", amount: "₩3,700", date: "2026년 11월 1일" },
+  DAILY_SUB_ENDED: { name: "테스트", track: "고급" },
+  DAILY_REFUND_DONE: { name: "테스트", amount: "₩3,700" },
+  DAILY_REFUND_REJECT: { name: "테스트" },
+  DAILY_ADMIN_REFUND: { result: "환불 완료", product: "영어 한잔 Daily 28일 정기구독 (고급)", amount: "₩3,700" },
+};
+
 async function handleTestSend(body: { phone?: unknown; kind?: unknown; track?: unknown }) {
   const phone = krPhone(typeof body.phone === "string" ? body.phone : "");
   if (!/^01[0-9]{8,9}$/.test(phone)) throw new Error("phone must be a Korean mobile number");
+  // A notice template (DAILY_PAY_DONE …) goes out with sample variables.
+  if (typeof body.kind === "string" && body.kind in SAMPLE_NOTICES) {
+    const template = body.kind as keyof NoticeVariables;
+    return await sendKakaoMessages([{ recipientNo: phone, templateParameter: SAMPLE_NOTICES[template] }], template);
+  }
   const kind = (body.kind ?? "lesson") as DeliveryKind;
   if (!["lesson", "review", "trial_ended"].includes(kind)) throw new Error("unknown kind");
   const track = (body.track ?? "basic") as Track;

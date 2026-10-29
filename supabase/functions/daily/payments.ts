@@ -9,8 +9,8 @@
 // and a renewal is created once per subscription period.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isTrack, kstDate } from "./delivery.ts";
-import { notify, won } from "./notices.ts";
+import { isTrack, kstDate, TRACK_LABEL } from "./delivery.ts";
+import { longDate, notify, won } from "./notices.ts";
 
 const PAYPLE_HOST = (Deno.env.get("PAYPLE_HOST") || "https://cpay.payple.kr").replace(/\/+$/, "");
 const PAYPLE_AUTH_URL = Deno.env.get("PAYPLE_AUTH_URL") || `${PAYPLE_HOST}/php/auth.php`;
@@ -274,7 +274,7 @@ async function notifyPaid(db: SupabaseClient, orderNumber: string) {
     .eq("order_number", orderNumber)
     .eq("status", "completed")
     .is("paid_notice_at", null)
-    .select("kind, amount, product, customer_id, subscription_id")
+    .select("kind, amount, product, track, customer_id, subscription_id")
     .maybeSingle();
   if (!order) return;
   const [{ data: customer }, { data: product }, { data: sub }] = await Promise.all([
@@ -282,17 +282,17 @@ async function notifyPaid(db: SupabaseClient, orderNumber: string) {
     db.from("daily_products").select("name, recurring").eq("id", order.product).maybeSingle(),
     db.from("daily_subscriptions").select("paid_until").eq("id", order.subscription_id).maybeSingle(),
   ]);
-  if (!customer?.phone || !product) return;
+  if (!customer?.phone || !product || !sub?.paid_until) return;
 
-  const paid = order.kind === "renewal"
-    ? `${product.name} ${won(order.amount)}이 자동 결제됐어요.`
-    : `${product.name} ${won(order.amount)} 결제를 마쳤어요.`;
-  let until = "";
-  if (sub?.paid_until) {
-    const [y, m, d] = kstDate(new Date(sub.paid_until)).split("-").map(Number);
-    until = product.recurring ? ` 다음 결제일은 ${y}년 ${m}월 ${d}일이에요.` : ` ${y}년 ${m}월 ${d}일까지 받아요.`;
-  }
-  await notify(db, [customer.phone], `[영어 한잔 Daily] ${paid}${until}`, customer.name || "고객", "/daily/account");
+  // #{date}: the last day of the paid period, which for a subscription is also when the
+  // next charge is due.
+  const template = order.kind === "renewal" ? "DAILY_RENEWED" : product.recurring ? "DAILY_SUB_STARTED" : "DAILY_PAY_DONE";
+  await notify([customer.phone], template, {
+    name: customer.name || "고객",
+    product: isTrack(order.track) ? `${product.name} (${TRACK_LABEL[order.track]})` : product.name,
+    amount: won(order.amount),
+    date: longDate(kstDate(new Date(sub.paid_until))),
+  });
 }
 
 // The invite a first checkout arrived with: a live customer's code, not the payer's own.
@@ -620,7 +620,7 @@ export async function runBilling(db: SupabaseClient): Promise<BillingStats> {
 
   const { data: due, error } = await db
     .from("daily_subscriptions")
-    .select("id, customer_id, plan")
+    .select("id, customer_id, plan, track")
     .eq("status", "active")
     .eq("auto_renew", true)
     .not("billing_key", "is", null)
@@ -668,7 +668,10 @@ export async function runBilling(db: SupabaseClient): Promise<BillingStats> {
       stats.charged += 1;
       await applyInvite(db, orderNumber);
       await notifyPaid(db, orderNumber);
-    } else stats.failed += 1;
+    } else {
+      stats.failed += 1;
+      await notifyRenewalFailed(db, sub, order!.amount, now);
+    }
   }
 
   // Paid access that ran out and will not renew: stop deliveries for good.
@@ -678,7 +681,50 @@ export async function runBilling(db: SupabaseClient): Promise<BillingStats> {
     .eq("status", "active")
     .lt("paid_until", now.toISOString())
     .or(`auto_renew.eq.false,paid_until.lt.${graceStart}`)
-    .select("id");
+    .select("customer_id, track, renewal_failures");
   stats.ended = ended?.length ?? 0;
+  // Only the ones that ended because the card kept failing are told; a cancelled
+  // subscription or a pass simply runs out.
+  await notifySubscriptionsEnded(db, (ended ?? []).filter((s) => s.renewal_failures >= RENEWAL_ATTEMPTS));
   return stats;
+}
+
+// daily_finish_renewal turns auto_renew off after this many failed days in a row.
+const RENEWAL_ATTEMPTS = 3;
+
+// After a failed renewal the run retries once a day, and the third failure ends it. The
+// last try's date is the one in the notice. The third failure sends no notice here: the
+// subscription ends in the same run and gets DAILY_SUB_ENDED.
+async function notifyRenewalFailed(
+  db: SupabaseClient,
+  sub: { id: string; customer_id: string; track: string },
+  amount: number,
+  now: Date,
+) {
+  const [{ data: after }, { data: customer }] = await Promise.all([
+    db.from("daily_subscriptions").select("renewal_failures, auto_renew").eq("id", sub.id).maybeSingle(),
+    db.from("daily_customers").select("phone, name").eq("id", sub.customer_id).maybeSingle(),
+  ]);
+  if (!after?.auto_renew || !customer?.phone || !isTrack(sub.track)) return;
+  const triesLeft = Math.max(1, RENEWAL_ATTEMPTS - after.renewal_failures);
+  const lastTry = new Date(now.getTime() + triesLeft * 24 * 60 * 60 * 1000);
+  await notify([customer.phone], "DAILY_PAY_FAILED", {
+    name: customer.name || "고객",
+    track: TRACK_LABEL[sub.track],
+    amount: won(amount),
+    date: longDate(kstDate(lastTry)),
+  });
+}
+
+async function notifySubscriptionsEnded(db: SupabaseClient, subs: { customer_id: string; track: string }[]) {
+  if (subs.length === 0) return;
+  const { data: customers } = await db
+    .from("daily_customers")
+    .select("id, phone, name")
+    .in("id", subs.map((s) => s.customer_id));
+  for (const sub of subs) {
+    const customer = customers?.find((c) => c.id === sub.customer_id);
+    if (!customer?.phone || !isTrack(sub.track)) continue;
+    await notify([customer.phone], "DAILY_SUB_ENDED", { name: customer.name || "고객", track: TRACK_LABEL[sub.track] });
+  }
 }
