@@ -26,12 +26,16 @@ export class DailyAudioError extends Error {
 type LessonText = Pick<DailyLessonContent, "expression" | "examples" | "dialogue">;
 
 interface SpeechRequest {
+  /** What one voice reads, with its direction. Unused when turns are given. */
   prompt: string;
-  /** One voice, or one per dialogue speaker (named as in the prompt). */
+  /** One voice, or one per dialogue speaker (named as in turns). */
   voices: Array<{ speaker: string | null; voice: string }>;
+  /** A two-voice dialogue: Gemini 3.8 takes each line as its own part, labelled with its
+   *  speaker (speechMetadata.speaker), and rejects a single script with names in it. */
+  turns?: Array<{ speaker: string; text: string }>;
 }
 
-// The two people in a dialogue, named the way the prompt writes them. Gemini takes at
+// The two people in a dialogue, as each line is labelled for Gemini. Gemini takes at
 // most two configured speakers; anything else is read by turns, as the page shows it.
 function dialogueSpeakers(dialogue: LessonText["dialogue"]): string[] {
   const names = [...new Set(dialogue.map((line) => (line.speaker ?? "").replace(/[^A-Za-z0-9]/g, "")).filter(Boolean))];
@@ -51,14 +55,22 @@ function speechRequest(lesson: LessonText, clip: DailyAudioClip): SpeechRequest 
   }
   if (clip === "dialogue") {
     if (lesson.dialogue.length === 0) return null;
-    const turns = dialogueSpeakers(lesson.dialogue);
-    const people = [...new Set(turns)];
-    const script = lesson.dialogue.map((line, index) => `${turns[index]}: ${spokenText(line.en)}`).join("\n");
+    const speakers = dialogueSpeakers(lesson.dialogue);
+    const people = [...new Set(speakers)];
+    const lines = lesson.dialogue.map((line, index) => ({ speaker: speakers[index], text: spokenText(line.en) }));
+    if (people.length === 1) {
+      // A one-line (or one-person) dialogue is read like an example.
+      return {
+        prompt:
+          "Read this aloud the way a native American English speaker says it to a colleague: natural, conversational and at an everyday pace.\n\n"
+          + lines.map((line) => line.text).join(" "),
+        voices: [{ speaker: null, voice: DIALOGUE_VOICES[0] }],
+      };
+    }
     return {
-      prompt:
-        `Read this conversation between ${people.join(" and ")} as native American English speakers talking naturally at work: relaxed, warm and at an everyday pace. Do not read the speaker names aloud.\n\n`
-        + script,
-      voices: people.map((speaker, index) => ({ speaker: people.length > 1 ? speaker : null, voice: DIALOGUE_VOICES[index % 2] })),
+      prompt: "",
+      voices: people.map((speaker, index) => ({ speaker, voice: DIALOGUE_VOICES[index % 2] })),
+      turns: lines,
     };
   }
   const example = lesson.examples[Number(clip.slice("example-".length))];
@@ -94,7 +106,12 @@ async function synthesize(request: SpeechRequest): Promise<{ pcm: Buffer; sample
   if (!apiKey) throw new DailyAudioError("GEMINI_API_KEY is not configured.", 503);
   const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent";
   const body = JSON.stringify({
-    contents: [{ role: "user", parts: [{ text: request.prompt }] }],
+    contents: [{
+      role: "user",
+      parts: request.turns
+        ? request.turns.map((turn) => ({ text: turn.text, speechMetadata: { speaker: turn.speaker } }))
+        : [{ text: request.prompt }],
+    }],
     generationConfig: { responseModalities: ["AUDIO"], speechConfig: speechConfig(request.voices) },
   });
   // A bulk run meets the per-minute limit; wait and try again a couple of times.
