@@ -1,9 +1,9 @@
 import { Metadata } from "next";
 import DailyClient from "./DailyClient";
 import { approvedReviews } from "../lib/features/daily/server/reviews";
-import { landingProof, landingWeek } from "../lib/features/daily/server/landing";
+import { landingProof, landingStart } from "../lib/features/daily/server/landing";
 
-// Approved reviews, this week's lessons and the live counts are read on the server and
+// Approved reviews, the first lessons a new member gets and the live counts are read on the server and
 // refreshed every five minutes.
 export const revalidate = 300;
 
@@ -31,10 +31,10 @@ export const metadata: Metadata = {
 };
 
 export default async function DailyPage() {
-  const [reviews, week, proof] = await Promise.all([
+  const [reviews, start, proof] = await Promise.all([
     approvedReviews().catch(() => []),
-    landingWeek().catch(() => null),
+    landingStart().catch(() => null),
     landingProof().catch(() => null),
   ]);
-  return <DailyClient reviews={reviews} week={week} proof={proof} />;
+  return <DailyClient reviews={reviews} start={start} proof={proof} />;
 }

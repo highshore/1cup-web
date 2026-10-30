@@ -137,23 +137,51 @@ function customerName(sub: Subscription): string {
 // Planning: what each due subscription should get for its slot
 // ---------------------------------------------------------------------------
 
-async function lessonFor(
+/**
+ * The customer's next lesson on a level. Every member goes through the level's lessons in
+ * order (publish_on, then id), one per slot: someone new starts from the first, Expression 1,
+ * and someone already receiving continues right after the furthest lesson they have had on
+ * that level (from any of their subscriptions, so a trial that turns into a plan, or a level
+ * switched away from and back, carries on rather than starting over). publish_on is the
+ * order and also a release date: a lesson is never sent before it.
+ */
+async function nextLessonFor(
   db: SupabaseClient,
+  customerId: string,
   track: Track,
   forDate: string,
-  latestOnOrBefore: boolean,
 ): Promise<Lesson | null> {
-  let query = db
-    .from("daily_lessons")
-    .select("id, track, publish_on, expression, meaning, examples")
-    .eq("track", track)
-    .eq("status", "ready");
-  query = latestOnOrBefore
-    ? query.lte("publish_on", forDate).order("publish_on", { ascending: false }).limit(1)
-    : query.eq("publish_on", forDate).limit(1);
-  const { data, error } = await query;
-  if (error) throw new Error(`lesson lookup failed: ${error.message}`);
-  return (data?.[0] as Lesson | undefined) ?? null;
+  const [{ data: lessons, error: lessonsError }, { data: subs, error: subsError }] = await Promise.all([
+    db.from("daily_lessons")
+      .select("id, track, publish_on, expression, meaning, examples")
+      .eq("track", track)
+      .eq("status", "ready")
+      .lte("publish_on", forDate)
+      .order("publish_on", { ascending: true })
+      .order("id", { ascending: true }),
+    db.from("daily_subscriptions").select("id").eq("customer_id", customerId),
+  ]);
+  if (lessonsError) throw new Error(`lesson lookup failed: ${lessonsError.message}`);
+  if (subsError) throw new Error(`subscription lookup failed: ${subsError.message}`);
+  const ordered = (lessons ?? []) as Lesson[];
+  const subIds = (subs ?? []).map((s) => s.id as string);
+  let received = new Set<string>();
+  if (subIds.length > 0) {
+    const { data, error } = await db
+      .from("daily_deliveries")
+      .select("lesson_id")
+      .in("subscription_id", subIds)
+      .eq("kind", "lesson")
+      .eq("status", "sent")
+      .not("lesson_id", "is", null);
+    if (error) throw new Error(`received lookup failed: ${error.message}`);
+    received = new Set((data ?? []).map((d) => d.lesson_id as string));
+  }
+  let furthest = -1;
+  ordered.forEach((lesson, index) => {
+    if (received.has(lesson.id)) furthest = index;
+  });
+  return ordered[furthest + 1] ?? null;
 }
 
 async function hasSentLesson(db: SupabaseClient, subscriptionId: string): Promise<boolean> {
@@ -227,9 +255,8 @@ export async function planSlot(
       if (await paysForAnotherTrack(db, sub)) return { skip: "paid-elsewhere" };
       return { sub, kind: "trial_ended", forDate };
     }
-    // The free lesson. On a Saturday there is no lesson for the day, so the most
-    // recent one stands in.
-    const lesson = await lessonFor(db, sub.track, forDate, dow === 6);
+    // The free lesson: Expression 1, any day but Sunday.
+    const lesson = await nextLessonFor(db, sub.customer_id, sub.track, forDate);
     return lesson ? { sub, kind: "lesson", forDate, lesson } : { skip: "no-lesson" };
   }
 
@@ -240,7 +267,7 @@ export async function planSlot(
       : { skip: "no-review" };
   }
 
-  const lesson = await lessonFor(db, sub.track, forDate, false);
+  const lesson = await nextLessonFor(db, sub.customer_id, sub.track, forDate);
   return lesson ? { sub, kind: "lesson", forDate, lesson } : { skip: "no-lesson" };
 }
 
@@ -498,9 +525,14 @@ export async function sendClaimed(
 // The free lesson, sent the moment someone finishes signing up
 // ---------------------------------------------------------------------------
 
-/** The lesson a new trial gets: the latest ready one on or before today (KST). */
-export async function trialLessonFor(db: SupabaseClient, track: Track, now = new Date()): Promise<Lesson | null> {
-  return await lessonFor(db, track, kstDate(now), true);
+/** The lesson a new trial gets: the customer's next on that level, Expression 1 for someone new. */
+export async function trialLessonFor(
+  db: SupabaseClient,
+  customerId: string,
+  track: Track,
+  now = new Date(),
+): Promise<Lesson | null> {
+  return await nextLessonFor(db, customerId, track, kstDate(now));
 }
 
 /**

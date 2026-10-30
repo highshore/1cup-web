@@ -233,7 +233,7 @@ async function handleStartTrial(
     .limit(1);
   if (live?.length) throw new StartError("already-subscribed", 409);
 
-  const lesson = await trialLessonFor(db, track);
+  const lesson = await trialLessonFor(db, customer.id, track);
   if (!lesson) throw new StartError("no-lesson", 503);
 
   const { data: sub, error } = await db.rpc("daily_start_trial", {
@@ -273,7 +273,7 @@ async function handleResendTrial(body: { subscriptionId?: unknown }) {
   if ((count ?? 0) > 0) return { sent: false, reason: "already-sent" };
   const codes = await templateCodes(db);
   if (!codes) throw new Error("template codes are not configured");
-  const lesson = await trialLessonFor(db, sub.track as Track);
+  const lesson = await trialLessonFor(db, sub.customer_id as string, sub.track as Track);
   if (!lesson) throw new Error("no ready lesson");
   return { sent: await sendTrialLesson(db, sub as Subscription, lesson, codes) };
 }

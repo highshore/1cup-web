@@ -67,22 +67,18 @@ export const dailyCopy = {
     learners: "{count}명이 영어 한잔과 출근해요",
     sentences: "함께 쓴 영어 문장 {count}개",
   },
-  // This week's 초·중급 lessons from the database: sent days show their expression, today's
-  // and later ones stay closed. A lesson is sent on its own day only, so a day passed is a
-  // day missed (and today's lesson arrives right after signing up, see guide.start).
-  week: {
-    title: "이번 주 표현,\n벌써 지나가고 있어요",
-    accent: "벌써 지나가고 있어요",
-    sub: "표현은 그날 하루만 와요. 지금 신청하면 오늘의 표현부터 바로 받아요.",
-    weekendTitle: "다음 주 표현 5개가\n기다리고 있어요",
-    weekendAccent: "기다리고 있어요",
-    weekendSub: "지금 신청해 두면 월요일 첫 표현부터 놓치지 않아요.",
+  // Everyone starts from Expression 1 and goes in order (the sender's nextLessonFor), so
+  // nothing has gone by: the urgency is when Expression 20 arrives. {date} comes from the
+  // server (landingStart): the first expression on signing up, then one each weekday.
+  start: {
+    title: "오늘 시작하면\n{date}엔 표현 20개",
+    accent: "표현 20개",
+    sub: "누구나 표현 1부터 차례대로 받아요. 먼저 시작한 만큼 먼저 쌓여요.",
+    card: "표현 {n}",
+    now: "신청하면 바로",
+    basis: "첫 표현은 신청하자마자, 그다음은 평일마다 하나씩 받을 때 기준이에요.",
     track: "초·중급",
-    past: "지나갔어요",
-    today: "신청하면 바로 와요",
-    upcoming: "도착 예정",
-    remaining: "이번 주 남은 표현 {count}개",
-    weekdays: ["월", "화", "수", "목", "금"],
+    later: "다음 주로 미루면 {date}로 밀려요",
   },
   // Which days the messages come; the week strip itself is dailyCopy.guide.week.
   schedule: {
@@ -162,12 +158,12 @@ export const dailyCopy = {
   relatedness: {
     title: "같은 표현으로\n함께 쓰는 사람들",
     accent: "함께 쓰는 사람들",
-    sub: "레슨을 읽고 끝내지 않아요. 같은 날 같은 표현을 받은 사람들과 문장으로 이어져요.",
+    sub: "레슨을 읽고 끝내지 않아요. 같은 표현을 받은 사람들과 문장으로 이어져요.",
     feed: {
       label: "예시 화면",
       heading: "오늘의 표현",
       expression: "circle back",
-      together: "오늘 아침 초·중급에서 같은 표현을 받은 사람 128명",
+      together: "초·중급에서 같은 표현을 받은 사람 128명",
       prompt: "오늘 표현으로 한 문장 써보기…",
       send: "올리기",
       pick: "통역사 PICK",
@@ -188,13 +184,13 @@ export const dailyCopy = {
         emoji: "🏆",
         label: "트로피",
         title: "통역사 PICK",
-        detail: "통역사가 매일 잘 쓴 문장을 골라 다음 날 레슨에 소개해요. 이름은 카카오 닉네임 일부를 가려서 보여줘요.",
+        detail: "통역사가 레슨마다 잘 쓴 문장을 골라 다음 레슨에 소개해요. 이름은 카카오 닉네임 일부를 가려서 보여줘요.",
       },
       {
         emoji: "📊",
         label: "막대 그래프",
         title: "같이 푼 퀴즈",
-        detail: "같은 날 같은 퀴즈를 푼 사람들의 정답률과 가장 헷갈린 보기를 보여줘요. 10명 이상 모였을 때부터, 실제 숫자로만요.",
+        detail: "같은 퀴즈를 푼 사람들의 정답률과 가장 헷갈린 보기를 보여줘요. 10명 이상 모였을 때부터, 실제 숫자로만요.",
       },
       {
         emoji: "💌",
@@ -334,7 +330,7 @@ export const dailyCopy = {
     items: [
       {
         q: "무료 하루는 어떻게 받나요?",
-        a: "신청하면 오늘의 레슨 1회를 바로 카카오톡으로 보내드려요. 카드 등록은 필요 없고, 계속 받고 싶을 때만 구독하면 돼요.",
+        a: "신청하면 첫 레슨(표현 1)을 바로 카카오톡으로 보내드려요. 카드 등록은 필요 없고, 계속 받고 싶을 때만 구독하면 돼요.",
       },
       {
         q: "정기구독과 이용권은 뭐가 달라요?",
@@ -393,7 +389,7 @@ export const dailyCopy = {
         { title: "받는 시간 정하기", detail: "오전 6시부터 밤 10시까지 1시간 단위로 골라요." },
         { title: "초대 코드 (선택)", detail: "친구에게 받은 링크로 들어왔다면 초대 코드가 미리 들어가 있어요. 처음 결제할 때 두 사람 모두 14일을 더 받아요." },
         { title: "약관 동의", detail: "이용약관, 개인정보 처리, 레슨 메시지 수신에 동의해요. 이벤트 소식 수신은 선택이에요." },
-        { title: "첫 레슨 받기", detail: "신청을 마치면 오늘의 레슨이 바로 카카오톡으로 와요." },
+        { title: "첫 레슨 받기", detail: "신청을 마치면 첫 레슨(표현 1)이 바로 카카오톡으로 와요. 그다음부터는 표현 2, 3… 순서대로 와요." },
       ],
       rules: [
         "무료 체험은 카카오계정마다 레벨별로 한 번씩이에요. 초·중급과 고급을 각각 한 번씩 받아볼 수 있어요.",
@@ -465,7 +461,7 @@ export const dailyCopy = {
         { title: "자동 결제 해지", detail: "내 계정의 결제 내역에서 '서비스 중단하기'를 누르고 '자동 결제 해지'를 고르면 돼요. 이미 결제한 기간이 끝날 때까지는 계속 받고, 그 안에는 다시 켤 수도 있어요." },
         { title: "받는 시간 바꾸기", detail: "내 계정에서 레벨별 받는 시간을 바꿔요. 바꾼 시간은 다음 레슨부터 적용돼요." },
         { title: "친구 초대", detail: "내 계정의 초대 링크로 들어온 친구가 처음 결제하면 두 사람 모두 14일을 더 받아요. 내가 그때 구독 중이 아니면 다음 결제 때 더해져요." },
-        { title: "레벨 바꾸기", detail: "내 계정의 구독에서 다른 레벨로 바꾸기를 누르면 다음 레슨부터 바뀐 레벨로 와요. 결제한 기간, 다음 결제일, 받는 시간은 그대로예요. 무료 체험은 레벨마다 따로 신청해요." },
+        { title: "레벨 바꾸기", detail: "내 계정의 구독에서 다른 레벨로 바꾸기를 누르면 다음 레슨부터 바뀐 레벨로 와요. 처음 받는 레벨이면 표현 1부터, 받던 레벨로 돌아가면 이어서 와요. 결제한 기간, 다음 결제일, 받는 시간은 그대로예요. 무료 체험은 레벨마다 따로 신청해요." },
         { title: "계정 삭제", detail: "내 계정 맨 아래 '계정 삭제'에서 '계정 삭제'를 입력하면 바로 지워져요. 자동 결제 중이면 먼저 해지해 주세요. 남은 기간은 환불되지 않으니 환불을 원하면 먼저 요청해 주세요." },
       ],
     },
@@ -606,7 +602,7 @@ export const dailyCopy = {
       timeSaved: "다음 레슨부터 이 시간에 보내드려요",
       level: "레벨",
       switchTo: "{level}으로 바꾸기",
-      switchConfirm: "다음 레슨부터 {level} 레벨로 보내드려요. 결제한 기간, 다음 결제일, 받는 시간은 그대로예요.",
+      switchConfirm: "다음 레슨부터 {level} 레벨로 보내드려요. 처음 받는 레벨이면 표현 1부터 와요. 결제한 기간, 다음 결제일, 받는 시간은 그대로예요.",
       switchConfirmButton: "바꾸기",
       switchCancel: "취소",
       switchSaved: "다음 레슨부터 {level} 레벨로 보내드려요",
@@ -709,7 +705,7 @@ export const dailyCopy = {
     quizStats: "같이 푼 {total}명 중 {rate}%가 맞혔어요",
     quizTopWrong: "가장 많이 헷갈린 보기: {option} ({rate}%)",
     quizFew: "같이 푼 사람이 {min}명이 되면 정답률을 보여드려요.",
-    pickTitle: "어제의 통역사 PICK",
+    pickTitle: "지난 레슨 통역사 PICK",
     wallTitle: "함께 쓰는 문장",
     wallSub: "오늘 표현으로 한 문장 써보세요. 같은 레슨을 받은 사람들에게 보여요.",
     together: "같은 표현을 받은 사람 {count}명",

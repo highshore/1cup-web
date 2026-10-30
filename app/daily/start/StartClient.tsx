@@ -158,7 +158,7 @@ export default function StartClient() {
           첫 하루 <span className="text-[#f47a4a]">무료로</span> 받아보기
         </h1>
         <p className="mt-3 text-[1rem] font-semibold text-[#475569]">
-          카드 등록 없이, 오늘의 레슨 1회를 바로 카카오톡으로 보내드려요.
+          카드 등록 없이, 첫 레슨(표현 1)을 바로 카카오톡으로 보내드려요.
         </p>
 
         {infoError && (
