@@ -240,22 +240,26 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: centered subway photo with a gradual fade to black on both sides */}
+      {/* P2: centered commuter photo, constrained to the same 752px width as page content */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
-        <Image
-          src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
-          alt={copy.photo.alt}
-          fill
-          sizes="100vw"
-          unoptimized
-          className="-z-20 scale-[1.12] object-contain object-center opacity-95 min-[900px]:scale-[1.22]"
-        />
-        {/* Keep the photo centered, and fade it gently into black on the left and right. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0.04)_20%,rgba(5,5,5,0.85)_100%)] min-[900px]:bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.95)_16%,rgba(5,5,5,0.62)_32%,rgba(5,5,5,0.04)_49%,rgba(5,5,5,0.1)_59%,rgba(5,5,5,0.68)_78%,#050505_100%)]"
-        />
-        <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
+        {/* Mask the photo itself, not the section, so both edges dissolve into the black background. */}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-full max-w-[752px] -translate-x-1/2"
+          style={{
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 24%, black 76%, transparent 100%)",
+            maskImage: "linear-gradient(to right, transparent 0%, black 24%, black 76%, transparent 100%)",
+          }}
+        >
+          <Image
+            src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
+            alt={copy.photo.alt}
+            fill
+            sizes="(min-width: 752px) 752px, 100vw"
+            unoptimized
+            className="object-cover object-[center_60%] opacity-95"
+          />
+        </div>
+        <div className="relative z-10 mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
           <Pill className="bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
           <h2 className={cn(h2Class, "mt-4 text-white min-[900px]:text-[3.5rem]")}>
             <Headline text={copy.photo.title} />
