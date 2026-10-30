@@ -240,16 +240,29 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: user-provided Seoul subway commuter photograph */}
+      {/* P2: user-provided Seoul subway commuter photograph, zoomed out for desktop */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
+        {/* A soft edge-to-edge layer avoids empty bars around the portrait photo. */}
         <Image
           src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
-          alt={copy.photo.alt}
+          alt=""
+          aria-hidden
           fill
           sizes="100vw"
           unoptimized
-          className="-z-10 object-cover object-[center_55%] opacity-80"
+          className="-z-20 scale-110 object-cover object-[center_55%] opacity-35 blur-2xl"
         />
+        {/* Show more of the commuter and phone instead of cropping the photo to screen width. */}
+        <div className="pointer-events-none absolute inset-0 -z-10 min-[900px]:top-[-35%] min-[900px]:bottom-[-35%] min-[900px]:left-[30%]">
+          <Image
+            src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
+            alt={copy.photo.alt}
+            fill
+            sizes="(min-width: 900px) 70vw, 100vw"
+            unoptimized
+            className="object-contain object-center opacity-90 min-[900px]:object-right"
+          />
+        </div>
         <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0)_30%,rgba(5,5,5,0.85))] min-[900px]:bg-[linear-gradient(90deg,rgba(5,5,5,0.85),rgba(5,5,5,0.1)_70%)]" />
         <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
           <Pill className="bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
