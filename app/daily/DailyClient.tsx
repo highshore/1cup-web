@@ -240,14 +240,15 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: genuine commuter photograph — Liam Burnett-Blue / Unsplash */}
+      {/* P2: user-provided Seoul subway commuter photograph */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
         <Image
-          src="https://images.unsplash.com/photo-1522850403397-b0c8f2f75451?auto=format&fit=crop&w=2200&q=82"
+          src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
           alt={copy.photo.alt}
           fill
           sizes="100vw"
-          className="-z-10 object-cover opacity-80"
+          unoptimized
+          className="-z-10 object-cover object-[center_55%] opacity-80"
         />
         <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0)_30%,rgba(5,5,5,0.85))] min-[900px]:bg-[linear-gradient(90deg,rgba(5,5,5,0.85),rgba(5,5,5,0.1)_70%)]" />
         <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
