@@ -240,30 +240,21 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: user-provided Seoul subway commuter photograph, zoomed out for desktop */}
+      {/* P2: centered subway photo with a gradual fade to black on both sides */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
-        {/* A soft edge-to-edge layer avoids empty bars around the portrait photo. */}
         <Image
           src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
-          alt=""
-          aria-hidden
+          alt={copy.photo.alt}
           fill
           sizes="100vw"
           unoptimized
-          className="-z-20 scale-110 object-cover object-[center_55%] opacity-35 blur-2xl"
+          className="-z-20 scale-[1.12] object-contain object-center opacity-95 min-[900px]:scale-[1.22]"
         />
-        {/* Show more of the commuter and phone instead of cropping the photo to screen width. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 min-[900px]:top-[-35%] min-[900px]:bottom-[-35%] min-[900px]:left-[30%]">
-          <Image
-            src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
-            alt={copy.photo.alt}
-            fill
-            sizes="(min-width: 900px) 70vw, 100vw"
-            unoptimized
-            className="object-contain object-center opacity-90 min-[900px]:object-right"
-          />
-        </div>
-        <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0)_30%,rgba(5,5,5,0.85))] min-[900px]:bg-[linear-gradient(90deg,rgba(5,5,5,0.85),rgba(5,5,5,0.1)_70%)]" />
+        {/* Keep the photo centered, and fade it gently into black on the left and right. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,5,5,0.04)_20%,rgba(5,5,5,0.85)_100%)] min-[900px]:bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.95)_16%,rgba(5,5,5,0.62)_32%,rgba(5,5,5,0.04)_49%,rgba(5,5,5,0.1)_59%,rgba(5,5,5,0.68)_78%,#050505_100%)]"
+        />
         <div className="mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
           <Pill className="bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
           <h2 className={cn(h2Class, "mt-4 text-white min-[900px]:text-[3.5rem]")}>
