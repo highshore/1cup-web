@@ -101,6 +101,16 @@ export default function StartClient() {
   const trackState = (key: string) =>
     info?.usedTrialTracks?.includes(key) ? "체험 완료" : null;
   const selectedBlocked = trackState(track) !== null;
+  // The free trial is once per level, so someone back after one trial needs to see which
+  // level is done and which can still be tried, on the cards and in one line above them.
+  const triedTitles = TRACKS.filter((item) => trackState(item.key)).map((item) => item.title);
+  const untriedTitles = TRACKS.filter((item) => !trackState(item.key)).map((item) => item.title);
+  const trialSummary =
+    triedTitles.length === 0
+      ? null
+      : untriedTitles.length === 0
+        ? "두 레벨 모두 무료 체험을 받았어요. 계속 받으려면 구독해 주세요."
+        : `${triedTitles.join(", ")}은 체험했어요. ${untriedTitles.join(", ")}은 아직 무료로 한 번 받아볼 수 있어요.`;
   // Already receiving either level (a trial or a paid plan): nothing to start or buy here,
   // changes go through 내 구독. start-trial and checkout-window refuse it as well.
   const receiving = TRACKS.filter((item) => info?.liveTracks?.includes(item.key)).map((item) => item.title);
@@ -230,6 +240,12 @@ export default function StartClient() {
         {info && receiving.length === 0 && (
           <>
 
+            {trialSummary && (
+              <p className="mt-8 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
+                {trialSummary}
+              </p>
+            )}
+
             <Step number={1} title="레벨을 골라주세요">
               <div className="grid gap-3 min-[600px]:grid-cols-2">
                 {TRACKS.map((item) => {
@@ -257,7 +273,11 @@ export default function StartClient() {
                         <span lang="en" className="mt-1 block text-[0.84rem] font-bold text-[#050505]">
                           {item.examples.map((example) => example.en).join(" · ")}
                         </span>
-                        {state && <span className="mt-1 block text-[0.78rem] font-black text-[#d95f2d]">{state}</span>}
+                        {state ? (
+                          <span className="mt-1 block text-[0.78rem] font-black text-[#d95f2d]">체험 완료 · 구독하기</span>
+                        ) : (
+                          info.open && <span className="mt-1 block text-[0.78rem] font-black text-[#15803d]">무료 체험 가능</span>
+                        )}
                       </span>
                       <span
                         aria-hidden
