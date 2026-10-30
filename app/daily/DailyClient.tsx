@@ -28,6 +28,7 @@ import {
   displayClass,
 } from "../lib/features/daily/components/DailyUI";
 import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
+import SupportButton from "../lib/components/SupportButton";
 import WordbookSheet from "../lib/features/daily/components/WordbookSheet";
 import ReviewCarousel from "../lib/features/daily/components/ReviewCarousel";
 import DailyWeek from "../lib/features/daily/components/DailyWeek";
@@ -94,6 +95,7 @@ export default function DailyClient({
   const pastHero = useScrolledPast(heroRef);
   // The bar repeats the pricing CTA, so it steps aside once pricing is on screen.
   const reachedPricing = useReached(pricingRef);
+  const stickyVisible = pastHero && !reachedPricing;
 
   return (
     <div className={cn("daily-page bg-white text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
@@ -636,7 +638,8 @@ export default function DailyClient({
         </p>
       </Panel>
 
-      <StickyBar visible={pastHero && !reachedPricing} />
+      <StickyBar visible={stickyVisible} />
+      <SupportButton label={copy.support.label} ariaLabel={copy.support.ariaLabel} lifted={stickyVisible} />
     </div>
   );
 }

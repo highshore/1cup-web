@@ -774,6 +774,8 @@ export const dailyCopy = {
     },
   },
   sticky: { title: "첫 하루 무료", sub: "이후 하루 ₩{perDay} · 언제든 해지", cta: "받아보기" },
+  // The floating button to the 영어 한잔 KakaoTalk channel, same as on the 1cup home page.
+  support: { label: "문의하기", ariaLabel: "고객 지원 문의하기" },
   // The page's last word, after the FAQ: one action, and how little it takes.
   finale: {
     title: "내일 출근길엔\n한 문장이 달라져요",
