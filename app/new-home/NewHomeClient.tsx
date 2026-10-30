@@ -32,7 +32,6 @@ import {
   CalendarIcon as CalendarIconOutline,
   ClockIcon,
   ArrowTopRightOnSquareIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleIconSolid } from "@heroicons/react/24/solid";
 import { supabase } from "../lib/supabase/client";
@@ -40,11 +39,11 @@ import MembershipSection from "./sections/MembershipSection";
 import FaqSection from "./sections/FaqSection";
 import CtaSection from "./sections/CtaSection";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import SupportButton, { SUPPORT_URL } from "../lib/components/SupportButton";
 
 // The old createGlobalStyle lives in ./new-home.css; machine mode toggles the
 // `nh-machine-mode` class on <html> (see effect inside NewHomeClient).
 
-const SUPPORT_URL = "https://pf.kakao.com/_DxlPIn/chat";
 
 const MEMBER_COMPANY_LOGOS = [
   { label: "SK하이닉스", src: "/assets/homepage/logos/sk-hynix.webp", width: 260, height: 129, scale: 1.04 },
@@ -1478,23 +1477,7 @@ export default function NewHomeClient({
         </>
       )}
       {displayMode === "human" && (
-        <a
-          className="fixed right-[clamp(1rem,3vw,1.5rem)] bottom-[calc(1.45rem_+_env(safe-area-inset-bottom))] z-[61] inline-flex items-center gap-[0.48rem] min-h-12 py-[0.55rem] pr-[0.78rem] pl-[0.6rem] border-2 border-[#050505] rounded-full bg-white text-[#050505] text-[0.82rem] font-black no-underline shadow-[4px_4px_0_#f47a4a] animate-[nh-support-bob_3.2s_ease-in-out_infinite] [transition:background-color_180ms_ease,box-shadow_180ms_ease,transform_180ms_ease] hover:bg-[#fff8dc] hover:shadow-[6px_6px_0_#f47a4a] hover:[transform:translate(-1px,-1px)] focus-visible:[outline:3px_solid_rgba(244,122,74,0.38)] focus-visible:[outline-offset:3px] motion-reduce:animate-none max-[620px]:right-[calc(0.9rem_+_env(safe-area-inset-right))] max-[620px]:bottom-[calc(0.9rem_+_env(safe-area-inset-bottom))] max-[620px]:box-border max-[620px]:p-2 max-[620px]:w-[52px] max-[620px]:h-[52px] max-[620px]:justify-center max-[620px]:gap-0 max-[620px]:shadow-[3px_3px_0_#f47a4a] max-[620px]:animate-none"
-          href={SUPPORT_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={t.home.support.ariaLabel}
-        >
-          <span
-            className="relative inline-grid place-items-center w-8 h-8 flex-none border-2 border-[#050505] rounded-full bg-[#f47a4a] [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:[stroke-width:2.4] after:content-[''] after:absolute after:top-1 after:right-[5px] after:w-[6px] after:h-[6px] after:border-[1.5px] after:border-[#050505] after:rounded-full after:bg-white"
-            aria-hidden="true"
-          >
-            <ChatBubbleOvalLeftEllipsisIcon />
-          </span>
-          <span className="whitespace-nowrap max-[620px]:absolute max-[620px]:w-px max-[620px]:h-px max-[620px]:p-0 max-[620px]:-m-px max-[620px]:overflow-hidden max-[620px]:[clip:rect(0,0,0,0)] max-[620px]:border-0">
-            {t.home.support.label}
-          </span>
-        </a>
+        <SupportButton label={t.home.support.label} ariaLabel={t.home.support.ariaLabel} />
       )}
       <div
         className="fixed left-1/2 bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] z-[60] inline-flex items-center [transform:translateX(-50%)] border-2 border-[#050505] rounded-full bg-white p-[3px] whitespace-nowrap shadow-[4px_4px_0_#f47a4a] [transition:border-color_360ms_ease,background-color_360ms_ease,box-shadow_360ms_ease,filter_360ms_ease] max-[480px]:bottom-[calc(0.9rem_+_env(safe-area-inset-bottom))] max-[480px]:shadow-[3px_3px_0_#f47a4a]"
