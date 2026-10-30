@@ -43,7 +43,7 @@ function timeLabel(value: string) {
 
 const ERRORS: Record<string, string> = {
   "not-open": "무료 체험은 아직 열리지 않았어요. 곧 열릴 예정이에요.",
-  "trial-used": "이 카카오계정으로 이 레벨의 무료 체험을 이미 받았어요.",
+  "trial-used": "이 카카오계정으로 무료 체험을 이미 받았어요.",
   "already-subscribed": "이미 이 레벨을 받고 있어요.",
   "no-lesson": "보낼 레슨을 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
   "consent-required": "필수 항목에 모두 동의해 주세요.",
@@ -98,8 +98,9 @@ export default function StartClient() {
     setInfo(null);
   };
 
-  const trackState = (key: string) =>
-    info?.usedTrialTracks?.includes(key) ? "체험 완료" : null;
+  // One free trial per number, whichever level it was on: once used, every level is done.
+  const trialUsed = (info?.usedTrialTracks?.length ?? 0) > 0;
+  const trackState = (key: string) => (trialUsed || info?.usedTrialTracks?.includes(key) ? "체험 완료" : null);
   const selectedBlocked = trackState(track) !== null;
   // Already receiving either level (a trial or a paid plan): nothing to start or buy here,
   // changes go through 내 구독. start-trial and checkout-window refuse it as well.
@@ -308,7 +309,7 @@ export default function StartClient() {
             )}
             {selectedBlocked && (
               <p className="mt-8 rounded-[18px] bg-white px-5 py-4 text-[0.95rem] font-bold text-[#475569]">
-                이 레벨의 무료 체험은 이미 받았어요. 계속 받으려면 구독해 주세요.
+                무료 체험은 계정당 한 번이라 이미 받았어요. 계속 받으려면 구독해 주세요.
               </p>
             )}
 
@@ -317,7 +318,7 @@ export default function StartClient() {
                 <KakaoSignIn confirm />
               </div>
             ) : trackState(track) === "체험 완료" ? (
-              // The free lesson for this level is used up: the way on is subscribing to it.
+              // The free lesson is used up: the way on is subscribing to the chosen level.
               <Link
                 href={`/daily/subscribe?track=${track}`}
                 className="mt-8 flex h-[54px] w-full items-center justify-center rounded-2xl bg-[#050505] text-[1.08rem] font-black text-white"

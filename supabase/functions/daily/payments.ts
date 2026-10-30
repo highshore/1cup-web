@@ -19,7 +19,7 @@ const PAYPLE_HOSTNAME = Deno.env.get("PAYPLE_HOSTNAME") || "https://1cupenglish.
 const SITE_URL = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/\/+$/, "");
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-export const PAYMENT_TERMS_VERSION = "2026-10-29.1";
+export const PAYMENT_TERMS_VERSION = "2026-10-30.1";
 
 export class PaymentError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) {
