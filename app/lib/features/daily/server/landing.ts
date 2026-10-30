@@ -1,21 +1,28 @@
 // Server-only: the live numbers the landing page shows. Everything here is real data, read
-// on the server and refreshed with the page (revalidate): the week of 초·중급 lessons and
-// how many people learn with Daily. Nothing is invented or rounded up; a number too small
+// on the server and refreshed with the page (revalidate): the first lessons a new member gets
+// and how many people learn with Daily. Nothing is invented or rounded up; a number too small
 // to be worth showing is left out by the page (see DAILY_PROOF_MIN).
 import { admin } from "../../../supabase/server";
 
-export type WeekDayState = "past" | "today" | "upcoming";
+/** How many expressions the landing page counts up to: a 28-day plan's worth of weekdays. */
+export const DAILY_START_GOAL = 20;
 
-export interface WeekDay {
+export interface StartDay {
+  /** 1 for Expression 1. */
+  n: number;
+  /** When it arrives for someone who signs up today (KST, YYYY-MM-DD). */
   date: string;
-  state: WeekDayState;
-  /** Only for days already sent. Today's and later expressions stay unseen until sent. */
+  /** Only Expression 1, the one a new member gets the moment they sign up. */
   expression: string | null;
 }
 
-export interface LandingWeek {
-  /** The weekdays of this week, or of next week on a weekend. */
-  days: WeekDay[];
+export interface LandingStart {
+  /** Expressions 1 to 5 for someone signing up today. */
+  days: StartDay[];
+  /** When Expression DAILY_START_GOAL arrives for someone signing up today. */
+  goalOn: string;
+  /** The same, for someone who waits a week. */
+  goalOnNextWeek: string;
 }
 
 export interface LandingProof {
@@ -35,24 +42,39 @@ function addDays(date: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function landingWeek(): Promise<LandingWeek> {
+/** 1 = Monday … 7 = Sunday. */
+function isoDow(date: string) {
+  return ((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7) + 1;
+}
+
+/**
+ * Every member starts from Expression 1 (see nextLessonFor in the daily function): the first
+ * comes the moment they sign up, then one each weekday. So signing up today puts Expression n
+ * on a fixed date, and waiting moves every one of them.
+ */
+export async function landingStart(): Promise<LandingStart> {
   const today = kstToday();
-  const isoDow = ((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7) + 1; // 1 = Monday
-  // On Saturday and Sunday the page looks ahead to the coming week.
-  const monday = isoDow >= 6 ? addDays(today, 8 - isoDow) : addDays(today, 1 - isoDow);
-  const dates = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+  const arrivals = [today];
+  for (let date = today; arrivals.length < DAILY_START_GOAL; ) {
+    date = addDays(date, 1);
+    if (isoDow(date) <= 5) arrivals.push(date);
+  }
   const { data } = await admin()
     .from("daily_lessons")
-    .select("publish_on, expression")
+    .select("expression")
     .eq("track", "basic")
     .eq("status", "ready")
-    .in("publish_on", dates);
-  const byDate = new Map((data ?? []).map((row) => [row.publish_on as string, row.expression as string]));
+    .lte("publish_on", today)
+    .order("publish_on", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1);
+  const first = (data?.[0]?.expression as string | undefined) ?? null;
+  const goalOn = arrivals[DAILY_START_GOAL - 1];
   return {
-    days: dates.map((date) => {
-      const state: WeekDayState = date < today ? "past" : date === today ? "today" : "upcoming";
-      return { date, state, expression: state === "past" ? (byDate.get(date) ?? null) : null };
-    }),
+    days: arrivals.slice(0, 5).map((date, i) => ({ n: i + 1, date, expression: i === 0 ? first : null })),
+    goalOn,
+    // The schedule repeats weekly, so a week's wait moves the goal by exactly a week.
+    goalOnNextWeek: addDays(goalOn, 7),
   };
 }
 

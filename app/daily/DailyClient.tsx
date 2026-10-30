@@ -44,7 +44,7 @@ import {
 import { dailyApi } from "../lib/features/daily/api";
 import { dailyCopy } from "../lib/features/daily/copy";
 import type { PublicDailyReview } from "../lib/features/daily/server/reviews";
-import type { LandingProof, LandingWeek } from "../lib/features/daily/server/landing";
+import type { LandingProof, LandingStart } from "../lib/features/daily/server/landing";
 import { dailyDisplay } from "../lib/features/daily/fonts";
 import { useReached, useScrolledPast, useSeen } from "../lib/features/daily/hooks";
 import "../lib/features/daily/daily.css";
@@ -75,11 +75,11 @@ const MIN_REVIEWS = 3;
 
 export default function DailyClient({
   reviews,
-  week,
+  start,
   proof,
 }: {
   reviews: PublicDailyReview[];
-  week: LandingWeek | null;
+  start: LandingStart | null;
   proof: LandingProof | null;
 }) {
   // Arrived through a friend's invite link (?invite=CODE): the server keeps the code in a
@@ -499,8 +499,8 @@ export default function DailyClient({
         </div>
       </Panel>
 
-      {/* This week's real lessons: the days already gone, and the ones still to come */}
-      {week && <WeekPanel week={week} />}
+      {/* When Expressions 1 to 20 arrive for someone who starts today, and what waiting costs */}
+      {start && <StartPanel start={start} />}
 
       {/* P11: pricing */}
       <Panel id="pricing" className="bg-[#f47a4a]">
@@ -661,58 +661,72 @@ function ProofLine({ proof }: { proof: LandingProof | null }) {
   );
 }
 
-// This week's 초·중급 lessons, from the database: what was already sent, what today and the
-// rest of the week still hold. On a weekend it is the coming week, all still ahead.
-function WeekPanel({ week }: { week: LandingWeek }) {
-  const copy = dailyCopy.week;
-  const weekend = week.days.every((day) => day.state === "upcoming");
-  const remaining = week.days.filter((day) => day.state !== "past").length;
+// Everyone starts from Expression 1, so the urgency is in the dates: signing up today fixes
+// when Expressions 1 to 20 arrive, and waiting a week moves all of them a week.
+function StartPanel({ start }: { start: LandingStart }) {
+  const copy = dailyCopy.start;
   return (
     <Panel className="bg-[#fff8dc]">
       <h2 className={h2Class}>
         <Headline
-          text={weekend ? copy.weekendTitle : copy.title}
-          accent={weekend ? copy.weekendAccent : copy.accent}
+          text={copy.title.replace("{date}", monthDay(start.goalOn))}
+          accent={copy.accent}
           accentClassName="text-[#f47a4a]"
         />
       </h2>
-      <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{weekend ? copy.weekendSub : copy.sub}</p>
+      <p className="mt-3 text-[1rem] font-semibold text-[#475569]">{copy.sub}</p>
       <ol className="m-0 mt-8 grid list-none grid-cols-5 gap-2 p-0">
-        {week.days.map((day, index) => (
-          <li
-            key={day.date}
-            className={cn(
-              "flex min-h-[132px] flex-col items-center rounded-[20px] px-1.5 py-3 text-center",
-              day.state === "past" && "bg-white/60 text-[#94a3b8]",
-              day.state === "today" && "bg-[#f47a4a] text-[#050505] shadow-[0_14px_30px_-16px_rgba(244,122,74,0.9)]",
-              day.state === "upcoming" && "border-2 border-dashed border-[#e7c98a] bg-white text-[#050505]",
-            )}
-          >
-            <span className="text-[0.82rem] font-black">{copy.weekdays[index]}</span>
-            <span className="mt-2 flex flex-1 items-center text-[0.76rem] font-black leading-tight min-[600px]:text-[0.9rem]">
-              {day.state === "past" ? (
-                <span lang="en" className="line-through decoration-[#94a3b8]/60 [hyphens:auto] [word-break:normal]">
-                  {day.expression ?? "—"}
-                </span>
-              ) : (
-                <Emoji className="text-[1.6rem]">{day.state === "today" ? "☕" : "🔒"}</Emoji>
+        {start.days.map((day) => {
+          const first = day.n === 1;
+          return (
+            <li
+              key={day.n}
+              className={cn(
+                "flex min-h-[132px] flex-col items-center rounded-[20px] px-1.5 py-3 text-center",
+                first
+                  ? "bg-[#f47a4a] text-[#050505] shadow-[0_14px_30px_-16px_rgba(244,122,74,0.9)]"
+                  : "border-2 border-dashed border-[#e7c98a] bg-white text-[#050505]",
               )}
-            </span>
-            <span className="mt-2 text-[0.68rem] font-bold leading-tight">
-              {day.state === "past" ? copy.past : day.state === "today" ? copy.today : copy.upcoming}
-            </span>
-          </li>
-        ))}
+            >
+              <span className="text-[0.78rem] font-black">{copy.card.replace("{n}", String(day.n))}</span>
+              <span className="mt-2 flex flex-1 items-center text-[0.76rem] font-black leading-tight min-[600px]:text-[0.9rem]">
+                {first && day.expression ? (
+                  <span lang="en" className="[hyphens:auto] [word-break:normal]">
+                    {day.expression}
+                  </span>
+                ) : (
+                  <Emoji className="text-[1.6rem]">{first ? "☕" : "🔒"}</Emoji>
+                )}
+              </span>
+              <span className="mt-2 text-[0.68rem] font-bold leading-tight">{first ? copy.now : shortDay(day.date)}</span>
+            </li>
+          );
+        })}
       </ol>
+      <p className="mt-3 text-[0.78rem] font-semibold text-[#64748b]">{copy.basis}</p>
       <div className="mt-6 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-between">
         <p className="text-[1.05rem] font-black">
           <span className="mr-2 rounded-full bg-[#050505] px-2.5 py-1 text-[0.75rem] text-white">{copy.track}</span>
-          {copy.remaining.replace("{count}", String(remaining))}
+          {copy.later.replace("{date}", monthDay(start.goalOnNextWeek))}
         </p>
         <TrialButton label={dailyCopy.pricing.cta} className="w-full min-[520px]:w-auto" />
       </div>
     </Panel>
   );
+}
+
+const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+/** "2026-11-26" → "11월 26일". Dates are KST calendar days, so they are read as UTC. */
+function monthDay(date: string) {
+  const d = new Date(`${date}T00:00:00Z`);
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+}
+
+/** "2026-11-02" → "11/2 (월)". */
+function shortDay(date: string) {
+  const d = new Date(`${date}T00:00:00Z`);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} (${WEEKDAYS_KO[d.getUTCDay()]})`;
 }
 
 // An example of the shared sentence wall on the lesson page (labelled as an example:

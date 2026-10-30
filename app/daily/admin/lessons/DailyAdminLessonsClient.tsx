@@ -79,7 +79,7 @@ export default function DailyAdminLessonsClient({
       </Link>
       <h1 className="m-0 mt-4 text-[28px] font-black">콘텐츠</h1>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
-        레벨별 레슨 전체예요. 승인한 레슨만 그날 카톡으로 나가요. 초안은 골라서 한 번에 승인하거나, 열어서 하나씩 승인해요.
+        레벨별 레슨 전체예요. 승인한 레슨만 나가요. 회원은 누구나 표현 1부터 날짜 순서대로 받고, 레슨은 그 날짜 전에는 나가지 않아요. 초안은 골라서 한 번에 승인하거나, 열어서 하나씩 승인해요.
       </p>
 
       <div className="mt-5 flex gap-1.5">

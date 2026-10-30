@@ -142,7 +142,7 @@ export async function lessonCommunity(token: string, viewer: DailySessionCustome
     viewer
       ? db.from("daily_quiz_answers").select("choice").eq("lesson_id", ref.lessonId).eq("customer_id", viewer.id).maybeSingle()
       : Promise.resolve({ data: null }),
-    // 어제의 통역사 PICK: the latest pick from an earlier lesson on this track.
+    // 지난 레슨 통역사 PICK: the latest pick from an earlier lesson on this track.
     db.from("daily_sentences")
       .select("body, customer:daily_customers!daily_sentences_customer_id_fkey(name), lesson:daily_lessons!inner(expression, track, publish_on)")
       .not("picked_at", "is", null)
