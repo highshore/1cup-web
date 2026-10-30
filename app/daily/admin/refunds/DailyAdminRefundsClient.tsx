@@ -7,9 +7,10 @@ import { ArrowLeftIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../lib/contexts/auth_context";
 import { invokeFunction } from "../../../lib/supabase/client";
 
-// One Cup Daily refund approvals. Korean only, like the rest of Daily (a product
-// decision: Daily is not localized). Approving cancels the amount through Payple at
-// once; the request was priced from the terms when the customer made it.
+// One Cup Daily refund records. Korean only, like the rest of Daily (a product decision:
+// Daily is not localized). Every refund is approved by default: it is priced from the
+// refund policy and cancelled through Payple the moment it is requested, with nobody
+// deciding. This page keeps the record, and retries one Payple refused or never got.
 
 type Status = "requested" | "refunding" | "refunded" | "rejected" | "failed";
 
@@ -38,7 +39,7 @@ interface RefundRow {
 }
 
 const STATUS_LABEL: Record<Status, string> = {
-  requested: "처리 전",
+  requested: "페이플 전송 전 (다시 처리 가능)",
   refunding: "처리 중 (페이플 응답 확인 필요)",
   refunded: "환불 완료",
   rejected: "반려",
@@ -64,7 +65,6 @@ const buttonClass = "inline-flex h-10 items-center justify-center rounded-xl px-
 export default function AdminDailyRefundsClient() {
   const { currentUser, accountStatus, isLoading } = useAuth();
   const [rows, setRows] = useState<RefundRow[] | null>(null);
-  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
@@ -84,20 +84,13 @@ export default function AdminDailyRefundsClient() {
     void load();
   }, [isLoading, currentUser, accountStatus, load]);
 
-  const decide = async (row: RefundRow, decision: "approve" | "reject") => {
-    let note = "";
-    if (decision === "approve") {
-      if (!window.confirm(`${won(row.amount)}를 환불할까요? 페이플에서 바로 승인 취소돼요.`)) return;
-    } else {
-      const input = window.prompt("반려 이유 (고객의 내 계정 화면에 보여요)", "");
-      if (input === null) return;
-      note = input;
-    }
+  const retry = async (row: RefundRow) => {
+    if (!window.confirm(`${won(row.amount)}를 다시 환불할까요? 페이플에서 바로 승인 취소돼요.`)) return;
     setBusy(row.id);
     setMessage("");
     try {
-      await invokeFunction("daily", { action: "admin-refund-decide", id: row.id, decision, note });
-      setMessage(decision === "approve" ? `${won(row.amount)} 환불을 마쳤어요.` : "반려했어요.");
+      await invokeFunction("daily", { action: "admin-refund-decide", id: row.id });
+      setMessage(`${won(row.amount)} 환불을 마쳤어요.`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "처리하지 못했어요.");
     } finally {
@@ -106,7 +99,8 @@ export default function AdminDailyRefundsClient() {
     }
   };
 
-  const visible = (rows ?? []).filter((r) => showAll || ["requested", "failed", "refunding"].includes(r.status));
+  const visible = rows ?? [];
+  const needsLook = visible.filter((r) => ["requested", "failed", "refunding"].includes(r.status)).length;
 
   return (
     <div className="mx-auto w-full max-w-[752px] px-4 pb-20 pt-8 [word-break:keep-all]">
@@ -115,26 +109,26 @@ export default function AdminDailyRefundsClient() {
         Daily 관리자
       </Link>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-[28px] font-black">Daily 환불</h1>
+        <h1 className="m-0 text-[28px] font-black">Daily 환불 기록</h1>
         <div className="flex gap-2">
-          <button type="button" onClick={() => setShowAll((v) => !v)} className={`${buttonClass} bg-[#f5f5f4]`}>
-            {showAll ? "처리할 것만 보기" : "전체 보기"}
-          </button>
           <button type="button" onClick={() => void load()} className={`${buttonClass} bg-[#f5f5f4]`} aria-label="새로고침">
             <ArrowPathIcon className="size-5" />
           </button>
         </div>
       </div>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
-        환불은 고객이 누르는 순간 이용약관 제7조로 계산한 금액만큼 페이플에서 바로 취소돼요(계정 삭제 때도 같아요). 여기서는 페이플이 거절한 건을 다시 처리하거나, 응답이 없던 건을 페이플 관리자에서 확인한 뒤 정리해요.
+        모든 환불은 따로 승인하지 않아요. 고객이 누르는 순간(계정 삭제 때도) 환불 규정(이용약관 제7조)으로 계산한 금액만큼 페이플에서 바로 취소되고, 여기에 기록돼요. 페이플이 거절했거나 전송되지 않은 건만 다시 처리할 수 있어요.
       </p>
 
+      {rows !== null && needsLook > 0 && (
+        <p className="mt-4 rounded-xl bg-[#fee2e2] px-4 py-3 text-[14px] font-bold text-[#991b1b]">확인이 필요한 환불 {needsLook}건</p>
+      )}
       {message && <p className="mt-4 rounded-xl bg-[#fff8dc] px-4 py-3 text-[14px] font-bold">{message}</p>}
 
       {rows === null ? (
         <p className="mt-8 text-center font-bold text-[rgba(5,5,5,0.6)]">불러오는 중…</p>
       ) : visible.length === 0 ? (
-        <p className="mt-8 text-center font-bold text-[rgba(5,5,5,0.6)]">{showAll ? "환불 요청이 없어요." : "처리할 요청이 없어요."}</p>
+        <p className="mt-8 text-center font-bold text-[rgba(5,5,5,0.6)]">환불 기록이 없어요.</p>
       ) : (
         <ul className="m-0 mt-5 flex list-none flex-col gap-3 p-0">
           {visible.map((row) => (
@@ -157,35 +151,30 @@ export default function AdminDailyRefundsClient() {
                       {row.order.kind === "renewal" ? " · 자동 결제" : ""} · 결제 {when(row.order.completed_at)} · {row.order.order_number}
                     </p>
                   )}
-                  <p className="m-0 mt-0.5 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">요청 {when(row.requested_at)}</p>
+                  <p className="m-0 mt-0.5 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
+                    요청 {when(row.requested_at)}
+                    {row.refunded_at ? ` · 환불 ${when(row.refunded_at)}` : ""}
+                  </p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-[12px] font-black ${STATUS_CLASS[row.status]}`}>{STATUS_LABEL[row.status]}</span>
               </div>
 
               {row.reason && <p className="m-0 mt-3 rounded-xl bg-[#f5f5f4] px-3 py-2 text-[14px] font-semibold">“{row.reason}”</p>}
-              {row.note && <p className="m-0 mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">반려 이유: {row.note}</p>}
+              {row.status === "rejected" && row.note && (
+                <p className="m-0 mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">반려 이유: {row.note}</p>
+              )}
               {row.error && <p className="m-0 mt-2 text-[13px] font-semibold text-[#991b1b]">{row.error}</p>}
 
               {(row.status === "requested" || row.status === "failed") && (
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4">
                   <button
                     type="button"
                     disabled={busy !== null}
-                    onClick={() => decide(row, "approve")}
+                    onClick={() => retry(row)}
                     className={`${buttonClass} bg-[#050505] text-white`}
                   >
                     {busy === row.id ? "처리 중…" : `${won(row.amount)} 다시 환불`}
                   </button>
-                  {row.status === "requested" && (
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() => decide(row, "reject")}
-                      className={`${buttonClass} bg-[#f5f5f4]`}
-                    >
-                      반려
-                    </button>
-                  )}
                 </div>
               )}
             </li>
