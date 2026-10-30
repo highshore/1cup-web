@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const SECTIONS = [
   { href: "/daily/admin/lessons", title: "콘텐츠", detail: "초·중급·고급 레슨 전체를 날짜별로 보고 열어봐요." },
   { href: "/daily/admin/members", title: "멤버 관리", detail: "Daily 고객, 구독·이용권, 결제와 환불 합계를 봐요." },
-  { href: "/daily/admin/refunds", title: "환불", detail: "페이플이 거절했거나 응답이 없던 환불을 정리해요." },
+  { href: "/daily/admin/refunds", title: "환불 기록", detail: "모든 환불은 규정대로 바로 처리돼요. 기록을 보고, 페이플이 거절한 건만 다시 처리해요." },
   { href: "/daily/admin/sentences", title: "함께 쓰는 문장", detail: "문장을 숨기거나 통역사 PICK을 골라요." },
 ] as const;
 
@@ -20,7 +20,7 @@ export default async function DailyAdminHome() {
     { label: "이용 중 (유료)", value: o.paying },
     { label: "자동 결제 켜짐", value: o.autoRenew },
     { label: "무료 체험 중", value: o.trials },
-    { label: "처리할 환불", value: o.openRefunds },
+    { label: "확인 필요한 환불", value: o.openRefunds },
     { label: "최근 30일 순매출", value: `₩${formatKrw(o.revenue30d)}` },
   ];
   return (

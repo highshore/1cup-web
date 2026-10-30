@@ -383,25 +383,13 @@ export async function adminRefunds(db: SupabaseClient) {
 }
 
 /**
- * Refunds normally go out the moment they are requested. This is for the rest: retrying
- * one Payple refused ("failed"), or turning down a request that has not gone out.
+ * Every refund is approved by default: it goes out the moment it is requested, for the
+ * amount the refund policy gives (daily_refund_quote), with nobody deciding. There is no
+ * rejecting one. This only retries one that did not reach Payple or that Payple refused
+ * ("requested" or "failed"); the admin page is otherwise the record of refunds.
  */
 export async function adminDecideRefund(db: SupabaseClient, adminUid: string, body: Record<string, unknown>) {
   const id = typeof body.id === "string" ? body.id : "";
-  const note = typeof body.note === "string" ? body.note : "";
-
-  if (body.decision === "reject") {
-    const { data: rejected, error } = await db.rpc("daily_reject_refund", { p_refund_id: id, p_admin: adminUid, p_note: note });
-    if (error) throw new Error(`reject failed: ${error.message}`);
-    if (!rejected) throw new PaymentError("이미 처리된 요청이에요.", "not-open", 409);
-    const customer = await customerOfRefund(db, id);
-    if (customer?.phone) {
-      await notify([customer.phone], "DAILY_REFUND_REJECT", { name: customer.name || "고객" });
-    }
-    return { success: true, status: "rejected" };
-  }
-  if (body.decision !== "approve") throw new PaymentError("approve 또는 reject를 골라 주세요.", "invalid-decision");
-
   const outcome = await processRefund(db, id, adminUid);
   if (outcome === "unknown") {
     throw new PaymentError("페이플 응답을 받지 못했어요. 페이플 관리자에서 취소 여부를 확인해 주세요.", "refund-unknown", 502);
