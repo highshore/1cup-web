@@ -33,7 +33,7 @@ const adminSocial = {
     daily: {
       title: "Daily posts",
       description:
-        "A new post (Instagram: card news or a narrated reel) is drafted every night at 8 PM for the next day from the latest articles and Daily lessons. Check it, edit if needed, and approve it; unapproved drafts are not posted.",
+        "A new post promoting One Cup Daily (Instagram: card news or a narrated reel) is drafted every night at 8 PM for the next day from Daily's lessons and the latest article. Check it, edit if needed, and approve it; unapproved drafts are not posted.",
       generateToday: "Draft today's post",
       generateTomorrow: "Draft tomorrow's post",
       generating: "Drafting… (up to a minute)",
@@ -49,6 +49,10 @@ const adminSocial = {
       themeAuto: "Weekday default",
       pillars: {
         insight: "Customer insight",
+        compare: "Expression comparison",
+        scene: "Workplace scene",
+        news: "Expression in the news",
+        weekly: "Weekly recap",
         debate: "Debate question",
         expression: "Expression of the day",
         vocabulary: "Advanced vocabulary",
@@ -146,7 +150,7 @@ const adminSocial = {
     daily: {
       title: "일일 게시물",
       description:
-        "매일 밤 8시에 최신 아티클과 Daily 레슨으로 다음 날 게시물을 새로 씁니다(인스타는 카드뉴스 또는 내레이션 릴스). 확인하고 필요하면 고친 뒤 승인해 주세요. 승인하지 않은 초안은 올라가지 않습니다.",
+        "매일 밤 8시에 Daily 레슨과 최신 아티클로 다음 날 One Cup Daily 홍보 게시물을 새로 씁니다(인스타는 카드뉴스 또는 내레이션 릴스). 확인하고 필요하면 고친 뒤 승인해 주세요. 승인하지 않은 초안은 올라가지 않습니다.",
       generateToday: "오늘 게시물 만들기",
       generateTomorrow: "내일 게시물 만들기",
       generating: "작성 중… (최대 1분)",
@@ -162,6 +166,10 @@ const adminSocial = {
       themeAuto: "요일 기본 주제",
       pillars: {
         insight: "고객 인사이트",
+        compare: "표현 비교",
+        scene: "실무 장면",
+        news: "뉴스 속 표현",
+        weekly: "주간 복습",
         debate: "토론 질문",
         expression: "오늘의 표현",
         vocabulary: "고급 어휘",
