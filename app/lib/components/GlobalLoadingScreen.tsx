@@ -1,52 +1,17 @@
 "use client";
 
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import dynamic from "next/dynamic";
-import loadingAnimation from "../../../public/animations/loading.json";
+import DailyLoading from "../features/daily/components/DailyLoading";
+import { useI18n } from "../i18n/I18nProvider";
 
-// Dynamic import for Lottie to avoid SSR issues
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
-
-// The Lottie chunk loads on first show. If that request fails (offline, or cancelled
-// because the page is navigating away), show no animation rather than letting the
-// chunk error take down the layout this loader sits in.
-class LottieBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
-
-const containerSizeClasses: Record<"small" | "medium" | "large", string> = {
-  small:
-    "h-[150px] w-[150px] max-[768px]:h-[120px] max-[768px]:w-[120px]",
-  medium:
-    "h-[250px] w-[250px] max-[768px]:h-[200px] max-[768px]:w-[200px]",
-  large:
-    "h-[300px] w-[300px] max-[768px]:h-[250px] max-[768px]:w-[250px]",
-};
-
-interface GlobalLoadingScreenProps {
-  /** Show as full screen overlay (covers entire viewport) */
-  fullScreen?: boolean;
-  /** Size of the loading animation */
-  size?: "small" | "medium" | "large";
-  /** Use white background instead of transparent */
-  whiteBackground?: boolean;
-  /** Custom className for additional styling */
-  className?: string;
-}
-
-export default function GlobalLoadingScreen({
-  fullScreen = true, // Default to fullScreen for better UX
-  size = "medium",
-  whiteBackground = true,
-  className,
-}: GlobalLoadingScreenProps) {
+// The site-wide loader is Daily's: three orange dots in a white pill at the middle of the
+// viewport, pure CSS so it shows from the first paint. It is portalled to <body> so a
+// transformed ancestor can't pull the fixed overlay off center, and sits above the navbar
+// and modals like the old full-screen Lottie did.
+export default function GlobalLoadingScreen() {
+  const { t } = useI18n();
+  const label = t.common.loading;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -54,32 +19,14 @@ export default function GlobalLoadingScreen({
   }, []);
 
   const loadingElement = (
-    <div
-      className={`flex h-screen w-screen items-center justify-center ${
-        fullScreen
-          ? // Very high z-index + !important overrides so the overlay breaks
-            // out of any container constraints, matching the previous styles.
-            "fixed! inset-0! z-[9999] m-0! h-screen! w-screen! transform-none! p-0!"
-          : "relative top-0 left-0 z-[1]"
-      } ${whiteBackground ? "bg-[#fdf9f6]" : "bg-transparent"} ${
-        className ?? ""
-      }`}
-    >
-      <div
-        className={`flex -translate-y-[60px] items-center justify-center max-[768px]:-translate-y-[50px] ${containerSizeClasses[size]}`}
-      >
-        <LottieBoundary>
-          <Lottie animationData={loadingAnimation} loop={true} autoplay={true} />
-        </LottieBoundary>
-      </div>
+    <div className="pointer-events-none fixed inset-0 z-[9999]">
+      <DailyLoading label={label} />
     </div>
   );
 
-  // For fullScreen mode, use portal to render at document body level
-  if (fullScreen && mounted && typeof document !== "undefined") {
+  if (mounted && typeof document !== "undefined") {
     return createPortal(loadingElement, document.body);
   }
 
-  // For non-fullScreen mode, render normally
   return loadingElement;
 }
