@@ -211,6 +211,39 @@ export const publishToThreads = async (
   return { mediaId, permalink: await permalinkOf(account, mediaId) };
 };
 
+// Posts each reply under the previous post, so a daily thread reads top to bottom.
+// Returns the media ids of the replies in order.
+export const publishThreadsReplies = async (
+  account: ChannelAccount,
+  parentMediaId: string,
+  replies: string[],
+): Promise<string[]> => {
+  const endpoint = `${THREADS_API}/${account.accountId}/threads`;
+  const ids: string[] = [];
+  let replyTo = parentMediaId;
+  for (const text of replies) {
+    const containerId = idOf(
+      await graph("threads", "POST", endpoint, { media_type: "TEXT", text, reply_to_id: replyTo }, account.accessToken),
+      "reply container",
+      "threads",
+    );
+    await waitForContainer(account, containerId);
+    replyTo = idOf(
+      await graph(
+        "threads",
+        "POST",
+        `${THREADS_API}/${account.accountId}/threads_publish`,
+        { creation_id: containerId },
+        account.accessToken,
+      ),
+      "reply",
+      "threads",
+    );
+    ids.push(replyTo);
+  }
+  return ids;
+};
+
 export const publishToInstagram = async (
   account: ChannelAccount,
   caption: string,

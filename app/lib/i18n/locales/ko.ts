@@ -1209,6 +1209,7 @@ const ko = {
         sectionTitle: "게시 채널",
         sectionDescription: "이 템플릿을 올릴 채널을 고르세요. 채널마다 따로 실행 기록이 남고, 여러 채널을 고르면 몇 분 간격으로 차례대로 게시됩니다.",
         names: { koreapas: "고파스", threads: "스레드", instagram: "인스타그램" },
+        triggerDaily: "일일 게시물",
         gopasSectionTitle: "고파스 본문",
         threadsText: "스레드 본문",
         threadsTextHint: "추적 링크가 끝에 자동으로 붙습니다. 링크까지 합쳐 500자 이내여야 해서 본문은 450자까지 쓸 수 있어요. 사진을 추가하면 함께 올라갑니다.",

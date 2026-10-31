@@ -1530,7 +1530,11 @@ export default function GrowthDashboard() {
                         {channelName}
                       </span>
                       <span className="text-[12px] font-extrabold text-[rgba(5,5,5,0.58)]">
-                        {run.trigger === "manual" ? marketing.triggerManual : marketing.triggerScheduled}
+                        {run.trigger === "manual"
+                          ? marketing.triggerManual
+                          : run.trigger === "daily"
+                            ? marketing.channels.triggerDaily
+                            : marketing.triggerScheduled}
                       </span>
                     </div>
                     <h3 className="m-0 text-[18px] font-black leading-[1.32] text-[#050505]">{displayTitle}</h3>

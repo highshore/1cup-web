@@ -135,7 +135,7 @@ const toRun = (row: Record<string, unknown>): MarketingCronRun => ({
   id: String(row.id ?? ""),
   templateId: typeof row.template_id === "string" ? row.template_id : "",
   channel: isChannel(row.channel) ? row.channel : "koreapas",
-  trigger: row.trigger === "manual" ? "manual" : "schedule",
+  trigger: row.trigger === "manual" ? "manual" : row.trigger === "daily" ? "daily" : "schedule",
   status: (row.status as MarketingRunStatus) || "queued",
   scheduledFor: toDate(row.scheduled_for),
   startedAt: toDate(row.started_at),

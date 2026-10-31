@@ -1209,6 +1209,7 @@ const en = {
         sectionTitle: "Channels",
         sectionDescription: "Choose where this template posts. Each channel gets its own run record; with several channels, they post one after another a few minutes apart.",
         names: { koreapas: "Gopas", threads: "Threads", instagram: "Instagram" },
+        triggerDaily: "Daily post",
         gopasSectionTitle: "Gopas body",
         threadsText: "Threads text",
         threadsTextHint: "The tracking link is appended automatically. Text plus link must fit in 500 characters, so keep the text to 450. Photos are attached when added.",
