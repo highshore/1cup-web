@@ -115,7 +115,10 @@ export interface VariantStat {
 }
 
 export interface SocialChannelOverview {
+  /** Posts that still need attention; published ones are in the channel's post history. */
   posts: SocialDailyPost[];
+  /** Today and/or tomorrow (KST) when a post already exists for that day, in any status. */
+  takenDates: string[];
   slots: SlotStat[];
   /** media and structure are empty on Instagram. */
   variants: { media: VariantStat[]; structure: VariantStat[]; hook: VariantStat[] };

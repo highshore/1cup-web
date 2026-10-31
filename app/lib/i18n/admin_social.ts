@@ -64,6 +64,10 @@ const adminSocial = {
       experimentsTitle: "What's working (formats and openings)",
       experimentsDescription:
         "Each option is scored by views 24 hours after posting. Until every option has 4 scored posts the least-tried one is used; after that the best one, with the runner-up tried one day in five. Choosing an option yourself when drafting still counts toward its score.",
+      emptyAllPublished: "Nothing waiting. Today's and tomorrow's posts are done or published.",
+      archiveNote: "Published posts leave this list and are kept in the post history with their views and clicks.",
+      historyLink: "Go to post history ↓",
+      publishedNotice: "The {date} post is published and moved to the post history.",
       generateToday: "Draft today's post",
       generateTomorrow: "Draft tomorrow's post",
       generating: "Drafting… (up to a minute)",
@@ -216,6 +220,10 @@ const adminSocial = {
       experimentsTitle: "잘 되는 형식과 첫 문장",
       experimentsDescription:
         "선택지마다 게시 후 24시간 조회수로 점수를 매깁니다. 모든 선택지에 4개씩 측정될 때까지는 가장 적게 쓴 것을 쓰고, 그 뒤에는 가장 좋은 것을 쓰되 5일에 한 번은 2위를 다시 시험합니다. 직접 고른 선택지도 점수에 반영됩니다.",
+      emptyAllPublished: "처리할 게시물이 없습니다. 오늘·내일 게시물은 이미 준비됐거나 게시됐어요.",
+      archiveNote: "게시된 글은 이 목록에서 빠지고, 조회수·클릭과 함께 게시 기록에 보관됩니다.",
+      historyLink: "게시 기록 보기 ↓",
+      publishedNotice: "{date} 게시물이 게시되어 게시 기록으로 옮겨졌어요.",
       generateToday: "오늘 게시물 만들기",
       generateTomorrow: "내일 게시물 만들기",
       generating: "작성 중… (최대 1분)",

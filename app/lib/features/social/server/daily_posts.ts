@@ -93,18 +93,32 @@ async function getRow(id: string): Promise<Record<string, unknown>> {
   return data as Record<string, unknown>;
 }
 
+// The panel lists only posts that still need something: drafts, approved posts waiting
+// for their time, posts being published, recent failures (to retry), and today's or
+// tomorrow's rejected or missed post (to rewrite). Published posts leave the list; they
+// are in the channel's post history (marketing_cron_runs) with their metrics.
+// `takenDates` says whether today and tomorrow already have a post, so the panel does
+// not offer to draft a day whose post was already published.
 export async function channelOverview(channel: SocialChannel): Promise<SocialChannelOverview> {
-  const { data, error } = await admin()
-    .from(TABLE)
-    .select("*")
-    .eq("channel", channel)
-    .gte("post_date", kstDate(-7))
-    .order("post_date", { ascending: false })
-    .limit(14);
-  if (error) throw new SocialPostError(error.message, 500);
-  const scored = await scoredPosts(channel);
+  const db = admin();
+  const today = kstDate(0);
+  const [active, taken, scored] = await Promise.all([
+    db
+      .from(TABLE)
+      .select("*")
+      .eq("channel", channel)
+      .or(
+        `status.in.(draft,approved,publishing),and(status.eq.failed,post_date.gte.${kstDate(-2)}),and(status.in.(rejected,expired),post_date.gte.${today})`,
+      )
+      .order("post_date", { ascending: false })
+      .limit(20),
+    db.from(TABLE).select("post_date").eq("channel", channel).in("post_date", [today, kstDate(1)]),
+    scoredPosts(channel),
+  ]);
+  if (active.error) throw new SocialPostError(active.error.message, 500);
   return {
-    posts: (data ?? []).map((row) => toPost(row as Record<string, unknown>)),
+    posts: (active.data ?? []).map((row) => toPost(row as Record<string, unknown>)),
+    takenDates: (taken.data ?? []).map((row) => String(row.post_date)),
     slots: slotStats(channel, scored),
     variants: variantStats(channel, scored),
   };
