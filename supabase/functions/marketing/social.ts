@@ -145,16 +145,25 @@ export const refreshAccessToken = async (
 };
 
 // ------------------------------------------------------------------- publish
+// Text, one image, a carousel of images, or (with videoUrl) a single video. Videos are
+// processed by Threads before they can publish, so their container gets the longer wait.
 export const publishToThreads = async (
   account: ChannelAccount,
   text: string,
   imageUrls: string[],
+  videoUrl?: string,
 ): Promise<PublishResult> => {
   const endpoint = `${THREADS_API}/${account.accountId}/threads`;
   const images = imageUrls.slice(0, THREADS_MAX_IMAGES);
   let containerId: string;
 
-  if (images.length === 0) {
+  if (videoUrl) {
+    containerId = idOf(
+      await graph("threads", "POST", endpoint, { media_type: "VIDEO", video_url: videoUrl, text }, account.accessToken),
+      "container",
+      "threads",
+    );
+  } else if (images.length === 0) {
     containerId = idOf(
       await graph("threads", "POST", endpoint, { media_type: "TEXT", text }, account.accessToken),
       "container",
@@ -197,7 +206,7 @@ export const publishToThreads = async (
     );
   }
 
-  await waitForContainer(account, containerId);
+  await waitForContainer(account, containerId, videoUrl ? VIDEO_POLL_ATTEMPTS : CONTAINER_POLL_ATTEMPTS);
   const mediaId = idOf(
     await graph(
       "threads",

@@ -15,15 +15,23 @@ import {
   CAROUSEL_MIN_SLIDES,
   type CarouselContent,
   type CardSlide,
+  HOOK_LIMIT,
+  HOOK_STYLES,
+  type HookOption,
+  type HookStyle,
   NARRATION_LINE_LIMIT,
   REEL_MAX_SLIDES,
   type ReelContent,
   type SocialPostFormat,
   type SocialChannel,
+  THREAD_MAX_CARDS,
   THREAD_MAX_REPLIES,
   THREAD_REPLY_LIMIT,
   THREAD_TEXT_LIMIT,
+  THREAD_VIDEO_MAX_SCENES,
   type ThreadContent,
+  type ThreadMedia,
+  type ThreadStructure,
 } from "../types";
 
 // OpenAI GPT Luna through the Responses API, like One Cup Daily's hook writer
@@ -65,13 +73,7 @@ const P = {
     key: "insight",
     label: "고객 인사이트",
     brief: `Benefit-led post that sells One Cup Daily. Structure:
-1) HOOK — open with a pain-point line that calls out one specific reader and situation, in the style of these examples (write a new one each time; never copy them verbatim):
-   - 영어 회의에서 "I think..."만 외치는 당신에게
-   - 회의 끝나고 '아, 그 말 할걸' 하는 사람들
-   - 영어 메일 한 줄에 10분 쓰고 있다면
-   - 토익 900인데 왜 회의에선 한마디도 못 할까
-   - 외국계 공고, 영어 면접 때문에 망설이고 있다면
-   Pick the reader from: office workers in English meetings, people writing English emails, client or partner calls, foreign-company job seekers, people whose test scores are high but who freeze when speaking.
+1) HOOK — the chosen opening, aimed at one specific reader and situation. Pick the reader from: office workers in English meetings, people writing English emails, client or partner calls, foreign-company job seekers, people whose test scores are high but who freeze when speaking.
 2) WHY — name the real gap in one or two lines (no ready-made phrases for real work situations; textbook English).
 3) UPGRADE — show 2 or 3 concrete before → after lines using this week's Daily expressions from the material.
 4) WHAT DAILY GIVES — only facts from the Daily product description (interpreter-picked business expression every weekday at 8 AM on KakaoTalk, meaning + nuance + examples + dialogue + native audio + one-minute quiz, Saturday review, two levels, no app). No testimonials, success numbers, or promises of results.
@@ -201,13 +203,65 @@ export const materialSource = (material: Material, pillar: Pillar) => ({
 // --------------------------------------------------------------------- draft
 const BRAND = `You write social posts whose single goal is to get people to start "One Cup Daily" (원컵 데일리, by 영어 한잔): the first day is free, and the link is in the profile.
 One Cup Daily facts (the only product claims you may make): a business English expression picked by an interpreter who works with global executives, sent every weekday at 8 AM on KakaoTalk (no app to install); each lesson has the meaning, nuance, example sentences, a short dialogue from real work situations (meetings, 1:1s, emails), native-speaker audio, and a one-minute quiz; a review arrives on Saturdays; two levels (초·중급, 고급); about 20 expressions a month; the first day is free, then about ₩${DAILY_PRICE_PER_DAY_KRW} a day, cancel anytime.
-Audience: Korean office workers and job seekers in their 20s and 30s who freeze in English meetings, emails and calls. Voice: warm, smart, a little playful; Korean first with English where it teaches. Lead with a hook that names a real situation the reader struggles with whenever the theme allows, and make the payoff concrete: what they will be able to say tomorrow. Do not promote the offline meetup. Never invent facts, testimonials, statistics, numbers, dates, people or guarantees beyond the material and the facts above. No URLs anywhere (the system adds tracking links). No Markdown. No more than one emoji per paragraph.`;
+Audience: Korean office workers and job seekers in their 20s and 30s who freeze in English meetings, emails and calls. Voice: warm, smart, a little playful; Korean first with English where it teaches. The opening decides everything (see the opening rules in the prompt); after it, make the payoff concrete: what they will be able to say tomorrow. Do not promote the offline meetup. Never invent facts, testimonials, statistics, numbers, dates, people or guarantees beyond the material and the facts above. No URLs anywhere (the system adds tracking links). No Markdown. No more than one emoji per paragraph.`;
 
-const REEL_FORMAT = `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}], "narration": string[]} for a 20 to 45 second Instagram Reel. Make 4 to ${REEL_MAX_SLIDES} slides shown one after another, each on screen while its narration line is read aloud; "narration" has exactly one line per slide. Slide 1 is the hook: an eyebrow label and a Korean title (max 32 characters) that stops the scroll. Slide titles max 30 characters, body max 90 characters (keep frames uncluttered), "highlight" an English sentence or term (max 90 characters) or "". Each narration line (max ${NARRATION_LINE_LIMIT} characters) is natural spoken Korean that a narrator reads in about 3 to 7 seconds; include the English expression itself where it teaches, written plainly so text-to-speech pronounces it well (no emoji, no hashtags, no brackets). The last slide and line invite people to get One Cup Daily free for the first day and say the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the reel, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`;
+// The opening is what people see before deciding to stop scrolling: a Threads post's
+// first line, card 1's title, a reel's first scene and first spoken words. Every draft
+// writes one opening per style, uses the day's assigned style, and the admin can swap
+// in another. Styles are scored by 24-hour views (server/variants.ts).
+export const HOOK_GUIDE: Record<HookStyle, string> = {
+  callout:
+    'Call out one specific reader in one specific moment so they think "that is me". e.g. 영어 회의에서 "I think..."만 외치는 당신에게 / 영어 메일 한 줄에 10분 쓰고 있다면',
+  mistake:
+    "Point at something many Koreans say at work that lands differently than they think, and hold back the fix. Only claim what the lesson's meaning and nuance support. e.g. 상사한테 \"Please check it\" 보내기 전에 잠깐만요 / 회의에서 \"I have a question\"으로 시작하면 생기는 일",
+  contrast:
+    "Two ways to say the same thing, one plain and one that sounds like a pro, with the gap made obvious. e.g. 같은 '확인해볼게요'인데 하나는 신입, 하나는 팀장처럼 들려요 / '바빠요'를 이렇게 말하면 일 잘하는 사람 같아요",
+  quiz:
+    "A three-second challenge the reader tries in their head before reading on. e.g. '그건 회의 끝나고 따로 얘기해요' 영어로 3초 안에 말해보세요 / 빈칸 하나만 채우면 원어민 메일이 됩니다",
+  curiosity:
+    "Show an English phrase people hear at work but would misread, and ask what it means. e.g. 외국인 팀장이 \"Let's take this offline\"이라고 하면 회의실을 나가야 할까요? / \"Ping me\"는 핑퐁이 아닙니다",
+  confession:
+    "A moment everyone has had, told as a shared experience (never as a real customer's story or testimonial). e.g. 회의 끝나고 샤워하다가 '아 그 말 할걸' 했던 적 있다면 / 토익 900인데 스몰토크에서 웃기만 했던 날",
+};
 
-const FORMAT: Record<SocialChannel, string> = {
-  threads: `Return JSON {"text": string, "replies": string[]} for a Threads thread. "text" (max ${THREAD_TEXT_LIMIT} characters) is the hook: a question or surprising point that makes people reply. "replies" (1 to 3 items, each max ${THREAD_REPLY_LIMIT} characters) continue it: the explanation, the answer, examples. The last reply ends with a one-line invitation to get One Cup Daily free for the first day. Do not write a link line yourself: the system adds "☕ 원컵데일리 하루 무료로 받아보기 👉 <link>" to the end of "text". Use at most one topic hashtag in total, placed in "text".`,
-  instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label and a punchy Korean title (max 32 characters; for benefit-led posts this is the pain-point hook), body as a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to get One Cup Daily free for the first day and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
+const HOOK_RULES = `Opening rules (the first line of a post, the first card's title and a reel's first scene):
+- It must stand alone and stop the scroll in under two seconds: at most 34 Korean characters, one idea, ideally a concrete work moment (meeting, email, 1:1, call, interview) or the English phrase itself.
+- Open a loop and pay it off later in the post, never in the first line: the reader must feel "I need to see the answer" or "this is about me".
+- Write all six openings below, one per style, each built from today's material (not the examples, which only show the style; never copy them):
+${HOOK_STYLES.map((style) => `  ${style}: ${HOOK_GUIDE[style]}`).join("\n")}
+- Never open with: a greeting, the brand or product name, "오늘의 표현", "여러분", a generic question ("영어 공부 힘드시죠?"), hype words (충격, 대박, 인생이 바뀌는), or a promise the post does not keep.
+- The second line or second card keeps them reading (a teaser of the answer, or the stakes), not the CTA.`;
+
+const REEL_FORMAT = `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}], "narration": string[]} plus "hooks": [{"style": string, "text": string}] and "hookStyle": string for a 20 to 45 second Instagram Reel. Make 4 to ${REEL_MAX_SLIDES} slides shown one after another, each on screen while its narration line is read aloud; "narration" has exactly one line per slide. Slide 1 is the opening: its title is the chosen opening (max 34 characters), its body a short teaser or "", and narration line 1 says the opening within the first two seconds (no greeting, no introduction). Slide titles max 30 characters, body max 90 characters (keep frames uncluttered), "highlight" an English sentence or term (max 90 characters) or "". Each narration line (max ${NARRATION_LINE_LIMIT} characters) is natural spoken Korean that a narrator reads in about 3 to 7 seconds; include the English expression itself where it teaches, written plainly so text-to-speech pronounces it well (no emoji, no hashtags, no brackets). The last slide and line invite people to get One Cup Daily free for the first day and say the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with the chosen opening (or a close variant of it) as its first line, recaps the reel, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`;
+
+const LINK_NOTE = `Do not write a link line yourself: the system adds "☕ 원컵데일리 하루 무료로 받아보기 👉 <link>" to the end of "text". Use at most one topic hashtag in total, placed in "text".`;
+
+const SLIDE_SHAPE = `{"eyebrow": string, "title": string, "body": string, "highlight": string}`;
+
+// A Threads post is one of six shapes: text only, with cards, or with a short video,
+// either self-contained or continued in replies.
+export function threadFormat(structure: ThreadStructure, media: ThreadMedia): string {
+  const fields = [
+    `"text": string`,
+    `"replies": string[]`,
+    ...(media === "text" ? [] : [`"slides": [${SLIDE_SHAPE}]`]),
+    ...(media === "video" ? [`"narration": string[]`] : []),
+  ];
+  const body =
+    structure === "single"
+      ? `"text" (max ${THREAD_TEXT_LIMIT} characters) is the whole post and must work on its own: the opening as line 1, then the payoff in a few short lines (the expression, what it means, one example), then a one-line invitation to get One Cup Daily free for the first day. Use short lines and blank lines; no wall of text. "replies" is [].`
+      : `"text" (max ${THREAD_TEXT_LIMIT} characters) is the opening post: line 1 is the opening, then one or two lines that make people want the answer (it is fine to end with "👇" or a question). "replies" (1 to 3 items, each max ${THREAD_REPLY_LIMIT} characters) pay it off: the explanation, the answer, examples. The last reply ends with a one-line invitation to get One Cup Daily free for the first day.`;
+  const visual =
+    media === "image"
+      ? ` "slides" (1 to ${THREAD_MAX_CARDS} cards, 4:5 images attached to the first post) make the picture itself stop the scroll: card 1's title is the opening or its visual twin (max 34 characters) with body "" or a one-line teaser; any further cards each show one point (title max 30 characters, body max 100, "highlight" an English sentence max 90 characters or ""). Quiz posts put the question on card 1 and keep the answer for a later card or reply. The cards add to the text; do not paste the text into them.`
+      : media === "video"
+        ? ` "slides" (3 to ${THREAD_VIDEO_MAX_SCENES} scenes of a 15 to 30 second vertical video attached to the first post) with "narration" (exactly one spoken line per scene, max ${NARRATION_LINE_LIMIT} characters, natural Korean read in 3 to 6 seconds, the English expression written plainly for text-to-speech; no emoji, hashtags or brackets). Scene 1's title is the opening (max 34 characters) and narration line 1 says it within the first two seconds. Scene titles max 30 characters, body max 90, "highlight" an English sentence or "". The last scene invites people to get One Cup Daily free for the first day and says the link is in the post.`
+        : "";
+  return `Return JSON {${fields.join(", ")}, "hooks": [{"style": string, "text": string}], "hookStyle": string} for a Threads post. ${body}${visual} ${LINK_NOTE}`;
+}
+
+const FORMAT: Record<"instagram", string> = {
+  instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} plus "hooks": [{"style": string, "text": string}] and "hookStyle": string for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label, the chosen opening as its title (max 34 characters), body a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to get One Cup Daily free for the first day and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with the chosen opening (or a close variant of it) as its first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
 };
 
 type ResponsesPayload = {
@@ -262,27 +316,8 @@ export const cleanText = (text: string) =>
 
 const str = (value: unknown, max: number) => (typeof value === "string" ? cleanText(value).slice(0, max) : "");
 
-export const normalizeThread = (raw: Json): ThreadContent => {
-  const text = str(raw.text, THREAD_TEXT_LIMIT);
-  if (!text) throw new Error("Thread text is empty.");
-  const replies = (Array.isArray(raw.replies) ? raw.replies : [])
-    .map((reply) => str(reply, THREAD_REPLY_LIMIT))
-    .filter(Boolean)
-    .slice(0, THREAD_MAX_REPLIES);
-  return { text, replies };
-};
-
-export const normalizeReel = (raw: Json): ReelContent => {
-  const carousel = normalizeCarousel({ ...raw, slides: Array.isArray(raw.slides) ? raw.slides.slice(0, REEL_MAX_SLIDES) : [] });
-  const lines = Array.isArray(raw.narration) ? raw.narration : [];
-  // One line per slide; a missing line leaves that slide silent rather than shifting the rest.
-  const narration = carousel.slides.map((_, index) => str(lines[index], NARRATION_LINE_LIMIT));
-  if (narration.every((line) => !line)) throw new Error("The reel has no narration.");
-  return { ...carousel, narration };
-};
-
-export const normalizeCarousel = (raw: Json): CarouselContent => {
-  const slides: CardSlide[] = (Array.isArray(raw.slides) ? raw.slides : [])
+const normalizeSlides = (raw: unknown, max: number): CardSlide[] =>
+  (Array.isArray(raw) ? raw : [])
     .map((slide) => {
       const value = (slide ?? {}) as Json;
       return {
@@ -293,24 +328,97 @@ export const normalizeCarousel = (raw: Json): CarouselContent => {
       };
     })
     .filter((slide) => slide.title)
-    .slice(0, CAROUSEL_MAX_SLIDES);
+    .slice(0, max);
+
+// One line per slide; a missing line leaves that slide silent rather than shifting the rest.
+const normalizeNarration = (raw: unknown, slides: CardSlide[]) => {
+  const lines = Array.isArray(raw) ? raw : [];
+  const narration = slides.map((_, index) => str(lines[index], NARRATION_LINE_LIMIT));
+  if (narration.every((line) => !line)) throw new Error("The video has no narration.");
+  return narration;
+};
+
+const isHookStyle = (value: unknown): value is HookStyle => HOOK_STYLES.includes(value as HookStyle);
+
+// Openings arrive as [{style, text}]; keep one per known style, in the guide's order.
+const normalizeHooks = (raw: Json): Pick<ThreadContent, "hooks" | "hookStyle"> => {
+  const hooks: HookOption[] = [];
+  for (const item of Array.isArray(raw.hooks) ? raw.hooks : []) {
+    const value = (item ?? {}) as Json;
+    const text = str(value.text, HOOK_LIMIT).split("\n")[0].trim();
+    if (isHookStyle(value.style) && text && !hooks.some((hook) => hook.style === value.style)) {
+      hooks.push({ style: value.style, text });
+    }
+  }
+  hooks.sort((a, b) => HOOK_STYLES.indexOf(a.style) - HOOK_STYLES.indexOf(b.style));
+  return { hooks, hookStyle: isHookStyle(raw.hookStyle) ? raw.hookStyle : "" };
+};
+
+export const normalizeThread = (raw: Json, media: ThreadMedia = "text", structure?: ThreadStructure): ThreadContent => {
+  const text = str(raw.text, THREAD_TEXT_LIMIT);
+  if (!text) throw new Error("Thread text is empty.");
+  const replies =
+    structure === "single"
+      ? []
+      : (Array.isArray(raw.replies) ? raw.replies : [])
+          .map((reply) => str(reply, THREAD_REPLY_LIMIT))
+          .filter(Boolean)
+          .slice(0, THREAD_MAX_REPLIES);
+  const content: ThreadContent = { text, replies, ...normalizeHooks(raw) };
+  if (media === "image") {
+    content.slides = normalizeSlides(raw.slides, THREAD_MAX_CARDS);
+    if (content.slides.length === 0) throw new Error("The post needs at least one card.");
+  } else if (media === "video") {
+    content.slides = normalizeSlides(raw.slides, THREAD_VIDEO_MAX_SCENES);
+    if (content.slides.length < 2) throw new Error("The video needs at least two scenes.");
+    content.narration = normalizeNarration(raw.narration, content.slides);
+  }
+  return content;
+};
+
+export const normalizeReel = (raw: Json): ReelContent => {
+  const carousel = normalizeCarousel({ ...raw, slides: Array.isArray(raw.slides) ? raw.slides.slice(0, REEL_MAX_SLIDES) : [] });
+  return { ...carousel, narration: normalizeNarration(raw.narration, carousel.slides) };
+};
+
+export const normalizeCarousel = (raw: Json): CarouselContent => {
+  const slides = normalizeSlides(raw.slides, CAROUSEL_MAX_SLIDES);
   if (slides.length < CAROUSEL_MIN_SLIDES) throw new Error("The carousel needs at least three slides.");
   const caption = str(raw.caption, CAROUSEL_CAPTION_LIMIT);
   if (!caption) throw new Error("Instagram caption is empty.");
-  return { caption, slides };
+  return { caption, slides, ...normalizeHooks(raw) };
 };
+
+export interface DraftOptions {
+  format: SocialPostFormat;
+  hookStyle: HookStyle;
+  /** Threads only. */
+  threadMedia?: ThreadMedia;
+  threadStructure?: ThreadStructure;
+  /** First lines of recent posts, so the new one does not repeat them. */
+  recentPosts: string[];
+  /** Our own best and worst openers by 24-hour views (server/variants.ts). */
+  lessons?: { strong: string[]; weak: string[] };
+}
 
 export async function draftPost(
   channel: SocialChannel,
   postDate: string,
   pillar: Pillar,
   material: Material,
-  recentPosts: string[],
-  format: SocialPostFormat = channel === "threads" ? "thread" : "carousel",
+  options: DraftOptions,
 ): Promise<ThreadContent | CarouselContent | ReelContent> {
+  const { format, hookStyle, recentPosts, lessons } = options;
+  const media = options.threadMedia ?? "text";
+  const structure = options.threadStructure ?? "chain";
   const prompt = [
     `Post date (KST): ${postDate}. Theme: ${pillar.label} — ${pillar.brief}`,
-    format === "reel" ? REEL_FORMAT : FORMAT[channel],
+    channel === "threads" ? threadFormat(structure, media) : format === "reel" ? REEL_FORMAT : FORMAT.instagram,
+    HOOK_RULES,
+    `Today's assigned opening style is "${hookStyle}": set "hookStyle" to "${hookStyle}" and open the post with that style's opening from "hooks". Make it the strongest of the six.`,
+    lessons?.strong.length
+      ? `How our own audience reacted (views 24 hours after posting). Learn what made the strong ones work (specificity, situation, tension) without copying them:\nStrong:\n${lessons.strong.map((line) => `- ${line}`).join("\n")}\nWeak:\n${lessons.weak.map((line) => `- ${line}`).join("\n")}`
+      : "",
     recentPosts.length
       ? `Do not repeat these recent posts' angles or wording:\n${recentPosts.map((post) => `- ${clip(post, 160)}`).join("\n")}`
       : "",
@@ -319,6 +427,9 @@ export async function draftPost(
     .filter(Boolean)
     .join("\n\n");
   const raw = await callModel(prompt);
-  if (channel === "threads") return normalizeThread(raw);
-  return format === "reel" ? normalizeReel(raw) : normalizeCarousel(raw);
+  const content =
+    channel === "threads" ? normalizeThread(raw, media, structure) : format === "reel" ? normalizeReel(raw) : normalizeCarousel(raw);
+  // The model sometimes forgets the field; the assigned style is what the post was asked for.
+  if (!content.hookStyle) content.hookStyle = hookStyle;
+  return content;
 }

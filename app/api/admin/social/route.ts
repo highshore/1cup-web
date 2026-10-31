@@ -4,6 +4,8 @@ import {
   channelOverview,
   generateDailyPost,
   isPostDate,
+  isThreadMedia,
+  isThreadStructure,
   publishDailyPostNow,
   saveDailyPost,
   setDailyPostStatus,
@@ -12,7 +14,7 @@ import {
 import { SOCIAL_PILLARS, type SocialChannel, type SocialPillar } from "../../../lib/features/social/types";
 
 export const runtime = "nodejs";
-// Generating a carousel drafts with Gemini and renders up to eight cards.
+// Generating drafts with GPT Luna, then renders up to eight cards or builds a video.
 export const maxDuration = 300;
 
 const isChannel = (value: unknown): value is SocialChannel => value === "threads" || value === "instagram";
@@ -39,8 +41,10 @@ export async function GET(request: NextRequest) {
 }
 
 // POST { action, ... }:
-//   generate  { channel, postDate, replace?, pillar?, format? }  draft (or redraft) a day's post;
-//             format "carousel" | "reel" applies to Instagram
+//   generate  { channel, postDate, replace?, pillar?, format?, threadMedia?, threadStructure? }
+//             draft (or redraft) a day's post; format "carousel" | "reel" applies to Instagram,
+//             threadMedia "text" | "image" | "video" and threadStructure "single" | "chain" to
+//             Threads (left out, the experiment optimizer picks them)
 //   save      { id, content?, scheduledFor? }  edit text/slides (re-renders cards) or time
 //   approve | reject | unapprove { id }
 //   publish-now { id }   approve, set the time to now and run the publisher immediately
@@ -54,13 +58,13 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "channel or postDate is invalid." }, { status: 400 });
         }
         return NextResponse.json(
-          await generateDailyPost(
-            body.channel,
-            body.postDate,
-            body.replace === true,
-            typeof body.pillar === "string" && SOCIAL_PILLARS.includes(body.pillar as SocialPillar) ? body.pillar : undefined,
-            body.format === "carousel" || body.format === "reel" ? body.format : undefined,
-          ),
+          await generateDailyPost(body.channel, body.postDate, {
+            replace: body.replace === true,
+            pillar: typeof body.pillar === "string" && SOCIAL_PILLARS.includes(body.pillar as SocialPillar) ? body.pillar : undefined,
+            format: body.format === "carousel" || body.format === "reel" ? body.format : undefined,
+            threadMedia: isThreadMedia(body.threadMedia) ? body.threadMedia : undefined,
+            threadStructure: isThreadStructure(body.threadStructure) ? body.threadStructure : undefined,
+          }),
         );
       case "save":
         if (!isId(body.id)) return NextResponse.json({ error: "id is invalid." }, { status: 400 });

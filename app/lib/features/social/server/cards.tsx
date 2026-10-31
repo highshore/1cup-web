@@ -15,6 +15,11 @@ export const CARD_HEIGHT = 1350;
 // so the card and the subtitle stay inside that safe area.
 export const REEL_HEIGHT = 1920;
 
+// The last card's call to action. Instagram posts point at the profile link; Threads
+// posts carry the link in the post itself.
+export const PROFILE_CTA = "프로필 링크에서 하루 무료 →";
+export const POST_LINK_CTA = "글 속 링크에서 하루 무료 →";
+
 const INK = "#050505";
 const ORANGE = "#f47a4a";
 const PAGE = "#f7f6f2";
@@ -50,17 +55,37 @@ async function loadFonts() {
 // unbreakable words instead, with each quoted phrase kept as a single word.
 // An opening quote must not follow a letter (so "won't" is not a quote) and a closing
 // quote must not be followed by a Latin letter; a Korean particle may follow ("..."만).
+// A quoted phrase too wide for one line ("'그건 회의 끝나고 따로 얘기해요' 영어로?" on a cover)
+// would run off the card, so it is only kept whole when its estimated width fits.
 const QUOTED = /((?<![\p{L}\p{N}])["“'‘][^"”'’\n]{1,28}?["”'’](?![A-Za-z])[^\s]*)/u;
-export const textTokens = (text: string): string[] =>
+const WIDE = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u3000-\u9fff\uff00-\uffef]/;
+/** Rough rendered width in ems: Hangul and other full-width glyphs ~0.95, the rest ~0.55. */
+export const emWidth = (text: string) => [...text].reduce((sum, char) => sum + (WIDE.test(char) ? 0.95 : 0.55), 0);
+
+export const textTokens = (text: string, maxEms = Infinity): string[] =>
   text
     .split(QUOTED)
-    .flatMap((part, index) => (index % 2 === 1 ? [part] : part.split(/\s+/)))
+    .flatMap((part, index) => (index % 2 === 1 && emWidth(part) <= maxEms ? [part] : part.split(/\s+/)))
     .filter(Boolean);
 
-function WrappedText({ text, fontSize, style }: { text: string; fontSize: number; style: Record<string, unknown> }) {
+// Width of the text column inside a card (1080 minus page and card padding and borders),
+// minus a margin; boxed text (the highlight) is narrower still.
+const TEXT_WIDTH = 760;
+
+function WrappedText({
+  text,
+  fontSize,
+  style,
+  width = TEXT_WIDTH,
+}: {
+  text: string;
+  fontSize: number;
+  style: Record<string, unknown>;
+  width?: number;
+}) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", columnGap: Math.round(fontSize * 0.28), fontSize, ...style }}>
-      {textTokens(text).map((token, index) => (
+      {textTokens(text, width / fontSize).map((token, index) => (
         <span key={index} style={{ whiteSpace: "nowrap" }}>
           {token}
         </span>
@@ -75,12 +100,14 @@ function Slide({
   total,
   reel = false,
   subtitle = "",
+  cta = PROFILE_CTA,
 }: {
   slide: CardSlide;
   index: number;
   total: number;
   reel?: boolean;
   subtitle?: string;
+  cta?: string;
 }) {
   const isCover = index === 0;
   const isLast = index === total - 1 && total > 1;
@@ -154,7 +181,7 @@ function Slide({
                 borderRadius: 28,
               }}
             >
-              <WrappedText text={slide.highlight} fontSize={40} style={{ fontWeight: 700, lineHeight: 1.4 }} />
+              <WrappedText text={slide.highlight} fontSize={40} width={TEXT_WIDTH - 80} style={{ fontWeight: 700, lineHeight: 1.4 }} />
             </div>
           )}
         </div>
@@ -169,7 +196,7 @@ function Slide({
               borderRadius: 24,
             }}
           >
-            <WrappedText text={subtitle} fontSize={38} style={{ fontWeight: 700, lineHeight: 1.45 }} />
+            <WrappedText text={subtitle} fontSize={38} width={TEXT_WIDTH - 70} style={{ fontWeight: 700, lineHeight: 1.45 }} />
           </div>
         )}
 
@@ -179,7 +206,7 @@ function Slide({
             <div style={{ display: "flex", fontSize: 30, fontWeight: 900, color: ORANGE, letterSpacing: 1 }}>DAILY</div>
           </div>
           <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: isLast ? ORANGE : muted }}>
-            {isLast ? "프로필 링크에서 하루 무료 →" : "매일 아침 카톡으로 오는 영어"}
+            {isLast ? cta : "매일 아침 카톡으로 오는 영어"}
           </div>
         </div>
       </div>
@@ -191,28 +218,28 @@ export async function renderSlidePng(
   slide: CardSlide,
   index: number,
   total: number,
-  options: { reel?: boolean; subtitle?: string } = {},
+  options: { reel?: boolean; subtitle?: string; cta?: string } = {},
 ): Promise<Buffer> {
   const fonts = await loadFonts();
   const png = await new ImageResponse(
-    <Slide slide={slide} index={index} total={total} reel={options.reel} subtitle={options.subtitle} />,
+    <Slide slide={slide} index={index} total={total} reel={options.reel} subtitle={options.subtitle} cta={options.cta} />,
     { width: CARD_WIDTH, height: options.reel ? REEL_HEIGHT : CARD_HEIGHT, fonts },
   ).arrayBuffer();
   return Buffer.from(png);
 }
 
-export async function renderSlideJpeg(slide: CardSlide, index: number, total: number): Promise<Buffer> {
-  return sharp(await renderSlidePng(slide, index, total)).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+export async function renderSlideJpeg(slide: CardSlide, index: number, total: number, cta?: string): Promise<Buffer> {
+  return sharp(await renderSlidePng(slide, index, total, { cta })).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
 }
 
 // File names hash the slide content, so an edited slide gets a new URL (no stale CDN
 // copy) while re-rendering unchanged slides overwrites the same object.
-export async function renderAndStoreSlides(postId: string, slides: CardSlide[]): Promise<SocialMedia[]> {
+export async function renderAndStoreSlides(postId: string, slides: CardSlide[], cta = PROFILE_CTA): Promise<SocialMedia[]> {
   const storage = admin().storage.from("assets");
   const media: SocialMedia[] = [];
   for (const [index, slide] of slides.entries()) {
-    const jpeg = await renderSlideJpeg(slide, index, slides.length);
-    const hash = createHash("sha256").update(JSON.stringify([slide, index, slides.length])).digest("hex").slice(0, 12);
+    const jpeg = await renderSlideJpeg(slide, index, slides.length, cta);
+    const hash = createHash("sha256").update(JSON.stringify([slide, index, slides.length, cta])).digest("hex").slice(0, 12);
     const path = `social/${postId}/${index + 1}-${hash}.jpg`;
     const { error } = await storage.upload(path, jpeg, { contentType: "image/jpeg", upsert: true });
     if (error) throw new Error(`Unable to store card ${index + 1}: ${error.message}`);

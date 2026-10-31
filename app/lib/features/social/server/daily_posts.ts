@@ -4,17 +4,20 @@
 // are marked expired by the Edge Function.
 import { admin } from "../../../supabase/server";
 import {
-  type CarouselContent,
+  hasSlides,
+  type HookStyle,
   isCarouselContent,
-  isReelContent,
   isThreadContent,
   type SocialChannel,
   type SocialChannelOverview,
   type SocialDailyPost,
   type SocialPostStatus,
-  type ThreadContent,
+  THREAD_MEDIA,
+  THREAD_STRUCTURES,
+  type ThreadMedia,
+  type ThreadStructure,
 } from "../types";
-import { renderAndStoreSlides } from "./cards";
+import { POST_LINK_CTA, PROFILE_CTA, renderAndStoreSlides } from "./cards";
 import {
   draftPost,
   formatFor,
@@ -26,15 +29,24 @@ import {
   pillarFor,
 } from "./content";
 import { renderAndStoreReel } from "./reel";
+import { chooseSlot, kstSlotOf, scoredPosts, slotStats } from "./slots";
+import { chooseVariant, openerLessons, variantStats } from "./variants";
 
-// Card images for a carousel; the MP4 plus its cover image for a reel.
-const renderMedia = (postId: string, content: unknown) =>
-  isReelContent(content)
-    ? renderAndStoreReel(postId, content.slides, content.narration)
-    : isCarouselContent(content)
-      ? renderAndStoreSlides(postId, content.slides)
-      : Promise.resolve([]);
-import { chooseSlot, kstSlotOf, slotStats } from "./slots";
+// What has to be rendered: card images for slides, or an MP4 plus its cover image when
+// the slides are narrated (an Instagram reel, or a Threads post with a video). Threads
+// cards point at the link in the post instead of the profile.
+const renderMedia = (postId: string, channel: SocialChannel, content: unknown) => {
+  if (!hasSlides(content)) return Promise.resolve([]);
+  const cta = channel === "threads" ? POST_LINK_CTA : PROFILE_CTA;
+  return Array.isArray(content.narration)
+    ? renderAndStoreReel(postId, content.slides, content.narration, cta)
+    : renderAndStoreSlides(postId, content.slides, cta);
+};
+
+// The rendered part of a post. Saving only re-renders when this changed, so fixing a
+// typo in a caption does not rebuild a video.
+const visualKey = (content: unknown) =>
+  hasSlides(content) ? JSON.stringify([content.slides, content.narration ?? null]) : "";
 
 const TABLE = "social_daily_posts";
 const EDITABLE: SocialPostStatus[] = ["draft", "approved", "rejected", "failed", "expired"];
@@ -61,6 +73,8 @@ const toPost = (row: Record<string, unknown>): SocialDailyPost => ({
   scheduledFor: (row.scheduled_for as string | null) ?? null,
   slot: String(row.slot ?? ""),
   slotReason: (row.slot_reason as SocialDailyPost["slotReason"]) ?? "",
+  threadMedia: (row.thread_media as ThreadMedia | null) ?? "",
+  threadStructure: (row.thread_structure as ThreadStructure | null) ?? "",
   content: (row.content ?? {}) as SocialDailyPost["content"],
   media: Array.isArray(row.media) ? (row.media as SocialDailyPost["media"]) : [],
   source: (row.source ?? {}) as Record<string, unknown>,
@@ -88,43 +102,71 @@ export async function channelOverview(channel: SocialChannel): Promise<SocialCha
     .order("post_date", { ascending: false })
     .limit(14);
   if (error) throw new SocialPostError(error.message, 500);
-  return { posts: (data ?? []).map((row) => toPost(row as Record<string, unknown>)), slots: await slotStats(channel) };
+  const scored = await scoredPosts(channel);
+  return {
+    posts: (data ?? []).map((row) => toPost(row as Record<string, unknown>)),
+    slots: slotStats(channel, scored),
+    variants: variantStats(channel, scored),
+  };
 }
 
 const contentText = (content: unknown) =>
   isThreadContent(content) ? content.text : isCarouselContent(content) ? content.slides[0]?.title ?? "" : "";
 
+export const isThreadMedia = (value: unknown): value is ThreadMedia => THREAD_MEDIA.includes(value as ThreadMedia);
+export const isThreadStructure = (value: unknown): value is ThreadStructure =>
+  THREAD_STRUCTURES.includes(value as ThreadStructure);
+
+export interface GenerateOptions {
+  /** Replace an existing draft (rejected, failed and expired posts too). */
+  replace?: boolean;
+  pillar?: string;
+  /** Instagram: "carousel" | "reel". */
+  format?: string;
+  /** Threads experiments; chosen by the optimizer when left out. */
+  threadMedia?: ThreadMedia;
+  threadStructure?: ThreadStructure;
+}
+
 export async function generateDailyPost(
   channel: SocialChannel,
   postDate: string,
-  replace = false,
-  pillarKey?: string,
-  formatOverride?: string,
+  options: GenerateOptions = {},
 ): Promise<SocialDailyPost> {
   const db = admin();
   const { data: existing } = await db.from(TABLE).select("*").eq("channel", channel).eq("post_date", postDate).maybeSingle();
   if (existing) {
-    if (!replace) return toPost(existing as Record<string, unknown>);
+    if (!options.replace) return toPost(existing as Record<string, unknown>);
     if (!["draft", "rejected", "failed", "expired"].includes(String(existing.status))) {
       throw new SocialPostError("Approved or published posts cannot be regenerated. Move it back to draft first.", 409);
     }
   }
 
-  const pillar = pillarFor(channel, postDate, pillarKey);
-  const format = formatFor(channel, postDate, formatOverride);
-  const [material, recent, stats] = await Promise.all([
+  const pillar = pillarFor(channel, postDate, options.pillar);
+  const format = formatFor(channel, postDate, options.format);
+  const [material, recent, scored] = await Promise.all([
     loadMaterial(postDate),
     db.from(TABLE).select("content").eq("channel", channel).lt("post_date", postDate).order("post_date", { ascending: false }).limit(7),
-    slotStats(channel),
+    scoredPosts(channel),
   ]);
-  const content = await draftPost(
-    channel,
-    postDate,
-    pillar,
-    material,
-    (recent.data ?? []).map((row) => contentText(row.content)).filter(Boolean),
+  const stats = slotStats(channel, scored);
+  const variants = variantStats(channel, scored);
+  const isThreads = channel === "threads";
+  const pick = <K extends string>(manual: K | undefined, experiment: "media" | "structure") =>
+    manual ? { key: manual, reason: "manual" as const } : chooseVariant<K>(variants[experiment], postDate, experiment);
+  const media = isThreads ? pick<ThreadMedia>(options.threadMedia, "media") : null;
+  const structure = isThreads ? pick<ThreadStructure>(options.threadStructure, "structure") : null;
+  const threadMedia = media?.key ?? null;
+  const threadStructure = structure?.key ?? null;
+  const hook = chooseVariant<HookStyle>(variants.hook, postDate, `hook:${channel}`);
+  const content = await draftPost(channel, postDate, pillar, material, {
     format,
-  );
+    hookStyle: hook.key,
+    threadMedia: threadMedia ?? undefined,
+    threadStructure: threadStructure ?? undefined,
+    recentPosts: (recent.data ?? []).map((row) => contentText(row.content)).filter(Boolean),
+    lessons: openerLessons(scored),
+  });
   const { slot, reason, scheduledFor } = chooseSlot(channel, postDate, stats);
   const now = new Date().toISOString();
 
@@ -141,9 +183,15 @@ export async function generateDailyPost(
         scheduled_for: scheduledFor,
         slot,
         slot_reason: reason,
+        thread_media: threadMedia,
+        thread_structure: threadStructure,
         content,
         media: [],
-        source: materialSource(material, pillar),
+        source: {
+          ...materialSource(material, pillar),
+          // Why each experiment landed where it did (explore | best | try | manual).
+          variants: { hook: hook.reason, ...(media && structure ? { media: media.reason, structure: structure.reason } : {}) },
+        },
         error: "",
         approved_at: null,
         approved_by: null,
@@ -155,10 +203,10 @@ export async function generateDailyPost(
     .single();
   if (error || !saved) throw new SocialPostError(error?.message ?? "Unable to save the draft.", 500);
 
-  if (isCarouselContent(content)) {
+  if (hasSlides(content)) {
     let media;
     try {
-      media = await renderMedia(String(saved.id), content);
+      media = await renderMedia(String(saved.id), channel, content);
     } catch (renderError) {
       // Keep the draft (the text is still useful) and say why there is no media yet.
       const message = renderError instanceof Error ? renderError.message : String(renderError);
@@ -191,9 +239,20 @@ export async function saveDailyPost(
   if (input.content !== undefined) {
     const raw = (input.content ?? {}) as Record<string, unknown>;
     const content =
-      row.format === "thread" ? normalizeThread(raw) : row.format === "reel" ? normalizeReel(raw) : normalizeCarousel(raw);
+      row.format === "thread"
+        ? normalizeThread(
+            raw,
+            isThreadMedia(row.thread_media) ? row.thread_media : "text",
+            isThreadStructure(row.thread_structure) ? row.thread_structure : undefined,
+          )
+        : row.format === "reel"
+          ? normalizeReel(raw)
+          : normalizeCarousel(raw);
     update.content = content;
-    if (isCarouselContent(content)) update.media = await renderMedia(id, content);
+    const media = Array.isArray(row.media) ? row.media : [];
+    if (visualKey(content) !== visualKey(row.content) || (hasSlides(content) && media.length === 0)) {
+      update.media = await renderMedia(id, row.channel as SocialChannel, content);
+    }
   }
   if (input.scheduledFor !== undefined) {
     const at = typeof input.scheduledFor === "string" ? new Date(input.scheduledFor) : null;
@@ -209,18 +268,19 @@ export async function saveDailyPost(
   return toPost(data as Record<string, unknown>);
 }
 
-// Instagram can only publish what has been rendered: card images for a carousel, the
-// video for a reel.
+// Only what has been rendered can be published: card images for slides, the video for
+// narrated slides. A text-only Threads post needs nothing.
 function assertMediaReady(row: Record<string, unknown>) {
-  if (row.channel !== "instagram") return;
   const media = (Array.isArray(row.media) ? row.media : []) as Array<{ kind?: string }>;
-  if (row.format === "reel") {
+  const needsVideo = row.format === "reel" || (row.channel === "threads" && row.thread_media === "video");
+  if (needsVideo) {
     if (!media.some((item) => item.kind === "video")) {
-      throw new SocialPostError("The reel video is missing. Save the post to render it.", 409);
+      throw new SocialPostError("The video is missing. Save the post to render it.", 409);
     }
     return;
   }
-  const slides = isCarouselContent(row.content) ? row.content.slides.length : 0;
+  if (row.channel === "threads" && row.thread_media !== "image") return;
+  const slides = hasSlides(row.content) ? row.content.slides.length : 0;
   if (!slides || media.length !== slides) throw new SocialPostError("Card images are missing. Save the post to render them.", 409);
 }
 
@@ -292,18 +352,22 @@ export async function publishDailyPostNow(id: string, adminUid: string): Promise
 }
 
 // Nightly: draft tomorrow's posts for both channels. Existing drafts are left alone, so
-// a re-run (or Vercel retrying the cron) costs nothing.
+// a re-run (or Vercel retrying the cron) costs nothing. The channels draft in parallel:
+// on a day when both build a video, one after the other could run past the function's
+// five-minute limit.
 export async function generateUpcomingDrafts(): Promise<Record<string, string>> {
   const postDate = kstDate(1);
-  const result: Record<string, string> = {};
-  for (const channel of ["threads", "instagram"] as SocialChannel[]) {
-    try {
-      const post = await generateDailyPost(channel, postDate);
-      result[channel] = `${post.status} ${post.id}`;
-    } catch (error) {
-      result[channel] = `failed: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(`[social-drafts] ${channel} ${postDate} failed`, error);
-    }
-  }
-  return result;
+  const channels: SocialChannel[] = ["threads", "instagram"];
+  const outcomes = await Promise.all(
+    channels.map(async (channel) => {
+      try {
+        const post = await generateDailyPost(channel, postDate);
+        return `${post.status} ${post.id}`;
+      } catch (error) {
+        console.error(`[social-drafts] ${channel} ${postDate} failed`, error);
+        return `failed: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }),
+  );
+  return Object.fromEntries(channels.map((channel, index) => [channel, outcomes[index]]));
 }
