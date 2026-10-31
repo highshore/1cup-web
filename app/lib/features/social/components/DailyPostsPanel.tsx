@@ -97,10 +97,19 @@ const EDITABLE: SocialPostStatus[] = ["draft", "approved", "rejected", "failed",
 
 type DailyCopy = ReturnType<typeof useI18n>["t"]["admin"]["social"]["daily"];
 
-export default function DailyPostsPanel({ channel }: { channel: SocialChannel }) {
+export default function DailyPostsPanel({
+  channel,
+  onPublished,
+}: {
+  channel: SocialChannel;
+  /** Called when a post is published from here, so the page can refresh its post history. */
+  onPublished?: () => void;
+}) {
   const { t } = useI18n();
   const copy = t.admin.social.daily;
   const [posts, setPosts] = useState<SocialDailyPost[]>([]);
+  const [takenDates, setTakenDates] = useState<string[]>([]);
+  const [notice, setNotice] = useState("");
   const [slots, setSlots] = useState<SlotStat[]>([]);
   const [variants, setVariants] = useState<SocialChannelOverview["variants"]>({ media: [], structure: [], hook: [] });
   const [loading, setLoading] = useState(true);
@@ -112,6 +121,7 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
     try {
       const overview = await fetchSocialOverview(channel);
       setPosts(overview.posts);
+      setTakenDates(overview.takenDates ?? []);
       setSlots(overview.slots);
       setVariants(overview.variants ?? { media: [], structure: [], hook: [] });
       setError("");
@@ -126,10 +136,19 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
     void load();
   }, [load]);
 
-  const replacePost = (next: SocialDailyPost) =>
+  // A post that has just been published leaves the list (it is now in the post history).
+  const replacePost = (next: SocialDailyPost) => {
+    setTakenDates((current) => (current.includes(next.postDate) ? current : [...current, next.postDate]));
+    if (next.status === "published") {
+      setPosts((current) => current.filter((post) => post.id !== next.id));
+      setNotice(fill(copy.publishedNotice, { date: next.postDate }));
+      onPublished?.();
+      return;
+    }
     setPosts((current) =>
       [next, ...current.filter((post) => post.id !== next.id)].sort((a, b) => b.postDate.localeCompare(a.postDate)),
     );
+  };
 
   const generate = async (postDate: string, replace = false, picked: GenerateChoices = choices) => {
     setGenerating(postDate);
@@ -145,7 +164,7 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
 
   const today = kstDate(0);
   const tomorrow = kstDate(1);
-  const has = (postDate: string) => posts.some((post) => post.postDate === postDate);
+  const has = (postDate: string) => takenDates.includes(postDate) || posts.some((post) => post.postDate === postDate);
 
   return (
     <section className={cardClass} aria-labelledby={`${channel}-daily`}>
@@ -189,12 +208,20 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
       </div>
 
       {error && <p className="m-0 mt-3 text-[13px] font-bold text-[#b9473f]">{fill(copy.error, { message: error })}</p>}
+      {notice && (
+        <p className="m-0 mt-3 text-[13px] font-bold text-[#3f7a50]">
+          {notice}{" "}
+          <a href={`#${channel}-posts`} className="text-[#050505] underline">
+            {copy.historyLink}
+          </a>
+        </p>
+      )}
 
       <div className="mt-5 grid gap-4">
         {loading ? (
           <div className="h-24 animate-pulse rounded-xl bg-[#f1f0ed]" />
         ) : posts.length === 0 ? (
-          <p className={`m-0 ${mutedClass}`}>{copy.empty}</p>
+          <p className={`m-0 ${mutedClass}`}>{takenDates.length ? copy.emptyAllPublished : copy.empty}</p>
         ) : (
           posts.map((post) => (
             <DailyPostCard
@@ -211,6 +238,13 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
           ))
         )}
       </div>
+
+      <p className={`m-0 mt-3 ${mutedClass}`}>
+        {copy.archiveNote}{" "}
+        <a href={`#${channel}-posts`} className="text-[#050505] underline">
+          {copy.historyLink}
+        </a>
+      </p>
 
       <details className="mt-5 rounded-xl border-2 border-[#050505] p-4">
         <summary className="cursor-pointer text-[14px] font-black text-[#050505]">{copy.timesTitle}</summary>

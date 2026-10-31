@@ -173,7 +173,7 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
         </button>
       </header>
 
-      <DailyPostsPanel channel={channel} />
+      <DailyPostsPanel channel={channel} onPublished={() => void load(1)} />
 
       <ChannelConnections
         connections={connections}
