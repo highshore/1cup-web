@@ -47,11 +47,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.9,
     },
-    {
-      url: `${SITE_URL}/exam-center`,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
   ];
 
   try {

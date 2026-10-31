@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
   CalendarDaysIcon,
-  MicrophoneIcon,
   NewspaperIcon,
   TrophyIcon,
   UserCircleIcon,
@@ -21,7 +20,6 @@ import NotificationDropdown from "../../lib/features/chat/components/Notificatio
 
 const NAV_ITEMS = [
   { path: "/daily", labelKey: "daily", icon: CalendarDaysIcon },
-  { path: "/exam-center", labelKey: "speakingTest", icon: MicrophoneIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
   { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
@@ -110,15 +108,13 @@ const NewNavbar: React.FC = () => {
                     ? active
                       ? "bg-[rgba(255,255,255,0.18)] text-white"
                       : "bg-transparent text-[rgba(255,255,255,0.88)] hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
-                    : active && item.path === "/exam-center"
-                      ? "bg-transparent text-[#f47a4a]"
-                      : active
-                        ? "bg-[#e2e8f0] text-[#0f172a]"
-                        : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                    : active
+                      ? "bg-[#e2e8f0] text-[#0f172a]"
+                      : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
                 }`}
               >
                 <Icon />
-                {item.path === "/exam-center" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
+                {t.nav[item.labelKey]}
               </button>
             );
           })}
@@ -203,7 +199,7 @@ const NewNavbar: React.FC = () => {
                   }`}
                 >
                   <Icon />
-                  {item.path === "/exam-center" ? t.speakingCenter.navLabel : t.nav[item.labelKey]}
+                  {t.nav[item.labelKey]}
                 </button>
               );
             })}
