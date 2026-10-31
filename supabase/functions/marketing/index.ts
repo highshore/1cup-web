@@ -29,6 +29,7 @@ import {
   fetchMediaMetrics,
   INSTAGRAM_CAPTION_LIMIT,
   publishToInstagram,
+  publishInstagramReel,
   publishThreadsReplies,
   publishToThreads,
   refreshAccessToken,
@@ -1307,6 +1308,7 @@ const DAILY_DESTINATION = "https://1cupenglish.com/meetup";
 type DailyPostRow = {
   id: string;
   channel: SocialChannel;
+  format: string;
   pillar: string;
   scheduled_for: string | null;
   content: Record<string, unknown>;
@@ -1323,10 +1325,21 @@ const claimDailyPost = async (): Promise<{ post: DailyPostRow; runId: string } |
     .update({ status: "expired", error: "Not approved before its posting time.", updated_at: nowIso })
     .eq("status", "draft")
     .lt("scheduled_for", nowIso);
+  // A publish that never finished (e.g. the function hit its time limit while Instagram
+  // was still processing a reel) must not stay "publishing" forever.
+  await a
+    .from(DAILY_POSTS)
+    .update({
+      status: "failed",
+      error: "Publishing did not finish. Check the account before approving it again.",
+      updated_at: nowIso,
+    })
+    .eq("status", "publishing")
+    .lt("updated_at", new Date(now.getTime() - 15 * 60 * 1000).toISOString());
 
   const { data: due } = await a
     .from(DAILY_POSTS)
-    .select("id, channel, pillar, scheduled_for, content, media")
+    .select("id, channel, format, pillar, scheduled_for, content, media")
     .eq("status", "approved")
     .lte("scheduled_for", nowIso)
     .order("scheduled_for", { ascending: true })
@@ -1381,6 +1394,8 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
   const a = admin();
   const channel = post.channel;
   const startedAt = new Date().toISOString();
+  const isReel = post.format === "reel";
+  const video = (post.media ?? []).find((item) => item?.kind === "video" && typeof item?.url === "string");
   const images = (post.media ?? []).filter((item) => item?.kind !== "video" && typeof item?.url === "string");
   const photos = images.map((item, index) => ({ url: String(item.url), alt: `daily card ${index + 1}` }));
   const code = trackingCode(channel);
@@ -1412,7 +1427,8 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
     const caption = channel === "instagram" ? String(post.content.caption ?? "").trim() : "";
     if (channel === "instagram") {
       if (!caption) throw new Error("This daily post has no Instagram caption.");
-      if (photos.length === 0) throw new Error("This daily post has no card images.");
+      if (isReel && !video) throw new Error("This daily reel has no video.");
+      if (!isReel && photos.length === 0) throw new Error("This daily post has no card images.");
     }
     const content = channel === "threads" ? parts.join("\n\n—\n\n") : caption;
 
@@ -1438,6 +1454,8 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
     if (channel === "threads") {
       published = await publishToThreads(account, parts[0], []);
       await publishThreadsReplies(account, published.mediaId, parts.slice(1));
+    } else if (isReel && video) {
+      published = await publishInstagramReel(account, String(video.url), caption, photos[0]?.url);
     } else {
       published = await publishToInstagram(account, caption, photos.map((photo) => photo.url));
     }

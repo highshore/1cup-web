@@ -33,7 +33,8 @@ export const INSTAGRAM_CAPTION_LIMIT = 2200;
 export const INSTAGRAM_MAX_IMAGES = 10;
 
 const CONTAINER_POLL_INTERVAL_MS = 3_000;
-const CONTAINER_POLL_ATTEMPTS = 20; // ~60 seconds
+const CONTAINER_POLL_ATTEMPTS = 20; // ~60 seconds for images
+const VIDEO_POLL_ATTEMPTS = 50; // ~150 seconds: Instagram transcodes reels before they can publish
 
 const label = (channel: SocialChannel) => (channel === "threads" ? "Threads" : "Instagram");
 
@@ -73,10 +74,10 @@ const graph = async (
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Meta processes image containers asynchronously; publishing before FINISHED fails.
-const waitForContainer = async (account: ChannelAccount, containerId: string) => {
+const waitForContainer = async (account: ChannelAccount, containerId: string, attempts = CONTAINER_POLL_ATTEMPTS) => {
   const base = account.channel === "threads" ? THREADS_API : INSTAGRAM_API;
   const field = account.channel === "threads" ? "status" : "status_code";
-  for (let attempt = 0; attempt < CONTAINER_POLL_ATTEMPTS; attempt += 1) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     const body = await graph(
       account.channel,
       "GET",
@@ -286,6 +287,40 @@ export const publishToInstagram = async (
   }
 
   await waitForContainer(account, containerId);
+  const mediaId = idOf(
+    await graph(
+      "instagram",
+      "POST",
+      `${INSTAGRAM_API}/${account.accountId}/media_publish`,
+      { creation_id: containerId },
+      account.accessToken,
+    ),
+    "media",
+    "instagram",
+  );
+  return { mediaId, permalink: await permalinkOf(account, mediaId) };
+};
+
+// A Reel from an MP4 at a public URL (H.264/AAC, 9:16). share_to_feed also shows it on
+// the profile grid; cover_url sets the grid thumbnail.
+export const publishInstagramReel = async (
+  account: ChannelAccount,
+  videoUrl: string,
+  caption: string,
+  coverUrl?: string,
+): Promise<PublishResult> => {
+  const containerId = idOf(
+    await graph(
+      "instagram",
+      "POST",
+      `${INSTAGRAM_API}/${account.accountId}/media`,
+      { media_type: "REELS", video_url: videoUrl, caption, cover_url: coverUrl, share_to_feed: true },
+      account.accessToken,
+    ),
+    "container",
+    "instagram",
+  );
+  await waitForContainer(account, containerId, VIDEO_POLL_ATTEMPTS);
   const mediaId = idOf(
     await graph(
       "instagram",

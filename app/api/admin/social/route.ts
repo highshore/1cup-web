@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
 }
 
 // POST { action, ... }:
-//   generate  { channel, postDate, replace?, pillar? }  draft (or redraft) a day's post
+//   generate  { channel, postDate, replace?, pillar?, format? }  draft (or redraft) a day's post;
+//             format "carousel" | "reel" applies to Instagram
 //   save      { id, content?, scheduledFor? }  edit text/slides (re-renders cards) or time
 //   approve | reject | unapprove { id }
 export async function POST(request: NextRequest) {
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
             body.postDate,
             body.replace === true,
             typeof body.pillar === "string" && SOCIAL_PILLARS.includes(body.pillar as SocialPillar) ? body.pillar : undefined,
+            body.format === "carousel" || body.format === "reel" ? body.format : undefined,
           ),
         );
       case "save":

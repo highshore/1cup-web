@@ -39,6 +39,11 @@ export interface CarouselContent {
   slides: CardSlide[];
 }
 
+/** A reel is a carousel read aloud: one spoken line per slide, also shown as subtitles. */
+export interface ReelContent extends CarouselContent {
+  narration: string[];
+}
+
 export interface SocialMedia {
   url: string;
   kind: "image" | "video";
@@ -54,7 +59,7 @@ export interface SocialDailyPost {
   scheduledFor: string | null; // ISO
   slot: string;
   slotReason: SlotReason | "";
-  content: ThreadContent | CarouselContent;
+  content: ThreadContent | CarouselContent | ReelContent;
   media: SocialMedia[];
   source: Record<string, unknown>;
   runId: string | null;
@@ -89,9 +94,15 @@ export const THREAD_MAX_REPLIES = 4;
 export const CAROUSEL_CAPTION_LIMIT = 2000;
 export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 8;
+export const REEL_MAX_SLIDES = 7;
+export const NARRATION_LINE_LIMIT = 120;
+export const INSTAGRAM_FORMATS = ["carousel", "reel"] as const;
 
 export const isThreadContent = (content: unknown): content is ThreadContent =>
   !!content && typeof content === "object" && typeof (content as ThreadContent).text === "string";
 
 export const isCarouselContent = (content: unknown): content is CarouselContent =>
   !!content && typeof content === "object" && Array.isArray((content as CarouselContent).slides);
+
+export const isReelContent = (content: unknown): content is ReelContent =>
+  isCarouselContent(content) && Array.isArray((content as ReelContent).narration);
