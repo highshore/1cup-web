@@ -60,9 +60,9 @@ const TOKEN_REFRESH_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 const TOKEN_LIFETIME_MS = 60 * 24 * 60 * 60 * 1000;
 const SOCIAL_METRICS_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const SOCIAL_METRICS_MIN_INTERVAL_MS = 60 * 60 * 1000;
-const VERTEX_LOCATION = "global";
-const GEMINI_TEMPLATE_MODEL = "gemini-3.7-flash";
-const GOOGLE_CLOUD_PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
+// AI template drafts use OpenAI GPT Luna through the Responses API, like the daily
+// function's hook writer. MARKETING_DRAFT_MODEL overrides the model.
+const TEMPLATE_DRAFT_MODEL = Deno.env.get("MARKETING_DRAFT_MODEL") || "gpt-6-luna";
 const GOPAS_FREE_AD_URL = "https://www.koreapas.com/bbs/zboard.php?id=freead";
 const GOPAS_LOGIN_URL = "https://www.koreapas.com/m/fast_menu_index.php";
 const GOPAS_LOGIN_SUBMIT_URL = "https://www.koreapas.com/bbs/login_check.php";
@@ -240,105 +240,37 @@ type GeneratedTemplate = {
   schedule: CronSchedule;
 };
 
-let cachedVertexToken: { value: string; expiresAt: number } | null = null;
-
-const base64url = (input: ArrayBuffer | string): string => {
-  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : new Uint8Array(input);
-  let binary = "";
-  bytes.forEach((byte) => (binary += String.fromCharCode(byte)));
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-
-const pemToPkcs8 = (pem: string): ArrayBuffer => {
-  const body = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s+/g, "");
-  const raw = atob(body);
-  const bytes = new Uint8Array(raw.length);
-  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
-  return bytes.buffer;
-};
-
-const vertexAccessToken = async (): Promise<string> => {
-  if (cachedVertexToken && cachedVertexToken.expiresAt > Date.now() + 60_000) {
-    return cachedVertexToken.value;
-  }
-  const raw = Deno.env.get("GCP_SERVICE_ACCOUNT_JSON");
-  if (!raw) throw new Error("Vertex AI credentials are unavailable.");
-  const key = JSON.parse(raw) as { client_email: string; private_key: string };
-  const now = Math.floor(Date.now() / 1000);
-  const claim = {
-    iss: key.client_email,
-    scope: "https://www.googleapis.com/auth/cloud-platform",
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  };
-  const unsigned =
-    base64url(JSON.stringify({ alg: "RS256", typ: "JWT" })) + "." + base64url(JSON.stringify(claim));
-  const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToPkcs8(key.private_key.replace(/\\n/g, "\n")),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    cryptoKey,
-    new TextEncoder().encode(unsigned),
-  );
-  const response = await fetch("https://oauth2.googleapis.com/token", {
+const generateWithOpenAI = async (brief: string, destinationUrl: string): Promise<string> => {
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("NEXT_OPENAI_API_KEY");
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: `${unsigned}.${base64url(signature)}`,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: TEMPLATE_DRAFT_MODEL,
+      instructions: `You write accurate Korean marketing drafts for a Koreapas Free Ads post plus matching Threads and Instagram versions. Return only valid JSON with exactly this shape: {"name":"string","title":"string","copy":"string","callToAction":"string","threadsText":"string","instagramCaption":"string","schedule":{"hour":number,"minute":number,"daysOfWeek":[number]}}. threadsText is a short, conversational Threads post of at most 400 characters (a question or hook that invites replies; at most one topic hashtag). instagramCaption is an Instagram caption of at most 1500 characters that opens with a strong first line, says the link is in the profile, and ends with 3 to 5 relevant hashtags. Do not make up facts, prices, credentials, partnerships, availability, or guarantees. Use only claims the operator supplies. The destination URL is operator-controlled context (${destinationUrl}); do not put any URL in title, copy, callToAction, threadsText, or instagramCaption because the system injects one tracking link. Do not generate image URLs. Keep callToAction short. If using {{daysUntilSunday}}, leave it literal for the scheduler. Choose a conservative KST schedule; daysOfWeek uses Sunday=0 through Saturday=6, and use [] only if the brief explicitly requests no automatic scheduling.`,
+      input: `Campaign brief:\n${brief}`,
+      text: { format: { type: "json_object" } },
     }),
+    signal: AbortSignal.timeout(120_000),
   });
-  if (!response.ok) throw new Error(`Vertex AI token exchange failed: ${response.status}`);
-  const token = (await response.json()) as { access_token: string; expires_in: number };
-  cachedVertexToken = {
-    value: token.access_token,
-    expiresAt: Date.now() + token.expires_in * 1000,
-  };
-  return cachedVertexToken.value;
-};
-
-const generateWithVertex = async (brief: string, destinationUrl: string): Promise<string> => {
-  const accessToken = await vertexAccessToken();
-  const response = await fetch(
-    `https://aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${GEMINI_TEMPLATE_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{
-            text: `You write accurate Korean marketing drafts for a Koreapas Free Ads post plus matching Threads and Instagram versions. Return only valid JSON with exactly this shape: {"name":"string","title":"string","copy":"string","callToAction":"string","threadsText":"string","instagramCaption":"string","schedule":{"hour":number,"minute":number,"daysOfWeek":[number]}}. threadsText is a short, conversational Threads post of at most 400 characters (a question or hook that invites replies; at most one topic hashtag). instagramCaption is an Instagram caption of at most 1500 characters that opens with a strong first line, says the link is in the profile, and ends with 3 to 5 relevant hashtags. Do not make up facts, prices, credentials, partnerships, availability, or guarantees. Use only claims the operator supplies. The destination URL is operator-controlled context (${destinationUrl}); do not put any URL in title, copy, callToAction, threadsText, or instagramCaption because the system injects one tracking link. Do not generate image URLs. Keep callToAction short. If using {{daysUntilSunday}}, leave it literal for the scheduler. Choose a conservative KST schedule; daysOfWeek uses Sunday=0 through Saturday=6, and use [] only if the brief explicitly requests no automatic scheduling.`,
-          }],
-        },
-        contents: [{ role: "user", parts: [{ text: `Campaign brief:\n${brief}` }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.4,
-          maxOutputTokens: 6_000,
-        },
-      }),
-    },
-  );
   const payload = (await response.json().catch(() => ({}))) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    error?: { message?: string; status?: string };
+    output_text?: string;
+    output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+    error?: { message?: string };
   };
   if (!response.ok) {
-    throw new Error(
-      `Vertex AI ${response.status}: ${payload.error?.message || payload.error?.status || "request failed"}`,
-    );
+    throw new Error(`OpenAI ${response.status}: ${payload.error?.message || "request failed"}`);
   }
-  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
-  if (!text) throw new Error("Vertex AI returned no template draft.");
+  const text = (
+    payload.output_text ??
+    (payload.output ?? [])
+      .flatMap((item) => (item.type === "message" ? item.content ?? [] : []))
+      .filter((part) => part.type === "output_text")
+      .map((part) => part.text ?? "")
+      .join("")
+  ).trim();
+  if (!text) throw new Error("The model returned no template draft.");
   return text;
 };
 
@@ -346,12 +278,12 @@ const generateTemplateDraft = async (body: Record<string, unknown>): Promise<Gen
   const brief = textField(body.brief, "Campaign brief", 2000);
   const destinationUrl = validDestinationUrl(body.destinationUrl);
 
-  const rawDraft = await generateWithVertex(brief, destinationUrl);
+  const rawDraft = await generateWithOpenAI(brief, destinationUrl);
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(rawDraft) as Record<string, unknown>;
   } catch {
-    throw new Error("Vertex AI returned an invalid template draft.");
+    throw new Error("The model returned an invalid template draft.");
   }
 
   return {
