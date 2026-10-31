@@ -1380,15 +1380,39 @@ const stringList = (value: unknown) =>
 
 // The tracking link rides on the last part of a thread; if it does not fit there it
 // becomes its own short reply.
+// Every daily post carries the One Cup Daily link as text. Threads makes the tracking
+// link clickable, so it goes at the end of the first post (falling back to the last
+// reply, then to a reply of its own, if 500 characters would be exceeded). Instagram
+// captions cannot hold clickable links, so they get the short, typeable address.
+const DAILY_LINK_LABEL = "☕ 원컵데일리 하루 무료로 받아보기 👉";
+const DAILY_LINK_TEXT = "1cupenglish.com/daily";
+
 const threadParts = (content: Record<string, unknown>, trackingUrl: string): string[] => {
   const parts = [String(content.text ?? "").trim(), ...stringList(content.replies).map((reply) => reply.trim())].filter(Boolean);
   if (parts.length === 0) throw new Error("This daily post has no Threads text.");
-  const last = `${parts[parts.length - 1]}\n\n${trackingUrl}`;
-  if (last.length <= THREADS_TEXT_LIMIT) parts[parts.length - 1] = last;
-  else parts.push(`👉 One Cup Daily 하루 무료로 받아보기\n${trackingUrl}`);
+  const linkLine = `${DAILY_LINK_LABEL} ${trackingUrl}`;
+  const first = `${parts[0]}\n\n${linkLine}`;
+  const last = `${parts[parts.length - 1]}\n\n${linkLine}`;
+  if (first.length <= THREADS_TEXT_LIMIT) parts[0] = first;
+  else if (last.length <= THREADS_TEXT_LIMIT) parts[parts.length - 1] = last;
+  else parts.push(linkLine);
   const tooLong = parts.find((part) => part.length > THREADS_TEXT_LIMIT);
   if (tooLong) throw new Error(`A Threads part is ${tooLong.length} characters; the limit is ${THREADS_TEXT_LIMIT}.`);
   return parts;
+};
+
+// Put the link line before the closing hashtags, where people read it.
+const captionWithDailyLink = (caption: string): string => {
+  if (!caption) return caption;
+  const linkLine = `${DAILY_LINK_LABEL} ${DAILY_LINK_TEXT}`;
+  if (caption.includes(DAILY_LINK_TEXT)) return caption;
+  const lines = caption.split("\n");
+  let tagStart = lines.length;
+  while (tagStart > 0 && /^\s*(#\S+\s*)+$/.test(lines[tagStart - 1])) tagStart -= 1;
+  while (tagStart > 0 && lines[tagStart - 1].trim() === "") tagStart -= 1;
+  const body = lines.slice(0, tagStart).join("\n").trimEnd();
+  const tags = lines.slice(tagStart).join("\n").trim();
+  return [body, linkLine, tags].filter(Boolean).join("\n\n").slice(0, INSTAGRAM_CAPTION_LIMIT);
 };
 
 const executeDailyPost = async (post: DailyPostRow, runId: string) => {
@@ -1425,7 +1449,7 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
     if (!account) throw new Error(`${channelLabel(channel)} is not connected.`);
 
     const parts = channel === "threads" ? threadParts(post.content, trackingUrl) : [];
-    const caption = channel === "instagram" ? String(post.content.caption ?? "").trim() : "";
+    const caption = channel === "instagram" ? captionWithDailyLink(String(post.content.caption ?? "").trim()) : "";
     if (channel === "instagram") {
       if (!caption) throw new Error("This daily post has no Instagram caption.");
       if (isReel && !video) throw new Error("This daily reel has no video.");

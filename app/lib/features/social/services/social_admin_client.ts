@@ -31,3 +31,5 @@ export const saveSocialPost = (id: string, changes: { content?: unknown; schedul
   post({ action: "save", id, ...changes });
 
 export const setSocialPostStatus = (id: string, action: "approve" | "reject" | "unapprove") => post({ action, id });
+
+export const publishSocialPostNow = (id: string) => post({ action: "publish-now", id });

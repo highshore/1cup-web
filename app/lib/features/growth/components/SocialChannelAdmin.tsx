@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClipboardDocumentIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
@@ -12,14 +13,14 @@ import {
 import { useI18n } from "../../../i18n/I18nProvider";
 import {
   fetchMarketingChannelConnections,
+  fetchMarketingChannelRecentRuns,
   fetchMarketingChannelRuns,
-  fetchMarketingTemplates,
+  MARKETING_CHANNEL_RUN_PAGE_SIZE,
 } from "../services/growth_service";
 import {
   MarketingChannelConnection,
   MarketingCronRun,
   MarketingRunStatus,
-  MarketingTemplate,
   SocialMarketingChannel,
 } from "../types/growth_types";
 import DailyPostsPanel from "../../social/components/DailyPostsPanel";
@@ -46,9 +47,8 @@ const STATUS_TONE: Record<MarketingRunStatus, string> = {
   failed: "bg-[#f8e4e2] text-[#b9473f]",
 };
 
-// One admin page per social channel (/admin/threads, /admin/instagram): account
-// connection, 30-day totals, the templates that post here, and every post attempt.
-// Copy and schedules stay in the marketing templates; this page links back there.
+// One admin page per social channel (/admin/threads, /admin/instagram): the daily post
+// approval panel, account connection, 30-day totals, and every post attempt, 20 per page.
 export default function SocialChannelAdmin({ channel }: { channel: SocialMarketingChannel }) {
   const { locale, t } = useI18n();
   const copy = t.admin.social;
@@ -58,7 +58,9 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
   const [connections, setConnections] = useState<MarketingChannelConnection[]>([]);
   const [connectionsError, setConnectionsError] = useState(false);
   const [runs, setRuns] = useState<MarketingCronRun[]>([]);
-  const [templates, setTemplates] = useState<MarketingTemplate[]>([]);
+  const [recentRuns, setRecentRuns] = useState<MarketingCronRun[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [copiedRunId, setCopiedRunId] = useState<string | null>(null);
@@ -73,24 +75,41 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
     }
   }, [channel]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [, runsResult, templatesResult] = await Promise.allSettled([
-      loadConnections(),
-      fetchMarketingChannelRuns(channel),
-      fetchMarketingTemplates(),
-    ]);
-    if (runsResult.status === "fulfilled") setRuns(runsResult.value);
-    if (templatesResult.status === "fulfilled") setTemplates(templatesResult.value);
-    const failed = runsResult.status === "rejected" || templatesResult.status === "rejected";
-    if (failed) console.error(`Unable to load ${channel} admin data`, runsResult, templatesResult);
-    setLoadError(failed);
-    setLoading(false);
-  }, [channel, loadConnections]);
+  const load = useCallback(
+    async (pageNumber = page) => {
+      setLoading(true);
+      const [, pageResult, recentResult] = await Promise.allSettled([
+        loadConnections(),
+        fetchMarketingChannelRuns(channel, pageNumber),
+        fetchMarketingChannelRecentRuns(channel),
+      ]);
+      if (pageResult.status === "fulfilled") {
+        setRuns(pageResult.value.runs);
+        setTotal(pageResult.value.total);
+      }
+      if (recentResult.status === "fulfilled") setRecentRuns(recentResult.value);
+      const failed = pageResult.status === "rejected" || recentResult.status === "rejected";
+      if (failed) console.error(`Unable to load ${channel} admin data`, pageResult, recentResult);
+      setLoadError(failed);
+      setLoading(false);
+    },
+    [channel, loadConnections, page],
+  );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(page);
+  }, [load, page]);
+
+  const pageCount = Math.max(1, Math.ceil(total / MARKETING_CHANNEL_RUN_PAGE_SIZE));
+  const goToPage = (next: number) => {
+    setPage(Math.min(pageCount, Math.max(1, next)));
+    document.getElementById(`${channel}-posts`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  // Up to seven numbered buttons around the current page.
+  const pageNumbers = (() => {
+    const start = Math.max(1, Math.min(page - 3, pageCount - 6));
+    return Array.from({ length: Math.min(7, pageCount) }, (_, index) => start + index);
+  })();
 
   const dateTime = useMemo(
     () =>
@@ -104,7 +123,7 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
 
   const summary = useMemo(() => {
     const since = Date.now() - 30 * DAY_MS;
-    const recent = runs.filter((run) => {
+    const recent = recentRuns.filter((run) => {
       const at = run.completedAt || run.startedAt || run.scheduledFor;
       return at ? at.getTime() >= since : false;
     });
@@ -122,28 +141,7 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
       ctr: views > 0 ? `${((clicks / views) * 100).toFixed(1)}%` : "—",
       failed: recent.filter((run) => run.status === "failed").length,
     };
-  }, [runs]);
-
-  const channelTemplates = useMemo(
-    () => templates.filter((template) => template.channels.includes(channel)),
-    [channel, templates],
-  );
-
-  const weekdays = [
-    marketing.sunday,
-    marketing.monday,
-    marketing.tuesday,
-    marketing.wednesday,
-    marketing.thursday,
-    marketing.friday,
-    marketing.saturday,
-  ];
-  const scheduleLabel = (template: MarketingTemplate) => {
-    if (!template.scheduleEnabled || template.schedule.daysOfWeek.length === 0) return copy.scheduleOff;
-    const days = template.schedule.daysOfWeek.map((day) => weekdays[day]).join("·");
-    const time = `${String(template.schedule.hour).padStart(2, "0")}:${String(template.schedule.minute).padStart(2, "0")}`;
-    return `${days} ${time}`;
-  };
+  }, [recentRuns]);
 
   const commentsLabel = channel === "threads" ? copy.replies : copy.comments;
   const count = (value: number) => value.toLocaleString(locale === "ko" ? "ko-KR" : "en-US");
@@ -158,7 +156,7 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
     }
   };
 
-  const latestTrackingUrl = runs.find((run) => run.status === "completed" && run.trackingUrl)?.trackingUrl;
+  const latestTrackingUrl = recentRuns.find((run) => run.status === "completed" && run.trackingUrl)?.trackingUrl;
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-[30px] px-5 pt-0 pb-5">
@@ -170,7 +168,7 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
           </p>
           {loadError && <p className="m-0 mt-2 text-[13px] font-bold text-[#b9473f]">{copy.loadError}</p>}
         </div>
-        <button type="button" className={smallButtonClass} disabled={loading} onClick={() => void load()}>
+        <button type="button" className={smallButtonClass} disabled={loading} onClick={() => void load(page)}>
           <ArrowPathIcon width={15} className={loading ? "animate-spin" : ""} /> {copy.refresh}
         </button>
       </header>
@@ -206,48 +204,17 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
         </dl>
       </section>
 
-      <section className={cardClass} aria-labelledby={`${channel}-templates`}>
-        <h2 id={`${channel}-templates`} className={sectionTitleClass}>
-          {fill(copy.templatesTitle, { channel: channelName })}
-        </h2>
-        {!loading && channelTemplates.length === 0 ? (
-          <p className={`mt-3 mb-0 ${mutedClass}`}>
-            {copy.templatesEmpty}{" "}
-            <Link href="/admin/marketing" className="font-black text-[#e0602e] no-underline hover:underline">
-              {copy.createTemplate}
-            </Link>
-          </p>
-        ) : (
-          <ul className="m-0 mt-3 grid list-none gap-2 p-0">
-            {channelTemplates.map((template) => (
-              <li
-                key={template.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e7e3de] px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <strong className="block truncate text-[14px] font-black text-[#050505]">{template.name}</strong>
-                  <span className={mutedClass}>
-                    {scheduleLabel(template)}
-                    {template.scheduleEnabled && template.nextRunAt
-                      ? ` · ${fill(copy.nextRun, { date: dateTime.format(template.nextRunAt) })}`
-                      : ""}
-                    {" · "}
-                    {template.channels.map((name) => marketing.channels.names[name]).join(", ")}
-                  </span>
-                </div>
-                <Link href={`/admin/marketing?template=${encodeURIComponent(template.id)}`} className={smallButtonClass}>
-                  {copy.editTemplate}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
       <section className={cardClass} aria-labelledby={`${channel}-posts`}>
-        <h2 id={`${channel}-posts`} className={sectionTitleClass}>
-          {copy.postsTitle}
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id={`${channel}-posts`} className={sectionTitleClass}>
+            {copy.postsTitle}
+          </h2>
+          {total > 0 && (
+            <span className={mutedClass}>
+              {fill(copy.pageStatus, { page: String(page), pages: String(pageCount), total: String(total) })}
+            </span>
+          )}
+        </div>
         {channel === "instagram" && (
           <div className="mt-3 grid gap-2 rounded-xl bg-[#fff1e9] p-3">
             <p className="m-0 text-[13px] font-semibold leading-[1.6] text-[#050505]">{copy.instagramLinkHint}</p>
@@ -344,6 +311,40 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
               );
             })}
           </ul>
+        )}
+        {pageCount > 1 && (
+          <nav aria-label={copy.pagination} className="mt-5 flex flex-wrap items-center justify-center gap-1.5">
+            <button
+              type="button"
+              className={smallButtonClass}
+              disabled={page <= 1 || loading}
+              aria-label={copy.previousPage}
+              onClick={() => goToPage(page - 1)}
+            >
+              <ChevronLeftIcon width={14} />
+            </button>
+            {pageNumbers.map((number) => (
+              <button
+                key={number}
+                type="button"
+                aria-current={number === page ? "page" : undefined}
+                disabled={loading}
+                onClick={() => goToPage(number)}
+                className={`${smallButtonClass} min-w-8 justify-center ${number === page ? "!bg-[#050505] !text-white" : ""}`}
+              >
+                {number}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={smallButtonClass}
+              disabled={page >= pageCount || loading}
+              aria-label={copy.nextPage}
+              onClick={() => goToPage(page + 1)}
+            >
+              <ChevronRightIcon width={14} />
+            </button>
+          </nav>
         )}
       </section>
     </div>

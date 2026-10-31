@@ -196,18 +196,40 @@ export const fetchMarketingPerformanceRuns = async (): Promise<MarketingCronRun[
   return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };
 
-// Run history for one channel (the Threads/Instagram admin pages). Every run is one
-// post attempt on that channel, so this doubles as the channel's post list.
+// Run history for one channel (the Threads/Instagram admin pages), one numbered page
+// at a time. Every run is one post attempt on that channel, so this doubles as the
+// channel's post list.
+export const MARKETING_CHANNEL_RUN_PAGE_SIZE = 20;
+
 export const fetchMarketingChannelRuns = async (
   channel: MarketingChannel,
-  limit = 60,
+  page = 1,
+  pageSize = MARKETING_CHANNEL_RUN_PAGE_SIZE,
+): Promise<{ runs: MarketingCronRun[]; total: number }> => {
+  const from = (Math.max(1, page) - 1) * pageSize;
+  const { data, error, count } = await supabase
+    .from(RUNS)
+    .select("*", { count: "exact" })
+    .eq("channel", channel)
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
+  if (error) throw error;
+  return { runs: (data ?? []).map((row) => toRun(row as Record<string, unknown>)), total: count ?? 0 };
+};
+
+// Every run of the last `days` days, for the channel page's totals (independent of the
+// history page being viewed).
+export const fetchMarketingChannelRecentRuns = async (
+  channel: MarketingChannel,
+  days = 30,
 ): Promise<MarketingCronRun[]> => {
   const { data, error } = await supabase
     .from(RUNS)
     .select("*")
     .eq("channel", channel)
+    .gte("created_at", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(1000);
   if (error) throw error;
   return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };

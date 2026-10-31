@@ -4,6 +4,7 @@ import {
   channelOverview,
   generateDailyPost,
   isPostDate,
+  publishDailyPostNow,
   saveDailyPost,
   setDailyPostStatus,
   SocialPostError,
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
 //             format "carousel" | "reel" applies to Instagram
 //   save      { id, content?, scheduledFor? }  edit text/slides (re-renders cards) or time
 //   approve | reject | unapprove { id }
+//   publish-now { id }   approve, set the time to now and run the publisher immediately
 export async function POST(request: NextRequest) {
   try {
     const uid = await requireAdminUid();
@@ -63,6 +65,9 @@ export async function POST(request: NextRequest) {
       case "save":
         if (!isId(body.id)) return NextResponse.json({ error: "id is invalid." }, { status: 400 });
         return NextResponse.json(await saveDailyPost(body.id, { content: body.content, scheduledFor: body.scheduledFor }));
+      case "publish-now":
+        if (!isId(body.id)) return NextResponse.json({ error: "id is invalid." }, { status: 400 });
+        return NextResponse.json(await publishDailyPostNow(body.id, uid));
       case "approve":
       case "reject":
       case "unapprove":
