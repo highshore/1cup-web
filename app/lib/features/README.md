@@ -10,7 +10,6 @@ Current feature areas:
 - `blog/`: blog listing, detail support, and blog types.
 - `home/`: homepage stats, topics, and display components.
 - `meetup/`: meetup events, leaderboards, user profiles, and Firestore mapping.
-- `shadow/`: shadowing practice UI support.
 
 ## 한국어
 
@@ -22,4 +21,3 @@ Current feature areas:
 - `blog/`: 블로그 목록/상세 지원 및 타입.
 - `home/`: 홈페이지 통계, 토픽, 표시 컴포넌트.
 - `meetup/`: 밋업 이벤트, 리더보드, 사용자 프로필, Firestore 매핑.
-- `shadow/`: 쉐도잉 연습 UI 지원.

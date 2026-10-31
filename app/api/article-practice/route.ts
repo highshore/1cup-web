@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { admin, createServerClientRSC } from "../../../lib/supabase/server";
+import { admin, createServerClientRSC } from "../../lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         }),
       });
       if (!response.ok) {
-        console.error("[shadow] definition provider returned", response.status);
+        console.error("[article-practice] definition provider returned", response.status);
         return error("AI practice is temporarily unavailable.", 502);
       }
 
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
           );
         // A cache miss on write is not worth failing the lookup over.
         if (cacheError) {
-          console.error("[shadow] definition cache write failed", cacheError.message);
+          console.error("[article-practice] definition cache write failed", cacheError.message);
         }
       }
 
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         },
       });
       if (!response.ok) {
-        console.error("[shadow] transcription provider returned", response.status);
+        console.error("[article-practice] transcription provider returned", response.status);
         return error("AI practice is temporarily unavailable.", 502);
       }
 
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
 
     return error("Unsupported practice request.", 400);
   } catch (caught) {
-    console.error("[shadow] OpenAI request failed", caught instanceof Error ? caught.message : "unknown error");
+    console.error("[article-practice] OpenAI request failed", caught instanceof Error ? caught.message : "unknown error");
     return error("AI practice is temporarily unavailable.", 502);
   }
 }

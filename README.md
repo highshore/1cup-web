@@ -1,6 +1,6 @@
 # One Cup English
 
-One Cup English is a Next.js web app for English learning, offline meetups, article study, shadowing, payment, profile, and reporting workflows. Product data, authentication, and backend integrations use Supabase (Postgres, Auth, Storage, and Edge Functions); Firebase Storage remains only for legacy article media URLs. The web app deploys to Vercel.
+One Cup English is a Next.js web app for English learning, offline meetups, article study, payment, profile, and reporting workflows. Product data, authentication, and backend integrations use Supabase (Postgres, Auth, Storage, and Edge Functions); Firebase Storage remains only for legacy article media URLs. The web app deploys to Vercel.
 
 ## Quick Start
 

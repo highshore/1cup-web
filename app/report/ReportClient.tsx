@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { colors as brandColors } from "../lib/features/shadow/styles/shadow_styles";
 import {
   FiTrendingUp,
   FiClock,
@@ -12,6 +11,15 @@ import {
   FiAward,
   FiActivity,
 } from "react-icons/fi";
+
+// Chart palette (formerly imported from the removed shadow feature's style module).
+const brandColors = {
+  primary: "#050505",
+  secondary: "#6f6861",
+  accent: "#e0602e",
+  text: { secondary: "#2a2a2a", muted: "#706a64" },
+  border: { light: "#e7e3de" },
+} as const;
 
 // chart.js is heavy and only needed once charts render — load it (and the
 // Chart.js registration side-effect) from a separate chunk on demand.

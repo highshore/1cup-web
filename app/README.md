@@ -2,7 +2,7 @@
 
 ## English
 
-This directory contains the Next.js App Router application. Route folders map to pages such as `/`, `/new-home`, `/meetup`, `/leaderboard`, `/blog`, `/shadow`, `/payment`, `/profile`, `/report`, and `/transcript`.
+This directory contains the Next.js App Router application. Route folders map to pages such as `/`, `/new-home`, `/meetup`, `/leaderboard`, `/blog`, `/payment`, `/profile`, `/report`, and `/transcript`.
 
 Use `page.tsx` files as thin route wrappers whenever possible. Put substantial UI logic in `*Client.tsx`, shared feature logic in `app/lib/features`, and reusable app-wide pieces in `app/lib`.
 
@@ -17,7 +17,7 @@ Use `page.tsx` files as thin route wrappers whenever possible. Put substantial U
 
 ## 한국어
 
-이 폴더는 Next.js App Router 애플리케이션을 담고 있습니다. 각 라우트 폴더는 `/`, `/new-home`, `/meetup`, `/leaderboard`, `/blog`, `/shadow`, `/payment`, `/profile`, `/report`, `/transcript` 같은 페이지와 연결됩니다.
+이 폴더는 Next.js App Router 애플리케이션을 담고 있습니다. 각 라우트 폴더는 `/`, `/new-home`, `/meetup`, `/leaderboard`, `/blog`, `/payment`, `/profile`, `/report`, `/transcript` 같은 페이지와 연결됩니다.
 
 가능하면 `page.tsx`는 얇은 라우트 래퍼로 유지하세요. 복잡한 UI 로직은 `*Client.tsx`, 기능별 공통 로직은 `app/lib/features`, 앱 전체 공통 요소는 `app/lib`에 둡니다.
 

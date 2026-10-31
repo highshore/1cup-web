@@ -31,12 +31,7 @@ export default function ConditionalLayoutWrapper({
 
   // Pages that should NOT use the main layout (with GNB and Footer)
   const authPages = ["/auth", "/kakao_callback"];
-  const isExamPreview = /^\/admin\/test-center\/exams\/[^/]+\/preview$/.test(
-    pathname,
-  );
-  const isExamPipeline = /^\/admin\/test-center(?:\/.*)?$/.test(pathname);
-
-  const shouldUseMainLayout = !authPages.includes(pathname) && !isExamPreview && !isExamPipeline;
+  const shouldUseMainLayout = !authPages.includes(pathname);
 
   return (
     <I18nProvider>

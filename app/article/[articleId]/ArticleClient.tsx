@@ -743,7 +743,7 @@ const getWordDefinition = async (
   articleId: string
 ): Promise<string> => {
   try {
-    const response = await fetch("/api/shadow/openai", {
+    const response = await fetch("/api/article-practice", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

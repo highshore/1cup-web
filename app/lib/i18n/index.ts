@@ -1,13 +1,13 @@
 import adminAnalytics from "./admin_analytics";
 import adminCancellations from "./admin_cancellations";
 import adminGifts from "./admin_gifts";
+import adminNav from "./admin_nav";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
 import ko from "./locales/ko";
 import notFound from "./not_found";
 import payment from "./payment";
 import profileRedesign from "./profile_redesign";
-import speakingCenter from "./speaking_center";
 
 export type SupportedLocale = "en" | "ko";
 
@@ -16,7 +16,6 @@ const dictionaries = {
     ...en,
     notFound: notFound.en,
     payment: payment.en,
-    speakingCenter: speakingCenter.en,
     home: {
       ...en.home,
       faq: homeFaq.en,
@@ -51,13 +50,14 @@ const dictionaries = {
       gifts: adminGifts.en.gifts,
       analytics: adminAnalytics.en,
       cancellations: adminCancellations.en,
+      nav: adminNav.en.nav,
+      today: adminNav.en.today,
     },
   },
   ko: {
     ...ko,
     notFound: notFound.ko,
     payment: payment.ko,
-    speakingCenter: speakingCenter.ko,
     home: {
       ...ko.home,
       faq: homeFaq.ko,
@@ -94,6 +94,8 @@ const dictionaries = {
       gifts: adminGifts.ko.gifts,
       analytics: adminAnalytics.ko,
       cancellations: adminCancellations.ko,
+      nav: adminNav.ko.nav,
+      today: adminNav.ko.today,
     },
   },
 };
