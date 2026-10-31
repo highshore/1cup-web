@@ -24,7 +24,7 @@ export default async function DailyAdminHome() {
     { label: "최근 30일 순매출", value: `₩${formatKrw(o.revenue30d)}` },
   ];
   return (
-    <div className="mx-auto w-full max-w-[752px] px-4 pb-20 pt-8 [word-break:keep-all]">
+    <div className="mx-auto w-full max-w-page px-4 min-[900px]:px-gutter pb-20 pt-8 [word-break:keep-all]">
       <h1 className="m-0 text-[28px] font-black">Daily 관리자</h1>
       <p className="mt-2 text-[13px] font-semibold text-[rgba(5,5,5,0.6)]">
         One Cup Daily만 다뤄요. 1cup 멤버십·모임은 1cup 관리자(/admin)에서 관리해요.

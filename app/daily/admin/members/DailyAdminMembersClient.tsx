@@ -74,7 +74,7 @@ export default function DailyAdminMembersClient({ members }: { members: DailyAdm
   }, [members, query, filter]);
 
   return (
-    <div className="mx-auto w-full max-w-[752px] px-4 pb-20 pt-8 [word-break:keep-all]">
+    <div className="mx-auto w-full max-w-page px-4 min-[900px]:px-gutter pb-20 pt-8 [word-break:keep-all]">
       <Link href="/daily/admin" className="inline-flex items-center gap-1 text-[14px] font-bold text-[rgba(5,5,5,0.6)]">
         <ArrowLeftIcon className="size-4" />
         Daily 관리자

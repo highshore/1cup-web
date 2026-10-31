@@ -144,7 +144,12 @@ export function Pill({ children, className }: { children: ReactNode; className?:
   );
 }
 
-// Full-bleed band; content sits in a centered column.
+// Daily's page column on desktop is the main site's: the 960px page with its 24px
+// gutter (912px of content), as on /meetup, so the GNB and content line up across both
+// services. Phones keep a 16px gutter.
+export const dailyColumn = "mx-auto w-full max-w-page px-4 min-[900px]:px-gutter";
+
+// Full-bleed band; content sits in the page column.
 export function Panel({
   id,
   className,
@@ -157,9 +162,9 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={cn("scroll-mt-[60px] px-4 py-16 min-[900px]:py-24", className)}>
+    <section id={id} className={cn("scroll-mt-[60px] py-16 min-[900px]:py-24", className)}>
       {/* Centered on phones; things that read better ranged left opt out with text-left. */}
-      <div className={cn("mx-auto w-full max-w-[720px] max-[899px]:text-center", inner)}>{children}</div>
+      <div className={cn(dailyColumn, "max-[899px]:text-center", inner)}>{children}</div>
     </section>
   );
 }

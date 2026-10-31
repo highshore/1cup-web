@@ -5,7 +5,7 @@ import { CheckBadgeIcon, StarIcon } from "@heroicons/react/24/solid";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { dailyCopy } from "../copy";
 import type { PublicDailyReview } from "../server/reviews";
-import { cn } from "./DailyUI";
+import { cn, dailyColumn } from "./DailyUI";
 
 const AUTO_MS = 4500;
 
@@ -57,7 +57,7 @@ export default function ReviewCarousel({ reviews }: { reviews: PublicDailyReview
 
   return (
     <section aria-label={copy.carouselLabel} className="bg-white px-0 py-10 min-[900px]:py-14">
-      <div className="mx-auto w-full max-w-[720px] px-4">
+      <div className={dailyColumn}>
         <p className="flex items-center justify-center gap-1.5 text-[0.95rem] font-black min-[900px]:justify-start">
           <span className="flex gap-0.5" aria-hidden>
             {[1, 2, 3, 4, 5].map((v) => (
@@ -74,12 +74,12 @@ export default function ReviewCarousel({ reviews }: { reviews: PublicDailyReview
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}
-        className="relative m-0 mx-auto mt-4 flex w-full max-w-[720px] list-none snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="relative m-0 mx-auto mt-4 flex w-full max-w-page list-none snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 min-[900px]:scroll-px-gutter min-[900px]:px-gutter [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {reviews.map((review) => (
           <li
             key={review.id}
-            className="flex w-[85%] shrink-0 snap-start flex-col rounded-[24px] bg-[#f5f5f4] p-5 text-left min-[600px]:w-[calc(50%-6px)]"
+            className="flex w-[85%] shrink-0 snap-start flex-col rounded-[24px] bg-[#f5f5f4] p-5 text-left min-[600px]:w-[calc(50%-6px)] min-[900px]:w-[calc((100%-24px)/3)]"
           >
             <p className="flex-1 text-[1rem] font-semibold leading-relaxed">“{review.body}”</p>
             <div className="mt-4 flex items-center gap-2.5">
@@ -100,7 +100,7 @@ export default function ReviewCarousel({ reviews }: { reviews: PublicDailyReview
       </ul>
 
       {reviews.length > 1 && (
-        <div className="mx-auto mt-4 flex w-full max-w-[720px] items-center justify-center gap-3 px-4">
+        <div className={cn(dailyColumn, "mt-4 flex items-center justify-center gap-3")}>
           <button
             type="button"
             onClick={() => {

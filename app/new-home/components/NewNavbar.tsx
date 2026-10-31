@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Bars3Icon,
-  CalendarDaysIcon,
   NewspaperIcon,
   TrophyIcon,
   UserCircleIcon,
@@ -20,7 +19,6 @@ import ServiceSwitcher from "../../lib/components/ServiceSwitcher";
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
 const NAV_ITEMS = [
-  { path: "/daily", labelKey: "daily", icon: CalendarDaysIcon },
   { path: "/meetup", labelKey: "meetup", icon: UserGroupIcon },
   { path: "/leaderboard", labelKey: "leaderboard", icon: TrophyIcon },
   { path: "/blog", labelKey: "blog", icon: NewspaperIcon },
