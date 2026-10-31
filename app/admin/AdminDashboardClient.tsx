@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { supabase } from "../lib/supabase/client";
 import { useAuth } from "../lib/contexts/auth_context";
 import { useI18n } from "../lib/i18n/I18nProvider";
+import AdminTodayPanel from "./AdminTodayPanel";
 
 type DashboardStats = {
   totalMembers: number;
@@ -28,20 +29,9 @@ type DashboardUser = {
 const wrapperClass =
   "flex max-w-[1400px] mx-auto pt-0 px-5 pb-5 flex-col gap-[30px]";
 
-const quickActionsGridClass =
-  "grid grid-cols-3 gap-3.5 mb-2.5 max-[980px]:grid-cols-2 max-[560px]:grid-cols-1";
+const headerClass = "mb-5 flex flex-wrap items-baseline justify-between gap-3";
 
-const quickActionClass =
-  "min-h-[132px] p-[18px] border-2 border-[#050505] rounded-xl bg-white text-[#050505] cursor-pointer text-left shadow-[3px_3px_0_#f47a4a] transition-[translate,box-shadow] duration-[140ms] ease-[ease] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#f47a4a] focus-visible:outline-solid focus-visible:outline-[3px] focus-visible:outline-[#f47a4a] focus-visible:outline-offset-[3px]";
-
-const quickActionLabelClass = "text-[16px] font-black";
-
-const quickActionDescriptionClass =
-  "mx-0 mt-2 mb-0 text-[rgba(5,5,5,0.64)] text-[13px] font-semibold leading-[1.5]";
-
-const headerClass = "mb-5";
-
-const titleClass = "m-0 text-[#050505] text-[28px] font-black";
+const titleClass = "m-0 text-[#050505] text-[22px] font-black";
 
 const statsGridClass =
   "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 mb-[30px]";
@@ -58,19 +48,6 @@ const statSubtextClass = "mt-1 text-[rgba(5,5,5,0.6)] text-[12px]";
 
 const loadingClass = "p-10 text-[rgba(5,5,5,0.6)] font-bold text-center";
 
-const QUICK_ACTIONS = [
-  ["analytics", "/admin/analytics"],
-  ["members", "/admin/members"],
-  ["cancellations", "/admin/cancellations"],
-  ["articles", "/admin/articles"],
-  ["shadow", "/admin/shadow"],
-  ["marketing", "/admin/marketing"],
-  ["discountCodes", "/admin/discount-codes"],
-  ["notifications", "/admin/notifications"],
-  ["gifts", "/admin/gifts"],
-  ["testCenter", "/admin/test-center"],
-] as const;
-
 const EMPTY_STATS: DashboardStats = {
   totalMembers: 0,
   activeSubscriptions: 0,
@@ -81,7 +58,6 @@ const EMPTY_STATS: DashboardStats = {
 };
 
 export default function AdminDashboardClient() {
-  const router = useRouter();
   const { t } = useI18n();
   const { currentUser, accountStatus, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -173,18 +149,14 @@ export default function AdminDashboardClient() {
 
   return (
     <main className={wrapperClass}>
-      <div className={quickActionsGridClass} aria-label={t.admin.dashboard.title}>
-        {QUICK_ACTIONS.map(([id, path]) => (
-          <button key={id} type="button" className={quickActionClass} onClick={() => router.push(path)}>
-            <div className={quickActionLabelClass}>{t.admin.dashboard.sections[id].label}</div>
-            <p className={quickActionDescriptionClass}>{t.admin.dashboard.sections[id].description}</p>
-          </button>
-        ))}
-      </div>
+      <AdminTodayPanel />
 
       <div>
         <div className={headerClass}>
-          <h1 className={titleClass}>{t.admin.dashboard.title}</h1>
+          <h2 className={titleClass}>{t.admin.today.keyMetrics}</h2>
+          <Link href="/admin/analytics" className="text-[13px] font-black text-[#e0602e] no-underline hover:underline">
+            {t.admin.today.viewAnalytics}
+          </Link>
         </div>
         <div className={statsGridClass}>
           <div className={statCardClass}>

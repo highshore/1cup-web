@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-One Cup English (영어 한잔 / `one-cup-eng`) is a Next.js App Router web app for English learning — offline meetups, article study, shadowing, live transcript copilot, payment/subscription, profiles, and reporting. Product data, authentication, and server workflows use Supabase; Firebase Storage remains only for legacy article media. The web app deploys to Vercel. UI is Korean-first and bilingual via i18n.
+One Cup English (영어 한잔 / `one-cup-eng`) is a Next.js App Router web app for English learning — offline meetups, article study, live transcript copilot, payment/subscription, profiles, and reporting. Product data, authentication, and server workflows use Supabase; Firebase Storage remains only for legacy article media. The web app deploys to Vercel. UI is Korean-first and bilingual via i18n.
 
 ## Commands
 
@@ -53,12 +53,12 @@ Deploy Supabase migrations and the affected Edge Function whenever `supabase/` c
 ## Architecture
 
 ### App Router layout (`app/`)
-- Route segments are feature folders (`meetup/`, `article/`, `shadow/`, `transcript/`, `report/`, `leaderboard/`, `payment/`, `profile/`, `blog/`, `admin/`, …). Keep route files (`page.tsx`) thin; non-trivial client UI goes into a sibling `*Client.tsx` with `"use client"` at the top.
+- Route segments are feature folders (`meetup/`, `article/`, `transcript/`, `report/`, `leaderboard/`, `payment/`, `profile/`, `blog/`, `admin/`, …). Keep route files (`page.tsx`) thin; non-trivial client UI goes into a sibling `*Client.tsx` with `"use client"` at the top.
 - `app/layout.tsx` is the root: wraps everything in `StyledComponentsRegistry` → `GlobalStyles` → `AuthProvider` → `ConditionalLayoutWrapper` (the latter applies global nav/footer per route — don't add per-page nav/footer wrappers).
 - `app/api/*/route.ts` are server route handlers (Node runtime): `transcript-copilot` (OpenAI), `home-topics`, `home-stats`, `public-profile/[uid]`, `soniox-token` (speech token mint).
 
 ### Shared code (`app/lib/`)
-- `lib/features/<feature>/` — feature-scoped components/services/types/utils (`home`, `meetup`, `shadow`, `article`, `blog`). **Prefer adding feature code here over growing global helpers.**
+- `lib/features/<feature>/` — feature-scoped components/services/types/utils (`home`, `meetup`, `article`, `blog`). **Prefer adding feature code here over growing global helpers.**
 - `lib/supabase/client.ts` — browser Supabase client and typed Edge Function invocation helper.
 - `lib/supabase/server.ts` — server/browser-auth Supabase clients. **Never import the service-role `admin()` client into a client component.**
 - `lib/contexts/auth_context.tsx` — `AuthProvider` + `useAuth()`. Exposes `currentUser`, `hasActiveSubscription`, `accountStatus` (`user`/`admin`), and `isGdgMember`, sourced from Supabase Auth plus `public.users`.

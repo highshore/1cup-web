@@ -28,6 +28,18 @@ const nextConfig = {
       // The Daily storefront launched at /newsletter before it was renamed.
       { source: "/newsletter", destination: "/daily", permanent: true },
       { source: "/newsletter/:path*", destination: "/daily", permanent: true },
+      // Shadowing and the speaking test/exam center were retired (Oct 2026).
+      { source: "/shadow", destination: "/", permanent: false },
+      { source: "/shadow/:path*", destination: "/", permanent: false },
+      { source: "/library", destination: "/", permanent: false },
+      { source: "/speaking-test", destination: "/", permanent: false },
+      { source: "/speaking-test/:path*", destination: "/", permanent: false },
+      { source: "/exam-center", destination: "/", permanent: false },
+      { source: "/exam-center/:path*", destination: "/", permanent: false },
+      { source: "/admin/shadow", destination: "/admin", permanent: false },
+      { source: "/admin/test-center", destination: "/admin", permanent: false },
+      { source: "/admin/test-center/:path*", destination: "/admin", permanent: false },
+      { source: "/admin/speaking-test-builder", destination: "/admin", permanent: false },
     ];
   },
   // Tree-shake large barrel packages so only used icons/utils are bundled.
