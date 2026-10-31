@@ -9,6 +9,7 @@ import {
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/solid";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { dailyCopy } from "../copy";
 import { dailyDisplay, dailyWordmark } from "../fonts";
 import { usePrefersReducedMotion, useVisible } from "../hooks";
@@ -316,17 +317,20 @@ export function LessonScreen({ scroll = false }: { scroll?: boolean }) {
   );
 }
 
-// DailyNavbar as a signed-in reader sees it: opening the message's button signs them in.
+// DailyNavbar (its service switch closed) as a signed-in reader sees it: opening the message's button signs them in.
 function LessonNavbar() {
   return (
     <div className="daily-nav flex h-[60px] items-center justify-between gap-4 bg-white px-4">
-      <span className="flex h-[22px] shrink-0 items-baseline gap-2.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
-        <span className="relative -top-[3px] h-4 w-px bg-[#cbd5e1]" />
-        <span className="relative -top-[2.55px] text-[20.16px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
-          {dailyCopy.nav.brand}
+      <span className="flex shrink-0 items-center">
+        <span className="flex h-[22px] items-baseline gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logos/1cup_logo_new.svg" alt="" className="h-[22px] w-auto" />
+          <span className="relative -top-[3px] h-4 w-px bg-[#cbd5e1]" />
+          <span className="relative -top-[2.55px] text-[20.16px] font-bold uppercase leading-none tracking-[0.025em] text-[#f47a4a] [font-family:var(--font-daily-wordmark),sans-serif] [font-stretch:62.5%]">
+            {dailyCopy.nav.brand}
+          </span>
         </span>
+        <ChevronDownIcon className="ml-1 size-4 shrink-0 text-[#94a3b8]" />
       </span>
       <span className="inline-flex h-10 items-center rounded-full bg-[#050505] px-4 text-[0.9rem] font-black text-white">
         {dailyCopy.nav.account}

@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../lib/contexts/auth_context";
 import { useI18n } from "../../lib/i18n/I18nProvider";
 import NotificationDropdown from "../../lib/features/chat/components/NotificationDropdown";
+import ServiceSwitcher from "../../lib/components/ServiceSwitcher";
 
 // Collapse breakpoint is 920px (max-[920px]: variants below).
 
@@ -34,9 +35,6 @@ const NewNavbar: React.FC = () => {
   const { currentUser } = useAuth();
   const isLoggedIn = Boolean(currentUser);
   const isTransparent = pathname === "/" && !isScrolled;
-  const logoSrc = isTransparent
-    ? "/images/logos/1cup_logo_new_white.svg"
-    : "/images/logos/1cup_logo_new.svg";
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -74,14 +72,16 @@ const NewNavbar: React.FC = () => {
           : "bg-[rgba(255,255,255,0.94)] border-[rgba(226,232,240,0.82)] backdrop-blur-[14px]"
       }`}
     >
-      <div className="[--nav-control-height:60px] [--nav-item-height:38px] [--nav-action-size:38px] max-[520px]:[--nav-action-size:44px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] relative box-border w-full max-w-page min-h-[var(--nav-control-height)] items-center gap-1.5 mx-auto px-gutter [transition:min-height_140ms_ease] max-[920px]:grid-cols-[1fr_auto_1fr] max-[920px]:px-gutter-mobile">
-        <button
-          className="inline-flex w-fit min-h-[var(--nav-item-height)] items-center justify-center justify-self-start border-0 bg-transparent px-0 py-1 cursor-pointer hover:opacity-[0.82] max-[920px]:col-start-2 max-[920px]:row-start-1 max-[920px]:justify-self-center"
-          onClick={() => handleNavigate("/")}
-          aria-label="Home"
-        >
-          <img className="block w-[90px] h-auto" src={logoSrc} alt="1 Cup English" />
-        </button>
+      <div className="[--nav-control-height:60px] [--nav-item-height:38px] [--nav-action-size:38px] max-[520px]:[--nav-action-size:44px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] relative box-border w-full max-w-page min-h-[var(--nav-control-height)] items-center gap-1.5 mx-auto px-gutter [transition:min-height_140ms_ease] max-[920px]:grid-cols-[auto_minmax(0,1fr)_auto] max-[920px]:px-gutter-mobile">
+        {/* "ONE CUP | MEETUP": the logo opens the switch to Daily. Below 920px it sits
+            next to the menu button, as on Daily; centred it would crowd the actions. */}
+        <div className="justify-self-start max-[920px]:col-start-2 max-[920px]:row-start-1">
+          <ServiceSwitcher
+            current="meetup"
+            copy={t.nav.services}
+            tone={isTransparent ? "dark" : "light"}
+          />
+        </div>
 
         <button
           className={`hidden min-h-[var(--nav-item-height)] min-w-[var(--nav-item-height)] items-center justify-center border-0 rounded-full bg-transparent cursor-pointer [&_svg]:w-5 [&_svg]:h-5 max-[920px]:inline-flex max-[920px]:col-start-1 max-[920px]:row-start-1 max-[920px]:justify-self-start ${

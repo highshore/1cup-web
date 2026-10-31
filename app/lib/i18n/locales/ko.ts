@@ -15,6 +15,11 @@ const ko = {
     daily: "데일리",
     vocabulary: "단어장",
     meetup: "밋업",
+    services: {
+      label: "영어 한잔 서비스",
+      daily: "매일 아침 카톡으로 오는 영어",
+      meetup: "통역사가 직접 리딩하는 영어 모임",
+    },
     leaderboard: "리더보드",
     blog: "블로그",
     messages: "메시지",
