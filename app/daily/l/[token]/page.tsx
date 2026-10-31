@@ -23,6 +23,7 @@ export default async function DailyLessonPage({ params }: { params: Promise<{ to
       lesson={lesson}
       isTrial={delivery.isTrial}
       paidOtherTrack={delivery.paidOtherTrack}
+      offer={delivery.offer}
       subscribeHref={`/daily/subscribe?t=${token}&track=${lesson.track}`}
       linkToken={token}
     />

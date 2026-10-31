@@ -36,7 +36,7 @@ import {
   DAILY_MONTHLY_PRICE_KRW,
   DAILY_PASSES,
   DAILY_GUIDE_PATH,
-  DAILY_PASS_MONTHLY_BASE_KRW,
+  DAILY_MONTHLY_REGULAR_PRICE_KRW,
   DAILY_PRICE_PER_DAY_KRW,
   DAILY_PROOF_MIN,
   DAILY_TERMS_PATH,
@@ -524,10 +524,10 @@ export default function DailyClient({
               <Pill className="bg-[#050505] text-white">{copy.pricing.subscription.badge}</Pill>
             </div>
             <p className="mt-4 flex flex-wrap items-center gap-x-2 text-[0.9rem] font-bold text-[#94a3b8]">
-              {copy.pricing.subscription.compare}
-              <span className="line-through">₩{formatKrw(DAILY_PASS_MONTHLY_BASE_KRW)}</span>
+              {copy.pricing.subscription.regular}
+              <span className="line-through">₩{formatKrw(DAILY_MONTHLY_REGULAR_PRICE_KRW)}</span>
               <span className="rounded-full bg-[#f47a4a]/15 px-2 py-0.5 text-[0.8rem] font-black text-[#d95f2d]">
-                {copy.pricing.subscription.saving.replace("{saving}", formatKrw(DAILY_PASS_MONTHLY_BASE_KRW - DAILY_MONTHLY_PRICE_KRW))}
+                {copy.pricing.subscription.offer}
               </span>
             </p>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -560,6 +560,9 @@ export default function DailyClient({
                 <li key={pass.id} className="flex items-baseline justify-between gap-3 py-2.5">
                   <span className="text-[0.92rem] font-bold text-[#475569]">{pass.label}</span>
                   <span className="text-right">
+                    <s className="mr-1.5 text-[0.8rem] font-bold text-[#94a3b8]">
+                      <span className="sr-only">{copy.pricing.subscription.regular} </span>₩{formatKrw(pass.regularPriceKrw)}
+                    </s>
                     <span className="text-[1.02rem] font-black">₩{formatKrw(pass.priceKrw)}</span>
                     <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} />
                   </span>
@@ -567,6 +570,10 @@ export default function DailyClient({
               ))}
             </ul>
           </div>
+
+          <p className="mt-4 rounded-2xl bg-[#050505] px-5 py-3.5 text-left text-[0.9rem] font-bold leading-relaxed text-white">
+            ⏰ {copy.pricing.offerRule}
+          </p>
 
           <p className="mt-5 text-[0.85rem] font-semibold text-[rgba(5,5,5,0.72)]">
             {copy.pricing.note}{" "}

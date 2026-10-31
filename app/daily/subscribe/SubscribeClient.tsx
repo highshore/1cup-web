@@ -13,6 +13,8 @@ import { DAILY_GUIDE_PATH, DAILY_TERMS_PATH, DAILY_TERMS_VERSION, DAILY_TRACK_LA
 import { dailyCopy } from "../../lib/features/daily/copy";
 import { dailyDisplay } from "../../lib/features/daily/fonts";
 import { measureDailyAdEvent } from "../../lib/features/daily/ads/OpenAIAdsPixel";
+import OfferCountdown from "../../lib/features/daily/components/OfferCountdown";
+import { offerDeadlineLabel, type DailyPriceOffer } from "../../lib/features/daily/offer";
 import "../../lib/features/daily/daily.css";
 
 const PAYPLE_HOST = (process.env.NEXT_PUBLIC_PAYPLE_HOST || "https://cpay.payple.kr").replace(/\/+$/, "");
@@ -28,7 +30,10 @@ type PaypleWindow = Window & {
 interface Product {
   id: "sub_30d" | "pass_1m" | "pass_3m" | "pass_6m";
   name: string;
+  /** What checkout charges this customer now. */
   amount: number;
+  /** The regular price; above amount while today's price applies. */
+  regularAmount: number;
   days: number;
   recurring: boolean;
 }
@@ -48,6 +53,7 @@ interface BillingInfo {
   verified: boolean;
   phone: string;
   subscriptions: Subscription[];
+  offer: DailyPriceOffer;
   products: Product[];
 }
 
@@ -153,6 +159,8 @@ export default function SubscribeClient() {
         marketing: consent.marketing,
         agreements: { terms: true, privacy: true, messages: true, refund: true },
         termsVersion: DAILY_TERMS_VERSION,
+        // The price on the button; the server refuses if it would charge another.
+        expectedAmount: info?.products.find((item) => item.id === product)?.amount,
       });
       sessionStorage.setItem(DAILY_PAYMENT_ORDER_KEY, data.orderNumber);
       const selectedProduct = info?.products.find((item) => item.id === product);
@@ -167,7 +175,14 @@ export default function SubscribeClient() {
       setConsentOpen(false);
       w.PaypleCpayAuthCheck(data.paymentParams);
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : "결제를 시작하지 못했어요.");
+      if (e instanceof DailyApiError && e.code === "price-changed") {
+        // The deadline passed with the page open: show the new prices, not the dialog.
+        setConsentOpen(false);
+        await load();
+        setError(dailyCopy.offer.priceChanged);
+      } else {
+        setError(e instanceof Error && e.message ? e.message : "결제를 시작하지 못했어요.");
+      }
     } finally {
       setBusy(false);
     }
@@ -195,6 +210,10 @@ export default function SubscribeClient() {
     info?.subscriptions.some((s) => s.status === "active" && s.paidUntil && new Date(s.paidUntil).getTime() > Date.now()),
   );
   const pricing = dailyCopy.pricing;
+  const offerCopy = dailyCopy.offer;
+  const offer = info?.offer;
+  const regularSub = products.find((p) => p.recurring)?.regularAmount;
+  const passBase = products.find((p) => p.id === "pass_1m")?.amount;
 
   return (
     <div className={cn("daily-page min-h-[80vh] bg-[#f47a4a] px-4 pb-20 pt-10 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
@@ -257,9 +276,46 @@ export default function SubscribeClient() {
           </div>
         )}
 
+        {info && info.paymentsOpen && !hasPlan && offer?.active && (
+          <div className="mt-8 rounded-[28px] bg-[#050505] p-6 text-white min-[900px]:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-[1.2rem] font-black">
+                <Emoji className="text-[1.5rem]">⏰</Emoji>
+                {offerCopy.title}
+              </p>
+              <span className="rounded-full bg-[#f47a4a] px-3 py-1 text-[0.8rem] font-black text-[#050505]">{offerCopy.badge}</span>
+            </div>
+            {offer.expiresAt ? (
+              <>
+                <p className="mt-4 text-[0.85rem] font-bold text-white/60">{offerCopy.countdown}</p>
+                <OfferCountdown
+                  expiresAt={offer.expiresAt}
+                  onExpire={() => void load()}
+                  className={cn(displayClass, "mt-1 block text-[2.6rem] leading-none text-[#f47a4a]")}
+                />
+                <p className="mt-3 text-[0.92rem] font-semibold leading-relaxed text-white/75">
+                  {offerCopy.until
+                    .replace("{deadline}", offerDeadlineLabel(offer.expiresAt))
+                    .replace("{regular}", formatKrw(regularSub ?? 0))}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-[0.92rem] font-semibold leading-relaxed text-white/75">
+                {offerCopy.duringTrial.replace("{regular}", formatKrw(regularSub ?? 0))}
+              </p>
+            )}
+            <p className="mt-2 text-[0.92rem] font-black text-white">
+              {offerCopy.lockIn.replace("{price}", formatKrw(products.find((p) => p.recurring)?.amount ?? 0))}
+            </p>
+          </div>
+        )}
+
         {info && info.paymentsOpen && !hasPlan && (
           <>
-            <div className="mt-8 rounded-[28px] bg-white p-6 min-[900px]:p-8">
+            {!offer?.active && (
+              <p className="mt-6 rounded-2xl bg-white/60 px-4 py-3 text-[0.9rem] font-bold text-[#475569]">{offerCopy.expired}</p>
+            )}
+            <div className="mt-3 rounded-[28px] bg-white p-6 min-[900px]:p-8">
               <p className="text-[1.05rem] font-black">1. 상품</p>
               <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
                 {products.map((p) => (
@@ -283,8 +339,13 @@ export default function SubscribeClient() {
                         </span>
                       </span>
                       <span className="shrink-0 text-right text-[1.15rem] font-black">
+                        {p.regularAmount > p.amount && (
+                          <s className="mr-1.5 text-[0.85rem] font-bold text-[#94a3b8]">
+                            <span className="sr-only">{offerCopy.regular} </span>₩{formatKrw(p.regularAmount)}
+                          </s>
+                        )}
                         ₩{formatKrw(p.amount)}
-                        {!p.recurring && <PassPerMonth priceKrw={p.amount} days={p.days} />}
+                        {!p.recurring && <PassPerMonth priceKrw={p.amount} days={p.days} baseKrw={passBase} />}
                       </span>
                     </button>
                   </li>

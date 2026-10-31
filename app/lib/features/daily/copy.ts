@@ -303,9 +303,9 @@ export const dailyCopy = {
     subscription: {
       badge: "추천 · 가장 저렴해요",
       name: "28일 정기구독",
-      // Anchoring on a real price: the 1개월 이용권 is the same 28 days, paid once.
-      compare: "1개월 이용권",
-      saving: "₩{saving} 더 저렴",
+      // Anchoring on the regular price: today's price is half of it (terms 제5조).
+      regular: "정가",
+      offer: "체험 끝난 날 결제하면 50%",
       perDay: "하루 ₩{perDay}꼴",
       espresso: "스타벅스 에스프레소 한\u00a0잔\u00a0값으로\u00a028일",
       period: "28일마다 자동 결제",
@@ -317,11 +317,35 @@ export const dailyCopy = {
       // 청약철회 to be shown where the customer can see it before the contract.
       refundNotice: "이용권은 첫 메시지를 받기 전에만 전액 환불돼요. 그 뒤에는 결제 후 7일 이내라도 받은 메시지만큼 빼고 환불되고, 7일이 지나면 위약금 10%도 빠져요.",
     },
+    // Under the landing page's prices, which are today's prices.
+    offerRule: "체험이 끝난 날 밤 12시까지 결제하면 모든 상품이 반값이고, 정기구독은 해지하기 전까지 그 가격으로 갱신돼요. 그 뒤로는 정가예요.",
     cta: "하루 무료로 받아보기",
     subscribeNow: "체험 없이 바로 구독하기 →",
     note: "결제는 페이플(Payple)로 안전하게 처리돼요. 무료 체험에는 카드 등록이 필요 없어요.",
     terms: "이용약관 · 환불 규정",
     guide: "이용 가이드",
+  },
+  // Today's price on the subscribe page, the trial lesson page and the account page
+  // (terms 제5조). {price}: today's price, {regular}: the regular price, {deadline}: when
+  // it ends ("오늘 밤 12시").
+  offer: {
+    badge: "오늘만 50%",
+    title: "오늘 결제하면 반값이에요",
+    countdown: "이 가격이 끝나기까지",
+    until: "{deadline}까지만 이 가격이에요. 그 뒤로는 ₩{regular} 정가가 적용돼요.",
+    duringTrial: "체험이 끝나는 날 밤 12시까지 이 가격이에요. 그 뒤로는 ₩{regular} 정가가 적용돼요.",
+    lockIn: "지금 정기구독을 시작하면 해지하기 전까지 계속 ₩{price}에 갱신돼요.",
+    regular: "정가",
+    expired: "반값 시간이 끝나 지금은 정가로 결제돼요.",
+    priceChanged: "반값 시간이 끝나 가격이 바뀌었어요. 바뀐 가격을 확인하고 다시 눌러 주세요.",
+    trialBanner: {
+      during: "평일마다 새 표현이, 토요일엔 한 주 복습이 와요. 체험이 끝나는 날 밤 12시까지 결제하면 월 ₩{price} (정가 ₩{regular}) · 언제든 해지.",
+      until: "평일마다 새 표현이, 토요일엔 한 주 복습이 와요. {deadline}까지 결제하면 월 ₩{price} (정가 ₩{regular}) · 언제든 해지.",
+      regular: "평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩{regular} · 언제든 해지.",
+      countdown: "반값 끝나기까지",
+    },
+    // 서비스 중단하기 → 자동 결제 해지: what a subscriber on today's price gives up.
+    cancelWarning: "지금 쓰는 ₩{price} 가격은 해지하면 사라져요. 나중에 다시 구독하면 ₩{regular} 정가가 적용돼요.",
   },
   faq: {
     title: "자주 묻는 질문",
@@ -334,7 +358,11 @@ export const dailyCopy = {
       },
       {
         q: "정기구독과 이용권은 뭐가 달라요?",
-        a: "정기구독은 28일마다 ₩3,700이 자동 결제되고 언제든 해지할 수 있어요. 이용권은 1·3·6개월을 한 번에 결제하고 자동 결제가 없어요. 한 달 기준 가격은 정기구독이 가장 저렴해요.",
+        a: "정기구독은 28일마다 자동 결제되고 언제든 해지할 수 있어요. 이용권은 1·3·6개월을 한 번에 결제하고 자동 결제가 없어요. 한 달 기준 가격은 정기구독이 가장 저렴해요.",
+      },
+      {
+        q: "체험이 끝난 날에만 반값인가요?",
+        a: "네. 무료 체험이 끝난 날 밤 12시까지 결제하면 정기구독 ₩3,700(정가 ₩7,400), 이용권도 모두 반값이에요. 그날 시작한 정기구독은 해지하기 전까지 계속 ₩3,700으로 갱신돼요. 밤 12시가 지나면 정가로 결제돼요.",
       },
       {
         q: "카톡이 오지 않아요",
@@ -437,7 +465,7 @@ export const dailyCopy = {
       id: "subscribe",
       title: "구독하기",
       sub: "체험이 끝났다는 메시지의 버튼이나 레슨 페이지의 '구독 안내 보기'에서 시작해요.",
-      planHeader: { name: "상품", price: "가격", how: "결제 방식" },
+      planHeader: { name: "상품", price: "체험 끝난 날 / 정가", how: "결제 방식" },
       subscription: { name: "28일 정기구독", how: "28일마다 자동 결제 · 언제든 해지" },
       passHow: "한 번만 결제 · 자동 결제 없음",
       steps: [
@@ -447,6 +475,7 @@ export const dailyCopy = {
         "결제 결과 화면이 뜨면 끝이에요. 다음 발송 시간부터 레슨이 와요.",
       ],
       notes: [
+        "무료 체험이 끝난 날 밤 12시까지 결제하면 모든 상품이 반값이에요. 그날 시작한 정기구독은 해지하기 전까지 반값으로 갱신돼요. 그 뒤로는 정가로 결제돼요.",
         "한 달 기준으로는 정기구독이 가장 저렴해요.",
         "정기구독 중에 이용권을 결제하면 남은 기간 뒤로 이어지고, 자동 결제는 꺼져요.",
         "자동 결제는 다음 결제일 하루 전에 돼요. 실패하면 하루에 한 번씩 최대 3번 다시 시도하고, 결제될 때까지 레슨은 잠시 멈춰요. 세 번 모두 실패하면 구독이 끝나요.",

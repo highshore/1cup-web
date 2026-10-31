@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { DAILY_ACCOUNT_PATH, DAILY_MONTHLY_PRICE_KRW, formatKrw } from "../constants";
+import { DAILY_ACCOUNT_PATH } from "../constants";
 import { dailyDisplay } from "../fonts";
 import { cn, displayClass, Emoji } from "./DailyUI";
 import "../daily.css";
 
-const price = `월 ₩${formatKrw(DAILY_MONTHLY_PRICE_KRW)}`;
 const primary = "flex h-[54px] items-center justify-center rounded-2xl px-6 text-[1rem] font-black";
 
 // What a lesson or review link that matches no message opens, instead of a 404: the
@@ -38,7 +37,7 @@ export default function DeadLessonLink({ visitor }: { visitor: "subscriber" | "n
         )}
         {visitor === "not-subscriber" && (
           <p className="mt-3 text-[1rem] font-semibold text-[#475569]">
-            지금은 구독 중이 아니에요. 레슨을 계속 보려면 구독이 필요해요. {price}, 언제든 해지할 수 있어요.
+            지금은 구독 중이 아니에요. 레슨을 계속 보려면 구독이 필요해요. 정기구독은 언제든 해지할 수 있어요.
           </p>
         )}
         {visitor === "unknown" && (
@@ -47,7 +46,7 @@ export default function DeadLessonLink({ visitor }: { visitor: "subscriber" | "n
               <span className="font-black text-[#050505]">구독 중이라면</span> 내 계정의 내 학습 기록에서 받은 레슨 링크를 다시 확인해 주세요.
             </li>
             <li>
-              <span className="font-black text-[#050505]">구독 중이 아니라면</span> 레슨을 계속 보려면 구독이 필요해요. {price}, 언제든 해지할 수 있어요.
+              <span className="font-black text-[#050505]">구독 중이 아니라면</span> 레슨을 계속 보려면 구독이 필요해요. 정기구독은 언제든 해지할 수 있어요.
             </li>
           </ul>
         )}

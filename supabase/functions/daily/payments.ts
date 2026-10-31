@@ -19,7 +19,7 @@ const PAYPLE_HOSTNAME = Deno.env.get("PAYPLE_HOSTNAME") || "https://1cupenglish.
 const SITE_URL = (Deno.env.get("DAILY_SITE_URL") || "https://1cupenglish.com").replace(/\/+$/, "");
 
 // Bump together with DAILY_TERMS_VERSION in app/lib/features/daily/constants.ts.
-export const PAYMENT_TERMS_VERSION = "2026-10-29.1";
+export const PAYMENT_TERMS_VERSION = "2026-10-31.1";
 
 export class PaymentError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) {
@@ -39,10 +39,15 @@ type ProductId = "sub_30d" | "pass_1m" | "pass_3m" | "pass_6m";
 interface ProductRow {
   id: ProductId;
   name: string;
+  /** The regular price. */
   amount: number;
+  /** Today's price: what a customer pays before their offer deadline (terms 제5조). */
+  offer_amount: number | null;
   days: number;
   recurring: boolean;
 }
+
+const PRODUCT_COLUMNS = "id, name, amount, offer_amount, days, recurring";
 
 function env(name: string): string {
   const value = Deno.env.get(name);
@@ -75,9 +80,34 @@ async function getProduct(db: SupabaseClient, id: unknown): Promise<ProductRow> 
   if (id !== "sub_30d" && id !== "pass_1m" && id !== "pass_3m" && id !== "pass_6m") {
     throw new PaymentError("상품을 골라 주세요.", "invalid-product");
   }
-  const { data } = await db.from("daily_products").select("id, name, amount, days, recurring").eq("id", id).eq("active", true).maybeSingle();
+  const { data } = await db.from("daily_products").select(PRODUCT_COLUMNS).eq("id", id).eq("active", true).maybeSingle();
   if (!data) throw new PaymentError("판매하지 않는 상품이에요.", "invalid-product");
   return data as ProductRow;
+}
+
+/**
+ * Whether the customer pays today's price right now (daily_price_offer in the
+ * 20261031120000_daily_today_price migration). expiresAt is null while their first trial
+ * is still running: the deadline is then midnight KST of the day it ends. A lookup that
+ * fails charges the regular price rather than guessing.
+ */
+interface PriceOffer {
+  active: boolean;
+  expiresAt: string | null;
+}
+
+async function priceOffer(db: SupabaseClient, customerId: string): Promise<PriceOffer> {
+  const { data, error } = await db.rpc("daily_price_offer", { p_customer_id: customerId });
+  const row = (Array.isArray(data) ? data[0] : data) as { active: boolean; expires_at: string | null } | undefined;
+  if (error || !row) {
+    if (error) console.error("daily price offer lookup failed:", error.message);
+    return { active: false, expiresAt: null };
+  }
+  return { active: row.active === true, expiresAt: row.expires_at };
+}
+
+function priceFor(product: ProductRow, offer: PriceOffer): number {
+  return offer.active && product.offer_amount ? product.offer_amount : product.amount;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,13 +337,14 @@ async function validInviteCode(db: SupabaseClient, customerId: string, code: unk
 // ---------------------------------------------------------------------------
 
 export async function billingInfo(db: SupabaseClient, customer: PaymentCustomer) {
-  const [{ data: subs }, { data: products }, open] = await Promise.all([
+  const [{ data: subs }, { data: products }, open, offer] = await Promise.all([
     db.from("daily_subscriptions")
       .select("id, track, status, plan, paid_until, auto_renew, delivery_time")
       .eq("customer_id", customer.id)
       .order("created_at", { ascending: false }),
-    db.from("daily_products").select("id, name, amount, days, recurring").eq("active", true),
+    db.from("daily_products").select(PRODUCT_COLUMNS).eq("active", true),
     paymentsOpen(db),
+    priceOffer(db, customer.id),
   ]);
   return {
     paymentsOpen: open,
@@ -327,7 +358,17 @@ export async function billingInfo(db: SupabaseClient, customer: PaymentCustomer)
       autoRenew: s.auto_renew,
       deliveryTime: String(s.delivery_time).slice(0, 5),
     })),
-    products: products ?? [],
+    offer,
+    // amount: what checkout charges this customer now. regularAmount: the price after
+    // their deadline, shown struck through while today's price applies.
+    products: ((products ?? []) as ProductRow[]).map((p) => ({
+      id: p.id,
+      name: p.name,
+      amount: priceFor(p, offer),
+      regularAmount: p.amount,
+      days: p.days,
+      recurring: p.recurring,
+    })),
   };
 }
 
@@ -362,13 +403,22 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
     throw new PaymentError("이미 이용 중인 플랜이 있어요. 지금 플랜이 끝난 뒤에 결제할 수 있어요.", "already-subscribed", 409);
   }
 
+  // The price is fixed on the order here: a Payple window opened before midnight is
+  // charged what it showed, even if the card is confirmed after.
+  const amount = priceFor(product, await priceOffer(db, customer.id));
+  // The page showed one price and the server would charge another (the deadline passed
+  // while the page was open): show the new price before opening the card window.
+  if (typeof body.expectedAmount === "number" && body.expectedAmount !== amount) {
+    throw new PaymentError("할인 시간이 끝나 가격이 바뀌었어요. 새로고침 후 다시 확인해 주세요.", "price-changed", 409);
+  }
+
   const orderNumber = `DLY${yyyymmdd()}${randomDigits(8)}`;
   const { error } = await db.from("daily_orders").insert({
     order_number: orderNumber,
     kind: "checkout",
     customer_id: customer.id,
     product: product.id,
-    amount: product.amount,
+    amount,
     track,
     delivery_time: `${time}:00`,
     status: "pending_auth",
@@ -387,7 +437,7 @@ export async function createCheckoutWindow(db: SupabaseClient, customer: Payment
       PCD_PAY_WORK: "CERT",
       PCD_CARD_VER: "01",
       PCD_PAY_GOODS: product.name.slice(0, 50),
-      PCD_PAY_TOTAL: product.amount,
+      PCD_PAY_TOTAL: amount,
       PCD_REGULER_FLAG: product.recurring ? "Y" : "N",
       PCD_SIMPLE_FLAG: "Y",
       PCD_PAY_OID: orderNumber,

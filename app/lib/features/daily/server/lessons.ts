@@ -2,6 +2,7 @@
 // credential (36 random hex characters per delivery), so these pages need no login.
 import { admin } from "../../../supabase/server";
 import type { DailyField, DailyTrack } from "../constants";
+import type { DailyPriceOffer } from "../offer";
 import type { DailyAudioClip } from "../spoken";
 import { storedLessonAudio } from "./audio";
 import { customerForSession } from "./session";
@@ -34,6 +35,8 @@ export interface DailyDeliveryView {
   isTrial: boolean;
   /** Another track this subscriber already pays for, so a trial lesson can say "also get this one". */
   paidOtherTrack: DailyTrack | null;
+  /** On a trial lesson: whether today's price still applies, and until when. */
+  offer: DailyPriceOffer | null;
   deliveryTime: string;
   lessons: DailyLessonContent[];
 }
@@ -105,16 +108,23 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
   }
 
   let paidOtherTrack: DailyDeliveryView["paidOtherTrack"] = null;
+  let offer: DailyPriceOffer | null = null;
   if (sub.status === "trial" || sub.status === "trial_ended") {
-    const { data: paid } = await db
-      .from("daily_subscriptions")
-      .select("track")
-      .eq("customer_id", sub.customer_id)
-      .eq("status", "active")
-      .neq("track", sub.track)
-      .limit(1)
-      .maybeSingle();
+    const [{ data: paid }, { data: offerRows }] = await Promise.all([
+      db
+        .from("daily_subscriptions")
+        .select("track")
+        .eq("customer_id", sub.customer_id)
+        .eq("status", "active")
+        .neq("track", sub.track)
+        .limit(1)
+        .maybeSingle(),
+      // The same function checkout prices with (20261031120000_daily_today_price).
+      db.rpc("daily_price_offer", { p_customer_id: sub.customer_id }),
+    ]);
     paidOtherTrack = (paid?.track as DailyDeliveryView["paidOtherTrack"]) ?? null;
+    const row = (Array.isArray(offerRows) ? offerRows[0] : offerRows) as { active: boolean; expires_at: string | null } | null;
+    if (row) offer = { active: row.active === true, expiresAt: row.expires_at };
   }
 
   return {
@@ -124,6 +134,7 @@ export async function getDeliveryByToken(token: string): Promise<DailyDeliveryVi
     name: sub.recipient_name,
     isTrial: sub.status === "trial" || sub.status === "trial_ended",
     paidOtherTrack,
+    offer,
     deliveryTime: sub.delivery_time,
     lessons,
   };

@@ -6,7 +6,17 @@ import { signInWithLink } from "../api";
 import { ProgressLink, QuizCrowd, SentenceWall, useLessonCommunity, YesterdayPick, type Progress } from "./Community";
 import { CheckIcon, PauseIcon, PlayIcon, ShareIcon, SpeakerWaveIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { DailyLessonContent } from "../server/lessons";
-import { DAILY_FIELD_LABEL, DAILY_REVIEW_PATH, DAILY_TRACK_LABEL, type DailyTrack } from "../constants";
+import {
+  DAILY_FIELD_LABEL,
+  DAILY_MONTHLY_PRICE_KRW,
+  DAILY_MONTHLY_REGULAR_PRICE_KRW,
+  DAILY_REVIEW_PATH,
+  DAILY_TRACK_LABEL,
+  formatKrw,
+  type DailyTrack,
+} from "../constants";
+import { offerDeadlineLabel, type DailyPriceOffer } from "../offer";
+import OfferCountdown from "./OfferCountdown";
 import { dailyCopy } from "../copy";
 import { useSpeech } from "../hooks";
 import { expressionPattern, markParts } from "../highlight";
@@ -361,16 +371,28 @@ function LessonPageBody({ lesson, token }: { lesson: DailyLessonContent; token: 
   );
 }
 
+// The trial banner's line about price: today's price and its deadline while it applies.
+function trialPriceLine(offer: DailyPriceOffer | null) {
+  const t = dailyCopy.offer.trialBanner;
+  const fill = (text: string) =>
+    text.replace("{price}", formatKrw(DAILY_MONTHLY_PRICE_KRW)).replace("{regular}", formatKrw(DAILY_MONTHLY_REGULAR_PRICE_KRW));
+  if (!offer?.active) return fill(t.regular);
+  if (!offer.expiresAt) return fill(t.during);
+  return fill(t.until.replace("{deadline}", offerDeadlineLabel(offer.expiresAt)));
+}
+
 export function LessonPage({
   lesson,
   isTrial,
   paidOtherTrack,
+  offer,
   subscribeHref,
   linkToken,
 }: {
   lesson: DailyLessonContent;
   isTrial: boolean;
   paidOtherTrack: DailyTrack | null;
+  offer: DailyPriceOffer | null;
   subscribeHref: string;
   linkToken: string;
 }) {
@@ -403,8 +425,14 @@ export function LessonPage({
             <p className="mt-2 text-[0.95rem] font-semibold text-white/70">
               {paidOtherTrack
                 ? `지금 ${TRACK_LABEL[paidOtherTrack]} 레벨을 받고 있어요. ${TRACK_LABEL[lesson.track]} 레벨로 바꾸고 싶다면 내 구독에서 바꿀 수 있어요.`
-                : "평일마다 받는 시간에 새 표현이, 토요일엔 한 주 복습이 와요. 월 ₩3,700 · 언제든 해지."}
+                : trialPriceLine(offer)}
             </p>
+            {!paidOtherTrack && offer?.active && offer.expiresAt && (
+              <p className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3">
+                <span className="text-[0.88rem] font-bold text-white/70">{dailyCopy.offer.trialBanner.countdown}</span>
+                <OfferCountdown expiresAt={offer.expiresAt} className={cn(displayClass, "text-[1.5rem] leading-none text-[#f47a4a]")} />
+              </p>
+            )}
             {/* One plan at a time: someone paying for the other level switches, not buys. */}
             <Link
               href={paidOtherTrack ? "/daily/account" : subscribeHref}

@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import Link from "next/link";
 import {
   DAILY_MONTHLY_PRICE_KRW,
+  DAILY_MONTHLY_REGULAR_PRICE_KRW,
   DAILY_PASSES,
   DAILY_TERMS_VERSION,
   formatKrw,
@@ -44,6 +45,7 @@ const effectiveDate = DAILY_TERMS_VERSION.replace(/^(\d{4})-(\d{2})-(\d{2})(\.\d
 
 export function DailyTermsDocument() {
   const monthly = formatKrw(DAILY_MONTHLY_PRICE_KRW);
+  const regular = formatKrw(DAILY_MONTHLY_REGULAR_PRICE_KRW);
   return (
     <div>
       <p className="mb-6 text-[0.85rem] font-semibold text-[#64748b]">시행일: {effectiveDate}</p>
@@ -88,14 +90,27 @@ export function DailyTermsDocument() {
       <Article title="제5조 (요금과 결제)">
         <List>
           <li>
-            <strong>28일 정기구독:</strong> {monthly}원. 최초 결제일부터 28일마다 등록한 카드로 자동 결제되며,
+            <strong>28일 정기구독:</strong> 정가 {regular}원. 최초 결제일부터 28일마다 등록한 카드로 자동 결제되며,
             해지하기 전까지 갱신됩니다. 2026년 10월 28일 이 약관이 시행되기 전에 정기구독을 시작한 이용자는
             바뀐 약관에 동의하기 전까지 종전대로 30일마다 결제됩니다.
           </li>
           <li>
-            <strong>이용권:</strong>{" "}
-            {DAILY_PASSES.map((pass) => `${pass.label} ${formatKrw(pass.priceKrw)}원(${pass.days}일)`).join(", ")}.
+            <strong>이용권:</strong> 정가{" "}
+            {DAILY_PASSES.map((pass) => `${pass.label} ${formatKrw(pass.regularPriceKrw)}원(${pass.days}일)`).join(", ")}.
             결제 시 1회만 결제되며 자동 결제되지 않습니다. 이용 기간은 결제 완료 시점부터 계산합니다.
+          </li>
+          <li>
+            <strong>체험 종료일 할인:</strong> 무료 체험이 끝난 날 24시(한국 시간)까지 결제하면 모든 상품을 정가의 50%에
+            결제할 수 있습니다(28일 정기구독 {monthly}원,{" "}
+            {DAILY_PASSES.map((pass) => `${pass.label} ${formatKrw(pass.priceKrw)}원`).join(", ")}). 무료 체험이 진행 중일
+            때에도 같은 가격이 적용됩니다. 할인은 이용자당 한 번, 처음 끝난 무료 체험을 기준으로 하며, 무료 체험 없이 결제하는
+            이용자는 결제 화면을 처음 연 날 24시까지 적용됩니다. 2026년 10월 31일 이 약관이 시행될 때 이미 무료 체험이 끝난
+            이용자에게는 시행 시점부터 24시간 동안 적용됩니다. 할인 기간이 지나면 정가가 적용됩니다.
+          </li>
+          <li>
+            할인 가격으로 시작한 정기구독은 해지하거나 결제 실패로 끝나기 전까지 같은 가격으로 갱신됩니다. 2026년 10월 31일
+            이 약관이 시행되기 전에 시작한 정기구독도 기존 가격({monthly}원)으로 계속 갱신됩니다. 결제 금액은 결제창을 열 때
+            정해지며, 할인 기간 안에 연 결제창은 할인 가격으로 결제됩니다.
           </li>
           <li>결제는 주식회사 페이플을 통해 처리되며, 모든 요금은 부가가치세를 포함합니다. 카드 명세서와 결제 알림에는 결제대행사 사정에 따라 &lsquo;수기결제 다날&rsquo; 등 결제대행사의 이름으로 표시될 수 있습니다.</li>
           <li>회사가 요금을 바꾸는 경우 적용 30일 전에 서비스 화면과 알림으로 알립니다. 이미 결제한 기간에는 바뀐 요금을 적용하지 않으며, 정기구독자는 바뀐 요금이 적용되기 전에 해지할 수 있습니다.</li>

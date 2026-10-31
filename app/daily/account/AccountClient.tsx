@@ -12,6 +12,7 @@ import {
   DAILY_GUIDE_PATH,
   DAILY_JOB_CATEGORIES,
   DAILY_MONTHLY_PRICE_KRW,
+  DAILY_MONTHLY_REGULAR_PRICE_KRW,
   DAILY_TERMS_PATH,
   DAILY_TRACK_LABEL,
   DAILY_TRIAL_PATH,
@@ -31,6 +32,8 @@ interface Subscription {
   plan: string | null;
   paidUntil: string | null;
   autoRenew: boolean;
+  /** What the next renewal charges: the price the subscription was bought at. */
+  renewalAmount: number | null;
   deliveryTime: string;
   nextSendAt: string | null;
   canResume: boolean;
@@ -303,7 +306,7 @@ function SubscriptionCard({
       {sub.status === "active" && sub.paidUntil && (
         <p className="mt-2 text-[0.92rem] font-semibold text-[#475569]">
           {sub.autoRenew
-            ? s.nextCharge.replace("{date}", dateLabel(sub.paidUntil)).replace("{price}", formatKrw(DAILY_MONTHLY_PRICE_KRW))
+            ? s.nextCharge.replace("{date}", dateLabel(sub.paidUntil)).replace("{price}", formatKrw(sub.renewalAmount ?? DAILY_MONTHLY_PRICE_KRW))
             : `${s.paidUntil.replace("{date}", dateLabel(sub.paidUntil))} · ${s.autoRenewOff}`}
         </p>
       )}
@@ -559,6 +562,16 @@ function StopServiceSheet({
                 {choice.kind === "cancel" ? cancelTitle(choice.sub.track) : t.refundTitle}
               </h2>
             </div>
+
+            {choice.kind === "cancel" &&
+              choice.sub.renewalAmount !== null &&
+              choice.sub.renewalAmount < DAILY_MONTHLY_REGULAR_PRICE_KRW && (
+                <p className="mt-3 rounded-2xl bg-[#fff0e8] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[#9a3412]">
+                  {dailyCopy.offer.cancelWarning
+                    .replace("{price}", formatKrw(choice.sub.renewalAmount))
+                    .replace("{regular}", formatKrw(DAILY_MONTHLY_REGULAR_PRICE_KRW))}
+                </p>
+              )}
 
             {choice.kind === "refund" && (
               <div className="mt-3">
