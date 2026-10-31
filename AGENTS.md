@@ -16,7 +16,7 @@
 - The admin portal is route-based: `/admin` is the overview, with `/admin/members`, `/admin/articles`, and `/admin/marketing` as focused work areas, all reachable from the grouped `AdminNav` (Home / Operations / Content / Growth). Feedback belongs with members. Shadowing and the exam center were removed.
 - The article pipeline writes customer-facing Supabase `articles` rows and short-lived `article_processing_jobs` rows through the `admin-article` Edge Function. Do not expose jobs or their source text to the client.
 - Article discussion voting uses server-owned Supabase `article_discussion_stats` and private `article_discussion_votes` rows. Clients must call the `discussion-vote` Edge Function.
-- Marketing is operated from `/admin/marketing` as a Gopas cron workspace backed by Supabase `growth_config`, `marketing_templates`, `marketing_cron_runs`, and `growth_posts`. The `marketing` Edge Function resolves `{{daysUntilSunday}}`, checks Gopas Free Ads before posting, and treats an empty weekday list as a disabled schedule. Each generated post has a unique `/r/{trackingCode}` redirect, invisible copied-text marker, and server-owned metrics.
+- Marketing is operated from `/admin/marketing` as a Gopas, Threads, and Instagram cron workspace backed by Supabase `growth_config`, `marketing_templates`, `marketing_cron_runs`, `growth_posts`, and the service-role-only `marketing_channel_accounts` (Meta tokens). The `marketing` Edge Function resolves `{{daysUntilSunday}}`, checks Gopas Free Ads before posting, and treats an empty weekday list as a disabled schedule. Each generated post has a unique `/r/{trackingCode}` redirect, invisible copied-text marker, and server-owned metrics.
 - Growth redirects set a 30-day `growthTrackingCode` cookie and pass the code into the Supabase payment flow. Successful first payments attribute a single signup to the source post transactionally.
 
 ### Kakao auth / Supabase browser-path constraints
@@ -45,7 +45,7 @@
 - 관리자 포털은 라우트 기반입니다. `/admin`은 개요이고, `/admin/members`, `/admin/articles`, `/admin/marketing`은 각각의 작업 영역이며 모두 그룹형 `AdminNav`(홈 / 운영 / 콘텐츠 / 성장)에서 이동합니다. 피드백은 멤버 영역에 포함됩니다. 쉐도잉과 시험센터는 삭제되었습니다.
 - 아티클 파이프라인은 Supabase `articles` 행과 짧게 유지되는 `article_processing_jobs` 행을 `admin-article` Edge Function으로 작성합니다. 작업 행과 원문은 클라이언트에 노출하지 않습니다.
 - 아티클 토론 투표는 서버 소유 Supabase `article_discussion_stats`, 비공개 `article_discussion_votes` 행을 사용합니다. 클라이언트는 `discussion-vote` Edge Function으로만 투표해야 합니다.
-- 마케팅은 Supabase `growth_config`, `marketing_templates`, `marketing_cron_runs`, `growth_posts`를 사용하는 `/admin/marketing`의 고파스 크론 작업 영역에서 운영합니다. `marketing` Edge Function은 `{{daysUntilSunday}}`를 실행일 기준으로 치환하고, 게시 전 고파스 무료홍보 게시판을 확인하며, 선택 요일이 없으면 자동 게시를 끕니다. 생성된 각 게시물에는 고유한 `/r/{trackingCode}` 리다이렉트, 복사 시 붙는 보이지 않는 표식, 서버 소유 성과가 있습니다.
+- 마케팅은 Supabase `growth_config`, `marketing_templates`, `marketing_cron_runs`, `growth_posts`, 서비스 역할 전용 `marketing_channel_accounts`(Meta 토큰)를 사용하는 `/admin/marketing`의 고파스·스레드·인스타그램 크론 작업 영역에서 운영합니다. `marketing` Edge Function은 `{{daysUntilSunday}}`를 실행일 기준으로 치환하고, 게시 전 고파스 무료홍보 게시판을 확인하며, 선택 요일이 없으면 자동 게시를 끕니다. 생성된 각 게시물에는 고유한 `/r/{trackingCode}` 리다이렉트, 복사 시 붙는 보이지 않는 표식, 서버 소유 성과가 있습니다.
 - Growth 리다이렉트는 30일짜리 `growthTrackingCode` 쿠키를 설정하고 Supabase 결제 흐름에 코드를 전달합니다. 첫 결제가 성공하면 트랜잭션으로 원본 게시물에 가입 1건만 기여 처리합니다.
 
 ### Kakao 인증 / Supabase 브라우저 경로 제약

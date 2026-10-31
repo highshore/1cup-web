@@ -1,6 +1,7 @@
 // marketing — port of functions/src/marketingCron.ts (Gopas advert scheduler).
 //
 // Admin actions (save-template-schedule / create-template / ensure-default-template /
+// channel-status / connect-channel / disconnect-channel /
 // delete-template / delete-run / generate-template / run-now) plus the scheduled tick, which pg_cron calls with the
 // a private scheduler header as { action: "tick" }.
 //
@@ -14,9 +15,26 @@
 // Publishing is delegated to a browser-capable service. Edge Functions own the
 // schedule, duplicate check, tracking records, and audit trail; the publisher
 // owns only the authenticated Chromium interaction with Koreapas.
+//
+// Templates can also post to Threads and Instagram (./social.ts, official Graph APIs).
+// A due template creates one queued run per selected channel; the first runs right
+// away and each later tick publishes the next queued run, so one slow channel cannot
+// time out the others. Admins connect each channel by pasting a long-lived token
+// (connect-channel); refresh-performance pulls insights and extends tokens.
 import { preflight, json } from "../_shared/cors.ts";
 import { admin, callerUid } from "../_shared/db.ts";
 import Encoding from "npm:encoding-japanese@2.2.0";
+import {
+  type ChannelAccount,
+  fetchMediaMetrics,
+  INSTAGRAM_CAPTION_LIMIT,
+  publishToInstagram,
+  publishToThreads,
+  refreshAccessToken,
+  type SocialChannel,
+  THREADS_TEXT_LIMIT,
+  verifyAccessToken,
+} from "./social.ts";
 
 const CONFIG_ROW = "settings";
 const RUN_LEASE_MS = 10 * 60 * 1000;
@@ -25,6 +43,21 @@ const KOREA_OFFSET_MS = 9 * 60 * 60 * 1000;
 const ORIGINAL_TEMPLATE_ID = "gopas_original_meetup";
 const TRACKING_DOMAIN = "https://1cupenglish.com";
 const KOREAPAS_CHANNEL = "koreapas";
+const CHANNELS = ["koreapas", "threads", "instagram"] as const;
+type Channel = (typeof CHANNELS)[number];
+const SOCIAL_CHANNELS: SocialChannel[] = ["threads", "instagram"];
+// Guards against double posts from retries or overlapping schedules.
+const CHANNEL_MIN_POST_INTERVAL_MS: Record<Channel, number> = {
+  koreapas: KOREAPAS_MIN_POST_INTERVAL_MS,
+  threads: 60 * 60 * 1000,
+  instagram: 60 * 60 * 1000,
+};
+const TRACKING_PREFIX: Record<Channel, string> = { koreapas: "kp_", threads: "th_", instagram: "ig_" };
+const QUEUED_RUN_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const TOKEN_REFRESH_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+const TOKEN_LIFETIME_MS = 60 * 24 * 60 * 60 * 1000;
+const SOCIAL_METRICS_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+const SOCIAL_METRICS_MIN_INTERVAL_MS = 60 * 60 * 1000;
 const VERTEX_LOCATION = "global";
 const GEMINI_TEMPLATE_MODEL = "gemini-3.7-flash";
 const GOOGLE_CLOUD_PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT") || "one-cup-eng";
@@ -141,6 +174,28 @@ const validPhotos = (value: unknown): TemplatePhoto[] => {
     .filter((p): p is TemplatePhoto => !!p);
 };
 
+const isChannel = (value: unknown): value is Channel =>
+  typeof value === "string" && (CHANNELS as readonly string[]).includes(value);
+
+const isSocialChannel = (value: unknown): value is SocialChannel =>
+  value === "threads" || value === "instagram";
+
+// Stored in a fixed order so Gopas (the slowest publisher) keeps running first.
+const validChannels = (value: unknown): Channel[] => {
+  const selected = new Set(Array.isArray(value) ? value.filter(isChannel) : []);
+  const channels = CHANNELS.filter((channel) => selected.has(channel));
+  if (channels.length === 0) throw new Error("Select at least one channel.");
+  return channels;
+};
+
+const optionalText = (value: unknown, field: string, maxLength: number): string => {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") throw new Error(`${field} must be a string.`);
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) throw new Error(`${field} is too long.`);
+  return trimmed;
+};
+
 const validSchedule = (value: unknown): CronSchedule => {
   const data = (value ?? {}) as Record<string, unknown>;
   const minute = Number(data.minute);
@@ -178,6 +233,8 @@ type GeneratedTemplate = {
   title: string;
   copy: string;
   callToAction: string;
+  threadsText: string;
+  instagramCaption: string;
   schedule: CronSchedule;
 };
 
@@ -257,7 +314,7 @@ const generateWithVertex = async (brief: string, destinationUrl: string): Promis
       body: JSON.stringify({
         systemInstruction: {
           parts: [{
-            text: `You write accurate Korean marketing drafts for a Koreapas Free Ads post. Return only valid JSON with exactly this shape: {"name":"string","title":"string","copy":"string","callToAction":"string","schedule":{"hour":number,"minute":number,"daysOfWeek":[number]}}. Do not make up facts, prices, credentials, partnerships, availability, or guarantees. Use only claims the operator supplies. The destination URL is operator-controlled context (${destinationUrl}); do not put any URL in title, copy, or callToAction because the system injects one tracking link. Do not generate image URLs. Keep callToAction short. If using {{daysUntilSunday}}, leave it literal for the scheduler. Choose a conservative KST schedule; daysOfWeek uses Sunday=0 through Saturday=6, and use [] only if the brief explicitly requests no automatic scheduling.`,
+            text: `You write accurate Korean marketing drafts for a Koreapas Free Ads post plus matching Threads and Instagram versions. Return only valid JSON with exactly this shape: {"name":"string","title":"string","copy":"string","callToAction":"string","threadsText":"string","instagramCaption":"string","schedule":{"hour":number,"minute":number,"daysOfWeek":[number]}}. threadsText is a short, conversational Threads post of at most 400 characters (a question or hook that invites replies; at most one topic hashtag). instagramCaption is an Instagram caption of at most 1500 characters that opens with a strong first line, says the link is in the profile, and ends with 3 to 5 relevant hashtags. Do not make up facts, prices, credentials, partnerships, availability, or guarantees. Use only claims the operator supplies. The destination URL is operator-controlled context (${destinationUrl}); do not put any URL in title, copy, callToAction, threadsText, or instagramCaption because the system injects one tracking link. Do not generate image URLs. Keep callToAction short. If using {{daysUntilSunday}}, leave it literal for the scheduler. Choose a conservative KST schedule; daysOfWeek uses Sunday=0 through Saturday=6, and use [] only if the brief explicitly requests no automatic scheduling.`,
           }],
         },
         contents: [{ role: "user", parts: [{ text: `Campaign brief:\n${brief}` }] }],
@@ -300,6 +357,12 @@ const generateTemplateDraft = async (body: Record<string, unknown>): Promise<Gen
     title: textField(parsed.title, "Title", 200),
     copy: textField(parsed.copy, "Copy", 20000),
     callToAction: textField(parsed.callToAction, "Call to action", 1000),
+    // Model output is a draft for the admin to edit, so trim rather than reject.
+    threadsText: typeof parsed.threadsText === "string" ? parsed.threadsText.trim().slice(0, 450) : "",
+    instagramCaption:
+      typeof parsed.instagramCaption === "string"
+        ? parsed.instagramCaption.trim().slice(0, INSTAGRAM_CAPTION_LIMIT)
+        : "",
     schedule: validSchedule(parsed.schedule),
   };
 };
@@ -330,7 +393,8 @@ const nextScheduledAt = (schedule: CronSchedule, afterMillis: number): Date => {
 };
 
 // -------------------------------------------------------------- post content
-const trackingCode = () => "kp_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+const trackingCode = (channel: Channel = KOREAPAS_CHANNEL) =>
+  TRACKING_PREFIX[channel] + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 const hiddenPostId = (code: string) => "kp-" + code;
 
 const htmlAttribute = (value: string) =>
@@ -609,8 +673,11 @@ const refreshPriorPostPerformance = async (): Promise<Metrics & { trackedPosts: 
   for (const post of rows as Array<Record<string, unknown>>) {
     const stored = readMetrics(post.metrics);
     const external = publisherMetrics.get(String(post.id));
-    // Clicks are counted by our /r redirect; other metrics, if supplied, come from Koreapas.
-    const metrics: Metrics = external ? { ...external, clicks: stored.clicks } : stored;
+    // Clicks are counted by our /r redirect and signups are attributed server-side;
+    // other metrics, if supplied, come from Koreapas.
+    const metrics: Metrics = external
+      ? { ...external, clicks: stored.clicks, signups: stored.signups }
+      : stored;
 
     totals.impressions += metrics.impressions;
     totals.clicks += metrics.clicks;
@@ -638,15 +705,15 @@ const refreshPriorPostPerformance = async (): Promise<Metrics & { trackedPosts: 
   return totals;
 };
 
-// A request can reach Koreapas before a browser timeout or verification error is
-// reported. Treat every recent attempt as a publish for cooldown purposes, so
-// manual retries and overlapping schedules cannot create successive adverts.
-const recentKoreapasAttempt = async (startedAt: string): Promise<string | null> => {
-  const cutoff = new Date(new Date(startedAt).getTime() - KOREAPAS_MIN_POST_INTERVAL_MS).toISOString();
+// A request can reach a channel before a timeout or verification error is reported.
+// Treat every recent attempt as a publish for cooldown purposes, so manual retries
+// and overlapping schedules cannot create successive posts.
+const recentChannelAttempt = async (channel: Channel, startedAt: string): Promise<string | null> => {
+  const cutoff = new Date(new Date(startedAt).getTime() - CHANNEL_MIN_POST_INTERVAL_MS[channel]).toISOString();
   const { data, error } = await admin()
     .from("growth_posts")
     .select("created_at")
-    .eq("channel", KOREAPAS_CHANNEL)
+    .eq("channel", channel)
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -662,6 +729,9 @@ type RunSettings = {
   copy: string;
   callToAction: string;
   photos: TemplatePhoto[];
+  // Absent on runs created before Threads/Instagram support.
+  threadsText?: string;
+  instagramCaption?: string;
 };
 
 const clearRunLease = async (runId: string, templateId: string | null, completedAt: string) => {
@@ -684,6 +754,248 @@ const clearRunLease = async (runId: string, templateId: string | null, completed
   }
 };
 
+// ------------------------------------------------------- Threads / Instagram
+const ACCOUNTS = "marketing_channel_accounts";
+const channelLabel = (channel: Channel) =>
+  channel === "threads" ? "Threads" : channel === "instagram" ? "Instagram" : "Gopas";
+
+const loadChannelAccount = async (channel: SocialChannel): Promise<ChannelAccount | null> => {
+  const { data, error } = await admin()
+    .from(ACCOUNTS)
+    .select("account_id, username, access_token")
+    .eq("channel", channel)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.access_token || !data?.account_id) return null;
+  return {
+    channel,
+    accountId: String(data.account_id),
+    username: String(data.username ?? ""),
+    accessToken: String(data.access_token),
+  };
+};
+
+// Builds the exact text a channel receives. Threads gets the tracking link (it is
+// clickable there); Instagram captions cannot hold clickable links, so the admin puts
+// the run's tracking URL in the profile link instead.
+const socialPostContent = (
+  channel: SocialChannel,
+  settings: RunSettings,
+  trackingUrl: string,
+  scheduledForMillis: number,
+): string => {
+  if (channel === "threads") {
+    const text = resolveTemplateVariables(settings.threadsText ?? "", scheduledForMillis).trim();
+    if (!text) throw new Error("This template has no Threads text.");
+    const linked = settings.destinationUrl ? text.replaceAll(settings.destinationUrl, trackingUrl) : text;
+    const content = linked.includes(trackingUrl) ? linked : `${linked}\n\n${trackingUrl}`;
+    if (content.length > THREADS_TEXT_LIMIT) {
+      throw new Error(
+        `Threads text is ${content.length} characters including the tracking link; the limit is ${THREADS_TEXT_LIMIT}.`,
+      );
+    }
+    return content;
+  }
+  const caption = resolveTemplateVariables(settings.instagramCaption ?? "", scheduledForMillis).trim();
+  if (!caption) throw new Error("This template has no Instagram caption.");
+  if (caption.length > INSTAGRAM_CAPTION_LIMIT) {
+    throw new Error(`Instagram caption is longer than ${INSTAGRAM_CAPTION_LIMIT} characters.`);
+  }
+  if ((settings.photos ?? []).length === 0) throw new Error("Instagram posts need at least one photo.");
+  return caption;
+};
+
+const executeSocialRun = async (input: {
+  runId: string;
+  channel: SocialChannel;
+  settings: RunSettings;
+  templateId: string | null;
+  scheduledForMillis: number;
+  startedAt: string;
+  options: { bypassCooldown?: boolean };
+}) => {
+  const { runId, channel, settings, templateId, scheduledForMillis, startedAt, options } = input;
+  const a = admin();
+  const performance = { trackedPosts: 0, ...emptyMetrics() };
+  const photos = settings.photos ?? [];
+  let postId = "";
+
+  try {
+    const account = await loadChannelAccount(channel);
+    if (!account) {
+      throw new Error(`${channelLabel(channel)} is not connected. Connect it in the marketing admin first.`);
+    }
+    const postTitle = resolveTemplateVariables(settings.title ?? "", scheduledForMillis);
+    const code = trackingCode(channel);
+    const trackingUrl = `${TRACKING_DOMAIN}/r/${code}`;
+    const content = socialPostContent(channel, settings, trackingUrl, scheduledForMillis);
+
+    const previousAttemptAt = await recentChannelAttempt(channel, startedAt);
+    if (previousAttemptAt && !options.bypassCooldown) {
+      const completedAt = new Date().toISOString();
+      await a
+        .from("marketing_cron_runs")
+        .update({
+          status: "skipped",
+          post_title: postTitle,
+          post_copy: content,
+          photos,
+          performance,
+          completed_at: completedAt,
+          error: `${channelLabel(channel)} posting cooldown is active after the ${previousAttemptAt} attempt.`,
+        })
+        .eq("id", runId);
+      await clearRunLease(runId, templateId, completedAt);
+      return;
+    }
+
+    postId = crypto.randomUUID();
+    const { error: postInsertError } = await a.from("growth_posts").insert({
+      id: postId,
+      channel,
+      title: postTitle,
+      content,
+      destination_url: settings.destinationUrl,
+      tracking_code: code,
+      hidden_post_id: "",
+      photos,
+      status: "posting",
+      run_id: runId,
+      metrics: emptyMetrics(),
+      created_at: startedAt,
+      updated_at: startedAt,
+    });
+    if (postInsertError) throw new Error(postInsertError.message);
+
+    const imageUrls = photos.map((photo) => photo.url);
+    const published =
+      channel === "threads"
+        ? await publishToThreads(account, content, imageUrls)
+        : await publishToInstagram(account, content, imageUrls);
+
+    const completedAt = new Date().toISOString();
+    await a
+      .from("growth_posts")
+      .update({
+        status: "posted",
+        external_url: published.permalink,
+        external_id: published.mediaId,
+        publisher_status: "graph_api",
+        posted_at: completedAt,
+        updated_at: completedAt,
+      })
+      .eq("id", postId);
+    await a
+      .from("marketing_cron_runs")
+      .update({
+        status: "completed",
+        post_id: postId,
+        post_title: postTitle,
+        post_copy: content,
+        tracking_code: code,
+        tracking_url: trackingUrl,
+        hidden_post_id: "",
+        external_post_url: published.permalink,
+        photos,
+        performance,
+        performance_checked_at: completedAt,
+        completed_at: completedAt,
+        error: "",
+      })
+      .eq("id", runId);
+    await clearRunLease(runId, templateId, completedAt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const completedAt = new Date().toISOString();
+    await a
+      .from("marketing_cron_runs")
+      .update({ status: "failed", completed_at: completedAt, error: message })
+      .eq("id", runId);
+    if (postId) {
+      await a
+        .from("growth_posts")
+        .update({ status: "failed", publisher_status: "publisher_failed", updated_at: completedAt })
+        .eq("id", postId);
+    }
+    await clearRunLease(runId, templateId, completedAt);
+  }
+};
+
+// Pull Threads/Instagram insights for recent posts. Clicks (our /r redirect) and
+// signups stay server-owned; only views, likes and comments come from Meta.
+const refreshSocialPerformance = async () => {
+  const a = admin();
+  const since = new Date(Date.now() - SOCIAL_METRICS_WINDOW_MS).toISOString();
+  for (const channel of SOCIAL_CHANNELS) {
+    const account = await loadChannelAccount(channel).catch(() => null);
+    if (!account) continue;
+    const { data: posts } = await a
+      .from("growth_posts")
+      .select("id, run_id, external_id, metrics, updated_at")
+      .eq("channel", channel)
+      .eq("status", "posted")
+      .neq("external_id", "")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    for (const post of (posts ?? []) as Array<Record<string, unknown>>) {
+      // refresh-performance runs every 10 minutes; hourly per post keeps well inside
+      // Meta's per-account API limits.
+      const lastUpdated = new Date(String(post.updated_at ?? 0)).getTime();
+      if (Number.isFinite(lastUpdated) && Date.now() - lastUpdated < SOCIAL_METRICS_MIN_INTERVAL_MS) continue;
+      try {
+        const social = await fetchMediaMetrics(account, String(post.external_id));
+        const metrics: Metrics = { ...readMetrics(post.metrics), ...social };
+        const updatedAt = new Date().toISOString();
+        await a.from("growth_posts").update({ metrics, updated_at: updatedAt }).eq("id", post.id);
+        if (typeof post.run_id === "string" && post.run_id) {
+          await a
+            .from("marketing_cron_runs")
+            .update({ performance: { trackedPosts: 1, ...metrics }, performance_checked_at: updatedAt })
+            .eq("id", post.run_id);
+        }
+      } catch (error) {
+        console.warn(`${channel} insights lookup failed for ${post.id}:`, error instanceof Error ? error.message : error);
+      }
+    }
+  }
+};
+
+// Long-lived tokens expire after ~60 days. Refresh each one weekly; after a failure
+// wait six hours before trying again so a revoked token does not hammer the API.
+const refreshChannelTokens = async () => {
+  const a = admin();
+  const { data } = await a
+    .from(ACCOUNTS)
+    .select("channel, access_token, token_refreshed_at, connected_at, last_error, updated_at");
+  const now = Date.now();
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const channel = row.channel;
+    if (!isSocialChannel(channel) || typeof row.access_token !== "string" || !row.access_token) continue;
+    const lastRefresh = new Date(String(row.token_refreshed_at ?? row.connected_at ?? 0)).getTime();
+    if (Number.isFinite(lastRefresh) && now - lastRefresh < TOKEN_REFRESH_AFTER_MS) continue;
+    const lastAttempt = new Date(String(row.updated_at ?? 0)).getTime();
+    if (row.last_error && Number.isFinite(lastAttempt) && now - lastAttempt < 6 * 60 * 60 * 1000) continue;
+    const updatedAt = new Date().toISOString();
+    try {
+      const refreshed = await refreshAccessToken(channel, row.access_token);
+      await a
+        .from(ACCOUNTS)
+        .update({
+          access_token: refreshed.accessToken,
+          token_expires_at: refreshed.expiresAt.toISOString(),
+          token_refreshed_at: updatedAt,
+          last_error: "",
+          updated_at: updatedAt,
+        })
+        .eq("channel", channel);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Token refresh failed.";
+      await a.from(ACCOUNTS).update({ last_error: message, updated_at: updatedAt }).eq("channel", channel);
+    }
+  }
+};
+
 const executeRun = async (runId: string, options: { bypassCooldown?: boolean } = {}) => {
   const a = admin();
   const { data: run } = await a
@@ -703,6 +1015,12 @@ const executeRun = async (runId: string, options: { bypassCooldown?: boolean } =
     .from("marketing_cron_runs")
     .update({ status: "running", started_at: startedAt, error: "" })
     .eq("id", runId);
+
+  const channel: Channel = isChannel(run.channel) ? run.channel : KOREAPAS_CHANNEL;
+  if (isSocialChannel(channel)) {
+    await executeSocialRun({ runId, channel, settings, templateId, scheduledForMillis, startedAt, options });
+    return;
+  }
 
   try {
     const performance = await refreshPriorPostPerformance();
@@ -736,7 +1054,7 @@ const executeRun = async (runId: string, options: { bypassCooldown?: boolean } =
       return;
     }
 
-    const previousAttemptAt = await recentKoreapasAttempt(startedAt);
+    const previousAttemptAt = await recentChannelAttempt(KOREAPAS_CHANNEL, startedAt);
     if (previousAttemptAt && !options.bypassCooldown) {
       const completedAt = new Date().toISOString();
       await a
@@ -929,25 +1247,37 @@ const claimRun = async (
       if (error) throw new Error(error.message);
     }
 
+    // Validated after the schedule advanced, so a broken template fails once per
+    // slot instead of blocking every later tick.
+    const channels = validChannels(template.channels ?? [KOREAPAS_CHANNEL]);
     const runSettings: RunSettings = {
       destinationUrl: validDestinationUrl(template.destination_url),
       title: textField(template.title, "Title", 200),
-      copy: textField(template.copy, "Copy", 20000),
+      copy: channels.includes(KOREAPAS_CHANNEL)
+        ? textField(template.copy, "Copy", 20000)
+        : String(template.copy ?? ""),
       callToAction: String(template.call_to_action ?? ""),
       photos: validPhotos(template.photos),
+      threadsText: String(template.threads_text ?? ""),
+      instagramCaption: String(template.instagram_caption ?? ""),
     };
 
-    const { error: insertError } = await a.from("marketing_cron_runs").insert({
-      id: runId,
-      template_id: templateId,
-      channel: KOREAPAS_CHANNEL,
-      trigger,
-      status: "queued",
-      scheduled_for: scheduledFor.toISOString(),
-      settings: runSettings,
-      performance: { trackedPosts: 0, ...emptyMetrics() },
-      created_at: nowIso,
-    });
+    // One run per channel. The first holds the lease and runs now; the rest stay
+    // queued for the next ticks (claimQueuedRun). created_at is staggered by a
+    // millisecond so the queue keeps the channel order.
+    const { error: insertError } = await a.from("marketing_cron_runs").insert(
+      channels.map((channel, index) => ({
+        id: index === 0 ? runId : crypto.randomUUID(),
+        template_id: templateId,
+        channel,
+        trigger,
+        status: "queued",
+        scheduled_for: scheduledFor.toISOString(),
+        settings: runSettings,
+        performance: { trackedPosts: 0, ...emptyMetrics() },
+        created_at: new Date(now.getTime() + index).toISOString(),
+      })),
+    );
     if (insertError) throw new Error(insertError.message);
 
     return runId;
@@ -957,6 +1287,42 @@ const claimRun = async (
     );
     throw error;
   }
+};
+
+// Publish the oldest queued channel run (left by a multi-channel template). Runs that
+// waited longer than QUEUED_RUN_MAX_AGE_MS are failed instead of posting stale copy.
+const claimQueuedRun = async (): Promise<string | null> => {
+  const a = admin();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  await a
+    .from("marketing_cron_runs")
+    .update({ status: "failed", completed_at: nowIso, error: "Expired in the queue before it could be published." })
+    .eq("status", "queued")
+    .lt("created_at", new Date(now.getTime() - QUEUED_RUN_MAX_AGE_MS).toISOString());
+
+  const { data: queued } = await a
+    .from("marketing_cron_runs")
+    .select("id")
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!queued?.id) return null;
+
+  const runId = String(queued.id);
+  const { data: leased } = await a
+    .from("growth_config")
+    .update({
+      active_run_id: runId,
+      active_run_lease_until: new Date(now.getTime() + RUN_LEASE_MS).toISOString(),
+      updated_at: nowIso,
+    })
+    .eq("id", CONFIG_ROW)
+    .or(`active_run_lease_until.is.null,active_run_lease_until.lt.${nowIso}`)
+    .select("active_run_id");
+  if (!leased || leased.length === 0) return null;
+  return runId;
 };
 
 const requireAdmin = async (req: Request): Promise<string> => {
@@ -992,9 +1358,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
       if (action === "refresh-performance") {
         const performance = await refreshPriorPostPerformance();
+        await refreshSocialPerformance().catch((error) =>
+          console.warn("Social performance refresh failed:", error instanceof Error ? error.message : error),
+        );
+        await refreshChannelTokens().catch((error) =>
+          console.warn("Channel token refresh failed:", error instanceof Error ? error.message : error),
+        );
         return json(req, { refreshed: true, performance });
       }
-      const runId = await claimRun("schedule");
+      const runId = (await claimQueuedRun()) ?? (await claimRun("schedule"));
       if (!runId) return json(req, { ran: false });
       // This is only reachable with the private scheduler secret. It is used
       // for an explicitly authorized operational test; pg_cron never sets it.
@@ -1032,14 +1404,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const now = new Date().toISOString();
       const schedule = validSchedule(t.schedule);
       const scheduleEnabled = schedule.daysOfWeek.length > 0;
+      const channels = validChannels(t.channels ?? [KOREAPAS_CHANNEL]);
+      const photos = validPhotos(t.photos);
+      const threadsText = optionalText(t.threadsText, "Threads text", THREADS_TEXT_LIMIT);
+      const instagramCaption = optionalText(t.instagramCaption, "Instagram caption", INSTAGRAM_CAPTION_LIMIT);
+      if (channels.includes("threads") && !threadsText) throw new Error("Threads text is required.");
+      if (channels.includes("instagram") && !instagramCaption) throw new Error("Instagram caption is required.");
+      if (channels.includes("instagram") && photos.length === 0) {
+        throw new Error("Instagram posts need at least one photo.");
+      }
       const { error } = await a.from("marketing_templates").insert({
         id: templateId,
         name: textField(t.name, "Template name", 120),
         destination_url: validDestinationUrl(t.destinationUrl),
         title: textField(t.title, "Title", 200),
-        copy: textField(t.copy, "Copy", 20000),
+        copy: channels.includes(KOREAPAS_CHANNEL)
+          ? textField(t.copy, "Copy", 20000)
+          : optionalText(t.copy, "Copy", 20000),
         call_to_action: typeof t.callToAction === "string" ? t.callToAction.trim() : "",
-        photos: validPhotos(t.photos),
+        photos,
+        channels,
+        threads_text: threadsText,
+        instagram_caption: instagramCaption,
         schedule_enabled: scheduleEnabled,
         schedule,
         next_run_at: scheduleEnabled ? nextScheduledAt(schedule, Date.now()).toISOString() : null,
@@ -1090,6 +1476,68 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (action === "generate-template") {
       const template = await generateTemplateDraft(body);
       return json(req, template);
+    }
+
+    if (action === "channel-status") {
+      const { data, error } = await a
+        .from(ACCOUNTS)
+        .select("channel, account_id, username, token_expires_at, last_error, connected_at");
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as Array<Record<string, unknown>>;
+      return json(req, {
+        channels: SOCIAL_CHANNELS.map((channel) => {
+          const row = rows.find((candidate) => candidate.channel === channel);
+          return {
+            channel,
+            connected: Boolean(row),
+            username: row ? String(row.username ?? "") : "",
+            accountId: row ? String(row.account_id ?? "") : "",
+            tokenExpiresAt: row?.token_expires_at ?? null,
+            connectedAt: row?.connected_at ?? null,
+            lastError: row ? String(row.last_error ?? "") : "",
+          };
+        }),
+      });
+    }
+
+    if (action === "connect-channel") {
+      const channel = body.channel;
+      if (!isSocialChannel(channel)) throw new Error("channel is invalid.");
+      const accessToken = typeof body.accessToken === "string" ? body.accessToken.trim() : "";
+      if (!accessToken || accessToken.length > 2048 || /\s/.test(accessToken)) {
+        return json(req, { error: "invalid-argument", message: "Access token is invalid." }, 400);
+      }
+      let account: { accountId: string; username: string };
+      try {
+        account = await verifyAccessToken(channel, accessToken);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Token verification failed.";
+        return json(req, { error: "invalid-argument", message }, 400);
+      }
+      const now = new Date();
+      const { error } = await a.from(ACCOUNTS).upsert({
+        channel,
+        account_id: account.accountId,
+        username: account.username,
+        access_token: accessToken,
+        // Pasted tokens are long-lived (~60 days); the weekly refresh replaces this
+        // estimate with Meta's own expiry.
+        token_expires_at: new Date(now.getTime() + TOKEN_LIFETIME_MS).toISOString(),
+        token_refreshed_at: null,
+        last_error: "",
+        connected_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      });
+      if (error) throw new Error(error.message);
+      return json(req, { channel, username: account.username, accountId: account.accountId });
+    }
+
+    if (action === "disconnect-channel") {
+      const channel = body.channel;
+      if (!isSocialChannel(channel)) throw new Error("channel is invalid.");
+      const { error } = await a.from(ACCOUNTS).delete().eq("channel", channel);
+      if (error) throw new Error(error.message);
+      return json(req, { ok: true });
     }
 
     if (action === "run-now") {

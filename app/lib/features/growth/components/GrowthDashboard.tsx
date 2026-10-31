@@ -34,6 +34,7 @@ import {
   deleteMarketingCronRun,
   deleteMarketingTemplate,
   ensureDefaultMarketingTemplate,
+  fetchMarketingChannelConnections,
   fetchMarketingCronRuns,
   fetchMarketingCronSettings,
   fetchMarketingPerformanceRuns,
@@ -47,14 +48,20 @@ import {
   updateMarketingTemplate,
 } from "../services/growth_service";
 import { uploadMarketingImage } from "../services/growth_image_service";
+import ChannelConnections from "./ChannelConnections";
 import {
   DEFAULT_MARKETING_CRON_SETTINGS,
+  INSTAGRAM_CAPTION_LIMIT,
+  MARKETING_CHANNELS,
+  MarketingChannel,
+  MarketingChannelConnection,
   MarketingCronRun,
   MarketingCronSchedule,
   MarketingCronSettings,
   MarketingRunStatus,
   MarketingTemplate,
   MarketingTemplatePhoto,
+  THREADS_TEXT_LIMIT,
 } from "../types/growth_types";
 
 type SettingsDraft = {
@@ -65,6 +72,9 @@ type SettingsDraft = {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
+  channels: MarketingChannel[];
+  threadsText: string;
+  instagramCaption: string;
 };
 
 const toDraft = (settings: MarketingCronSettings): SettingsDraft => ({
@@ -75,7 +85,26 @@ const toDraft = (settings: MarketingCronSettings): SettingsDraft => ({
   copy: settings.copy,
   callToAction: settings.callToAction,
   photos: settings.photos,
+  channels: ["koreapas"],
+  threadsText: "",
+  instagramCaption: "",
 });
+
+// Everything a saved template contributes to the editor draft.
+const templateFields = (template: MarketingTemplate) => ({
+  destinationUrl: template.destinationUrl,
+  title: template.title,
+  copy: template.copy,
+  callToAction: template.callToAction,
+  photos: template.photos,
+  schedule: template.schedule,
+  channels: template.channels,
+  threadsText: template.threadsText,
+  instagramCaption: template.instagramCaption,
+});
+
+const fillText = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
 
 const zeroWidthMarker = (marker: string) =>
   marker
@@ -480,6 +509,8 @@ export default function GrowthDashboard() {
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [copiedRunId, setCopiedRunId] = useState<string | null>(null);
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(() => new Set());
+  const [connections, setConnections] = useState<MarketingChannelConnection[]>([]);
+  const [connectionsLoadError, setConnectionsLoadError] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const moreRunsRef = useRef<HTMLDivElement>(null);
   const loadingMoreRunsRef = useRef(false);
@@ -511,12 +542,7 @@ export default function GrowthDashboard() {
           ? {
               ...toDraft(settings),
               templateId: initialTemplateId,
-              destinationUrl: savedTemplate.destinationUrl,
-              title: savedTemplate.title,
-              copy: savedTemplate.copy,
-              callToAction: savedTemplate.callToAction,
-              photos: savedTemplate.photos,
-              schedule: savedTemplate.schedule,
+              ...templateFields(savedTemplate),
             }
           : toDraft(settings)
       );
@@ -552,6 +578,24 @@ export default function GrowthDashboard() {
       unsubscribe();
       unsubscribeTemplates();
     };
+  }, []);
+
+  const reloadConnections = async () => {
+    try {
+      setConnections(await fetchMarketingChannelConnections());
+      setConnectionsLoadError(false);
+    } catch (error) {
+      console.error("Unable to load marketing channel connections:", error);
+      setConnectionsLoadError(true);
+    }
+  };
+
+  const loadConnectionsOnMount = useEffectEvent(() => {
+    void reloadConnections();
+  });
+
+  useEffect(() => {
+    loadConnectionsOnMount();
   }, []);
 
   const loadMoreRuns = async () => {
@@ -667,12 +711,7 @@ export default function GrowthDashboard() {
         ? {
             ...current,
             templateId,
-            destinationUrl: template.destinationUrl,
-            title: template.title,
-            copy: template.copy,
-            callToAction: template.callToAction,
-            photos: template.photos,
-            schedule: template.schedule,
+            ...templateFields(template),
           }
         : { ...current, templateId: "" }
     );
@@ -764,12 +803,19 @@ export default function GrowthDashboard() {
     setMessage(null);
     try {
       if (!draft.templateId) throw new Error("Select a template first.");
+      if (channelProblem) {
+        setMessage({ text: channelProblem, error: true });
+        return;
+      }
       await updateMarketingTemplate(draft.templateId, {
         destinationUrl: draft.destinationUrl,
         title: draft.title,
         copy: draft.copy,
         callToAction: draft.callToAction,
         photos: draft.photos,
+        channels: draft.channels,
+        threadsText: draft.threadsText,
+        instagramCaption: draft.instagramCaption,
       });
       await saveMarketingTemplateSchedule({
         templateId: draft.templateId,
@@ -781,12 +827,7 @@ export default function GrowthDashboard() {
       if (saved) {
         setDraft((current) => ({
           ...current,
-          destinationUrl: saved.destinationUrl,
-          title: saved.title,
-          copy: saved.copy,
-          callToAction: saved.callToAction,
-          photos: saved.photos,
-          schedule: saved.schedule,
+          ...templateFields(saved),
         }));
       }
       setMessage({ text: locale === "ko" ? "변경 사항을 저장했습니다." : "Changes saved." });
@@ -812,6 +853,9 @@ export default function GrowthDashboard() {
         copy: draft.copy,
         callToAction: draft.callToAction,
         photos: draft.photos,
+        channels: draft.channels,
+        threadsText: draft.threadsText,
+        instagramCaption: draft.instagramCaption,
         schedule: draft.schedule,
       });
       setTemplateName("");
@@ -823,12 +867,7 @@ export default function GrowthDashboard() {
         setDraft((current) => ({
           ...current,
           templateId,
-          destinationUrl: saved.destinationUrl,
-          title: saved.title,
-          copy: saved.copy,
-          callToAction: saved.callToAction,
-          photos: saved.photos,
-          schedule: saved.schedule,
+          ...templateFields(saved),
         }));
       }
       setMessage({ text: marketing.templateSaved });
@@ -859,6 +898,8 @@ export default function GrowthDashboard() {
         title: generated.title,
         copy: generated.copy,
         callToAction: generated.callToAction,
+        threadsText: generated.threadsText || current.threadsText,
+        instagramCaption: generated.instagramCaption || current.instagramCaption,
         schedule: generated.schedule,
       }));
       setMessage({ text: marketing.aiDraftReady });
@@ -913,6 +954,10 @@ export default function GrowthDashboard() {
       const nextRunPage = await fetchMarketingCronRuns();
       setRuns(nextRunPage.runs);
       setHasMoreRuns(nextRunPage.hasMore);
+      const savedTemplate = templates.find((template) => template.id === draft.templateId);
+      if ((savedTemplate?.channels.length ?? 1) > 1) {
+        setMessage({ text: marketing.channels.queuedNotice });
+      }
     } catch (error) {
       console.error("Unable to start marketing cron run:", error);
       setMessage({ text: marketing.runNowError, error: true });
@@ -949,12 +994,34 @@ export default function GrowthDashboard() {
     marketing.friday,
     marketing.saturday,
   ];
+  const postsTo = (channel: MarketingChannel) => draft.channels.includes(channel);
+  const channelProblem =
+    draft.channels.length === 0
+      ? marketing.channels.selectAtLeastOne
+      : postsTo("instagram") && draft.photos.length === 0
+        ? marketing.channels.instagramNeedsPhoto
+        : "";
   const hasTemplateContent = Boolean(
     draft.destinationUrl.trim() &&
       draft.title.trim() &&
-      draft.copy.trim() &&
-      draft.callToAction.trim()
+      draft.channels.length > 0 &&
+      (!postsTo("koreapas") || (draft.copy.trim() && draft.callToAction.trim())) &&
+      (!postsTo("threads") || draft.threadsText.trim()) &&
+      (!postsTo("instagram") || (draft.instagramCaption.trim() && draft.photos.length > 0))
   );
+  const disconnectedChannels = draft.channels.filter(
+    (channel) =>
+      channel !== "koreapas" &&
+      !connectionsLoadError &&
+      !connections.some((connection) => connection.channel === channel && connection.connected),
+  );
+  const toggleChannel = (channel: MarketingChannel) =>
+    setDraft((current) => ({
+      ...current,
+      channels: MARKETING_CHANNELS.filter((candidate) =>
+        candidate === channel ? !current.channels.includes(channel) : current.channels.includes(candidate),
+      ),
+    }));
   const scheduleHasDays = draft.schedule.daysOfWeek.length > 0;
   const canSaveChanges = Boolean(draft.templateId) && hasTemplateContent;
 
@@ -1017,10 +1084,18 @@ export default function GrowthDashboard() {
           />
         </div>
       </section>
+      <ChannelConnections
+        connections={connections}
+        loadError={connectionsLoadError}
+        onChanged={reloadConnections}
+      />
       <section className={formCardClass}>
         <div className="mb-[22px] flex items-start justify-between gap-4 max-[620px]:mb-[18px]">
           <div>
-            <Eyebrow><CalendarDaysIcon width={15} /> {marketing.koreapas}</Eyebrow>
+            <Eyebrow>
+              <CalendarDaysIcon width={15} />{" "}
+              {draft.channels.map((channel) => marketing.channels.names[channel]).join(" · ") || marketing.pageTitle}
+            </Eyebrow>
             <FormTitle>{marketing.settingsTitle}</FormTitle>
             <Description>{marketing.settingsDescription}</Description>
           </div>
@@ -1079,6 +1154,34 @@ export default function GrowthDashboard() {
                   <PlusIcon width={15} /> {marketing.newTemplate}
                 </SmallButton>
               </TemplatePickerActions>
+            </div>
+            <div className="col-span-full grid gap-2.5">
+              <div>
+                <PanelTitle>{marketing.channels.sectionTitle}</PanelTitle>
+                <PanelDescription>{marketing.channels.sectionDescription}</PanelDescription>
+              </div>
+              <div className="flex flex-wrap gap-2" role="group" aria-label={marketing.channels.sectionTitle}>
+                {MARKETING_CHANNELS.map((channel) => (
+                  <button
+                    key={channel}
+                    type="button"
+                    aria-pressed={postsTo(channel)}
+                    onClick={() => toggleChannel(channel)}
+                    className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] border-[#050505] px-3.5 py-1.5 text-[#050505] ${fontInheritClass} text-[13px] font-black ${
+                      postsTo(channel) ? "bg-[#f47a4a]" : "bg-white"
+                    } ${focusRingClass}`}
+                  >
+                    {postsTo(channel) && <CheckIcon width={14} />}
+                    {marketing.channels.names[channel]}
+                  </button>
+                ))}
+              </div>
+              {channelProblem && <FieldHint>{channelProblem}</FieldHint>}
+              {disconnectedChannels.map((channel) => (
+                <FieldHint key={channel}>
+                  {fillText(marketing.channels.notConnectedWarning, { channel: marketing.channels.names[channel] })}
+                </FieldHint>
+              ))}
             </div>
             <div className="col-span-full grid gap-3.5 border-b-[1.5px] border-[rgba(5,5,5,0.22)] pb-5">
               <div className="flex items-start justify-between gap-3">
@@ -1164,26 +1267,68 @@ export default function GrowthDashboard() {
               />
               <FieldHint>{marketing.templateVariablesHint}</FieldHint>
             </Field>
-            <Field $full>
-              {marketing.postCopy}
-              <TextArea
-                value={draft.copy}
-                placeholder={marketing.copyPlaceholder}
-                maxLength={8000}
-                onChange={(event) => updateDraft("copy", event.target.value)}
-                required
-              />
-            </Field>
-            <Field $full>
-              {marketing.callToAction}
-              <Input
-                value={draft.callToAction}
-                placeholder={marketing.callToActionPlaceholder}
-                maxLength={1000}
-                onChange={(event) => updateDraft("callToAction", event.target.value)}
-                required
-              />
-            </Field>
+            {postsTo("koreapas") && (
+              <>
+                <Field $full>
+                  {marketing.postCopy}
+                  <TextArea
+                    value={draft.copy}
+                    placeholder={marketing.copyPlaceholder}
+                    maxLength={8000}
+                    onChange={(event) => updateDraft("copy", event.target.value)}
+                    required
+                  />
+                </Field>
+                <Field $full>
+                  {marketing.callToAction}
+                  <Input
+                    value={draft.callToAction}
+                    placeholder={marketing.callToActionPlaceholder}
+                    maxLength={1000}
+                    onChange={(event) => updateDraft("callToAction", event.target.value)}
+                    required
+                  />
+                </Field>
+              </>
+            )}
+            {postsTo("threads") && (
+              <Field $full>
+                {marketing.channels.threadsText}
+                <TextArea
+                  value={draft.threadsText}
+                  placeholder={marketing.channels.threadsTextPlaceholder}
+                  maxLength={THREADS_TEXT_LIMIT}
+                  onChange={(event) => updateDraft("threadsText", event.target.value)}
+                  required
+                />
+                <FieldHint>
+                  {fillText(marketing.channels.characterCount, {
+                    count: draft.threadsText.length,
+                    limit: THREADS_TEXT_LIMIT,
+                  })}{" "}
+                  · {marketing.channels.threadsTextHint}
+                </FieldHint>
+              </Field>
+            )}
+            {postsTo("instagram") && (
+              <Field $full>
+                {marketing.channels.instagramCaption}
+                <TextArea
+                  value={draft.instagramCaption}
+                  placeholder={marketing.channels.instagramCaptionPlaceholder}
+                  maxLength={INSTAGRAM_CAPTION_LIMIT}
+                  onChange={(event) => updateDraft("instagramCaption", event.target.value)}
+                  required
+                />
+                <FieldHint>
+                  {fillText(marketing.channels.characterCount, {
+                    count: draft.instagramCaption.length,
+                    limit: INSTAGRAM_CAPTION_LIMIT,
+                  })}{" "}
+                  · {marketing.channels.instagramCaptionHint}
+                </FieldHint>
+              </Field>
+            )}
             <div className="col-span-full grid gap-2.5">
               <div>
                 <PanelTitle>{marketing.photosTitle}</PanelTitle>
@@ -1363,7 +1508,8 @@ export default function GrowthDashboard() {
         <div className="grid gap-4">
           {runs.map((run) => {
             const date = run.completedAt || run.startedAt || run.scheduledFor;
-            const displayTitle = run.postTitle || marketing.koreapas;
+            const channelName = marketing.channels.names[run.channel];
+            const displayTitle = run.postTitle || channelName;
             const isExpanded = expandedRunIds.has(run.id);
             const ctr = run.performance.impressions
               ? `${((run.performance.clicks / run.performance.impressions) * 100).toFixed(1)}%`
@@ -1377,7 +1523,7 @@ export default function GrowthDashboard() {
                   <div>
                     <div className="mb-[7px] flex flex-wrap items-center gap-[7px]">
                       <span className="rounded-full bg-[#f47a4a] px-2 py-1 text-[11px] font-black text-[#050505]">
-                        {marketing.koreapas}
+                        {channelName}
                       </span>
                       <span className="text-[12px] font-extrabold text-[rgba(5,5,5,0.58)]">
                         {run.trigger === "manual" ? marketing.triggerManual : marketing.triggerScheduled}
@@ -1465,9 +1611,13 @@ export default function GrowthDashboard() {
                       <div className="grid gap-[5px] rounded-[10px] bg-[#fafafa] p-3">
                         <TrackingLabel>{marketing.trackingUrl}</TrackingLabel>
                         <TrackingValue>{run.trackingUrl}</TrackingValue>
-                        <TrackingLabel>{marketing.hiddenPostId}</TrackingLabel>
-                        <TrackingValue>{run.hiddenPostId}</TrackingValue>
-                        <FieldHint>{marketing.markerHint}</FieldHint>
+                        {run.hiddenPostId && (
+                          <>
+                            <TrackingLabel>{marketing.hiddenPostId}</TrackingLabel>
+                            <TrackingValue>{run.hiddenPostId}</TrackingValue>
+                            <FieldHint>{marketing.markerHint}</FieldHint>
+                          </>
+                        )}
                       </div>
                     </>
                   )}

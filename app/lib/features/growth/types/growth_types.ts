@@ -21,6 +21,27 @@ export interface MarketingCronSchedule {
   daysOfWeek: number[];
 }
 
+export type MarketingChannel = "koreapas" | "threads" | "instagram";
+export type SocialMarketingChannel = Exclude<MarketingChannel, "koreapas">;
+
+// Fixed display/posting order; Gopas first because its publisher is the slowest.
+export const MARKETING_CHANNELS: MarketingChannel[] = ["koreapas", "threads", "instagram"];
+export const SOCIAL_MARKETING_CHANNELS: SocialMarketingChannel[] = ["threads", "instagram"];
+
+// Threads allows 500 characters; the run appends a ~46 character tracking link.
+export const THREADS_TEXT_LIMIT = 450;
+export const INSTAGRAM_CAPTION_LIMIT = 2200;
+
+export interface MarketingChannelConnection {
+  channel: SocialMarketingChannel;
+  connected: boolean;
+  username: string;
+  accountId: string;
+  tokenExpiresAt: Date | null;
+  connectedAt: Date | null;
+  lastError: string;
+}
+
 export interface MarketingTemplatePhoto {
   url: string;
   alt: string;
@@ -34,6 +55,9 @@ export interface MarketingTemplate {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
+  channels: MarketingChannel[];
+  threadsText: string;
+  instagramCaption: string;
   scheduleEnabled: boolean;
   schedule: MarketingCronSchedule;
   nextRunAt: Date | null;
@@ -72,7 +96,7 @@ export interface MarketingPerformanceSnapshot extends GrowthPostMetrics {
 export interface MarketingCronRun {
   id: string;
   templateId: string;
-  channel: "koreapas";
+  channel: MarketingChannel;
   trigger: "schedule" | "manual";
   status: MarketingRunStatus;
   scheduledFor: Date | null;
