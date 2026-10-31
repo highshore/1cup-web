@@ -1451,9 +1451,20 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
     if (postInsertError) throw new Error(postInsertError.message);
 
     let published: { mediaId: string; permalink: string };
+    let replyError = "";
     if (channel === "threads") {
       published = await publishToThreads(account, parts[0], []);
-      await publishThreadsReplies(account, published.mediaId, parts.slice(1));
+      // The first post is live from here on. Record it before posting the replies, so a
+      // reply failure can never make the post look unpublished (and invite a duplicate).
+      await a
+        .from("growth_posts")
+        .update({ external_url: published.permalink, external_id: published.mediaId, updated_at: new Date().toISOString() })
+        .eq("id", postId);
+      try {
+        await publishThreadsReplies(account, published.mediaId, parts.slice(1));
+      } catch (error) {
+        replyError = `The first post is live but its replies failed: ${error instanceof Error ? error.message : "unknown error"}`;
+      }
     } else if (isReel && video) {
       published = await publishInstagramReel(account, String(video.url), caption, photos[0]?.url);
     } else {
@@ -1485,7 +1496,7 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
         photos,
         completed_at: completedAt,
         performance_checked_at: completedAt,
-        error: "",
+        error: replyError,
       })
       .eq("id", runId);
     await a
@@ -1495,7 +1506,7 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
         growth_post_id: postId,
         external_url: published.permalink,
         published_at: completedAt,
-        error: "",
+        error: replyError,
         updated_at: completedAt,
       })
       .eq("id", post.id);

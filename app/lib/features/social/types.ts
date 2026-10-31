@@ -11,7 +11,7 @@ export type SocialPostStatus =
   | "published"
   | "failed"
   | "expired";
-export type SlotReason = "explore" | "best" | "try" | "manual";
+export type SlotReason = "explore" | "best" | "try" | "manual" | "asap";
 
 // Post themes. The weekday picks one (server/content.ts); an admin can override it.
 export const SOCIAL_PILLARS = ["insight", "debate", "expression", "vocabulary", "quiz", "summary", "invite"] as const;

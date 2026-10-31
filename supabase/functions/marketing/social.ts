@@ -223,11 +223,20 @@ export const publishThreadsReplies = async (
   const ids: string[] = [];
   let replyTo = parentMediaId;
   for (const text of replies) {
-    const containerId = idOf(
-      await graph("threads", "POST", endpoint, { media_type: "TEXT", text, reply_to_id: replyTo }, account.accessToken),
-      "reply container",
-      "threads",
-    );
+    // A post that was just published can take a few seconds to become a valid
+    // reply_to_id ("The media with ID … cannot be found"); retry with a back-off.
+    let created: Record<string, unknown> | null = null;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await sleep(attempt === 0 ? 3_000 : 4_000 * attempt);
+        created = await graph("threads", "POST", endpoint, { media_type: "TEXT", text, reply_to_id: replyTo }, account.accessToken);
+        break;
+      } catch (error) {
+        const notFound = error instanceof Error && /cannot be found|does not exist|not found/i.test(error.message);
+        if (!notFound || attempt >= 4) throw error;
+      }
+    }
+    const containerId = idOf(created ?? {}, "reply container", "threads");
     await waitForContainer(account, containerId);
     replyTo = idOf(
       await graph(

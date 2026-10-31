@@ -34,7 +34,7 @@ const renderMedia = (postId: string, content: unknown) =>
     : isCarouselContent(content)
       ? renderAndStoreSlides(postId, content.slides)
       : Promise.resolve([]);
-import { chooseSlot, kstSlotOf, slotStats, slotToIso } from "./slots";
+import { chooseSlot, kstSlotOf, slotStats } from "./slots";
 
 const TABLE = "social_daily_posts";
 const EDITABLE: SocialPostStatus[] = ["draft", "approved", "rejected", "failed", "expired"];
@@ -125,7 +125,7 @@ export async function generateDailyPost(
     (recent.data ?? []).map((row) => contentText(row.content)).filter(Boolean),
     format,
   );
-  const { slot, reason } = chooseSlot(channel, postDate, stats);
+  const { slot, reason, scheduledFor } = chooseSlot(channel, postDate, stats);
   const now = new Date().toISOString();
 
   const { data: saved, error } = await db
@@ -138,7 +138,7 @@ export async function generateDailyPost(
         post_date: postDate,
         pillar: pillar.key,
         status: "draft",
-        scheduled_for: slotToIso(postDate, slot),
+        scheduled_for: scheduledFor,
         slot,
         slot_reason: reason,
         content,
