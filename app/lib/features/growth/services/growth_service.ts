@@ -196,6 +196,22 @@ export const fetchMarketingPerformanceRuns = async (): Promise<MarketingCronRun[
   return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };
 
+// Run history for one channel (the Threads/Instagram admin pages). Every run is one
+// post attempt on that channel, so this doubles as the channel's post list.
+export const fetchMarketingChannelRuns = async (
+  channel: MarketingChannel,
+  limit = 60,
+): Promise<MarketingCronRun[]> => {
+  const { data, error } = await supabase
+    .from(RUNS)
+    .select("*")
+    .eq("channel", channel)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
+};
+
 export const fetchMarketingTemplates = async (): Promise<MarketingTemplate[]> => {
   const { data, error } = await supabase
     .from(TEMPLATES)

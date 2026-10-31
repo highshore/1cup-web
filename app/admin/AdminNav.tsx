@@ -13,6 +13,8 @@ type ItemId =
   | "meetups"
   | "articles"
   | "marketing"
+  | "threads"
+  | "instagram"
   | "discountCodes"
   | "gifts"
   | "notifications";
@@ -46,6 +48,8 @@ const GROUPS: { id: GroupId; items: { id: ItemId; href: string }[] }[] = [
     id: "growth",
     items: [
       { id: "marketing", href: "/admin/marketing" },
+      { id: "threads", href: "/admin/threads" },
+      { id: "instagram", href: "/admin/instagram" },
       { id: "discountCodes", href: "/admin/discount-codes" },
       { id: "gifts", href: "/admin/gifts" },
       { id: "notifications", href: "/admin/notifications" },

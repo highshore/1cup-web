@@ -26,10 +26,13 @@ export default function ChannelConnections({
   connections,
   loadError,
   onChanged,
+  channels = SOCIAL_MARKETING_CHANNELS,
 }: {
   connections: MarketingChannelConnection[];
   loadError: boolean;
   onChanged: () => Promise<void>;
+  // Limit the panel to some channels (the per-channel admin pages show one).
+  channels?: SocialMarketingChannel[];
 }) {
   const { locale, t } = useI18n();
   const copy = t.admin.marketing.channels;
@@ -92,8 +95,8 @@ export default function ChannelConnections({
 
       {loadError && <p className="m-0 mb-3 text-[13px] font-bold text-[#b9473f]">{copy.loadError}</p>}
 
-      <div className="grid grid-cols-2 gap-3 max-[740px]:grid-cols-1">
-        {SOCIAL_MARKETING_CHANNELS.map((channel) => {
+      <div className={`grid gap-3 ${channels.length > 1 ? "grid-cols-2 max-[740px]:grid-cols-1" : "grid-cols-1"}`}>
+        {channels.map((channel) => {
           const connection = connections.find((candidate) => candidate.channel === channel);
           const connected = connection?.connected === true;
           const showTokenInput = !connected || editing[channel];

@@ -531,9 +531,13 @@ export default function GrowthDashboard() {
         fetchMarketingPerformanceRuns(),
       ]);
       if (!mounted) return;
-      const initialTemplateId = nextTemplates.some((template) => template.id === settings.templateId)
-        ? settings.templateId
-        : defaultTemplateId;
+      // The Threads/Instagram admin pages link here with ?template=<id>.
+      const requestedTemplateId = new URLSearchParams(window.location.search).get("template") ?? "";
+      const initialTemplateId = nextTemplates.some((template) => template.id === requestedTemplateId)
+        ? requestedTemplateId
+        : nextTemplates.some((template) => template.id === settings.templateId)
+          ? settings.templateId
+          : defaultTemplateId;
       const savedTemplate = nextTemplates.find(
         (template) => template.id === initialTemplateId
       );
