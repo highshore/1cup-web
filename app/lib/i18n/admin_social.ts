@@ -38,7 +38,10 @@ const adminSocial = {
       generateTomorrow: "Draft tomorrow's post",
       generating: "Drafting… (up to a minute)",
       empty: "No daily posts yet. Draft one with the buttons above.",
+      theme: "Theme",
+      themeAuto: "Weekday default",
       pillars: {
+        insight: "Customer insight",
         debate: "Debate question",
         expression: "Expression of the day",
         vocabulary: "Advanced vocabulary",
@@ -140,7 +143,10 @@ const adminSocial = {
       generateTomorrow: "내일 게시물 만들기",
       generating: "작성 중… (최대 1분)",
       empty: "아직 일일 게시물이 없습니다. 위 버튼으로 만들어 보세요.",
+      theme: "주제",
+      themeAuto: "요일 기본 주제",
       pillars: {
+        insight: "고객 인사이트",
         debate: "토론 질문",
         expression: "오늘의 표현",
         vocabulary: "고급 어휘",

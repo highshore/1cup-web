@@ -58,6 +58,22 @@ const P = {
     brief:
       "Summarize the newest article in Korean in a few clear points, include one key English sentence or term, and end with the discussion question for this week's meetup.",
   },
+  insight: {
+    key: "insight",
+    label: "고객 인사이트",
+    brief: `Benefit-led marketing post built on the newest article. Structure:
+1) HOOK — open with a pain-point line that calls out one specific reader and situation, in the style of these examples (write a new one each time; never copy them verbatim):
+   - 영어 회의에서 "I think..."만 외치는 당신에게
+   - 해외 클라이언트 콜, 할 말은 있는데 문장이 안 나온다면
+   - 스몰토크 다음에 할 말이 없어 웃기만 했던 적 있나요?
+   - 토익 900인데 왜 회의에선 한마디도 못 할까
+   - "Good point"로 대화를 끝내버리는 사람들의 공통점
+   Pick the reader from: people in English meetings at work, client/partner calls, foreign-company interviews, MBA/study-abroad prep, people whose test scores are high but who freeze when speaking, people stuck at small talk.
+2) WHY — name the real gap in one or two lines (opinions without structure, no practice defending a view, only textbook phrases).
+3) UPGRADE — show concrete before → after English the reader can use tomorrow, using the article's topic and its vocabulary as the example context (e.g. "I think AI is dangerous" → "The way I see it, the bigger risk is..."). 2 or 3 upgrades.
+4) WHAT YOU GET — what changes after joining 영어 한잔, stated only with facts from the brand description (interpreter-led small tables, two current articles discussed for two hours each Sunday, being asked to defend your view, One Cup Daily expressions). No testimonials, success numbers, or promises of results.
+5) CTA — invite them to this Sunday's meetup.`,
+  },
   invite: {
     key: "invite",
     label: "모임 안내",
@@ -68,12 +84,16 @@ const P = {
 
 // Sunday = 0. Threads leans on conversation; Instagram on saveable explainers.
 const WEEKLY: Record<SocialChannel, Pillar[]> = {
-  threads: [P.debate, P.debate, P.expression, P.vocabulary, P.quiz, P.invite, P.debate],
-  instagram: [P.summary, P.summary, P.expression, P.vocabulary, P.quiz, P.invite, P.summary],
+  threads: [P.insight, P.debate, P.expression, P.insight, P.quiz, P.invite, P.debate],
+  instagram: [P.insight, P.summary, P.expression, P.vocabulary, P.insight, P.invite, P.summary],
 };
 
+export const PILLARS: Record<string, Pillar> = P;
+
 export const weekdayOf = (postDate: string) => new Date(`${postDate}T12:00:00Z`).getUTCDay();
-export const pillarFor = (channel: SocialChannel, postDate: string): Pillar => WEEKLY[channel][weekdayOf(postDate)];
+// An admin can ask for a different theme for a day; otherwise the weekday decides.
+export const pillarFor = (channel: SocialChannel, postDate: string, override?: string): Pillar =>
+  (override && PILLARS[override]) || WEEKLY[channel][weekdayOf(postDate)];
 
 // ------------------------------------------------------------------ material
 type Json = Record<string, unknown>;
@@ -163,11 +183,11 @@ export const materialSource = (material: Material, pillar: Pillar) => ({
 });
 
 // --------------------------------------------------------------------- draft
-const BRAND = `You write social posts for "영어 한잔 (1 Cup English)", a Seoul English discussion community: small-table meetups led by a professional interpreter, two WSJ/FT-style articles discussed over two hours every Sunday, plus "One Cup Daily", a daily English expression lesson sent by KakaoTalk. Audience: Korean office workers and students in their 20s and 30s who want real, intelligent English conversation. Voice: warm, smart, a little playful; Korean first with English where it teaches. Never invent facts, prices, numbers, dates, people or guarantees beyond the material. No URLs anywhere (the system adds tracking links). No more than one emoji per paragraph.`;
+const BRAND = `You write social posts for "영어 한잔 (1 Cup English)", a Seoul English discussion community: small-table meetups led by a professional interpreter, two WSJ/FT-style articles discussed over two hours every Sunday, plus "One Cup Daily", a daily English expression lesson sent by KakaoTalk. Audience: Korean office workers and students in their 20s and 30s who want real, intelligent English conversation. Voice: warm, smart, a little playful; Korean first with English where it teaches. Lead with a hook that names a real situation the reader struggles with in English (meetings, calls, interviews, small talk) whenever the theme allows, and make the payoff concrete: what they will be able to say afterwards. Never invent facts, testimonials, statistics, prices, numbers, dates, people or guarantees beyond the material. No URLs anywhere (the system adds tracking links). No more than one emoji per paragraph.`;
 
 const FORMAT: Record<SocialChannel, string> = {
   threads: `Return JSON {"text": string, "replies": string[]} for a Threads thread. "text" (max ${THREAD_TEXT_LIMIT} characters) is the hook: a question or surprising point that makes people reply. "replies" (1 to 3 items, each max ${THREAD_REPLY_LIMIT} characters) continue it: the explanation, the answer, examples. Use at most one topic hashtag in total, placed in "text".`,
-  instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label and a punchy Korean title (max 28 characters), body as a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to the Sunday meetup and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
+  instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label and a punchy Korean title (max 32 characters; for benefit-led posts this is the pain-point hook), body as a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to the Sunday meetup and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
 };
 
 async function callGemini(prompt: string): Promise<Json> {

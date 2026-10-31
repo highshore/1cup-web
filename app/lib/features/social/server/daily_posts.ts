@@ -75,7 +75,12 @@ export async function channelOverview(channel: SocialChannel): Promise<SocialCha
 const contentText = (content: unknown) =>
   isThreadContent(content) ? content.text : isCarouselContent(content) ? content.slides[0]?.title ?? "" : "";
 
-export async function generateDailyPost(channel: SocialChannel, postDate: string, replace = false): Promise<SocialDailyPost> {
+export async function generateDailyPost(
+  channel: SocialChannel,
+  postDate: string,
+  replace = false,
+  pillarKey?: string,
+): Promise<SocialDailyPost> {
   const db = admin();
   const { data: existing } = await db.from(TABLE).select("*").eq("channel", channel).eq("post_date", postDate).maybeSingle();
   if (existing) {
@@ -85,7 +90,7 @@ export async function generateDailyPost(channel: SocialChannel, postDate: string
     }
   }
 
-  const pillar = pillarFor(channel, postDate);
+  const pillar = pillarFor(channel, postDate, pillarKey);
   const [material, recent, stats] = await Promise.all([
     loadMaterial(postDate),
     db.from(TABLE).select("content").eq("channel", channel).lt("post_date", postDate).order("post_date", { ascending: false }).limit(7),

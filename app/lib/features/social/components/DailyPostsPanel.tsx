@@ -29,6 +29,7 @@ import {
   type SocialChannel,
   type SocialDailyPost,
   type SocialPostStatus,
+  SOCIAL_PILLARS,
   THREAD_MAX_REPLIES,
   THREAD_REPLY_LIMIT,
   THREAD_TEXT_LIMIT,
@@ -91,6 +92,7 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
   const [slots, setSlots] = useState<SlotStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [theme, setTheme] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -115,11 +117,11 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
       [next, ...current.filter((post) => post.id !== next.id)].sort((a, b) => b.postDate.localeCompare(a.postDate)),
     );
 
-  const generate = async (postDate: string, replace = false) => {
+  const generate = async (postDate: string, replace = false, pillar = theme) => {
     setGenerating(postDate);
     setError("");
     try {
-      replacePost(await generateSocialPost(channel, postDate, replace));
+      replacePost(await generateSocialPost(channel, postDate, replace, pillar || undefined));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -145,7 +147,10 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
             {copy.description}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {(!has(today) || !has(tomorrow)) && (
+            <ThemeSelect copy={copy} value={theme} onChange={setTheme} disabled={generating !== null} />
+          )}
           {[
             [today, copy.generateToday],
             [tomorrow, copy.generateTomorrow],
@@ -180,8 +185,8 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
               post={post}
               copy={copy}
               regenerating={generating === post.postDate}
-              onRegenerate={() => {
-                if (window.confirm(copy.regenerateConfirm)) void generate(post.postDate, true);
+              onRegenerate={(pillar) => {
+                if (window.confirm(copy.regenerateConfirm)) void generate(post.postDate, true, pillar);
               }}
               onChange={replacePost}
               onError={setError}
@@ -223,6 +228,35 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
   );
 }
 
+function ThemeSelect({
+  copy,
+  value,
+  onChange,
+  disabled,
+}: {
+  copy: DailyCopy;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      aria-label={copy.theme}
+      className="min-h-9 rounded-lg border-[1.5px] border-[#050505] bg-white px-2.5 py-1.5 text-[12px] font-black text-[#050505]"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="">{copy.themeAuto}</option>
+      {SOCIAL_PILLARS.map((pillar) => (
+        <option key={pillar} value={pillar}>
+          {copy.pillars[pillar]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function DailyPostCard({
   post,
   copy,
@@ -234,7 +268,7 @@ function DailyPostCard({
   post: SocialDailyPost;
   copy: DailyCopy;
   regenerating: boolean;
-  onRegenerate: () => void;
+  onRegenerate: (pillar: string) => void;
   onChange: (post: SocialDailyPost) => void;
   onError: (message: string) => void;
 }) {
@@ -243,6 +277,7 @@ function DailyPostCard({
   const [time, setTime] = useState(toKstInput(post.scheduledFor));
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [nextTheme, setNextTheme] = useState(post.pillar);
 
   const editable = EDITABLE.includes(post.status);
   const timeChanged = time !== toKstInput(post.scheduledFor);
@@ -466,9 +501,17 @@ function DailyPostCard({
           </button>
         )}
         {["draft", "rejected", "failed", "expired"].includes(post.status) && (
-          <button type="button" className={`${buttonClass} bg-white`} disabled={busy !== null || regenerating} onClick={onRegenerate}>
-            <ArrowPathIcon width={14} className={regenerating ? "animate-spin" : ""} /> {copy.regenerate}
-          </button>
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <ThemeSelect copy={copy} value={nextTheme} onChange={setNextTheme} disabled={busy !== null || regenerating} />
+            <button
+              type="button"
+              className={`${buttonClass} bg-white`}
+              disabled={busy !== null || regenerating}
+              onClick={() => onRegenerate(nextTheme)}
+            >
+              <ArrowPathIcon width={14} className={regenerating ? "animate-spin" : ""} /> {copy.regenerate}
+            </button>
+          </span>
         )}
         {post.externalUrl && (
           <a href={post.externalUrl} target="_blank" rel="noopener noreferrer" className={`${buttonClass} bg-white no-underline`}>

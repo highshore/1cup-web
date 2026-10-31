@@ -19,8 +19,8 @@ export const fetchSocialOverview = (channel: SocialChannel) =>
 const post = (body: Record<string, unknown>) =>
   call<SocialDailyPost>({ method: "POST", body: JSON.stringify(body) });
 
-export const generateSocialPost = (channel: SocialChannel, postDate: string, replace = false) =>
-  post({ action: "generate", channel, postDate, replace });
+export const generateSocialPost = (channel: SocialChannel, postDate: string, replace = false, pillar?: string) =>
+  post({ action: "generate", channel, postDate, replace, ...(pillar ? { pillar } : {}) });
 
 export const saveSocialPost = (id: string, changes: { content?: unknown; scheduledFor?: string }) =>
   post({ action: "save", id, ...changes });
