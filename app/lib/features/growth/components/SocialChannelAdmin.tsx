@@ -22,6 +22,7 @@ import {
   MarketingTemplate,
   SocialMarketingChannel,
 } from "../types/growth_types";
+import DailyPostsPanel from "../../social/components/DailyPostsPanel";
 import ChannelConnections from "./ChannelConnections";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -174,6 +175,8 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
         </button>
       </header>
 
+      <DailyPostsPanel channel={channel} />
+
       <ChannelConnections
         connections={connections}
         loadError={connectionsError}
@@ -270,7 +273,12 @@ export default function SocialChannelAdmin({ channel }: { channel: SocialMarketi
                     </span>
                     <span className="text-[12px] font-bold text-[rgba(5,5,5,0.6)]">{at ? dateTime.format(at) : "—"}</span>
                     <span className="text-[12px] font-bold text-[rgba(5,5,5,0.6)]">
-                      · {run.trigger === "manual" ? marketing.triggerManual : marketing.triggerScheduled}
+                      ·{" "}
+                      {run.trigger === "manual"
+                        ? marketing.triggerManual
+                        : run.trigger === "daily"
+                          ? marketing.channels.triggerDaily
+                          : marketing.triggerScheduled}
                     </span>
                   </div>
                   {run.postTitle && <strong className="text-[15px] font-black text-[#050505]">{run.postTitle}</strong>}

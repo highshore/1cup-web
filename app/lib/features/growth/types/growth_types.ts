@@ -97,7 +97,7 @@ export interface MarketingCronRun {
   id: string;
   templateId: string;
   channel: MarketingChannel;
-  trigger: "schedule" | "manual";
+  trigger: "schedule" | "manual" | "daily";
   status: MarketingRunStatus;
   scheduledFor: Date | null;
   startedAt: Date | null;

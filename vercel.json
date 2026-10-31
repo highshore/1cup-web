@@ -1,4 +1,13 @@
 {
   "framework": "nextjs",
-  "crons": [{ "path": "/api/cron/daily-audio", "schedule": "17 20 * * *" }]
+  "crons": [
+    {
+      "path": "/api/cron/daily-audio",
+      "schedule": "17 20 * * *"
+    },
+    {
+      "path": "/api/cron/social-drafts",
+      "schedule": "7 11 * * *"
+    }
+  ]
 }

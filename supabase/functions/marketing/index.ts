@@ -29,6 +29,7 @@ import {
   fetchMediaMetrics,
   INSTAGRAM_CAPTION_LIMIT,
   publishToInstagram,
+  publishThreadsReplies,
   publishToThreads,
   refreshAccessToken,
   type SocialChannel,
@@ -931,7 +932,7 @@ const refreshSocialPerformance = async () => {
     if (!account) continue;
     const { data: posts } = await a
       .from("growth_posts")
-      .select("id, run_id, external_id, metrics, updated_at")
+      .select("id, run_id, external_id, metrics, metrics_24h, posted_at, updated_at")
       .eq("channel", channel)
       .eq("status", "posted")
       .neq("external_id", "")
@@ -947,7 +948,14 @@ const refreshSocialPerformance = async () => {
         const social = await fetchMediaMetrics(account, String(post.external_id));
         const metrics: Metrics = { ...readMetrics(post.metrics), ...social };
         const updatedAt = new Date().toISOString();
-        await a.from("growth_posts").update({ metrics, updated_at: updatedAt }).eq("id", post.id);
+        // The first reading after a day becomes the post's 24-hour score, which the
+        // daily-post time optimizer compares across slots.
+        const postedAt = new Date(String(post.posted_at ?? "")).getTime();
+        const snapshot =
+          !post.metrics_24h && Number.isFinite(postedAt) && Date.now() - postedAt >= 24 * 60 * 60 * 1000
+            ? { metrics_24h: metrics }
+            : {};
+        await a.from("growth_posts").update({ metrics, ...snapshot, updated_at: updatedAt }).eq("id", post.id);
         if (typeof post.run_id === "string" && post.run_id) {
           await a
             .from("marketing_cron_runs")
@@ -1289,6 +1297,206 @@ const claimRun = async (
   }
 };
 
+// ------------------------------------------------------------- daily posts
+// Admin-approved daily posts (social_daily_posts, drafted by the web app's nightly
+// cron). Each publish is recorded as a marketing_cron_runs row (trigger 'daily') and a
+// growth_posts row, so run history, tracking links and insights work as for templates.
+const DAILY_POSTS = "social_daily_posts";
+const DAILY_DESTINATION = "https://1cupenglish.com/meetup";
+
+type DailyPostRow = {
+  id: string;
+  channel: SocialChannel;
+  pillar: string;
+  scheduled_for: string | null;
+  content: Record<string, unknown>;
+  media: Array<{ url?: string; kind?: string }>;
+};
+
+// Expire drafts nobody approved in time, then claim the oldest approved post that is due.
+const claimDailyPost = async (): Promise<{ post: DailyPostRow; runId: string } | null> => {
+  const a = admin();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  await a
+    .from(DAILY_POSTS)
+    .update({ status: "expired", error: "Not approved before its posting time.", updated_at: nowIso })
+    .eq("status", "draft")
+    .lt("scheduled_for", nowIso);
+
+  const { data: due } = await a
+    .from(DAILY_POSTS)
+    .select("id, channel, pillar, scheduled_for, content, media")
+    .eq("status", "approved")
+    .lte("scheduled_for", nowIso)
+    .order("scheduled_for", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!due || !isSocialChannel(due.channel)) return null;
+
+  const runId = crypto.randomUUID();
+  const { data: leased } = await a
+    .from("growth_config")
+    .update({
+      active_run_id: runId,
+      active_run_lease_until: new Date(now.getTime() + RUN_LEASE_MS).toISOString(),
+      updated_at: nowIso,
+    })
+    .eq("id", CONFIG_ROW)
+    .or(`active_run_lease_until.is.null,active_run_lease_until.lt.${nowIso}`)
+    .select("active_run_id");
+  if (!leased || leased.length === 0) return null;
+
+  // Only one claimer can move it out of 'approved'.
+  const { data: claimed } = await a
+    .from(DAILY_POSTS)
+    .update({ status: "publishing", run_id: runId, updated_at: nowIso })
+    .eq("id", due.id)
+    .eq("status", "approved")
+    .select("id");
+  if (!claimed || claimed.length === 0) {
+    await clearRunLease(runId, null, nowIso);
+    return null;
+  }
+  return { post: due as DailyPostRow, runId };
+};
+
+const stringList = (value: unknown) =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "") : [];
+
+// The tracking link rides on the last part of a thread; if it does not fit there it
+// becomes its own short reply.
+const threadParts = (content: Record<string, unknown>, trackingUrl: string): string[] => {
+  const parts = [String(content.text ?? "").trim(), ...stringList(content.replies).map((reply) => reply.trim())].filter(Boolean);
+  if (parts.length === 0) throw new Error("This daily post has no Threads text.");
+  const last = `${parts[parts.length - 1]}\n\n${trackingUrl}`;
+  if (last.length <= THREADS_TEXT_LIMIT) parts[parts.length - 1] = last;
+  else parts.push(`👉 영어 한잔 모임 보기\n${trackingUrl}`);
+  const tooLong = parts.find((part) => part.length > THREADS_TEXT_LIMIT);
+  if (tooLong) throw new Error(`A Threads part is ${tooLong.length} characters; the limit is ${THREADS_TEXT_LIMIT}.`);
+  return parts;
+};
+
+const executeDailyPost = async (post: DailyPostRow, runId: string) => {
+  const a = admin();
+  const channel = post.channel;
+  const startedAt = new Date().toISOString();
+  const images = (post.media ?? []).filter((item) => item?.kind !== "video" && typeof item?.url === "string");
+  const photos = images.map((item, index) => ({ url: String(item.url), alt: `daily card ${index + 1}` }));
+  const code = trackingCode(channel);
+  const trackingUrl = `${TRACKING_DOMAIN}/r/${code}`;
+  const title =
+    channel === "threads"
+      ? String(post.content.text ?? "").split("\n")[0].slice(0, 120)
+      : String((post.content.slides as Array<Record<string, unknown>> | undefined)?.[0]?.title ?? "").slice(0, 120);
+  let postId = "";
+
+  await a.from("marketing_cron_runs").insert({
+    id: runId,
+    template_id: null,
+    channel,
+    trigger: "daily",
+    status: "running",
+    scheduled_for: post.scheduled_for ?? startedAt,
+    started_at: startedAt,
+    settings: { dailyPostId: post.id, pillar: post.pillar },
+    performance: { trackedPosts: 0, ...emptyMetrics() },
+    created_at: startedAt,
+  });
+
+  try {
+    const account = await loadChannelAccount(channel);
+    if (!account) throw new Error(`${channelLabel(channel)} is not connected.`);
+
+    const parts = channel === "threads" ? threadParts(post.content, trackingUrl) : [];
+    const caption = channel === "instagram" ? String(post.content.caption ?? "").trim() : "";
+    if (channel === "instagram") {
+      if (!caption) throw new Error("This daily post has no Instagram caption.");
+      if (photos.length === 0) throw new Error("This daily post has no card images.");
+    }
+    const content = channel === "threads" ? parts.join("\n\n—\n\n") : caption;
+
+    postId = crypto.randomUUID();
+    const { error: postInsertError } = await a.from("growth_posts").insert({
+      id: postId,
+      channel,
+      title,
+      content,
+      destination_url: DAILY_DESTINATION,
+      tracking_code: code,
+      hidden_post_id: "",
+      photos,
+      status: "posting",
+      run_id: runId,
+      metrics: emptyMetrics(),
+      created_at: startedAt,
+      updated_at: startedAt,
+    });
+    if (postInsertError) throw new Error(postInsertError.message);
+
+    let published: { mediaId: string; permalink: string };
+    if (channel === "threads") {
+      published = await publishToThreads(account, parts[0], []);
+      await publishThreadsReplies(account, published.mediaId, parts.slice(1));
+    } else {
+      published = await publishToInstagram(account, caption, photos.map((photo) => photo.url));
+    }
+
+    const completedAt = new Date().toISOString();
+    await a
+      .from("growth_posts")
+      .update({
+        status: "posted",
+        external_url: published.permalink,
+        external_id: published.mediaId,
+        publisher_status: "graph_api",
+        posted_at: completedAt,
+        updated_at: completedAt,
+      })
+      .eq("id", postId);
+    await a
+      .from("marketing_cron_runs")
+      .update({
+        status: "completed",
+        post_id: postId,
+        post_title: title,
+        post_copy: content,
+        tracking_code: code,
+        tracking_url: trackingUrl,
+        external_post_url: published.permalink,
+        photos,
+        completed_at: completedAt,
+        performance_checked_at: completedAt,
+        error: "",
+      })
+      .eq("id", runId);
+    await a
+      .from(DAILY_POSTS)
+      .update({
+        status: "published",
+        growth_post_id: postId,
+        external_url: published.permalink,
+        published_at: completedAt,
+        error: "",
+        updated_at: completedAt,
+      })
+      .eq("id", post.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const completedAt = new Date().toISOString();
+    await a.from("marketing_cron_runs").update({ status: "failed", completed_at: completedAt, error: message }).eq("id", runId);
+    await a.from(DAILY_POSTS).update({ status: "failed", error: message, updated_at: completedAt }).eq("id", post.id);
+    if (postId) {
+      await a
+        .from("growth_posts")
+        .update({ status: "failed", publisher_status: "publisher_failed", updated_at: completedAt })
+        .eq("id", postId);
+    }
+  } finally {
+    await clearRunLease(runId, null, new Date().toISOString());
+  }
+};
+
 // Publish the oldest queued channel run (left by a multi-channel template). Runs that
 // waited longer than QUEUED_RUN_MAX_AGE_MS are failed instead of posting stale copy.
 const claimQueuedRun = async (): Promise<string | null> => {
@@ -1366,7 +1574,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
         );
         return json(req, { refreshed: true, performance });
       }
-      const runId = (await claimQueuedRun()) ?? (await claimRun("schedule"));
+      const queuedRunId = await claimQueuedRun();
+      if (!queuedRunId) {
+        const daily = await claimDailyPost();
+        if (daily) {
+          await executeDailyPost(daily.post, daily.runId);
+          return json(req, { ran: true, runId: daily.runId, dailyPostId: daily.post.id });
+        }
+      }
+      const runId = queuedRunId ?? (await claimRun("schedule"));
       if (!runId) return json(req, { ran: false });
       // This is only reachable with the private scheduler secret. It is used
       // for an explicitly authorized operational test; pg_cron never sets it.
