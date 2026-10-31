@@ -2821,7 +2821,6 @@ ${meetupUrl}
               event.participants.filter((uid) => uid && uid.trim() !== "")
             )
           )
-            .slice(0, 12)
             .map((participantUid, index) => (
               <UserAvatar
                 key={`participant-${participantUid}-${index}`}
@@ -2840,25 +2839,6 @@ ${meetupUrl}
                 }
               />
             ))}
-          {event.participants.length > 12 && (
-            <div
-              key="more-participants"
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                backgroundColor: "#f0f0f0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "12px",
-                fontWeight: "bold",
-                color: "#666",
-              }}
-            >
-              +{event.participants.length - 12}
-            </div>
-          )}
         </ParticipantsGrid>
         <SectionTitle>운영진 및 리더</SectionTitle>
         <ParticipantsGrid>
