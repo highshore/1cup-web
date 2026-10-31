@@ -8,7 +8,7 @@ import {
   setDailyPostStatus,
   SocialPostError,
 } from "../../../lib/features/social/server/daily_posts";
-import type { SocialChannel } from "../../../lib/features/social/types";
+import { SOCIAL_PILLARS, type SocialChannel, type SocialPillar } from "../../../lib/features/social/types";
 
 export const runtime = "nodejs";
 // Generating a carousel drafts with Gemini and renders up to eight cards.
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST { action, ... }:
-//   generate  { channel, postDate, replace? }  draft (or redraft) a day's post
+//   generate  { channel, postDate, replace?, pillar? }  draft (or redraft) a day's post
 //   save      { id, content?, scheduledFor? }  edit text/slides (re-renders cards) or time
 //   approve | reject | unapprove { id }
 export async function POST(request: NextRequest) {
@@ -50,7 +50,14 @@ export async function POST(request: NextRequest) {
         if (!isChannel(body.channel) || !isPostDate(body.postDate)) {
           return NextResponse.json({ error: "channel or postDate is invalid." }, { status: 400 });
         }
-        return NextResponse.json(await generateDailyPost(body.channel, body.postDate, body.replace === true));
+        return NextResponse.json(
+          await generateDailyPost(
+            body.channel,
+            body.postDate,
+            body.replace === true,
+            typeof body.pillar === "string" && SOCIAL_PILLARS.includes(body.pillar as SocialPillar) ? body.pillar : undefined,
+          ),
+        );
       case "save":
         if (!isId(body.id)) return NextResponse.json({ error: "id is invalid." }, { status: 400 });
         return NextResponse.json(await saveDailyPost(body.id, { content: body.content, scheduledFor: body.scheduledFor }));

@@ -42,6 +42,30 @@ async function loadFonts() {
   return fontCache;
 }
 
+// Satori breaks lines at any space, which can split a short quoted phrase
+// ("I think...", '재귀적 자기 개선') across lines. Lay text out as a wrapping row of
+// unbreakable words instead, with each quoted phrase kept as a single word.
+// An opening quote must not follow a letter (so "won't" is not a quote) and a closing
+// quote must not be followed by a Latin letter; a Korean particle may follow ("..."만).
+const QUOTED = /((?<![\p{L}\p{N}])["“'‘][^"”'’\n]{1,28}?["”'’](?![A-Za-z])[^\s]*)/u;
+export const textTokens = (text: string): string[] =>
+  text
+    .split(QUOTED)
+    .flatMap((part, index) => (index % 2 === 1 ? [part] : part.split(/\s+/)))
+    .filter(Boolean);
+
+function WrappedText({ text, fontSize, style }: { text: string; fontSize: number; style: Record<string, unknown> }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", columnGap: Math.round(fontSize * 0.28), fontSize, ...style }}>
+      {textTokens(text).map((token, index) => (
+        <span key={index} style={{ whiteSpace: "nowrap" }}>
+          {token}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Slide({ slide, index, total }: { slide: CardSlide; index: number; total: number }) {
   const isCover = index === 0;
   const isLast = index === total - 1 && total > 1;
@@ -96,22 +120,13 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
 
         <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
           {isCover && <div style={{ display: "flex", width: 120, height: 14, background: ORANGE, borderRadius: 999 }} />}
-          <div
-            style={{
-              display: "flex",
-              fontSize: isCover ? 88 : 66,
-              fontWeight: 900,
-              lineHeight: 1.22,
-              letterSpacing: -2,
-              wordBreak: "keep-all",
-            }}
-          >
-            {slide.title}
-          </div>
+          <WrappedText
+            text={slide.title}
+            fontSize={isCover ? 88 : 66}
+            style={{ fontWeight: 900, lineHeight: 1.22, letterSpacing: -2 }}
+          />
           {slide.body && (
-            <div style={{ display: "flex", fontSize: 40, fontWeight: 500, lineHeight: 1.55, color: muted, wordBreak: "keep-all" }}>
-              {slide.body}
-            </div>
+            <WrappedText text={slide.body} fontSize={40} style={{ fontWeight: 500, lineHeight: 1.55, color: muted }} />
           )}
           {slide.highlight && (
             <div
@@ -122,12 +137,9 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
                 color: INK,
                 border: `4px solid ${INK}`,
                 borderRadius: 28,
-                fontSize: 40,
-                fontWeight: 700,
-                lineHeight: 1.4,
               }}
             >
-              {slide.highlight}
+              <WrappedText text={slide.highlight} fontSize={40} style={{ fontWeight: 700, lineHeight: 1.4 }} />
             </div>
           )}
         </div>

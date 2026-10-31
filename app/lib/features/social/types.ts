@@ -13,6 +13,10 @@ export type SocialPostStatus =
   | "expired";
 export type SlotReason = "explore" | "best" | "try" | "manual";
 
+// Post themes. The weekday picks one (server/content.ts); an admin can override it.
+export const SOCIAL_PILLARS = ["insight", "debate", "expression", "vocabulary", "quiz", "summary", "invite"] as const;
+export type SocialPillar = (typeof SOCIAL_PILLARS)[number];
+
 export interface ThreadContent {
   /** First post of the thread (≤ 400 characters). */
   text: string;
