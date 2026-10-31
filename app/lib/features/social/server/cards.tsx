@@ -176,10 +176,10 @@ function Slide({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
             <div style={{ display: "flex", fontSize: 40, fontWeight: 900 }}>영어 한잔</div>
-            <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: muted }}>1 Cup English</div>
+            <div style={{ display: "flex", fontSize: 30, fontWeight: 900, color: ORANGE, letterSpacing: 1 }}>DAILY</div>
           </div>
           <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: isLast ? ORANGE : muted }}>
-            {isLast ? "프로필 링크에서 신청 →" : "1cupenglish.com"}
+            {isLast ? "프로필 링크에서 하루 무료 →" : "매일 아침 카톡으로 오는 영어"}
           </div>
         </div>
       </div>

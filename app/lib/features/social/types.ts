@@ -13,8 +13,10 @@ export type SocialPostStatus =
   | "expired";
 export type SlotReason = "explore" | "best" | "try" | "manual" | "asap";
 
-// Post themes. The weekday picks one (server/content.ts); an admin can override it.
-export const SOCIAL_PILLARS = ["insight", "debate", "expression", "vocabulary", "quiz", "summary", "invite"] as const;
+// Post themes, all promoting One Cup Daily. The weekday picks one (server/content.ts);
+// an admin can override it. Older posts may carry retired themes (debate, vocabulary,
+// summary, invite), which the admin still labels.
+export const SOCIAL_PILLARS = ["insight", "expression", "compare", "scene", "quiz", "news", "weekly"] as const;
 export type SocialPillar = (typeof SOCIAL_PILLARS)[number];
 
 export interface ThreadContent {

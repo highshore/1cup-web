@@ -1303,7 +1303,8 @@ const claimRun = async (
 // cron). Each publish is recorded as a marketing_cron_runs row (trigger 'daily') and a
 // growth_posts row, so run history, tracking links and insights work as for templates.
 const DAILY_POSTS = "social_daily_posts";
-const DAILY_DESTINATION = "https://1cupenglish.com/meetup";
+// Daily posts promote One Cup Daily, so their tracking links land on its page.
+const DAILY_DESTINATION = "https://1cupenglish.com/daily";
 
 type DailyPostRow = {
   id: string;
@@ -1384,7 +1385,7 @@ const threadParts = (content: Record<string, unknown>, trackingUrl: string): str
   if (parts.length === 0) throw new Error("This daily post has no Threads text.");
   const last = `${parts[parts.length - 1]}\n\n${trackingUrl}`;
   if (last.length <= THREADS_TEXT_LIMIT) parts[parts.length - 1] = last;
-  else parts.push(`👉 영어 한잔 모임 보기\n${trackingUrl}`);
+  else parts.push(`👉 One Cup Daily 하루 무료로 받아보기\n${trackingUrl}`);
   const tooLong = parts.find((part) => part.length > THREADS_TEXT_LIMIT);
   if (tooLong) throw new Error(`A Threads part is ${tooLong.length} characters; the limit is ${THREADS_TEXT_LIMIT}.`);
   return parts;
