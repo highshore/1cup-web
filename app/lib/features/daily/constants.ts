@@ -13,14 +13,21 @@ export function isDailyTrack(value: unknown): value is DailyTrack {
 export type DailyField = "consulting" | "finance" | "tech" | "consumer";
 export const DAILY_FIELD_LABEL: Record<DailyField, string> = { consulting: "컨설팅", finance: "금융", tech: "테크", consumer: "소비재" };
 
+// Today's price and the regular price (daily_products.offer_amount / amount; terms
+// 제5조). Every product costs half its regular price until the customer's offer deadline:
+// midnight KST at the end of the day their free trial ends (daily_price_offer). A
+// 정기구독 bought at today's price renews at it until it is cancelled. The server decides
+// what is charged; these are for pages that have no customer to ask about.
+//
 // The 28-day subscription. Passes are one-time and priced per month above it on purpose:
 // the subscription is the cheapest way to take Daily, and the page says so.
 export const DAILY_MONTHLY_PRICE_KRW = 3700;
+export const DAILY_MONTHLY_REGULAR_PRICE_KRW = 7400;
 
 export const DAILY_PASSES = [
-  { id: "pass_1m", label: "1개월 (4주) 이용권", days: 28, priceKrw: 4500 },
-  { id: "pass_3m", label: "3개월 (12주) 이용권", days: 84, priceKrw: 12300 },
-  { id: "pass_6m", label: "6개월 (24주) 이용권", days: 168, priceKrw: 23400 },
+  { id: "pass_1m", label: "1개월 (4주) 이용권", days: 28, priceKrw: 4500, regularPriceKrw: 9000 },
+  { id: "pass_3m", label: "3개월 (12주) 이용권", days: 84, priceKrw: 12300, regularPriceKrw: 24600 },
+  { id: "pass_6m", label: "6개월 (24주) 이용권", days: 168, priceKrw: 23400, regularPriceKrw: 46800 },
 ] as const;
 
 // A pass's price per 28 days (one period), and the 1개월 이용권 price it is compared with (struck through
@@ -76,6 +83,6 @@ export const DAILY_JOB_CATEGORIES = [
 
 // Bump when the Daily terms or the consent wording change; stored with each signup. The
 // date is when the version took effect; a later revision the same day adds ".n".
-export const DAILY_TERMS_VERSION = "2026-10-29.1";
+export const DAILY_TERMS_VERSION = "2026-10-31.1";
 
 export const formatKrw = (amount: number) => amount.toLocaleString("ko-KR");

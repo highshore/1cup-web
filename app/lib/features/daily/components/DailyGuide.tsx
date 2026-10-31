@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import {
   DAILY_MONTHLY_PRICE_KRW,
+  DAILY_MONTHLY_REGULAR_PRICE_KRW,
   DAILY_PASSES,
   DAILY_TERMS_PATH,
   DAILY_TRIAL_OPEN,
@@ -186,7 +187,10 @@ export default function DailyGuide() {
                     {subscribe.subscription.name}
                     <span className="block text-[0.8rem] font-semibold text-[#78716c] min-[600px]:hidden">{subscribe.subscription.how}</span>
                   </th>
-                  <td className="px-4 py-3 font-black">₩{monthly}</td>
+                  <td className="px-4 py-3 font-black">
+                    ₩{monthly}
+                    <span className="block text-[0.78rem] font-semibold text-[#94a3b8]">₩{formatKrw(DAILY_MONTHLY_REGULAR_PRICE_KRW)}</span>
+                  </td>
                   <td className="hidden px-4 py-3 text-[#57534e] min-[600px]:table-cell">{subscribe.subscription.how}</td>
                 </tr>
                 {DAILY_PASSES.map((pass) => (
@@ -198,6 +202,7 @@ export default function DailyGuide() {
                     <td className="px-4 py-3 font-black">
                       ₩{formatKrw(pass.priceKrw)}
                       <PassPerMonth priceKrw={pass.priceKrw} days={pass.days} />
+                      <span className="block text-[0.78rem] font-semibold text-[#94a3b8]">₩{formatKrw(pass.regularPriceKrw)}</span>
                     </td>
                     <td className="hidden px-4 py-3 text-[#57534e] min-[600px]:table-cell">{subscribe.passHow}</td>
                   </tr>

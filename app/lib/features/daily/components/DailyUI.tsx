@@ -106,14 +106,25 @@ export function CupMark({ className, color = "currentColor" }: { className?: str
 
 // "월 ₩4,100 ₩4,500" under a pass's price: what it comes to per month, with the 1개월
 // 이용권 price struck through when the pass is cheaper. Small and grey on purpose.
-export function PassPerMonth({ priceKrw, days, className }: { priceKrw: number; days: number; className?: string }) {
+// baseKrw: the 1개월 이용권 price the reader would pay now (today's price or regular).
+export function PassPerMonth({
+  priceKrw,
+  days,
+  baseKrw = DAILY_PASS_MONTHLY_BASE_KRW,
+  className,
+}: {
+  priceKrw: number;
+  days: number;
+  baseKrw?: number;
+  className?: string;
+}) {
   const perMonth = dailyPassPerMonth(priceKrw, days);
   return (
     <span className={cn("block text-[0.78rem] font-semibold text-[#94a3b8]", className)}>
       월 ₩{formatKrw(perMonth)}
-      {perMonth < DAILY_PASS_MONTHLY_BASE_KRW && (
+      {perMonth < baseKrw && (
         <s className="ml-1.5 font-medium text-[#cbd5e1]">
-          <span className="sr-only">정가 </span>₩{formatKrw(DAILY_PASS_MONTHLY_BASE_KRW)}
+          <span className="sr-only">정가 </span>₩{formatKrw(baseKrw)}
         </s>
       )}
     </span>

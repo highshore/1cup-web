@@ -47,7 +47,7 @@ interface RefundRow {
 export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer) {
   const [{ data: subs }, { data: orders }, { data: refunds }] = await Promise.all([
     db.from("daily_subscriptions")
-      .select("id, track, status, plan, paid_until, auto_renew, delivery_time, next_send_at, billing_key, marketing_consent_at, created_at")
+      .select("id, track, status, plan, paid_until, auto_renew, renewal_amount, delivery_time, next_send_at, billing_key, marketing_consent_at, created_at")
       .eq("customer_id", customer.id)
       .order("created_at", { ascending: false }),
     db.from("daily_orders")
@@ -125,6 +125,8 @@ export async function accountInfo(db: SupabaseClient, customer: PaymentCustomer)
       plan: s.plan,
       paidUntil: s.paid_until,
       autoRenew: s.auto_renew,
+      // What the next renewal charges: the price the subscription was bought at.
+      renewalAmount: s.renewal_amount,
       deliveryTime: String(s.delivery_time).slice(0, 5),
       nextSendAt: s.next_send_at,
       canResume: s.status === "active" && !s.auto_renew && Boolean(s.billing_key) && s.plan === "sub_30d" &&
