@@ -1,5 +1,5 @@
 // Server-only: what each day's post is about, the material it is written from, and the
-// Gemini call that drafts it.
+// GPT Luna call that drafts it.
 //
 // Every daily post sells One Cup Daily (the KakaoTalk morning expression): the goal is
 // to get people to take the free first day. A weekday "pillar" fixes the kind of post
@@ -26,7 +26,9 @@ import {
   type ThreadContent,
 } from "../types";
 
-const MODEL = process.env.SOCIAL_DRAFT_MODEL || "gemini-3.7-flash";
+// OpenAI GPT Luna through the Responses API, like One Cup Daily's hook writer
+// (supabase/functions/daily/hooks.ts). SOCIAL_DRAFT_MODEL overrides the model.
+const MODEL = process.env.SOCIAL_DRAFT_MODEL || "gpt-6-luna";
 
 export interface Pillar {
   key: string;
@@ -208,28 +210,37 @@ const FORMAT: Record<SocialChannel, string> = {
   instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label and a punchy Korean title (max 32 characters; for benefit-led posts this is the pain-point hook), body as a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to get One Cup Daily free for the first day and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
 };
 
-async function callGemini(prompt: string): Promise<Json> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
-    {
-      method: "POST",
-      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: BRAND }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.8, maxOutputTokens: 6000 },
-      }),
-      signal: AbortSignal.timeout(90_000),
-    },
-  );
-  const payload = (await response.json().catch(() => ({}))) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    error?: { message?: string };
-  };
+type ResponsesPayload = {
+  output_text?: string;
+  output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+  error?: { message?: string };
+};
+
+async function callModel(prompt: string): Promise<Json> {
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: MODEL,
+      instructions: BRAND,
+      input: prompt,
+      // JSON mode: the prompts spell out each format's exact JSON shape.
+      text: { format: { type: "json_object" } },
+    }),
+    signal: AbortSignal.timeout(150_000),
+  });
+  const payload = (await response.json().catch(() => ({}))) as ResponsesPayload;
   if (!response.ok) throw new Error(`Draft model failed (${response.status}): ${payload.error?.message ?? "request failed"}`);
-  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+  const text = (
+    payload.output_text ??
+    (payload.output ?? [])
+      .flatMap((item) => (item.type === "message" ? item.content ?? [] : []))
+      .filter((part) => part.type === "output_text")
+      .map((part) => part.text ?? "")
+      .join("")
+  ).trim();
   if (!text) throw new Error("Draft model returned nothing.");
   try {
     return JSON.parse(text) as Json;
@@ -307,7 +318,7 @@ export async function draftPost(
   ]
     .filter(Boolean)
     .join("\n\n");
-  const raw = await callGemini(prompt);
+  const raw = await callModel(prompt);
   if (channel === "threads") return normalizeThread(raw);
   return format === "reel" ? normalizeReel(raw) : normalizeCarousel(raw);
 }
