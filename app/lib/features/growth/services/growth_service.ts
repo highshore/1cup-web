@@ -4,6 +4,9 @@
 import { supabase, invokeFunction } from "../../../supabase/client";
 import {
   DEFAULT_MARKETING_CRON_SETTINGS,
+  MARKETING_CHANNELS,
+  MarketingChannel,
+  MarketingChannelConnection,
   MarketingCronRun,
   MarketingCronSchedule,
   MarketingCronSettings,
@@ -11,6 +14,7 @@ import {
   MarketingRunStatus,
   MarketingTemplate,
   MarketingTemplatePhoto,
+  SocialMarketingChannel,
 } from "../types/growth_types";
 
 const CONFIG = "growth_config";
@@ -41,6 +45,16 @@ const toPhotos = (value: unknown): MarketingTemplatePhoto[] =>
         }))
         .filter((p) => p.url)
     : [];
+
+const isChannel = (value: unknown): value is MarketingChannel =>
+  typeof value === "string" && (MARKETING_CHANNELS as string[]).includes(value);
+
+const toChannels = (value: unknown): MarketingChannel[] => {
+  const selected = new Set(Array.isArray(value) ? value.filter(isChannel) : []);
+  const channels = MARKETING_CHANNELS.filter((channel) => selected.has(channel));
+  // Rows created before channel support post only to Gopas.
+  return channels.length ? channels : ["koreapas"];
+};
 
 const toSchedule = (value: unknown): MarketingCronSchedule => {
   const schedule = (value ?? {}) as Record<string, unknown>;
@@ -94,6 +108,9 @@ const toTemplate = (row: Record<string, unknown>): MarketingTemplate => ({
   copy: typeof row.copy === "string" ? row.copy : "",
   callToAction: typeof row.call_to_action === "string" ? row.call_to_action : "",
   photos: toPhotos(row.photos),
+  channels: toChannels(row.channels),
+  threadsText: typeof row.threads_text === "string" ? row.threads_text : "",
+  instagramCaption: typeof row.instagram_caption === "string" ? row.instagram_caption : "",
   scheduleEnabled: row.schedule_enabled === true,
   schedule: toSchedule(row.schedule),
   nextRunAt: toDate(row.next_run_at),
@@ -117,7 +134,7 @@ const toPerformance = (value: unknown): MarketingPerformanceSnapshot => {
 const toRun = (row: Record<string, unknown>): MarketingCronRun => ({
   id: String(row.id ?? ""),
   templateId: typeof row.template_id === "string" ? row.template_id : "",
-  channel: "koreapas",
+  channel: isChannel(row.channel) ? row.channel : "koreapas",
   trigger: row.trigger === "manual" ? "manual" : "schedule",
   status: (row.status as MarketingRunStatus) || "queued",
   scheduledFor: toDate(row.scheduled_for),
@@ -175,6 +192,22 @@ export const fetchMarketingPerformanceRuns = async (): Promise<MarketingCronRun[
     .order("completed_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(MARKETING_PERFORMANCE_POINT_LIMIT);
+  if (error) throw error;
+  return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
+};
+
+// Run history for one channel (the Threads/Instagram admin pages). Every run is one
+// post attempt on that channel, so this doubles as the channel's post list.
+export const fetchMarketingChannelRuns = async (
+  channel: MarketingChannel,
+  limit = 60,
+): Promise<MarketingCronRun[]> => {
+  const { data, error } = await supabase
+    .from(RUNS)
+    .select("*")
+    .eq("channel", channel)
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
   return (data ?? []).map((row) => toRun(row as Record<string, unknown>));
 };
@@ -240,6 +273,9 @@ export const createMarketingTemplate = async (template: {
   copy: string;
   callToAction: string;
   photos: MarketingTemplatePhoto[];
+  channels: MarketingChannel[];
+  threadsText: string;
+  instagramCaption: string;
   schedule: MarketingCronSchedule;
 }): Promise<string> => {
   const result = await invokeFunction<{ templateId: string }>("marketing", {
@@ -257,6 +293,9 @@ export const updateMarketingTemplate = async (
     copy: string;
     callToAction: string;
     photos: MarketingTemplatePhoto[];
+    channels: MarketingChannel[];
+    threadsText: string;
+    instagramCaption: string;
   },
 ): Promise<void> => {
   const { data, error } = await supabase
@@ -267,6 +306,9 @@ export const updateMarketingTemplate = async (
       copy: template.copy,
       call_to_action: template.callToAction,
       photos: template.photos,
+      channels: template.channels,
+      threads_text: template.threadsText,
+      instagram_caption: template.instagramCaption,
       updated_at: new Date().toISOString(),
     })
     .eq("id", templateId)
@@ -296,6 +338,8 @@ export type GeneratedMarketingTemplate = {
   title: string;
   copy: string;
   callToAction: string;
+  threadsText: string;
+  instagramCaption: string;
   schedule: MarketingCronSchedule;
 };
 
@@ -311,4 +355,34 @@ export const generateMarketingTemplate = async (input: {
 
 export const runMarketingCronNow = async (templateId: string): Promise<void> => {
   await invokeFunction("marketing", { action: "run-now", templateId });
+};
+
+// ---- Threads / Instagram connections ----
+// Tokens never come back to the browser; the Edge Function returns status only.
+
+export const fetchMarketingChannelConnections = async (): Promise<MarketingChannelConnection[]> => {
+  const result = await invokeFunction<{ channels: Array<Record<string, unknown>> }>("marketing", {
+    action: "channel-status",
+  });
+  return (result.channels ?? [])
+    .filter((row) => row.channel === "threads" || row.channel === "instagram")
+    .map((row) => ({
+      channel: row.channel as SocialMarketingChannel,
+      connected: row.connected === true,
+      username: typeof row.username === "string" ? row.username : "",
+      accountId: typeof row.accountId === "string" ? row.accountId : "",
+      tokenExpiresAt: toDate(row.tokenExpiresAt),
+      connectedAt: toDate(row.connectedAt),
+      lastError: typeof row.lastError === "string" ? row.lastError : "",
+    }));
+};
+
+export const connectMarketingChannel = async (
+  channel: SocialMarketingChannel,
+  accessToken: string,
+): Promise<{ username: string }> =>
+  invokeFunction<{ username: string }>("marketing", { action: "connect-channel", channel, accessToken });
+
+export const disconnectMarketingChannel = async (channel: SocialMarketingChannel): Promise<void> => {
+  await invokeFunction("marketing", { action: "disconnect-channel", channel });
 };

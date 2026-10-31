@@ -2,6 +2,7 @@ import adminAnalytics from "./admin_analytics";
 import adminCancellations from "./admin_cancellations";
 import adminGifts from "./admin_gifts";
 import adminNav from "./admin_nav";
+import adminSocial from "./admin_social";
 import homeFaq from "./home_faq";
 import en from "./locales/en";
 import ko from "./locales/ko";
@@ -52,6 +53,7 @@ const dictionaries = {
       cancellations: adminCancellations.en,
       nav: adminNav.en.nav,
       today: adminNav.en.today,
+      social: adminSocial.en,
     },
   },
   ko: {
@@ -96,6 +98,7 @@ const dictionaries = {
       cancellations: adminCancellations.ko,
       nav: adminNav.ko.nav,
       today: adminNav.ko.today,
+      social: adminSocial.ko,
     },
   },
 };
