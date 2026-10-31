@@ -14,7 +14,7 @@ import sharp from "sharp";
 
 import { admin } from "../../../supabase/server";
 import type { CardSlide, SocialMedia } from "../types";
-import { renderSlidePng } from "./cards";
+import { PROFILE_CTA, renderSlidePng } from "./cards";
 import { type Pcm, synthesizeNarration, wav } from "./voice";
 
 const run = promisify(execFile);
@@ -50,6 +50,7 @@ export async function buildReel(
   slides: CardSlide[],
   narration: string[],
   voice: (text: string) => Promise<Pcm> = synthesizeNarration,
+  cta = PROFILE_CTA,
 ): Promise<BuiltReel> {
   const lines = slides.map((_, index) => (narration[index] ?? "").trim());
   const clips = await inPool(lines, 3, (line) => (line ? voice(line) : Promise.resolve(null)));
@@ -75,7 +76,7 @@ export async function buildReel(
   );
 
   const frames = await inPool(slides, 3, (slide, index) =>
-    renderSlidePng(slide, index, slides.length, { reel: true, subtitle: lines[index] }),
+    renderSlidePng(slide, index, slides.length, { reel: true, subtitle: lines[index], cta }),
   );
 
   const dir = await mkdtemp(join(tmpdir(), "reel-"));
@@ -88,9 +89,13 @@ export async function buildReel(
       "-loop", "1", "-framerate", String(FPS), "-t", seconds.toFixed(3), "-i", join(dir, `f${index}.png`),
     ]);
     const audioIndex = durations.length;
+    // Later scenes fade in; the first frame is the hook and must be readable at once.
     const filter =
       durations
-        .map((_, index) => `[${index}:v]scale=1080:1920,setsar=1,format=yuv420p,fade=t=in:st=0:d=${FADE_SECONDS}[v${index}]`)
+        .map(
+          (_, index) =>
+            `[${index}:v]scale=1080:1920,setsar=1,format=yuv420p${index === 0 ? "" : `,fade=t=in:st=0:d=${FADE_SECONDS}`}[v${index}]`,
+        )
         .join(";") +
       ";" +
       durations.map((_, index) => `[v${index}]`).join("") +
@@ -122,9 +127,14 @@ export async function buildReel(
   }
 }
 
-export async function renderAndStoreReel(postId: string, slides: CardSlide[], narration: string[]): Promise<SocialMedia[]> {
-  const reel = await buildReel(slides, narration);
-  const hash = createHash("sha256").update(JSON.stringify([slides, narration])).digest("hex").slice(0, 12);
+export async function renderAndStoreReel(
+  postId: string,
+  slides: CardSlide[],
+  narration: string[],
+  cta = PROFILE_CTA,
+): Promise<SocialMedia[]> {
+  const reel = await buildReel(slides, narration, synthesizeNarration, cta);
+  const hash = createHash("sha256").update(JSON.stringify([slides, narration, cta])).digest("hex").slice(0, 12);
   const storage = admin().storage.from("assets");
   const videoPath = `social/${postId}/reel-${hash}.mp4`;
   const coverPath = `social/${postId}/reel-cover-${hash}.jpg`;

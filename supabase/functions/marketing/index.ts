@@ -1410,7 +1410,8 @@ const executeDailyPost = async (post: DailyPostRow, runId: string) => {
     let published: { mediaId: string; permalink: string };
     let replyError = "";
     if (channel === "threads") {
-      published = await publishToThreads(account, parts[0], []);
+      // The first post carries the media: a video, or the card images (none for a text post).
+      published = await publishToThreads(account, parts[0], video ? [] : photos.map((photo) => photo.url), video ? String(video.url) : undefined);
       // The first post is live from here on. Record it before posting the replies, so a
       // reply failure can never make the post look unpublished (and invite a duplicate).
       await a

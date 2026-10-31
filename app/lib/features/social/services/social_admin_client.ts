@@ -19,13 +19,24 @@ export const fetchSocialOverview = (channel: SocialChannel) =>
 const post = (body: Record<string, unknown>) =>
   call<SocialDailyPost>({ method: "POST", body: JSON.stringify(body) });
 
-export const generateSocialPost = (
-  channel: SocialChannel,
-  postDate: string,
-  replace = false,
-  pillar?: string,
-  format?: string,
-) => post({ action: "generate", channel, postDate, replace, ...(pillar ? { pillar } : {}), ...(format ? { format } : {}) });
+export interface GenerateChoices {
+  pillar?: string;
+  /** Instagram: carousel | reel. */
+  format?: string;
+  /** Threads: text | image | video, and single | chain. Empty means the optimizer picks. */
+  threadMedia?: string;
+  threadStructure?: string;
+}
+
+export const generateSocialPost = (channel: SocialChannel, postDate: string, replace = false, choices: GenerateChoices = {}) =>
+  post({
+    action: "generate",
+    channel,
+    postDate,
+    replace,
+    // Drop empty choices so the server falls back to its defaults.
+    ...Object.fromEntries(Object.entries(choices).filter(([, value]) => value)),
+  });
 
 export const saveSocialPost = (id: string, changes: { content?: unknown; scheduledFor?: string }) =>
   post({ action: "save", id, ...changes });
