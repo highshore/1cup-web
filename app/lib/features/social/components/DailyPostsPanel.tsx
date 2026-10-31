@@ -5,6 +5,7 @@ import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   CheckIcon,
+  PaperAirplaneIcon,
   PlusIcon,
   SparklesIcon,
   TrashIcon,
@@ -15,6 +16,7 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import {
   fetchSocialOverview,
   generateSocialPost,
+  publishSocialPostNow,
   saveSocialPost,
   setSocialPostStatus,
 } from "../services/social_admin_client";
@@ -536,6 +538,7 @@ function DailyPostCard({
               {fill(copy.characters, { count: carousel.caption.length, limit: CAROUSEL_CAPTION_LIMIT })}
             </span>
           </label>
+          <p className={`m-0 ${mutedClass}`}>{copy.igLinkNote}</p>
         </div>
       )}
 
@@ -558,10 +561,24 @@ function DailyPostCard({
           <button
             type="button"
             className={`${buttonClass} bg-[#f47a4a]`}
-            disabled={busy !== null}
+            disabled={busy !== null || late}
+            title={late ? copy.lateApproval : undefined}
             onClick={() => void run("approve", () => setSocialPostStatus(post.id, "approve"))}
           >
-            <CheckIcon width={14} /> {copy.approve}
+            <CheckIcon width={14} /> {copy.approveScheduled}
+          </button>
+        )}
+        {["draft", "approved", "rejected", "failed", "expired"].includes(post.status) && !dirty && !timeChanged && (
+          <button
+            type="button"
+            className={`${buttonClass} bg-[#050505] text-white`}
+            disabled={busy !== null}
+            onClick={() => {
+              if (window.confirm(copy.publishNowConfirm)) void run("publish", () => publishSocialPostNow(post.id));
+            }}
+          >
+            {busy === "publish" ? <ArrowPathIcon width={14} className="animate-spin" /> : <PaperAirplaneIcon width={14} />}
+            {busy === "publish" ? copy.publishingNow : copy.publishNow}
           </button>
         )}
         {post.status === "approved" && (

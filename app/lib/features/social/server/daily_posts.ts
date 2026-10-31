@@ -209,6 +209,21 @@ export async function saveDailyPost(
   return toPost(data as Record<string, unknown>);
 }
 
+// Instagram can only publish what has been rendered: card images for a carousel, the
+// video for a reel.
+function assertMediaReady(row: Record<string, unknown>) {
+  if (row.channel !== "instagram") return;
+  const media = (Array.isArray(row.media) ? row.media : []) as Array<{ kind?: string }>;
+  if (row.format === "reel") {
+    if (!media.some((item) => item.kind === "video")) {
+      throw new SocialPostError("The reel video is missing. Save the post to render it.", 409);
+    }
+    return;
+  }
+  const slides = isCarouselContent(row.content) ? row.content.slides.length : 0;
+  if (!slides || media.length !== slides) throw new SocialPostError("Card images are missing. Save the post to render them.", 409);
+}
+
 export async function setDailyPostStatus(
   id: string,
   next: "approved" | "rejected" | "draft",
@@ -218,17 +233,7 @@ export async function setDailyPostStatus(
   if (!EDITABLE.includes(row.status as SocialPostStatus)) {
     throw new SocialPostError("This post is publishing or already published.", 409);
   }
-  if (next === "approved" && row.channel === "instagram") {
-    const media = (Array.isArray(row.media) ? row.media : []) as Array<{ kind?: string }>;
-    if (row.format === "reel") {
-      if (!media.some((item) => item.kind === "video")) {
-        throw new SocialPostError("The reel video is missing. Save the post to render it.", 409);
-      }
-    } else {
-      const slides = isCarouselContent(row.content) ? row.content.slides.length : 0;
-      if (!slides || media.length !== slides) throw new SocialPostError("Card images are missing. Save the post to render them.", 409);
-    }
-  }
+  if (next === "approved") assertMediaReady(row);
   const { data, error } = await admin()
     .from(TABLE)
     .update({
@@ -243,6 +248,47 @@ export async function setDailyPostStatus(
     .single();
   if (error || !data) throw new SocialPostError(error?.message ?? "Unable to update the post.", 500);
   return toPost(data as Record<string, unknown>);
+}
+
+// "Publish now": approve with the time set to now, then run the publisher's scheduler
+// tick right away instead of waiting up to five minutes for pg_cron. The tick publishes
+// the oldest due approved post, which is this one unless another run holds the lease;
+// then the next tick picks it up. Waits for the publish (a reel can take ~2 minutes).
+export async function publishDailyPostNow(id: string, adminUid: string): Promise<SocialDailyPost> {
+  const row = await getRow(id);
+  if (!EDITABLE.includes(row.status as SocialPostStatus)) {
+    throw new SocialPostError("This post is publishing or already published.", 409);
+  }
+  assertMediaReady(row);
+  const now = new Date().toISOString();
+  const { error } = await admin()
+    .from(TABLE)
+    .update({
+      status: "approved",
+      approved_at: now,
+      approved_by: adminUid,
+      scheduled_for: now,
+      slot: kstSlotOf(now),
+      slot_reason: "manual",
+      error: "",
+      updated_at: now,
+    })
+    .eq("id", id);
+  if (error) throw new SocialPostError(error.message, 500);
+
+  const db = admin();
+  const { data: secret, error: secretError } = await db.rpc("marketing_scheduler_secret");
+  if (secretError || typeof secret !== "string" || !secret) {
+    // Still approved and due: the regular tick publishes it within five minutes.
+    console.error("[social] publish-now could not read the scheduler secret", secretError);
+  } else {
+    const { error: invokeError } = await db.functions.invoke("marketing", {
+      body: { action: "tick" },
+      headers: { "x-marketing-scheduler-secret": secret },
+    });
+    if (invokeError) console.error("[social] publish-now tick failed", invokeError);
+  }
+  return toPost(await getRow(id));
 }
 
 // Nightly: draft tomorrow's posts for both channels. Existing drafts are left alone, so
