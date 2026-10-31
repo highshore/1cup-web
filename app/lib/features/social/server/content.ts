@@ -236,7 +236,18 @@ async function callGemini(prompt: string): Promise<Json> {
   }
 }
 
-const str = (value: unknown, max: number) => (typeof value === "string" ? value.trim().slice(0, max) : "");
+// Model output sometimes ignores the prompt: strip URLs (tracking links are added at
+// publish time) and Markdown emphasis, which Threads and Instagram show literally.
+export const cleanText = (text: string) =>
+  text
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+
+const str = (value: unknown, max: number) => (typeof value === "string" ? cleanText(value).slice(0, max) : "");
 
 export const normalizeThread = (raw: Json): ThreadContent => {
   const text = str(raw.text, THREAD_TEXT_LIMIT);

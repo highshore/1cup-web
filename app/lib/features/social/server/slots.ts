@@ -56,23 +56,35 @@ export async function slotStats(channel: SocialChannel): Promise<SlotStat[]> {
   });
 }
 
+// A draft made after the day's last slot gets the earliest time that still leaves room
+// to review it: 30 minutes out, rounded up to 5 minutes. It is not one of the scored
+// slots, so it never skews the slot statistics.
+const asapTime = (notBefore: number) => {
+  const at = new Date(Math.ceil((notBefore + 15 * 60_000) / 300_000) * 300_000);
+  return { slot: kstSlotOf(at.toISOString()), reason: "asap" as const, scheduledFor: at.toISOString() };
+};
+
 export function chooseSlot(
   channel: SocialChannel,
   postDate: string,
   stats: SlotStat[],
   notBefore = Date.now() + 15 * 60_000,
-): { slot: string; reason: SlotReason } {
+): { slot: string; reason: SlotReason; scheduledFor: string } {
   // A draft made for today can only use slots that are still ahead.
   const ahead = stats.filter((stat) => new Date(slotToIso(postDate, stat.slot)).getTime() >= notBefore);
-  const pool = ahead.length ? ahead : stats;
+  if (ahead.length === 0) return asapTime(notBefore);
+  const pool = ahead;
   const day = dayNumber(postDate);
+  const at = (slot: string) => slotToIso(postDate, slot);
 
   const fewest = Math.min(...pool.map((stat) => stat.samples));
   if (fewest < MIN_SAMPLES) {
     const least = pool.filter((stat) => stat.samples === fewest);
-    return { slot: least[day % least.length].slot, reason: "explore" };
+    const slot = least[day % least.length].slot;
+    return { slot, reason: "explore", scheduledFor: at(slot) };
   }
   const ranked = [...pool].sort((a, b) => (b.medianViews24h ?? 0) - (a.medianViews24h ?? 0));
-  if (ranked.length > 1 && day % TRY_EVERY_DAYS === 0) return { slot: ranked[1].slot, reason: "try" };
-  return { slot: ranked[0]?.slot ?? SOCIAL_SLOTS[channel][0], reason: "best" };
+  if (ranked.length > 1 && day % TRY_EVERY_DAYS === 0) return { slot: ranked[1].slot, reason: "try", scheduledFor: at(ranked[1].slot) };
+  const best = ranked[0]?.slot ?? SOCIAL_SLOTS[channel][0];
+  return { slot: best, reason: "best", scheduledFor: at(best) };
 }
