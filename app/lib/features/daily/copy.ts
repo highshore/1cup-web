@@ -6,6 +6,11 @@ export const dailyCopy = {
     brand: "DAILY",
     cta: "무료로 받기",
     account: "내 계정",
+    services: {
+      label: "영어 한잔 서비스",
+      daily: "매일 아침 카톡으로 오는 영어",
+      meetup: "통역사가 직접 리딩하는 영어 모임",
+    },
   },
   hero: {
     tagline: "글로벌 임원 통역사가 직접 고른 영어",

@@ -15,6 +15,11 @@ const en = {
     daily: "Daily",
     vocabulary: "Vocabulary",
     meetup: "Meetup",
+    services: {
+      label: "One Cup English services",
+      daily: "Daily English on KakaoTalk",
+      meetup: "Interpreter-led English meetups",
+    },
     leaderboard: "Leaderboard",
     blog: "Blog",
     messages: "Messages",
