@@ -33,7 +33,7 @@ export default function DailyAdminLessonClient({ lesson, status }: { lesson: Dai
   };
 
   return (
-    <div className={cn("daily-page mx-auto w-full max-w-[752px] px-4 pb-20 pt-8 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
+    <div className={cn("daily-page mx-auto w-full max-w-page px-4 min-[900px]:px-gutter pb-20 pt-8 text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
       <Link
         href={`/daily/admin/lessons?track=${lesson.track}`}
         className="inline-flex items-center gap-1 text-[14px] font-bold text-[rgba(5,5,5,0.6)]"

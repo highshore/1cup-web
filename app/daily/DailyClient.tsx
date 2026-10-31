@@ -25,6 +25,7 @@ import {
   Pill,
   TrialButton,
   cn,
+  dailyColumn,
   displayClass,
 } from "../lib/features/daily/components/DailyUI";
 import { HeroPhoneDemo, IosNotification, IPhone, LessonScreen } from "../lib/features/daily/components/Phone";
@@ -100,10 +101,10 @@ export default function DailyClient({
   return (
     <div className={cn("daily-page bg-white text-[#050505] [word-break:keep-all]", dailyDisplay.variable)}>
       {/* P1: hero */}
-      <section className="overflow-hidden bg-[#f47a4a] px-4 pb-16 pt-10 min-[900px]:pb-24 min-[900px]:pt-20">
+      <section className="overflow-hidden bg-[#f47a4a] pb-16 pt-10 min-[900px]:pb-24 min-[900px]:pt-20">
         <div
           ref={heroRef}
-          className="mx-auto grid w-full max-w-[720px] items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_290px] min-[900px]:gap-8"
+          className={cn(dailyColumn, "grid items-center gap-12 min-[900px]:grid-cols-[minmax(0,1fr)_290px] min-[900px]:gap-8")}
         >
           <div className="flex flex-col items-center text-center min-[900px]:items-start min-[900px]:text-left">
             <span className="relative mb-4 inline-block text-[2.6rem]">
@@ -242,11 +243,11 @@ export default function DailyClient({
         </ul>
       </Panel>
 
-      {/* P2: centered commuter photo, constrained to the same 752px width as page content */}
+      {/* P2: centered commuter photo, constrained to the page column's width */}
       <section className="relative isolate overflow-hidden bg-[#050505] text-white">
         {/* Mask the photo itself, not the section, so both edges dissolve into the black background. */}
         <div
-          className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-full max-w-[752px] -translate-x-1/2"
+          className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-full max-w-page -translate-x-1/2"
           style={{
             WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 24%, black 76%, transparent 100%)",
             maskImage: "linear-gradient(to right, transparent 0%, black 24%, black 76%, transparent 100%)",
@@ -256,12 +257,12 @@ export default function DailyClient({
             src="https://d2ol7oe51mr4n9.cloudfront.net/user_3K1fKjFN0U9i7Z1mhI71Tv2od36/c47859c9-56a7-4582-9f0b-ff545404b900.png"
             alt={copy.photo.alt}
             fill
-            sizes="(min-width: 752px) 752px, 100vw"
+            sizes="(min-width: 960px) 960px, 100vw"
             unoptimized
             className="object-cover object-[center_60%] opacity-95"
           />
         </div>
-        <div className="relative z-10 mx-auto flex min-h-[460px] w-full max-w-[752px] flex-col items-center justify-end px-4 py-12 text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
+        <div className="relative z-10 mx-auto flex min-h-[460px] w-full max-w-page flex-col items-center justify-end px-4 py-12 min-[900px]:px-gutter text-center min-[900px]:min-h-[560px] min-[900px]:items-start min-[900px]:justify-center min-[900px]:text-left">
           <Pill className="bg-[#f47a4a] text-[#050505]">{copy.photo.badge}</Pill>
           <h2 className={cn(h2Class, "mt-4 text-white min-[900px]:text-[3.5rem]")}>
             <Headline text={copy.photo.title} />
@@ -863,7 +864,8 @@ function StickyBar({ visible }: { visible: boolean }) {
         visible ? "translate-y-0" : "pointer-events-none translate-y-[120%]",
       )}
     >
-      <div className="mx-auto flex max-w-[720px] items-center gap-3 rounded-[22px] bg-[#050505] py-2.5 pl-5 pr-2.5 text-white shadow-[0_18px_40px_-14px_rgba(5,5,5,0.6)]">
+      {/* As wide as the page column's content (960px page less its 24px gutters). */}
+      <div className="mx-auto flex max-w-[calc(var(--container-page)-2*var(--spacing-gutter))] items-center gap-3 rounded-[22px] bg-[#050505] py-2.5 pl-5 pr-2.5 text-white shadow-[0_18px_40px_-14px_rgba(5,5,5,0.6)]">
         <div className="min-w-0 flex-1">
           <p className="text-[1rem] font-black">{copy.title}</p>
           <p className="truncate text-[0.78rem] font-semibold text-white/60">{copy.sub.replace("{perDay}", perDay)}</p>

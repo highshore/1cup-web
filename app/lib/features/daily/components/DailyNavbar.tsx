@@ -6,12 +6,12 @@ import { DAILY_SESSION_EVENT, dailyApi } from "../api";
 import { DAILY_ACCOUNT_PATH, DAILY_TRIAL_OPEN, DAILY_TRIAL_PATH } from "../constants";
 import { dailyCopy } from "../copy";
 import ServiceSwitcher from "../../../components/ServiceSwitcher";
-import { cn } from "./DailyUI";
+import { cn, dailyColumn } from "./DailyUI";
 import "../daily.css";
 
 // Replaces the global NewNavbar on /daily: the 1cup logo with the DAILY wordmark (it
-// opens the switch to MEETUP) and one call to action, on the same 720px column as the
-// page content. Signed in, the call to action becomes the account link.
+// opens the switch to MEETUP) and one call to action, on Daily's page column (the main
+// site's, so the logo sits where it does on /meetup). Signed in, the call to action becomes the account link.
 export default function DailyNavbar() {
   const copy = dailyCopy.nav;
   const [scrolled, setScrolled] = useState(false);
@@ -41,7 +41,7 @@ export default function DailyNavbar() {
         scrolled ? "border-[#e5e7eb]" : "border-transparent",
       )}
     >
-      <div className="mx-auto flex h-[60px] w-full max-w-[752px] items-center justify-between gap-4 px-4">
+      <div className={cn(dailyColumn, "flex h-[60px] items-center justify-between gap-4")}>
         <ServiceSwitcher current="daily" copy={copy.services} />
         {signedIn ? (
           <Link
