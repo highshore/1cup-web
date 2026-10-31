@@ -860,11 +860,13 @@ function StickyBar({ visible }: { visible: boolean }) {
     <div
       inert={!visible}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(12px,env(safe-area-inset-bottom))] transition-transform duration-300 ease-out motion-reduce:transition-none",
+        "fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[621px]:px-40 transition-transform duration-300 ease-out motion-reduce:transition-none",
         visible ? "translate-y-0" : "pointer-events-none translate-y-[120%]",
       )}
     >
-      {/* As wide as the page column's content (960px page less its 24px gutters). */}
+      {/* As wide as the page column's content (960px page less its 24px gutters). Above
+          620px the 10rem side padding keeps it clear of the 문의하기 button, which only
+          moves up over the bar on phones. */}
       <div className="mx-auto flex max-w-[calc(var(--container-page)-2*var(--spacing-gutter))] items-center gap-3 rounded-[22px] bg-[#050505] py-2.5 pl-5 pr-2.5 text-white shadow-[0_18px_40px_-14px_rgba(5,5,5,0.6)]">
         <div className="min-w-0 flex-1">
           <p className="text-[1rem] font-black">{copy.title}</p>
