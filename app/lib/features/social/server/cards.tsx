@@ -11,6 +11,9 @@ import type { CardSlide, SocialMedia } from "../types";
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1350;
+// Reels are 9:16. Instagram overlays its UI on roughly the top 180px and bottom 420px,
+// so the card and the subtitle stay inside that safe area.
+export const REEL_HEIGHT = 1920;
 
 const INK = "#050505";
 const ORANGE = "#f47a4a";
@@ -66,7 +69,19 @@ function WrappedText({ text, fontSize, style }: { text: string; fontSize: number
   );
 }
 
-function Slide({ slide, index, total }: { slide: CardSlide; index: number; total: number }) {
+function Slide({
+  slide,
+  index,
+  total,
+  reel = false,
+  subtitle = "",
+}: {
+  slide: CardSlide;
+  index: number;
+  total: number;
+  reel?: boolean;
+  subtitle?: string;
+}) {
   const isCover = index === 0;
   const isLast = index === total - 1 && total > 1;
   const cardBg = isLast ? INK : "#ffffff";
@@ -79,7 +94,7 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
         width: "100%",
         height: "100%",
         display: "flex",
-        padding: 64,
+        padding: reel ? "180px 64px 420px" : 64,
         background: PAGE,
         fontFamily: "Noto Sans KR",
       }}
@@ -122,11 +137,11 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
           {isCover && <div style={{ display: "flex", width: 120, height: 14, background: ORANGE, borderRadius: 999 }} />}
           <WrappedText
             text={slide.title}
-            fontSize={isCover ? 88 : 66}
+            fontSize={isCover ? (reel ? 96 : 88) : reel ? 72 : 66}
             style={{ fontWeight: 900, lineHeight: 1.22, letterSpacing: -2 }}
           />
           {slide.body && (
-            <WrappedText text={slide.body} fontSize={40} style={{ fontWeight: 500, lineHeight: 1.55, color: muted }} />
+            <WrappedText text={slide.body} fontSize={reel ? 44 : 40} style={{ fontWeight: 500, lineHeight: 1.55, color: muted }} />
           )}
           {slide.highlight && (
             <div
@@ -144,6 +159,20 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
           )}
         </div>
 
+        {subtitle && (
+          <div
+            style={{
+              display: "flex",
+              padding: "22px 30px",
+              background: isLast ? ORANGE : INK,
+              color: isLast ? INK : "#ffffff",
+              borderRadius: 24,
+            }}
+          >
+            <WrappedText text={subtitle} fontSize={38} style={{ fontWeight: 700, lineHeight: 1.45 }} />
+          </div>
+        )}
+
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
             <div style={{ display: "flex", fontSize: 40, fontWeight: 900 }}>영어 한잔</div>
@@ -158,14 +187,22 @@ function Slide({ slide, index, total }: { slide: CardSlide; index: number; total
   );
 }
 
-export async function renderSlideJpeg(slide: CardSlide, index: number, total: number): Promise<Buffer> {
+export async function renderSlidePng(
+  slide: CardSlide,
+  index: number,
+  total: number,
+  options: { reel?: boolean; subtitle?: string } = {},
+): Promise<Buffer> {
   const fonts = await loadFonts();
-  const png = await new ImageResponse(<Slide slide={slide} index={index} total={total} />, {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    fonts,
-  }).arrayBuffer();
-  return sharp(Buffer.from(png)).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+  const png = await new ImageResponse(
+    <Slide slide={slide} index={index} total={total} reel={options.reel} subtitle={options.subtitle} />,
+    { width: CARD_WIDTH, height: options.reel ? REEL_HEIGHT : CARD_HEIGHT, fonts },
+  ).arrayBuffer();
+  return Buffer.from(png);
+}
+
+export async function renderSlideJpeg(slide: CardSlide, index: number, total: number): Promise<Buffer> {
+  return sharp(await renderSlidePng(slide, index, total)).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
 }
 
 // File names hash the slide content, so an edited slide gets a new URL (no stale CDN

@@ -21,6 +21,14 @@ const nextConfig = {
       source: `/${root}/:path*`, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
     }));
   },
+  // Reels are encoded with the ffmpeg binary from @ffmpeg-installer (see
+  // app/lib/features/social/server/reel.ts). Keep the package unbundled and ship its
+  // Linux binary with the routes that render reels.
+  serverExternalPackages: ["@ffmpeg-installer/ffmpeg"],
+  outputFileTracingIncludes: {
+    "/api/admin/social": ["./node_modules/@ffmpeg-installer/linux-x64/**/*"],
+    "/api/cron/social-drafts": ["./node_modules/@ffmpeg-installer/linux-x64/**/*"],
+  },
   async redirects() {
     return [
       { source: "/home", destination: "/", permanent: true },

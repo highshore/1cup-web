@@ -24,6 +24,10 @@ import {
   CAROUSEL_MAX_SLIDES,
   type CarouselContent,
   isCarouselContent,
+  isReelContent,
+  NARRATION_LINE_LIMIT,
+  REEL_MAX_SLIDES,
+  type ReelContent,
   isThreadContent,
   type SlotStat,
   type SocialChannel,
@@ -93,6 +97,7 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
   const [theme, setTheme] = useState("");
+  const [format, setFormat] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -117,11 +122,11 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
       [next, ...current.filter((post) => post.id !== next.id)].sort((a, b) => b.postDate.localeCompare(a.postDate)),
     );
 
-  const generate = async (postDate: string, replace = false, pillar = theme) => {
+  const generate = async (postDate: string, replace = false, pillar = theme, postFormat = format) => {
     setGenerating(postDate);
     setError("");
     try {
-      replacePost(await generateSocialPost(channel, postDate, replace, pillar || undefined));
+      replacePost(await generateSocialPost(channel, postDate, replace, pillar || undefined, postFormat || undefined));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -149,7 +154,12 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {(!has(today) || !has(tomorrow)) && (
-            <ThemeSelect copy={copy} value={theme} onChange={setTheme} disabled={generating !== null} />
+            <>
+              <ThemeSelect copy={copy} value={theme} onChange={setTheme} disabled={generating !== null} />
+              {channel === "instagram" && (
+                <FormatSelect copy={copy} value={format} onChange={setFormat} disabled={generating !== null} />
+              )}
+            </>
           )}
           {[
             [today, copy.generateToday],
@@ -185,8 +195,8 @@ export default function DailyPostsPanel({ channel }: { channel: SocialChannel })
               post={post}
               copy={copy}
               regenerating={generating === post.postDate}
-              onRegenerate={(pillar) => {
-                if (window.confirm(copy.regenerateConfirm)) void generate(post.postDate, true, pillar);
+              onRegenerate={(pillar, postFormat) => {
+                if (window.confirm(copy.regenerateConfirm)) void generate(post.postDate, true, pillar, postFormat);
               }}
               onChange={replacePost}
               onError={setError}
@@ -257,6 +267,32 @@ function ThemeSelect({
   );
 }
 
+function FormatSelect({
+  copy,
+  value,
+  onChange,
+  disabled,
+}: {
+  copy: DailyCopy;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      aria-label={copy.format}
+      className="min-h-9 rounded-lg border-[1.5px] border-[#050505] bg-white px-2.5 py-1.5 text-[12px] font-black text-[#050505]"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="">{copy.formatAuto}</option>
+      <option value="carousel">{copy.formats.carousel}</option>
+      <option value="reel">{copy.formats.reel}</option>
+    </select>
+  );
+}
+
 function DailyPostCard({
   post,
   copy,
@@ -268,16 +304,22 @@ function DailyPostCard({
   post: SocialDailyPost;
   copy: DailyCopy;
   regenerating: boolean;
-  onRegenerate: (pillar: string) => void;
+  onRegenerate: (pillar: string, format: string) => void;
   onChange: (post: SocialDailyPost) => void;
   onError: (message: string) => void;
 }) {
   const [thread, setThread] = useState<ThreadContent | null>(isThreadContent(post.content) ? post.content : null);
-  const [carousel, setCarousel] = useState<CarouselContent | null>(isCarouselContent(post.content) ? post.content : null);
+  // A reel is edited like a carousel, plus one narration line per slide.
+  const [carousel, setCarousel] = useState<CarouselContent | ReelContent | null>(
+    isCarouselContent(post.content) ? post.content : null,
+  );
+  const narration = carousel && isReelContent(carousel) ? carousel.narration : null;
+  const video = post.media.find((item) => item.kind === "video");
   const [time, setTime] = useState(toKstInput(post.scheduledFor));
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [nextTheme, setNextTheme] = useState(post.pillar);
+  const [nextFormat, setNextFormat] = useState(post.format === "thread" ? "" : post.format);
 
   const editable = EDITABLE.includes(post.status);
   const timeChanged = time !== toKstInput(post.scheduledFor);
@@ -310,6 +352,11 @@ function DailyPostCard({
     setThread(next);
     setDirty(true);
   };
+  const updateNarration = (index: number, value: string) => {
+    if (!carousel || !isReelContent(carousel)) return;
+    setCarousel({ ...carousel, narration: carousel.narration.map((line, i) => (i === index ? value : line)) });
+    setDirty(true);
+  };
   const updateSlide = (index: number, key: keyof CardSlide, value: string) => {
     if (!carousel) return;
     setCarousel({ ...carousel, slides: carousel.slides.map((slide, i) => (i === index ? { ...slide, [key]: value } : slide)) });
@@ -325,6 +372,11 @@ function DailyPostCard({
         <span className="rounded-full border-[1.5px] border-[#050505] px-2.5 py-0.5 text-[12px] font-black">
           {copy.pillars[post.pillar as keyof DailyCopy["pillars"]] ?? post.pillar}
         </span>
+        {post.format !== "thread" && (
+          <span className="rounded-full border-[1.5px] border-[#050505] bg-[#fff1e9] px-2.5 py-0.5 text-[12px] font-black">
+            {copy.formats[post.format as "carousel" | "reel"]}
+          </span>
+        )}
         <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-black ${STATUS_TONE[post.status]}`}>
           {copy.status[post.status]}
         </span>
@@ -401,7 +453,16 @@ function DailyPostCard({
 
       {carousel && (
         <div className="grid gap-3">
-          {post.media.length > 0 && (
+          {video ? (
+            <video
+              src={video.url}
+              poster={post.media.find((item) => item.kind === "image")?.url}
+              controls
+              playsInline
+              preload="metadata"
+              className="h-[420px] w-[236px] rounded-lg border-[1.5px] border-[#050505] bg-[#050505] object-contain"
+            />
+          ) : post.media.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {post.media.map((item, index) => (
                 <a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer" className="flex-none">
@@ -416,7 +477,7 @@ function DailyPostCard({
           )}
           <details>
             <summary className="cursor-pointer text-[13px] font-black text-[#050505]">
-              {copy.slides} ({carousel.slides.length}/{CAROUSEL_MAX_SLIDES})
+              {narration ? copy.scenes : copy.slides} ({carousel.slides.length}/{narration ? REEL_MAX_SLIDES : CAROUSEL_MAX_SLIDES})
             </summary>
             <div className="mt-3 grid gap-3">
               {carousel.slides.map((slide, index) => (
@@ -440,6 +501,21 @@ function DailyPostCard({
                     {copy.highlight}
                     <input className={inputClass} value={slide.highlight} maxLength={140} disabled={!editable} onChange={(event) => updateSlide(index, "highlight", event.target.value)} />
                   </label>
+                  {narration && (
+                    <label className={labelClass}>
+                      {copy.narration}
+                      <textarea
+                        className={`${inputClass} min-h-[64px] border-[#f47a4a]`}
+                        value={narration[index] ?? ""}
+                        maxLength={NARRATION_LINE_LIMIT}
+                        disabled={!editable}
+                        onChange={(event) => updateNarration(index, event.target.value)}
+                      />
+                      <span className={mutedClass}>
+                        {fill(copy.characters, { count: (narration[index] ?? "").length, limit: NARRATION_LINE_LIMIT })}
+                      </span>
+                    </label>
+                  )}
                 </fieldset>
               ))}
             </div>
@@ -467,7 +543,15 @@ function DailyPostCard({
         {editable && (dirty || timeChanged) && (
           <button type="button" className={`${buttonClass} bg-white`} disabled={busy !== null} onClick={() => void save()}>
             {busy === "save" ? <ArrowPathIcon width={14} className="animate-spin" /> : <CheckIcon width={14} />}
-            {busy === "save" ? copy.saving : carousel && dirty ? copy.saveAndRender : copy.save}
+            {busy === "save"
+              ? narration && dirty
+                ? copy.renderingReel
+                : copy.saving
+              : narration && dirty
+                ? copy.saveAndRenderReel
+                : carousel && dirty
+                  ? copy.saveAndRender
+                  : copy.save}
           </button>
         )}
         {["draft", "rejected", "failed", "expired"].includes(post.status) && !dirty && !timeChanged && (
@@ -503,11 +587,14 @@ function DailyPostCard({
         {["draft", "rejected", "failed", "expired"].includes(post.status) && (
           <span className="inline-flex flex-wrap items-center gap-1.5">
             <ThemeSelect copy={copy} value={nextTheme} onChange={setNextTheme} disabled={busy !== null || regenerating} />
+            {post.channel === "instagram" && (
+              <FormatSelect copy={copy} value={nextFormat} onChange={setNextFormat} disabled={busy !== null || regenerating} />
+            )}
             <button
               type="button"
               className={`${buttonClass} bg-white`}
               disabled={busy !== null || regenerating}
-              onClick={() => onRegenerate(nextTheme)}
+              onClick={() => onRegenerate(nextTheme, nextFormat)}
             >
               <ArrowPathIcon width={14} className={regenerating ? "animate-spin" : ""} /> {copy.regenerate}
             </button>

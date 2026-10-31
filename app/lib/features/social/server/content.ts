@@ -12,6 +12,10 @@ import {
   CAROUSEL_MIN_SLIDES,
   type CarouselContent,
   type CardSlide,
+  NARRATION_LINE_LIMIT,
+  REEL_MAX_SLIDES,
+  type ReelContent,
+  type SocialPostFormat,
   type SocialChannel,
   THREAD_MAX_REPLIES,
   THREAD_REPLY_LIMIT,
@@ -89,6 +93,16 @@ const WEEKLY: Record<SocialChannel, Pillar[]> = {
 };
 
 export const PILLARS: Record<string, Pillar> = P;
+
+// Instagram alternates card news with reels: the expression of the day (heard aloud) and
+// one benefit-led insight post become reels; everything else stays a carousel.
+const INSTAGRAM_FORMAT: SocialPostFormat[] = ["carousel", "carousel", "reel", "carousel", "reel", "carousel", "carousel"];
+
+export const formatFor = (channel: SocialChannel, postDate: string, override?: string): SocialPostFormat => {
+  if (channel === "threads") return "thread";
+  if (override === "carousel" || override === "reel") return override;
+  return INSTAGRAM_FORMAT[weekdayOf(postDate)];
+};
 
 export const weekdayOf = (postDate: string) => new Date(`${postDate}T12:00:00Z`).getUTCDay();
 // An admin can ask for a different theme for a day; otherwise the weekday decides.
@@ -185,6 +199,8 @@ export const materialSource = (material: Material, pillar: Pillar) => ({
 // --------------------------------------------------------------------- draft
 const BRAND = `You write social posts for "영어 한잔 (1 Cup English)", a Seoul English discussion community: small-table meetups led by a professional interpreter, two WSJ/FT-style articles discussed over two hours every Sunday, plus "One Cup Daily", a daily English expression lesson sent by KakaoTalk. Audience: Korean office workers and students in their 20s and 30s who want real, intelligent English conversation. Voice: warm, smart, a little playful; Korean first with English where it teaches. Lead with a hook that names a real situation the reader struggles with in English (meetings, calls, interviews, small talk) whenever the theme allows, and make the payoff concrete: what they will be able to say afterwards. Never invent facts, testimonials, statistics, prices, numbers, dates, people or guarantees beyond the material. No URLs anywhere (the system adds tracking links). No more than one emoji per paragraph.`;
 
+const REEL_FORMAT = `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}], "narration": string[]} for a 20 to 45 second Instagram Reel. Make 4 to ${REEL_MAX_SLIDES} slides shown one after another, each on screen while its narration line is read aloud; "narration" has exactly one line per slide. Slide 1 is the hook: an eyebrow label and a Korean title (max 32 characters) that stops the scroll. Slide titles max 30 characters, body max 90 characters (keep frames uncluttered), "highlight" an English sentence or term (max 90 characters) or "". Each narration line (max ${NARRATION_LINE_LIMIT} characters) is natural spoken Korean that a narrator reads in about 3 to 7 seconds; include the English expression itself where it teaches, written plainly so text-to-speech pronounces it well (no emoji, no hashtags, no brackets). The last slide and line invite people to the Sunday meetup and say the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the reel, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`;
+
 const FORMAT: Record<SocialChannel, string> = {
   threads: `Return JSON {"text": string, "replies": string[]} for a Threads thread. "text" (max ${THREAD_TEXT_LIMIT} characters) is the hook: a question or surprising point that makes people reply. "replies" (1 to 3 items, each max ${THREAD_REPLY_LIMIT} characters) continue it: the explanation, the answer, examples. Use at most one topic hashtag in total, placed in "text".`,
   instagram: `Return JSON {"caption": string, "slides": [{"eyebrow": string, "title": string, "body": string, "highlight": string}]} for an Instagram card-news carousel. Make ${CAROUSEL_MIN_SLIDES + 2} to ${CAROUSEL_MAX_SLIDES - 1} slides. Slide 1 is the cover: a short eyebrow label and a punchy Korean title (max 32 characters; for benefit-led posts this is the pain-point hook), body as a one-line teaser. Middle slides teach one point each: title max 30 characters, body max 120 characters, "highlight" an English sentence or term (max 90 characters) or "". The last slide invites people to the Sunday meetup and says the link is in the profile. "caption" (max ${CAROUSEL_CAPTION_LIMIT} characters) opens with a strong first line, recaps the post, says the link is in the profile, and ends with 3 to 5 relevant hashtags.`,
@@ -232,6 +248,15 @@ export const normalizeThread = (raw: Json): ThreadContent => {
   return { text, replies };
 };
 
+export const normalizeReel = (raw: Json): ReelContent => {
+  const carousel = normalizeCarousel({ ...raw, slides: Array.isArray(raw.slides) ? raw.slides.slice(0, REEL_MAX_SLIDES) : [] });
+  const lines = Array.isArray(raw.narration) ? raw.narration : [];
+  // One line per slide; a missing line leaves that slide silent rather than shifting the rest.
+  const narration = carousel.slides.map((_, index) => str(lines[index], NARRATION_LINE_LIMIT));
+  if (narration.every((line) => !line)) throw new Error("The reel has no narration.");
+  return { ...carousel, narration };
+};
+
 export const normalizeCarousel = (raw: Json): CarouselContent => {
   const slides: CardSlide[] = (Array.isArray(raw.slides) ? raw.slides : [])
     .map((slide) => {
@@ -257,10 +282,11 @@ export async function draftPost(
   pillar: Pillar,
   material: Material,
   recentPosts: string[],
-): Promise<ThreadContent | CarouselContent> {
+  format: SocialPostFormat = channel === "threads" ? "thread" : "carousel",
+): Promise<ThreadContent | CarouselContent | ReelContent> {
   const prompt = [
     `Post date (KST): ${postDate}. Theme: ${pillar.label} — ${pillar.brief}`,
-    FORMAT[channel],
+    format === "reel" ? REEL_FORMAT : FORMAT[channel],
     recentPosts.length
       ? `Do not repeat these recent posts' angles or wording:\n${recentPosts.map((post) => `- ${clip(post, 160)}`).join("\n")}`
       : "",
@@ -269,5 +295,6 @@ export async function draftPost(
     .filter(Boolean)
     .join("\n\n");
   const raw = await callGemini(prompt);
-  return channel === "threads" ? normalizeThread(raw) : normalizeCarousel(raw);
+  if (channel === "threads") return normalizeThread(raw);
+  return format === "reel" ? normalizeReel(raw) : normalizeCarousel(raw);
 }

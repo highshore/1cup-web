@@ -33,12 +33,19 @@ const adminSocial = {
     daily: {
       title: "Daily posts",
       description:
-        "A new post is drafted every night at 8 PM for the next day from the latest articles and Daily lessons. Check it, edit if needed, and approve it; unapproved drafts are not posted.",
+        "A new post (Instagram: card news or a narrated reel) is drafted every night at 8 PM for the next day from the latest articles and Daily lessons. Check it, edit if needed, and approve it; unapproved drafts are not posted.",
       generateToday: "Draft today's post",
       generateTomorrow: "Draft tomorrow's post",
       generating: "Drafting… (up to a minute)",
       empty: "No daily posts yet. Draft one with the buttons above.",
       theme: "Theme",
+      format: "Format",
+      formatAuto: "Weekday default format",
+      formats: { carousel: "Card news", reel: "Reel" },
+      scenes: "Scenes",
+      narration: "Narration (read aloud, shown as subtitle)",
+      saveAndRenderReel: "Save and rebuild video",
+      renderingReel: "Building video… (about a minute)",
       themeAuto: "Weekday default",
       pillars: {
         insight: "Customer insight",
@@ -138,12 +145,19 @@ const adminSocial = {
     daily: {
       title: "일일 게시물",
       description:
-        "매일 밤 8시에 최신 아티클과 Daily 레슨으로 다음 날 게시물을 새로 씁니다. 확인하고 필요하면 고친 뒤 승인해 주세요. 승인하지 않은 초안은 올라가지 않습니다.",
+        "매일 밤 8시에 최신 아티클과 Daily 레슨으로 다음 날 게시물을 새로 씁니다(인스타는 카드뉴스 또는 내레이션 릴스). 확인하고 필요하면 고친 뒤 승인해 주세요. 승인하지 않은 초안은 올라가지 않습니다.",
       generateToday: "오늘 게시물 만들기",
       generateTomorrow: "내일 게시물 만들기",
       generating: "작성 중… (최대 1분)",
       empty: "아직 일일 게시물이 없습니다. 위 버튼으로 만들어 보세요.",
       theme: "주제",
+      format: "형식",
+      formatAuto: "요일 기본 형식",
+      formats: { carousel: "카드뉴스", reel: "릴스" },
+      scenes: "장면",
+      narration: "내레이션 (음성으로 읽고 자막으로 표시)",
+      saveAndRenderReel: "저장하고 영상 다시 만들기",
+      renderingReel: "영상 만드는 중… (약 1분)",
       themeAuto: "요일 기본 주제",
       pillars: {
         insight: "고객 인사이트",
